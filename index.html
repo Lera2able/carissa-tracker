@@ -955,16 +955,16 @@ function InterventionEditModal({row,onClose,onSaved}){
    eLearning practical / oral assessment for Term 2
    ════════════════════════════════════════════════════════════════ */
 
-/* Rubric definitions */
-const ORAL_QUESTIONS = [
-  {k:'q1', q:'What is eLearning?'},
-  {k:'q2', q:'What kind of devices do we use for learning?'},
-  {k:'q3', q:'What is the difference between a laptop and a desktop?'},
-  {k:'q4', q:'What is the pad used for moving the pointer on your laptop?', a:'touchpad / trackpad'},
-  {k:'q5', q:'Once we get internet connection in all the classes, how will we access our eLearning program?', a:'On the Carissa School website (carissaprimary.co.za)'},
-];
+/* Rubric definitions
+   Note: Database column names (oral_*, prac1_*, prac2_*) are kept for
+   backwards compatibility with the audit log. The mapping is now:
+     prac1_*  → Section A (Window controls)
+     oral_*   → Section B (Typing the alphabet)
+     prac2_*  → Section C (Writing task)
+*/
 
-const PRAC1_ITEMS = [
+/* SECTION A — Practical: Window controls (5 marks, same for both phases) */
+const SEC_A_ITEMS = [
   {k:'open',          label:'Open Word'},
   {k:'close',         label:'Close Word'},
   {k:'minimise',      label:'Minimise the window'},
@@ -972,28 +972,48 @@ const PRAC1_ITEMS = [
   {k:'hide_retrieve', label:'Hide and retrieve from the taskbar'},
 ];
 
-/* Section 2 — Foundation Phase (Grades 1-3), /10 */
-const PRAC2_FOUNDATION = [
-  {k:'change_arial',    label:'Change font to Arial',                       max:1},
-  {k:'change_size48',   label:'Change font size to 48',                     max:1},
-  {k:'write_a_to_z',    label:'Type the letters A to Z correctly',          max:4},
-  {k:'skip_lines',      label:'Skip 2 lines',                               max:1},
-  {k:'name_grade',      label:'Type name + surname + grade with spaces',    max:3},
+/* SECTION B — Practical: Typing the alphabet (5 marks) */
+const SEC_B_FOUNDATION = [
+  {k:'arial',   label:'Change font to Arial',                  max:1},
+  {k:'size48',  label:'Change font size to 48',                max:1},
+  {k:'a_to_z',  label:'Type the letters A to Z correctly',     max:3},
+];
+const SEC_B_INTERMEDIATE = [
+  {k:'arial',     label:'Change font to Arial',                max:1},
+  {k:'size48',    label:'Change font size to 48',              max:1},
+  {k:'shift_A',   label:'Type "A" using shift',                max:1},
+  {k:'space_a',   label:'Space, then small "a"',               max:1},
+  {k:'continue',  label:'Continue Aa Bb … Zz to the end',      max:1},
 ];
 
-/* Section 2 — Intermediate Phase (Grades 4-7), /10 */
-const PRAC2_INTERMEDIATE = [
-  {k:'arial48_typing',  label:'Arial font + size 48 + type Aa-Zz correctly',max:2},
-  {k:'skip_lines',      label:'Skip 2 lines',                               max:1},
-  {k:'paragraphs',      label:'Size 20 + 2 paragraphs about Carissa',       max:3},
-  {k:'grammar',         label:'Grammar and punctuation',                    max:2},
-  {k:'save_file',       label:'Save with filename "Name Surname Grade" to desktop', max:1},
-  {k:'close_doc',       label:'Close the document',                         max:1},
+/* SECTION C — Practical: Writing task (10 marks) */
+const SEC_C_FOUNDATION = [
+  {k:'skip_lines',  label:'Skip 2 lines',                       max:1},
+  {k:'size20',      label:'Change font size to 20',             max:1},
+  {k:'name',        label:'Type Name',                          max:1},
+  {k:'surname',     label:'Type Surname',                       max:1},
+  {k:'grade',       label:'Type Grade',                         max:1},
+  {k:'school',      label:'Type School',                        max:1},
+  {k:'spaces',      label:'Correct spaces between words',       max:2},
+  {k:'save',        label:'Save your work in folder',           max:2},
+];
+const SEC_C_INTERMEDIATE = [
+  {k:'skip_size20', label:'Skip 2 lines and change font size to 20', max:2},
+  {k:'write_self',  label:'Write about yourself',               max:1},
+  {k:'grammar',     label:'Proper grammar and punctuation',     max:4},
+  {k:'paragraphs',  label:'2 paragraphs',                       max:2},
+  {k:'save',        label:'Save your work in folder',           max:1},
 ];
 
-function getPrac2Items(phase){
-  return phase==='foundation' ? PRAC2_FOUNDATION : PRAC2_INTERMEDIATE;
+function getSecBItems(phase){
+  return phase==='foundation' ? SEC_B_FOUNDATION : SEC_B_INTERMEDIATE;
 }
+function getSecCItems(phase){
+  return phase==='foundation' ? SEC_C_FOUNDATION : SEC_C_INTERMEDIATE;
+}
+/* Kept for backwards compatibility with anything still referring to old names */
+const PRAC1_ITEMS = SEC_A_ITEMS;
+function getPrac2Items(phase){ return getSecCItems(phase); }
 
 function AssessmentsTab({assessments,setAssessments,exportReport,exportClassSummary,onProjectTest}){
   const [selClass,setSelClass]=useState('');
@@ -1127,24 +1147,29 @@ function AssessmentModal({learner,className,phase,onClose,onSaved,onDelete}){
   const existing = learner.existing;
   const isUpdate = !!existing;
 
-  const [oral,setOral]=useState(existing?.oral_scores || {q1:false,q2:false,q3:false,q4:false,q5:false});
+  /* Initial state — column names kept for DB compat; meaning is per the new rubric:
+     prac1_*  → Section A (Window controls)
+     oral_*   → Section B (Typing the alphabet)
+     prac2_*  → Section C (Writing task)                                          */
   const [prac1,setPrac1]=useState(existing?.prac1_scores || {open:false,close:false,minimise:false,maximise:false,hide_retrieve:false});
+  const [oral,setOral]=useState(()=>{
+    if(existing?.oral_scores) return existing.oral_scores;
+    const init = {}; getSecBItems(phase).forEach(it => init[it.k] = 0); return init;
+  });
   const [prac2,setPrac2]=useState(()=>{
     if(existing?.prac2_scores) return existing.prac2_scores;
-    const items = getPrac2Items(phase);
-    const init = {};
-    items.forEach(it => init[it.k] = 0);
-    return init;
+    const init = {}; getSecCItems(phase).forEach(it => init[it.k] = 0); return init;
   });
   const [comments,setComments]=useState(existing?.comments || '');
   const [busy,setBusy]=useState(false);
 
-  const prac2Items = getPrac2Items(phase);
+  const secBItems = getSecBItems(phase);
+  const secCItems = getSecCItems(phase);
 
-  const oralTotal = Object.values(oral).filter(Boolean).length;
   const prac1Total = Object.values(prac1).filter(Boolean).length;
-  const prac2Total = prac2Items.reduce((s,it) => s + (parseInt(prac2[it.k],10)||0), 0);
-  const grand = oralTotal + prac1Total + prac2Total;
+  const oralTotal  = secBItems.reduce((s,it) => s + (parseInt(oral[it.k],10)||0), 0);
+  const prac2Total = secCItems.reduce((s,it) => s + (parseInt(prac2[it.k],10)||0), 0);
+  const grand = prac1Total + oralTotal + prac2Total;
 
   const handleSave = async () => {
     setBusy(true);
@@ -1201,30 +1226,13 @@ function AssessmentModal({learner,className,phase,onClose,onSaved,onDelete}){
           </div>
         </div>
 
-        {/* ── SECTION A: ORAL ─────────────────────── */}
+        {/* ── SECTION A: Window Controls (was Section B) ─────── */}
         <div style={{background:'#f8f9fa',padding:'14px',borderRadius:'10px',marginBottom:'12px'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px'}}>
-            <h4 style={{color:'#667eea',fontSize:'15px'}}>A. Oral Assessment</h4>
-            <span style={{fontWeight:700,color:'#667eea'}}>{oralTotal}/5</span>
-          </div>
-          {ORAL_QUESTIONS.map(q=>(
-            <div key={q.k} onClick={()=>setOral(p=>({...p,[q.k]:!p[q.k]}))} style={{display:'flex',alignItems:'flex-start',gap:'10px',padding:'8px',background:'white',borderRadius:'6px',marginBottom:'6px',cursor:'pointer'}}>
-              <input type="checkbox" checked={!!oral[q.k]} readOnly style={{width:18,height:18,cursor:'pointer',marginTop:2}}/>
-              <div style={{flex:1,fontSize:'13px',color:'#333'}}>
-                <div>{q.q}</div>
-                {q.a && <div style={{fontSize:'11px',color:'#888',marginTop:'2px'}}>Expected: {q.a}</div>}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* ── SECTION B: PRACTICAL 1 ─────────────── */}
-        <div style={{background:'#f8f9fa',padding:'14px',borderRadius:'10px',marginBottom:'12px'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px'}}>
-            <h4 style={{color:'#667eea',fontSize:'15px'}}>B. Practical Section 1 — Window controls</h4>
+            <h4 style={{color:'#667eea',fontSize:'15px'}}>A. Practical — Window controls</h4>
             <span style={{fontWeight:700,color:'#667eea'}}>{prac1Total}/5</span>
           </div>
-          {PRAC1_ITEMS.map(it=>(
+          {SEC_A_ITEMS.map(it=>(
             <div key={it.k} onClick={()=>setPrac1(p=>({...p,[it.k]:!p[it.k]}))} style={{display:'flex',alignItems:'center',gap:'10px',padding:'8px',background:'white',borderRadius:'6px',marginBottom:'6px',cursor:'pointer'}}>
               <input type="checkbox" checked={!!prac1[it.k]} readOnly style={{width:18,height:18,cursor:'pointer'}}/>
               <div style={{flex:1,fontSize:'13px',color:'#333'}}>{it.label}</div>
@@ -1233,15 +1241,40 @@ function AssessmentModal({learner,className,phase,onClose,onSaved,onDelete}){
           ))}
         </div>
 
-        {/* ── SECTION C: PRACTICAL 2 ─────────────── */}
+        {/* ── SECTION B: Typing the Alphabet ─────────────────── */}
         <div style={{background:'#f8f9fa',padding:'14px',borderRadius:'10px',marginBottom:'12px'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px'}}>
             <h4 style={{color:'#667eea',fontSize:'15px'}}>
-              C. Practical Section 2 — {phase==='foundation' ? 'Foundation (Gr 1-3)' : 'Intermediate (Gr 4-7)'}
+              B. Practical — Typing the alphabet ({phase==='foundation' ? 'Foundation' : 'Intermediate'})
+            </h4>
+            <span style={{fontWeight:700,color:'#667eea'}}>{oralTotal}/5</span>
+          </div>
+          {secBItems.map(it=>(
+            <div key={it.k} style={{display:'flex',alignItems:'center',gap:'10px',padding:'8px',background:'white',borderRadius:'6px',marginBottom:'6px'}}>
+              <div style={{flex:1,fontSize:'13px',color:'#333'}}>{it.label}</div>
+              {it.max===1 ? (
+                <label style={{display:'flex',alignItems:'center',gap:'6px',cursor:'pointer'}}>
+                  <input type="checkbox" checked={!!oral[it.k]} onChange={e=>setOral(p=>({...p,[it.k]:e.target.checked?1:0}))} style={{width:18,height:18,cursor:'pointer'}}/>
+                  <span style={{fontSize:'11px',color:'#888'}}>{oral[it.k]?1:0}/1</span>
+                </label>
+              ) : (
+                <select value={oral[it.k]||0} onChange={e=>setOral(p=>({...p,[it.k]:parseInt(e.target.value,10)}))} style={{padding:'4px 8px',border:'1px solid #ddd',borderRadius:'6px',fontSize:'13px',cursor:'pointer',background:'white'}}>
+                  {Array.from({length:it.max+1},(_,i)=><option key={i} value={i}>{i}/{it.max}</option>)}
+                </select>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* ── SECTION C: Writing Task ────────────────────────── */}
+        <div style={{background:'#f8f9fa',padding:'14px',borderRadius:'10px',marginBottom:'12px'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px'}}>
+            <h4 style={{color:'#667eea',fontSize:'15px'}}>
+              C. Practical — Writing task ({phase==='foundation' ? 'Foundation' : 'Intermediate'})
             </h4>
             <span style={{fontWeight:700,color:'#667eea'}}>{prac2Total}/10</span>
           </div>
-          {prac2Items.map(it=>(
+          {secCItems.map(it=>(
             <div key={it.k} style={{display:'flex',alignItems:'center',gap:'10px',padding:'8px',background:'white',borderRadius:'6px',marginBottom:'6px'}}>
               <div style={{flex:1,fontSize:'13px',color:'#333'}}>{it.label}</div>
               {it.max===1 ? (
@@ -1284,7 +1317,8 @@ function AssessmentModal({learner,className,phase,onClose,onSaved,onDelete}){
 /* ── Project Test (full-screen view for classroom projector) ───── */
 function ProjectTestView({initialPhase, onClose}){
   const [phase,setPhase]=useState(initialPhase||'intermediate');
-  const prac2 = getPrac2Items(phase);
+  const secB = getSecBItems(phase);
+  const secC = getSecCItems(phase);
   return (
     <div style={{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',background:'linear-gradient(135deg,#667eea 0%,#764ba2 100%)',zIndex:9999,overflowY:'auto',padding:'30px',color:'white'}}>
       <div style={{maxWidth:'1100px',margin:'0 auto'}}>
@@ -1304,26 +1338,26 @@ function ProjectTestView({initialPhase, onClose}){
         </div>
 
         <div style={{background:'rgba(255,255,255,0.12)',padding:'18px',borderRadius:'15px',marginBottom:'18px'}}>
-          <h2 style={{marginBottom:'10px',fontSize:'26px'}}>🗣️ Part A — Oral (5 marks)</h2>
-          <p style={{fontSize:'16px',marginBottom:'10px',opacity:0.9}}>Your teacher will ask you these questions. Answer out loud.</p>
-          <ol style={{paddingLeft:'24px',fontSize:'20px',lineHeight:1.7}}>
-            {ORAL_QUESTIONS.map(q=><li key={q.k} style={{marginBottom:'6px'}}>{q.q}</li>)}
-          </ol>
-        </div>
-
-        <div style={{background:'rgba(255,255,255,0.12)',padding:'18px',borderRadius:'15px',marginBottom:'18px'}}>
-          <h2 style={{marginBottom:'10px',fontSize:'26px'}}>🖱️ Part B — Window Controls (5 marks)</h2>
+          <h2 style={{marginBottom:'10px',fontSize:'26px'}}>🖱️ Part A — Window Controls (5 marks)</h2>
           <p style={{fontSize:'16px',marginBottom:'10px',opacity:0.9}}>Show your teacher how to:</p>
           <ul style={{paddingLeft:'24px',fontSize:'20px',lineHeight:1.7,listStyle:'"✓ "'}}>
-            {PRAC1_ITEMS.map(it=><li key={it.k} style={{marginBottom:'4px'}}>{it.label}</li>)}
+            {SEC_A_ITEMS.map(it=><li key={it.k} style={{marginBottom:'4px'}}>{it.label}</li>)}
           </ul>
         </div>
 
-        <div style={{background:'rgba(255,255,255,0.12)',padding:'18px',borderRadius:'15px'}}>
-          <h2 style={{marginBottom:'10px',fontSize:'26px'}}>⌨️ Part C — Typing Task (10 marks)</h2>
+        <div style={{background:'rgba(255,255,255,0.12)',padding:'18px',borderRadius:'15px',marginBottom:'18px'}}>
+          <h2 style={{marginBottom:'10px',fontSize:'26px'}}>⌨️ Part B — Typing the Alphabet (5 marks)</h2>
           <p style={{fontSize:'16px',marginBottom:'10px',opacity:0.9}}>Open Word and do the following:</p>
           <ol style={{paddingLeft:'24px',fontSize:'20px',lineHeight:1.7}}>
-            {prac2.map(it=><li key={it.k} style={{marginBottom:'6px'}}>{it.label} <span style={{fontSize:'14px',opacity:0.75}}>({it.max} mark{it.max>1?'s':''})</span></li>)}
+            {secB.map(it=><li key={it.k} style={{marginBottom:'6px'}}>{it.label} <span style={{fontSize:'14px',opacity:0.75}}>({it.max} mark{it.max>1?'s':''})</span></li>)}
+          </ol>
+        </div>
+
+        <div style={{background:'rgba(255,255,255,0.12)',padding:'18px',borderRadius:'15px'}}>
+          <h2 style={{marginBottom:'10px',fontSize:'26px'}}>✍️ Part C — Writing Task (10 marks)</h2>
+          <p style={{fontSize:'16px',marginBottom:'10px',opacity:0.9}}>{phase==='foundation' ? 'Continue in the same document and:' : 'Now write about yourself:'}</p>
+          <ol style={{paddingLeft:'24px',fontSize:'20px',lineHeight:1.7}}>
+            {secC.map(it=><li key={it.k} style={{marginBottom:'6px'}}>{it.label} <span style={{fontSize:'14px',opacity:0.75}}>({it.max} mark{it.max>1?'s':''})</span></li>)}
           </ol>
         </div>
 
@@ -1344,25 +1378,26 @@ function exportAssessmentReport(a){
   // Small helper to keep injected strings safe
   function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-  // Per-section auto comments (Lerato's templates)
-  function commentA(score){
-    if(score === 5) return 'The learner understands what eLearning is and shows excitement towards this programme.';
-    if(score >= 3)  return 'The learner has a good understanding of eLearning and shows interest in the programme.';
-    return 'The learner is still developing their understanding of eLearning. With more support this will improve.';
-  }
-  function commentB(score, fn){
+  // Per-section auto comments
+  function commentA(score, fn){
     if(score === 5) return `${fn} has done excellently and shows a strong understanding of the basic Microsoft Word controls.`;
-    if(score === 4) return `${fn} has done really well, and understands the basics of Microsoft Word controls.`;
+    if(score === 4) return `${fn} has done really well and understands the basics of Microsoft Word controls.`;
     if(score >= 2)  return `${fn} is learning the basics of Microsoft Word controls and will benefit from more practice.`;
     return `${fn} needs more support to learn the basic Microsoft Word controls.`;
   }
+  function commentB(score, fn){
+    if(score === 5) return `${fn} confidently typed the alphabet with the correct font and size — excellent typing skill!`;
+    if(score === 4) return `${fn} did really well with the alphabet typing task and is becoming a confident typist.`;
+    if(score >= 2)  return `${fn} is learning the alphabet keyboard layout and will get faster with practice.`;
+    return `${fn} still needs support to find the letters on the keyboard. We will keep practising.`;
+  }
   function commentC(score, fn){
-    if(score === 10) return `${fn} has shown outstanding skill in the typing task — truly excellent work!`;
-    if(score === 9)  return `${fn} did outstandingly — typed paragraphs with correct grammar and punctuation. A natural typist!`;
-    if(score === 8)  return `${fn} is making excellent progress and is starting to write full paragraphs with confidence. Well done!`;
-    if(score === 7)  return `${fn} has done well in the typing task and continues to build their typing skills. Keep up the good work!`;
-    if(score >= 5)   return `${fn} is building their typing skills steadily. With more practice their confidence will grow.`;
-    return `${fn} is still developing their typing skills. We will continue to support their progress.`;
+    if(score === 10) return `${fn} completed the writing task beautifully — every step was done correctly. Outstanding work!`;
+    if(score === 9)  return `${fn} did outstandingly in the writing task with only the smallest things to polish.`;
+    if(score === 8)  return `${fn} is making excellent progress and writes with growing confidence. Well done!`;
+    if(score === 7)  return `${fn} has done well in the writing task and continues to build their skills. Keep up the good work!`;
+    if(score >= 5)   return `${fn} is building their writing skills steadily. With more practice their confidence will grow.`;
+    return `${fn} is still developing their writing skills. We will continue to support their progress.`;
   }
   function teacherSay(total, fn){
     if(total >= 19) return `${fn} is an outstanding learner who has truly stood out this term. ${fn}'s typing, grammar and punctuation are impressive for the level, and ${fn} approaches every lesson with enthusiasm. I am very proud of ${fn}'s progress and look forward to building on this together next term.`;
@@ -1371,21 +1406,31 @@ function exportAssessmentReport(a){
     if(total >= 14) return `${fn} is a hard-working learner who tried their best this term. With more practice, ${fn}'s eLearning skills will continue to grow. Looking forward to seeing ${fn}'s progress next term.`;
     return `${fn} is showing effort in eLearning and will benefit from more practice next term. I look forward to supporting their growth.`;
   }
-  function summaryC(phase){
-    if(phase === 'foundation')
-      return `This practical task assesses the learner's ability to use Microsoft Word to change the font to Arial, increase the font size to 48, type the letters A-Z correctly, skip two lines, and then type their full name, surname and grade with proper spacing.`;
-    return `This practical task assesses the learner's ability to use Microsoft Word to change the font to Arial at size 48, type the alphabet (Aa-Zz), skip lines, type two paragraphs about Carissa Primary School at size 20, apply correct grammar and punctuation, save the document, and close it properly.`;
+
+  // Mark renderer — handles 1-mark checkboxes and multi-mark items uniformly
+  function mark(got, max){
+    const tick = got >= max ? '✓' : (got > 0 ? '◐' : '✗');
+    return `<td class="mk">${tick}</td><td class="mk">${got}/${max}</td>`;
   }
 
-  // Build the row-by-row rubric tables (Section A & B only — C is now a summary)
-  const oralRows = ORAL_QUESTIONS.map(q=>{
-    const got = a.oral_scores?.[q.k] ? 1 : 0;
-    return `<tr><td>${esc(q.q)}</td><td class="mk">${got?'✓':'✗'}</td><td class="mk">${got}/1</td></tr>`;
+  // Section A (Window controls) uses prac1_scores
+  const secARows = SEC_A_ITEMS.map(it => {
+    const got = a.prac1_scores?.[it.k] ? 1 : 0;
+    return `<tr><td>${esc(it.label)}</td>${mark(got, 1)}</tr>`;
   }).join('');
 
-  const prac1Rows = PRAC1_ITEMS.map(it=>{
-    const got = a.prac1_scores?.[it.k] ? 1 : 0;
-    return `<tr><td>${esc(it.label)}</td><td class="mk">${got?'✓':'✗'}</td><td class="mk">${got}/1</td></tr>`;
+  // Section B (Alphabet typing) uses oral_scores (column repurposed)
+  const secBItems = a.phase === 'foundation' ? SEC_B_FOUNDATION : SEC_B_INTERMEDIATE;
+  const secBRows = secBItems.map(it => {
+    const got = parseInt(a.oral_scores?.[it.k], 10) || 0;
+    return `<tr><td>${esc(it.label)}</td>${mark(got, it.max)}</tr>`;
+  }).join('');
+
+  // Section C (Writing task) uses prac2_scores
+  const secCItems = a.phase === 'foundation' ? SEC_C_FOUNDATION : SEC_C_INTERMEDIATE;
+  const secCRows = secCItems.map(it => {
+    const got = parseInt(a.prac2_scores?.[it.k], 10) || 0;
+    return `<tr><td>${esc(it.label)}</td>${mark(got, it.max)}</tr>`;
   }).join('');
 
   const fn = esc(a.firstname);
@@ -1511,7 +1556,7 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
     <img src="${LOGO}" alt="Carissa Primary"/>
     <div class="h-text">
       <h1>Carissa Primary School</h1>
-      <p>eLearning Practical &amp; Oral Assessment Report — Term ${esc(a.term?.replace('Term ','') || '2')}, ${a.year}</p>
+      <p>eLearning Practical Assessment Report — Term ${esc(a.term?.replace('Term ','') || '2')}, ${a.year}</p>
     </div>
   </header>
 
@@ -1533,16 +1578,16 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
     </div>
   </div>
 
-  <h2>Section A — Oral Assessment <span class="stot">${a.oral_total}/5</span></h2>
-  <table><tbody>${oralRows}</tbody></table>
-  <div class="sec-comment"><span class="lbl">Comment</span>${commentA(a.oral_total)}</div>
+  <h2>Section A — Practical: Window Controls <span class="stot">${a.prac1_total}/5</span></h2>
+  <table><tbody>${secARows}</tbody></table>
+  <div class="sec-comment"><span class="lbl">Comment</span>${commentA(a.prac1_total, fn)}</div>
 
-  <h2>Section B — Practical: Window Controls <span class="stot">${a.prac1_total}/5</span></h2>
-  <table><tbody>${prac1Rows}</tbody></table>
-  <div class="sec-comment"><span class="lbl">Comment</span>${commentB(a.prac1_total, fn)}</div>
+  <h2>Section B — Practical: Typing the Alphabet <span class="stot">${a.oral_total}/5</span></h2>
+  <table><tbody>${secBRows}</tbody></table>
+  <div class="sec-comment"><span class="lbl">Comment</span>${commentB(a.oral_total, fn)}</div>
 
-  <h2>Section C — Practical: Typing Task <span class="stot">${a.prac2_total}/10</span></h2>
-  <div class="sec-summary">${summaryC(a.phase)}</div>
+  <h2>Section C — Practical: Writing Task <span class="stot">${a.prac2_total}/10</span></h2>
+  <table><tbody>${secCRows}</tbody></table>
   <div class="sec-comment"><span class="lbl">Comment</span>${commentC(a.prac2_total, fn)}</div>
 
   <div class="teacher-comment">
@@ -1588,8 +1633,10 @@ function exportClassSummary(className, phase, classAssessments){
   }
 
   const phaseLabel = phase==='foundation' ? 'Foundation Phase (Gr 1-3)' : 'Intermediate Phase (Gr 4-7)';
-  const prac2Items = phase==='foundation' ? PRAC2_FOUNDATION : PRAC2_INTERMEDIATE;
-  const prac2Desc = prac2Items.map(i=>i.label).join(' · ');
+  const secBItems = phase==='foundation' ? SEC_B_FOUNDATION : SEC_B_INTERMEDIATE;
+  const secCItems = phase==='foundation' ? SEC_C_FOUNDATION : SEC_C_INTERMEDIATE;
+  const secBDesc = secBItems.map(i=>i.label).join(' · ');
+  const secCDesc = secCItems.map(i=>i.label).join(' · ');
 
   // Sort learners alphabetically by surname for the printed rubric
   const sorted = [...classAssessments].sort((a,b)=>
@@ -1603,8 +1650,8 @@ function exportClassSummary(className, phase, classAssessments){
       <td class="num">${i+1}</td>
       <td class="name">${a.surname}, ${a.firstname}</td>
       <td class="dt">${date}</td>
-      <td class="mk">${a.oral_total}/5</td>
       <td class="mk">${a.prac1_total}/5</td>
+      <td class="mk">${a.oral_total}/5</td>
       <td class="mk">${a.prac2_total}/10</td>
       <td class="tot">${a.grand_total}/20</td>
       <td class="pct">${pct}%</td>
@@ -1704,14 +1751,14 @@ footer{text-align:center;margin-top:10px;font-size:9px;color:#888;border-top:1px
         <th rowspan="2" class="sec">#</th>
         <th rowspan="2" class="sec">Learner's Name</th>
         <th rowspan="2" class="sec">Date</th>
-        <th class="sec">Oral
-          <span class="desc">5 questions on eLearning concepts, devices, touchpad, school website</span>
+        <th class="sec">Section A: Window Controls
+          <span class="desc">Open · Close · Minimise · Maximise · Hide &amp; Retrieve</span>
         </th>
-        <th class="sec">Practical 1: Window Controls
-          <span class="desc">Open · Close · Minimise · Maximise · Hide & Retrieve</span>
+        <th class="sec">Section B: Typing the Alphabet
+          <span class="desc">${secBDesc}</span>
         </th>
-        <th class="sec">Practical 2: Typing Task
-          <span class="desc">${prac2Desc}</span>
+        <th class="sec">Section C: Writing Task
+          <span class="desc">${secCDesc}</span>
         </th>
         <th rowspan="2" class="sec">Total</th>
         <th rowspan="2" class="sec">%</th>
