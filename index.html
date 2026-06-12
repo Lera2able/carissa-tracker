@@ -91,6 +91,28 @@ function phaseForClass(cn){
   return g <= 3 ? 'foundation' : 'intermediate';
 }
 
+/* ── Approx reading-age guide (interpolated from VNS-style key) ─── */
+const READING_AGE_KEY = [
+  {w:12,age:6.0},{w:30,age:7.0},{w:50,age:8.0},{w:70,age:9.0},
+  {w:80,age:10.083},{w:92,age:11.0},{w:102,age:12.0},{w:115,age:13.0},{w:121,age:13.75}
+];
+function readingAgeFromWords(n){
+  if(n==null || isNaN(n) || n<=0) return null;
+  const k = READING_AGE_KEY;
+  if(n < k[0].w) return '<6y 0m';
+  if(n >= k[k.length-1].w) return '13y 9m+';
+  let a = k[0].age;
+  for(let i=0;i<k.length-1;i++){
+    if(n>=k[i].w && n<k[i+1].w){
+      const t=(n-k[i].w)/(k[i+1].w-k[i].w);
+      a = k[i].age + t*(k[i+1].age-k[i].age);
+      break;
+    }
+  }
+  const years=Math.floor(a), months=Math.round((a-years)*12);
+  return months===12 ? `${years+1}y 0m` : `${years}y ${months}m`;
+}
+
 /* ════════════════════════════════════════════════════════════════
    SHARED STYLES & SMALL COMPONENTS
    ════════════════════════════════════════════════════════════════ */
@@ -2086,9 +2108,236 @@ const SUBTABS = [
   ['assignments','📋 Assignments'],
   ['progress','📈 Progress'],
   ['assessments','📝 Assessments'],
+  ['reading','📖 Reading (1-Min)'],
   ['learners','👥 Learners'],
   ['audit','🛡 Audit & Recovery'],
 ];
+
+
+/* ════════════════════════════════════════════════════════════════
+   ONE-MINUTE READING ASSESSMENT
+   ════════════════════════════════════════════════════════════════ */
+function ReadingAssessmentTab({reading,setReading}){
+  const [selClass,setSelClass]=useState('');
+  const [search,setSearch]=useState('');
+  const [editing,setEditing]=useState(null);
+  const [msg,setMsg]=useState('');
+  const showMsg=m=>{setMsg(m);setTimeout(()=>setMsg(''),5000);};
+
+  const classLearners=selClass?(CLASS_DATA[selClass]||[]):[];
+  const filtered=search.trim()
+    ? classLearners.filter(l=>(`${l.surname} ${l.firstname}`).toLowerCase().includes(search.toLowerCase()))
+    : classLearners;
+
+  const latestFor=(cls,surname,firstname)=>{
+    const recs=reading.filter(r=>r.class_name===cls&&r.surname===surname&&r.firstname===firstname);
+    if(!recs.length) return null;
+    return recs.slice().sort((a,b)=>new Date(b.date_assessed||b.created_at)-new Date(a.date_assessed||a.created_at))[0];
+  };
+
+  return (
+    <div>
+      {msg && <div style={succ}>{msg}</div>}
+      <div style={{...card,marginBottom:'14px'}}>
+        <h3 style={{...ctitle,marginBottom:'10px'}}>📖 One-Minute Reading Assessment</h3>
+        <p style={{color:'#666',fontSize:'13px',marginBottom:'14px'}}>
+          Pick a class, then click <strong>+ Start</strong> next to a learner. A 60-second timer runs while the learner reads aloud; when it stops, record the number of words read correctly.
+        </p>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:'12px'}}>
+          <div>
+            <label style={lbl}>Class</label>
+            <select style={inp} value={selClass} onChange={e=>{setSelClass(e.target.value);setSearch('');}}>
+              <option value="">-- Select Class --</option>
+              {ASSESS_CLASS_NAMES.map(n=>(<option key={n} value={n}>{n} ({CLASS_DATA[n].length})</option>))}
+            </select>
+          </div>
+          <div>
+            <label style={lbl}>Search learner</label>
+            <input style={inp} placeholder="Type a name to filter..." value={search} onChange={e=>setSearch(e.target.value)} disabled={!selClass}/>
+          </div>
+        </div>
+      </div>
+
+      {selClass && (
+        <div style={card}>
+          <h3 style={ctitle}>{selClass} — Learners ({filtered.length})</h3>
+          {filtered.length===0 ? (
+            <p style={{color:'#999',textAlign:'center',padding:'20px'}}>No learners match your search.</p>
+          ) : (
+            <div style={{display:'grid',gap:'8px'}}>
+              {filtered.map((l,i)=>{
+                const existing=latestFor(selClass,l.surname,l.firstname);
+                return (
+                  <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 14px',background:existing?'#e8f5e9':'#f8f9fa',borderRadius:'10px',borderLeft:`5px solid ${existing?'#28a745':'#cbd5e1'}`,gap:'10px',flexWrap:'wrap'}}>
+                    <div style={{flex:1,minWidth:'180px'}}>
+                      <div style={{fontWeight:600,color:'#333',fontSize:'14px'}}>{l.surname}, {l.firstname}</div>
+                      {existing && (
+                        <div style={{fontSize:'12px',color:'#155724',marginTop:'2px'}}>
+                          ✓ {existing.words_correct} words/min · {existing.term||''} · {new Date(existing.date_assessed||existing.created_at).toLocaleDateString('en-ZA')}{existing.reading_age?` · approx age ${existing.reading_age}`:''}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{display:'flex',gap:'8px',flexShrink:0,flexWrap:'wrap'}}>
+                      <button style={{...sbtn,background:existing?'#667eea':'#f97316',fontSize:'13px'}} onClick={()=>setEditing({...l,existing:existing||null})}>
+                        {existing?'✏️ View / Re-test':'+ Start'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {editing && (
+        <ReadingAssessmentModal
+          learner={editing}
+          className={selClass}
+          phase={phaseForClass(selClass)}
+          onClose={()=>setEditing(null)}
+          onSaved={(record,isUpdate)=>{
+            setReading(p=>isUpdate?p.map(r=>r.id===record.id?record:r):[record,...p]);
+            showMsg(isUpdate?'✓ Reading result updated.':'✓ Reading result saved.');
+            setEditing(null);
+          }}
+          onDelete={(id)=>{
+            setReading(p=>p.filter(r=>r.id!==id));
+            showMsg('✓ Reading result deleted.');
+            setEditing(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ReadingAssessmentModal({learner,className,phase,onClose,onSaved,onDelete}){
+  const existing=learner.existing;
+  const isUpdate=!!existing;
+  const DURATION=60;
+
+  const [secs,setSecs]=useState(DURATION);
+  const [running,setRunning]=useState(false);
+  const [done,setDone]=useState(false);
+  const intervalRef=useRef(null);
+
+  const [words,setWords]=useState(existing&&existing.words_correct!=null?String(existing.words_correct):'');
+  const [errs,setErrs]=useState(existing&&existing.errors!=null?String(existing.errors):'');
+  const [term,setTerm]=useState((existing&&existing.term)||'Term 2');
+  const [notes,setNotes]=useState((existing&&existing.notes)||'');
+  const [busy,setBusy]=useState(false);
+
+  useEffect(()=>()=>{ if(intervalRef.current) clearInterval(intervalRef.current); },[]);
+
+  const beep=()=>{ try{ const A=window.AudioContext||window.webkitAudioContext; const a=new A(); const o=a.createOscillator(); const g=a.createGain(); o.connect(g); g.connect(a.destination); o.frequency.value=880; g.gain.value=0.15; o.start(); setTimeout(()=>{o.stop();a.close();},450);}catch(e){} };
+  const tick=()=>{
+    setSecs(s=>{
+      if(s<=1){
+        if(intervalRef.current){clearInterval(intervalRef.current);intervalRef.current=null;}
+        setRunning(false); setDone(true); beep();
+        return 0;
+      }
+      return s-1;
+    });
+  };
+  const start=()=>{ if(running||done) return; setRunning(true); intervalRef.current=setInterval(tick,1000); };
+  const pause=()=>{ setRunning(false); if(intervalRef.current){clearInterval(intervalRef.current);intervalRef.current=null;} };
+  const reset=()=>{ pause(); setSecs(DURATION); setDone(false); };
+
+  const mm=String(Math.floor(secs/60)).padStart(2,'0');
+  const ss=String(secs%60).padStart(2,'0');
+  const wordsNum=parseInt(words,10);
+  const age=readingAgeFromWords(isNaN(wordsNum)?null:wordsNum);
+  const timerColor=done?'#28a745':(secs<=10&&running?'#dc3545':'#667eea');
+
+  const handleSave=async()=>{
+    if(words===''||isNaN(wordsNum)||wordsNum<0){ alert('Please enter the number of words read correctly.'); return; }
+    setBusy(true);
+    try{
+      const payload={
+        surname:learner.surname, firstname:learner.firstname, class_name:className,
+        phase, term, year:new Date().getFullYear(),
+        words_correct:wordsNum,
+        errors:(errs===''||isNaN(parseInt(errs,10)))?null:parseInt(errs,10),
+        reading_age:age, duration_seconds:DURATION,
+        notes:notes.trim()||null, assessed_by:(existing&&existing.assessed_by)||'Admin',
+        date_assessed:(existing&&existing.date_assessed)||new Date().toISOString().split('T')[0],
+        updated_at:new Date().toISOString()
+      };
+      if(isUpdate){
+        const rows=await db.patch('carissa_reading_assessments',`id=eq.${existing.id}`,payload);
+        onSaved(rows[0],true);
+      }else{
+        const rows=await db.post('carissa_reading_assessments',payload);
+        onSaved(rows[0],false);
+      }
+    }catch(e){ alert('Error saving: '+e.message); }
+    setBusy(false);
+  };
+
+  const handleDelete=async()=>{
+    if(!confirm('Delete this reading result? This cannot be undone.')) return;
+    setBusy(true);
+    try{ await db.del('carissa_reading_assessments',`id=eq.${existing.id}`); onDelete(existing.id); }
+    catch(e){ alert('Error: '+e.message); }
+    setBusy(false);
+  };
+
+  return (
+    <div style={ovly} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+      <div style={mdl}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'6px'}}>
+          <h3 style={{margin:0,color:'#667eea',fontSize:'18px'}}>📖 One-Minute Reading</h3>
+          <button onClick={onClose} style={{background:'none',border:'none',fontSize:'22px',cursor:'pointer',color:'#999'}}>×</button>
+        </div>
+        <p style={{margin:'0 0 16px',color:'#333',fontWeight:600}}>{learner.surname}, {learner.firstname} <span style={{color:'#999',fontWeight:400,fontSize:'13px'}}>· {className}</span></p>
+
+        <div style={{textAlign:'center',background:'#f8f9fa',borderRadius:'14px',padding:'20px',marginBottom:'18px'}}>
+          <div style={{fontSize:'56px',fontWeight:700,letterSpacing:'2px',color:timerColor,fontVariantNumeric:'tabular-nums'}}>{mm}:{ss}</div>
+          <div style={{fontSize:'13px',color:'#888',marginBottom:'14px'}}>{done?"Time's up — record the score below":(running?'Reading…':'Ready')}</div>
+          <div style={{display:'flex',gap:'8px',justifyContent:'center',flexWrap:'wrap'}}>
+            {!running && !done && secs===DURATION && <button style={{...sbtn,background:'#28a745'}} onClick={start}>▶ Start</button>}
+            {!running && !done && secs<DURATION && <button style={{...sbtn,background:'#28a745'}} onClick={start}>▶ Resume</button>}
+            {running && <button style={{...sbtn,background:'#f59e0b'}} onClick={pause}>⏸ Pause</button>}
+            <button style={{...sbtn,background:'#64748b'}} onClick={reset}>↻ Reset</button>
+          </div>
+        </div>
+
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px',marginBottom:'12px'}}>
+          <div>
+            <label style={lbl}>Words read correctly</label>
+            <input style={inp} type="number" min="0" value={words} onChange={e=>setWords(e.target.value)} placeholder="e.g. 48"/>
+          </div>
+          <div>
+            <label style={lbl}>Errors (optional)</label>
+            <input style={inp} type="number" min="0" value={errs} onChange={e=>setErrs(e.target.value)} placeholder="e.g. 3"/>
+          </div>
+        </div>
+        {age && <div style={{background:'#eef2ff',color:'#3730a3',borderRadius:'8px',padding:'8px 12px',fontSize:'13px',marginBottom:'12px'}}>Approx. reading age: <strong>{age}</strong> <span style={{color:'#6b7280'}}>(guide only)</span></div>}
+
+        <div style={{marginBottom:'12px'}}>
+          <label style={lbl}>Term</label>
+          <select style={inp} value={term} onChange={e=>setTerm(e.target.value)}>
+            {['Term 1','Term 2','Term 3','Term 4'].map(t=>(<option key={t} value={t}>{t}</option>))}
+          </select>
+        </div>
+        <div style={{marginBottom:'16px'}}>
+          <label style={lbl}>Notes (optional)</label>
+          <textarea style={{...inp,minHeight:'60px',resize:'vertical'}} value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Fluency, expression, difficulties…"/>
+        </div>
+
+        <div style={{display:'flex',gap:'8px',justifyContent:'space-between',flexWrap:'wrap'}}>
+          <div>{isUpdate && <button style={{...sbtn,background:'#dc3545'}} disabled={busy} onClick={handleDelete}>🗑 Delete</button>}</div>
+          <div style={{display:'flex',gap:'8px'}}>
+            <button style={{...sbtn,background:'#94a3b8'}} disabled={busy} onClick={onClose}>Cancel</button>
+            <button style={sbtn} disabled={busy} onClick={handleSave}>{busy?'Saving…':(isUpdate?'Update':'Save')}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function AdminDashboard(){
   const [subTab,setSubTab]=useState('overview');
@@ -2096,6 +2345,7 @@ function AdminDashboard(){
   const [resources,setResources]=useState([]);
   const [assignments,setAssignments]=useState([]);
   const [assessments,setAssessments]=useState([]);
+  const [reading,setReading]=useState([]);
   const [overrides,setOverrides]=useState([]);
   const [loading,setLoading]=useState(true);
   const [projectMode,setProjectMode]=useState(null); // null | {phase}
@@ -2103,18 +2353,20 @@ function AdminDashboard(){
   useEffect(()=>{
     (async()=>{
       try{
-        const [int_, res, asn, asm, ovr] = await Promise.all([
+        const [int_, res, asn, asm, ovr, rdg] = await Promise.all([
           db.get('carissa_interventions','order=created_at.desc'),
           db.get('carissa_resources','order=created_at.desc'),
           db.get('carissa_resource_assignments','order=created_at.desc'),
           db.get('carissa_elearning_assessments','order=created_at.desc'),
           db.get('carissa_learner_overrides','order=updated_at.desc'),
+          db.get('carissa_reading_assessments','order=created_at.desc').catch(()=>[]),
         ]);
         setInterventions(int_);
         setResources(res);
         setAssignments(asn);
         setAssessments(asm);
         setOverrides(ovr);
+        setReading(rdg);
       }catch(e){console.error(e);}
       setLoading(false);
     })();
@@ -2146,6 +2398,7 @@ function AdminDashboard(){
           onProjectTest={(phase)=>setProjectMode({phase})}
         />
       )}
+      {subTab==='reading' && <ReadingAssessmentTab reading={reading} setReading={setReading}/>}
       {subTab==='learners' && <LearnersAdminTab overrides={overrides} setOverrides={setOverrides} setAssessments={setAssessments}/>}
       {subTab==='audit' && <AuditAdminTab/>}
 
