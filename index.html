@@ -1340,9 +1340,14 @@ function AssessmentsTab({assessments,setAssessments,exportReport,exportClassSumm
           <h3 style={{...ctitle,marginBottom:0}}>📝 eLearning Assessments — Term 2</h3>
           <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
             {selClass && classAssessments.length>0 && (
-              <button style={{...sbtn,background:'#10b981',fontSize:'13px'}} onClick={()=>exportClassSummary(selClass, phaseForClass(selClass), classAssessments)}>
-                📄 Export Class Summary
-              </button>
+              <>
+                <button style={{...sbtn,background:'#10b981',fontSize:'13px'}} onClick={()=>exportClassSummary(selClass, phaseForClass(selClass), classAssessments)}>
+                  📊 Class Summary
+                </button>
+                <button style={{...sbtn,background:'#7c3aed',fontSize:'13px'}} onClick={()=>exportGradeBulkReport(selClass, phaseForClass(selClass), classAssessments)}>
+                  📄 Download Grade Report ({classAssessments.length} learners)
+                </button>
+              </>
             )}
             <button style={{...sbtn,background:'#f97316',fontSize:'13px'}} onClick={()=>onProjectTest(selClass ? phaseForClass(selClass) : 'intermediate')}>
               📺 Project Test (Full-screen)
@@ -1911,6 +1916,321 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
 
   const w = window.open('', '_blank');
   if(!w){ alert('Please allow pop-ups to view the report.'); return; }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+}
+
+/* ════════════════════════════════════════════════════════════════
+   GRADE BULK REPORT — all learners in one grade as a single PDF
+   Combines every learner's individual report into one document
+   with a cover page and page breaks for easy printing.
+   ════════════════════════════════════════════════════════════════ */
+function exportGradeBulkReport(className, phase, classAssessments){
+  if(!classAssessments || classAssessments.length===0){
+    alert('No assessments to export for this class yet.');
+    return;
+  }
+
+  // Helpers (same as single report)
+  function esc(s){ return String(s).replace(/[&<"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function commentA(score, fn){
+    if(score === 5) return `${fn} has done excellently and shows a strong understanding of the basic Microsoft Word controls.`;
+    if(score === 4) return `${fn} has done really well and understands the basics of Microsoft Word controls.`;
+    if(score >= 2)  return `${fn} is learning the basics of Microsoft Word controls and will benefit from more practice.`;
+    return `${fn} needs more support to learn the basic Microsoft Word controls.`;
+  }
+  function commentB(score, fn){
+    if(score === 5) return `${fn} confidently typed the alphabet with the correct font and size — excellent typing skill!`;
+    if(score === 4) return `${fn} did really well with the alphabet typing task and is becoming a confident typist.`;
+    if(score >= 2)  return `${fn} is learning the alphabet keyboard layout and will get faster with practice.`;
+    return `${fn} still needs support to find the letters on the keyboard. We will keep practising.`;
+  }
+  function commentC(score, fn){
+    if(score === 10) return `${fn} completed the writing task beautifully — every step was done correctly. Outstanding work!`;
+    if(score === 9)  return `${fn} did outstandingly in the writing task with only the smallest things to polish.`;
+    if(score === 8)  return `${fn} is making excellent progress and writes with growing confidence. Well done!`;
+    if(score === 7)  return `${fn} has done well in the writing task and continues to build their skills. Keep up the good work!`;
+    if(score >= 5)   return `${fn} is building their writing skills steadily. With more practice their confidence will grow.`;
+    return `${fn} is still developing their writing skills. We will continue to support their progress.`;
+  }
+  function teacherSay(total, fn){
+    if(total >= 19) return `${fn} is an outstanding learner who has truly stood out this term. ${fn}'s typing, grammar and punctuation are impressive for the level, and ${fn} approaches every lesson with enthusiasm. I am very proud of ${fn}'s progress and look forward to building on this together next term.`;
+    if(total >= 18) return `${fn} is a very good learner who has worked hard and made excellent progress in eLearning this term. ${fn} is showing real confidence with computer skills and follows instructions carefully. Looking forward to doing more eLearning together next term.`;
+    if(total >= 17) return `${fn} is a good learner who has shown consistent effort throughout the eLearning programme this term. ${fn}'s confidence is growing each lesson. Looking forward to building on this together next term.`;
+    if(total >= 14) return `${fn} is a hard-working learner who tried their best this term. With more practice, ${fn}'s eLearning skills will continue to grow. Looking forward to seeing ${fn}'s progress next term.`;
+    return `${fn} is showing effort in eLearning and will benefit from more practice next term. I look forward to supporting their growth.`;
+  }
+  function mark(got, max){
+    const tick = got >= max ? '✓' : (got > 0 ? '◐' : '✗');
+    return `<td class="mk">${tick}</td><td class="mk">${got}/${max}</td>`;
+  }
+
+  // Sort assessments alphabetically by surname
+  const sorted = [...classAssessments].sort((a,b)=>
+    a.surname.localeCompare(b.surname) || a.firstname.localeCompare(b.firstname)
+  );
+
+  const phaseLabel = phase==='foundation' ? 'Foundation Phase (Gr 1-3)' : 'Intermediate Phase (Gr 4-7)';
+  const secBItems = phase==='foundation' ? SEC_B_FOUNDATION : SEC_B_INTERMEDIATE;
+  const secCItems = phase==='foundation' ? SEC_C_FOUNDATION : SEC_C_INTERMEDIATE;
+  const totalLearners = sorted.length;
+  const avg = (sorted.reduce((s,a)=>s+a.grand_total,0)/totalLearners).toFixed(1);
+  const high = Math.max(...sorted.map(a=>a.grand_total));
+  const low  = Math.min(...sorted.map(a=>a.grand_total));
+
+  // Build each learner's report page
+  const learnerPages = sorted.map((a, idx) => {
+    const fn = esc(a.firstname);
+    const pct = Math.round((a.grand_total/20)*100);
+    const dateStr = new Date(a.date_assessed).toLocaleDateString('en-ZA',{day:'numeric',month:'long',year:'numeric'});
+    const teacherText = (a.comments && a.comments.trim()) ? esc(a.comments.trim()) : teacherSay(a.grand_total, fn);
+
+    // Section A rows
+    const secARows = SEC_A_ITEMS.map(it => {
+      const got = a.prac1_scores?.[it.k] ? 1 : 0;
+      return `<tr><td>${esc(it.label)}</td>${mark(got, 1)}</tr>`;
+    }).join('');
+
+    // Section B rows
+    const secBRows = secBItems.map(it => {
+      const got = parseInt(a.oral_scores?.[it.k], 10) || 0;
+      return `<tr><td>${esc(it.label)}</td>${mark(got, it.max)}</tr>`;
+    }).join('');
+
+    // Section C rows
+    const secCRows = secCItems.map(it => {
+      const got = parseInt(a.prac2_scores?.[it.k], 10) || 0;
+      return `<tr><td>${esc(it.label)}</td>${mark(got, it.max)}</tr>`;
+    }).join('');
+
+    return `
+    <div class="page">
+      <header>
+        <img src="${LOGO}" alt="Carissa Primary"/>
+        <div class="h-text">
+          <h1>Carissa Primary School</h1>
+          <p>eLearning Practical Assessment Report — Term ${esc(a.term?.replace('Term ','') || '2')}, ${a.year}</p>
+        </div>
+      </header>
+
+      <div class="meta">
+        <div><span>Learner</span><strong>${fn} ${esc(a.surname)}</strong></div>
+        <div><span>Class</span><strong>${esc(a.class_name)}</strong></div>
+        <div><span>Phase</span><strong>${a.phase==='foundation'?'Foundation (Gr 1-3)':'Intermediate (Gr 4-7)'}</strong></div>
+        <div><span>Date assessed</span><strong>${dateStr}</strong></div>
+      </div>
+
+      <div class="totalbox">
+        <div>
+          <div class="label">Grand Total</div>
+          <div class="sublabel">eLearning Term ${esc(a.term?.replace('Term ','') || '2')} Assessment</div>
+        </div>
+        <div style="text-align:right">
+          <div class="score">${a.grand_total}/20</div>
+          <div class="pct">${pct}%</div>
+        </div>
+      </div>
+
+      <h2>Section A — Practical: Window Controls <span class="stot">${a.prac1_total}/5</span></h2>
+      <table><tbody>${secARows}</tbody></table>
+      <div class="sec-comment"><span class="lbl">Comment</span>${commentA(a.prac1_total, fn)}</div>
+
+      <h2>Section B — Practical: Typing the Alphabet <span class="stot">${a.oral_total}/5</span></h2>
+      <table><tbody>${secBRows}</tbody></table>
+      <div class="sec-comment"><span class="lbl">Comment</span>${commentB(a.oral_total, fn)}</div>
+
+      <h2>Section C — Practical: Writing Task <span class="stot">${a.prac2_total}/10</span></h2>
+      <table><tbody>${secCRows}</tbody></table>
+      <div class="sec-comment"><span class="lbl">Comment</span>${commentC(a.prac2_total, fn)}</div>
+
+      <div class="teacher-comment">
+        <span class="lbl">Teacher's Comment</span>
+        ${teacherText}
+        <div class="signed">— Ms L Mogajane, Computer Teacher</div>
+      </div>
+
+      <div class="sigs">
+        <div class="sigblock">
+          <img src="${SIG_PRINCIPAL}" alt="Principal's signature"/>
+          <div class="role">Ms V Sibande — Principal</div>
+        </div>
+        <div class="sigblock">
+          <img src="${SIG_TEACHER}" alt="Computer Teacher signature"/>
+          <div class="role">Ms L Mogajane — Computer Teacher</div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="footer-msg">Carissa Primary School remains committed to building a strong eLearning programme that prepares every learner for a digital future. We thank parents and guardians for their continued support and invite you to visit <span class="url">carissaprimary.co.za</span> to follow our progress.</div>
+        <div class="footer-meta">Carissa Primary School · Page ${idx + 2} of ${totalLearners + 1} · Generated ${new Date().toLocaleDateString('en-ZA')}</div>
+      </footer>
+    </div>`;
+  }).join('\n');
+
+  // Cover page HTML
+  const coverPage = `
+    <div class="page cover">
+      <div style="text-align:center;padding:40px 20px;">
+        <img src="${LOGO}" alt="Carissa Primary" style="height:100px;width:100px;object-fit:contain;border-radius:12px;margin-bottom:20px;"/>
+        <h1 style="color:#667eea;font-size:26px;margin-bottom:8px;">Carissa Primary School</h1>
+        <p style="color:#666;font-size:15px;margin-bottom:30px;">eLearning Assessment Reports — Bulk Export</p>
+
+        <div style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:30px 24px;border-radius:14px;margin:20px 0;">
+          <div style="font-size:28px;font-weight:700;margin-bottom:6px;">${esc(className)}</div>
+          <div style="font-size:14px;opacity:0.9;margin-bottom:16px;">${phaseLabel} · Term 2, ${new Date().getFullYear()}</div>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;max-width:400px;margin:0 auto;font-size:13px;">
+            <div style="background:rgba(255,255,255,0.15);padding:10px 14px;border-radius:8px;">
+              <div style="font-size:22px;font-weight:700;">${totalLearners}</div>
+              <div style="font-size:11px;opacity:0.85;">Learners Assessed</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.15);padding:10px 14px;border-radius:8px;">
+              <div style="font-size:22px;font-weight:700;">${avg}/20</div>
+              <div style="font-size:11px;opacity:0.85;">Class Average</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.15);padding:10px 14px;border-radius:8px;">
+              <div style="font-size:22px;font-weight:700;">${high}/20</div>
+              <div style="font-size:11px;opacity:0.85;">Highest Mark</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.15);padding:10px 14px;border-radius:8px;">
+              <div style="font-size:22px;font-weight:700;">${low}/20</div>
+              <div style="font-size:11px;opacity:0.85;">Lowest Mark</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:24px;font-size:12px;color:#888;line-height:1.6;">
+          <p>This document contains individual assessment reports for all learners in ${esc(className)}.</p>
+          <p>Each report starts on a new page. Use your browser's <strong>Print → Save as PDF</strong> function to save this document.</p>
+          <p style="margin-top:8px;"><strong>Tip:</strong> For best results, select <em>A4</em> paper size and enable <em>Background graphics</em> in print settings.</p>
+        </div>
+
+        <div style="margin-top:30px;padding-top:20px;border-top:1px solid #eee;">
+          <div style="font-size:11px;color:#999;">Generated ${new Date().toLocaleDateString('en-ZA')} · carissaprimary.co.za</div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="footer-meta">Carissa Primary School · Page 1 of ${totalLearners + 1} · Generated ${new Date().toLocaleDateString('en-ZA')}</div>
+      </footer>
+    </div>`;
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"/>
+<title>Bulk Assessment Report — ${esc(className)}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f2ff;padding:10px;color:#222;line-height:1.55;}
+.page{max-width:850px;margin:0 auto;background:white;padding:18px 24px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);min-height:calc(100vh - 20px);display:flex;flex-direction:column;page-break-after:always;}
+.page:last-child{page-break-after:auto;}
+
+.controls{max-width:850px;margin:0 auto 10px;display:flex;justify-content:flex-end;gap:10px;}
+.controls button{padding:9px 18px;border:none;border-radius:22px;font-weight:600;cursor:pointer;font-size:13px;}
+.btn-print{background:#667eea;color:white;}
+.btn-close{background:#6c757d;color:white;}
+
+header{display:flex;align-items:center;gap:14px;border-bottom:3px solid #667eea;padding-bottom:10px;margin-bottom:14px;}
+header img{height:56px;width:56px;object-fit:contain;border-radius:8px;}
+header .h-text h1{color:#667eea;font-size:19px;margin-bottom:3px;}
+header .h-text p{color:#666;font-size:12px;}
+
+.meta{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;background:#f8f9fa;padding:11px 14px;border-radius:8px;margin-bottom:14px;font-size:12px;}
+.meta div span{color:#888;font-size:9.5px;display:block;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;}
+.meta div strong{color:#333;font-size:13px;}
+
+.totalbox{background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:12px 18px;border-radius:10px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+.totalbox .label{font-size:12.5px;opacity:0.9;}
+.totalbox .sublabel{font-size:11px;opacity:0.85;margin-top:2px;}
+.totalbox .score{font-size:28px;font-weight:700;line-height:1.1;}
+.totalbox .pct{font-size:13.5px;opacity:0.9;margin-top:2px;}
+
+h2{color:#667eea;font-size:13.5px;margin:14px 0 6px;border-bottom:1px solid #eee;padding-bottom:3px;}
+h2 .stot{float:right;color:#333;font-size:12.5px;}
+
+table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:4px;}
+table td{padding:5px 10px;border-bottom:1px solid #f0f0f0;vertical-align:top;line-height:1.45;}
+table td.mk{text-align:center;width:50px;font-weight:600;color:#333;}
+
+.sec-summary{font-size:12px;color:#444;line-height:1.6;padding:9px 12px;background:#fafbff;border-left:3px solid #c7cce8;border-radius:4px;margin:6px 0 4px;}
+
+.sec-comment{background:#fff8e1;border-left:3px solid #f59e0b;padding:9px 12px;border-radius:4px;margin:6px 0 10px;font-size:11.5px;color:#5a4a1c;font-style:italic;line-height:1.6;}
+.sec-comment .lbl{color:#a16207;font-size:9.5px;font-style:normal;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;font-weight:600;display:block;}
+
+.teacher-comment{background:#eaf3ff;border-left:4px solid #3b82f6;padding:12px 16px;border-radius:6px;margin:32px 0 8px;font-size:12px;color:#1e3a5f;line-height:1.65;}
+.teacher-comment .lbl{color:#2563eb;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:5px;display:block;}
+.teacher-comment .signed{font-size:11px;color:#1e3a5f;font-style:italic;margin-top:6px;text-align:right;}
+
+.sigs{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:22px;align-items:end;}
+.sigblock{text-align:center;}
+.sigblock img{max-height:32px;max-width:70%;object-fit:contain;image-rendering:auto;}
+.sigblock .role{font-size:11px;color:#666;font-weight:600;margin-top:6px;}
+
+footer{margin-top:auto;padding-top:14px;border-top:2px solid #d8dbe6;text-align:center;}
+footer .footer-msg{font-size:11.5px;color:#3a3a3a;line-height:1.65;padding:8px 6px 4px;}
+footer .footer-msg .url{font-size:14px;font-weight:700;color:#5847c4;letter-spacing:0.2px;}
+footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px;text-transform:uppercase;}
+
+@page { size: A4; margin: 0.5cm; }
+@media print {
+  html,body{height:auto;}
+  body{background:white;padding:0;font-size:10.5px;}
+  .page{box-shadow:none;border-radius:0;padding:0;max-width:100%;min-height:calc(297mm - 1cm);page-break-after:always;margin:0;}
+  .page:last-child{page-break-after:auto;}
+  .controls,.no-print{display:none !important;}
+
+  header{padding-bottom:7px;margin-bottom:9px;}
+  header img{height:46px;width:46px;}
+  header .h-text h1{font-size:16px;}
+  header .h-text p{font-size:10.5px;}
+
+  .meta{padding:7px 11px;margin-bottom:8px;font-size:10.5px;gap:6px;}
+  .meta div strong{font-size:11.5px;}
+
+  .totalbox{padding:8px 14px;margin-bottom:8px;}
+  .totalbox .score{font-size:23px;}
+  .totalbox .label{font-size:11px;}
+  .totalbox .sublabel{font-size:10px;}
+  .totalbox .pct{font-size:12px;}
+
+  h2{font-size:12px;margin:8px 0 3px;padding-bottom:2px;}
+  h2 .stot{font-size:11.5px;}
+
+  table{font-size:10.5px;}
+  table td{padding:3px 9px;line-height:1.35;}
+
+  .sec-summary{padding:6px 10px;font-size:10.5px;line-height:1.5;margin:4px 0 3px;}
+  .sec-comment{padding:6px 10px;font-size:10.5px;line-height:1.5;margin:4px 0 6px;}
+  .sec-comment .lbl{margin-bottom:2px;}
+
+  .teacher-comment{margin:18px 0 6px;padding:9px 12px;font-size:11px;line-height:1.55;}
+  .teacher-comment .lbl{margin-bottom:3px;}
+  .teacher-comment .signed{font-size:10px;margin-top:4px;}
+
+  .sigs{margin-top:14px;gap:18px;}
+  .sigblock img{max-height:28px;}
+  .sigblock .role{font-size:10.5px;margin-top:4px;}
+
+  footer{padding-top:10px;}
+  footer .footer-msg{font-size:10.5px;line-height:1.55;padding:5px 4px 3px;}
+  footer .footer-msg .url{font-size:13px;}
+  footer .footer-meta{font-size:8.5px;margin-top:4px;}
+}
+</style></head>
+<body>
+
+<div class="controls no-print">
+  <button class="btn-print" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <button class="btn-close" onclick="window.close()">✕ Close</button>
+</div>
+
+${coverPage}
+${learnerPages}
+
+</body></html>`;
+
+  const w = window.open('', '_blank');
+  if(!w){ alert('Please allow pop-ups to view the bulk report.'); return; }
   w.document.open();
   w.document.write(html);
   w.document.close();
@@ -2857,9 +3177,14 @@ function LearnWorldView({exportReport, exportClassSummary}){
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',marginBottom:'12px'}}>
                 <h3 style={{...ctitle,marginBottom:0}}>{selClass} — Assessments</h3>
                 {classAssessments.length>0 && (
-                  <button style={{...sbtn,background:'#10b981',fontSize:'13px'}} onClick={()=>exportClassSummary(selClass, classAssessments[0].phase, classAssessments)}>
-                    📄 Export Class Summary
-                  </button>
+                  <>
+                    <button style={{...sbtn,background:'#10b981',fontSize:'13px'}} onClick={()=>exportClassSummary(selClass, classAssessments[0].phase, classAssessments)}>
+                      📊 Class Summary
+                    </button>
+                    <button style={{...sbtn,background:'#7c3aed',fontSize:'13px'}} onClick={()=>exportGradeBulkReport(selClass, classAssessments[0].phase, classAssessments)}>
+                      📄 Grade Report ({classAssessments.length} learners)
+                    </button>
+                  </>
                 )}
               </div>
               {classAssessments.length===0 ? (
