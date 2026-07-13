@@ -1474,6 +1474,7 @@ function AssessmentsTab({assessments,setAssessments,exportReport,exportClassSumm
   const [selClass,setSelClass]=useState('');
   const [search,setSearch]=useState('');
   const [editing,setEditing]=useState(null); // {surname, firstname, existingId?}
+  const [termView,setTermView]=useState('Term 2');
   const [msg,setMsg]=useState('');
   const showMsg = m => {setMsg(m);setTimeout(()=>setMsg(''),5000);};
 
@@ -1482,14 +1483,14 @@ function AssessmentsTab({assessments,setAssessments,exportReport,exportClassSumm
     ? classLearners.filter(l => (`${l.surname} ${l.firstname}`).toLowerCase().includes(search.toLowerCase()))
     : classLearners;
 
-  // Pre-compute assessments for the selected class (Term 2 only)
+  // Pre-compute assessments for the selected class and chosen term
   const classAssessments = selClass
-    ? assessments.filter(a => a.class_name===selClass && a.term==='Term 2')
+    ? assessments.filter(a => a.class_name===selClass && a.term===termView)
     : [];
 
-  // Quick lookup: which learners in this class already have an assessment for Term 2 / this year
+  // Quick lookup: which learners in this class already have an assessment for the chosen term
   const assessmentFor = (cls, surname, firstname) => assessments.find(a =>
-    a.class_name===cls && a.surname===surname && a.firstname===firstname && a.term==='Term 2'
+    a.class_name===cls && a.surname===surname && a.firstname===firstname && a.term===termView
   );
 
   return (
@@ -1498,7 +1499,7 @@ function AssessmentsTab({assessments,setAssessments,exportReport,exportClassSumm
 
       <div style={{...card,marginBottom:'14px'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',marginBottom:'14px'}}>
-          <h3 style={{...ctitle,marginBottom:0}}>📝 eLearning Assessments — Term 2</h3>
+          <h3 style={{...ctitle,marginBottom:0}}>📝 eLearning Assessments — {termView}</h3>
           <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
             {selClass && classAssessments.length>0 && (
               <>
@@ -1518,6 +1519,13 @@ function AssessmentsTab({assessments,setAssessments,exportReport,exportClassSumm
         <p style={{color:'#666',fontSize:'13px',marginBottom:'14px'}}>
           Pick a class, then click <strong>+ Assess</strong> next to a learner to start. Learners who already have an assessment will show a ✓ with their mark — click to view or edit.
         </p>
+        <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'14px'}}>
+          {['Term 2','Term 3'].map(t=>(
+            <button key={t} onClick={()=>setTermView(t)} style={{padding:'9px 14px',borderRadius:'999px',border:termView===t?'none':'1px solid #dbe2f0',background:termView===t?'linear-gradient(135deg,#667eea,#764ba2)':'#f8fafc',color:termView===t?'white':'#475569',fontWeight:700,cursor:'pointer'}}>
+              {t==='Term 2' ? 'Term 2 eLearning Assessment' : 'Term 3'}
+            </button>
+          ))}
+        </div>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:'12px'}}>
           <div>
             <label style={lbl}>Class</label>
@@ -1537,7 +1545,7 @@ function AssessmentsTab({assessments,setAssessments,exportReport,exportClassSumm
 
       {selClass && (
         <div style={card}>
-          <h3 style={ctitle}>{selClass} — Learners ({filtered.length})</h3>
+          <h3 style={ctitle}>{selClass} — {termView==='Term 2'?'Term 2 eLearning Assessment':'Term 3'} ({filtered.length})</h3>
           {filtered.length===0 ? (
             <p style={{color:'#999',textAlign:'center',padding:'20px'}}>No learners match your search.</p>
           ) : (
@@ -1552,7 +1560,7 @@ function AssessmentsTab({assessments,setAssessments,exportReport,exportClassSumm
                       </div>
                       {existing && (
                         <div style={{fontSize:'12px',color:'#155724',marginTop:'2px'}}>
-                          ✓ Assessed {new Date(existing.date_assessed).toLocaleDateString('en-ZA')} — <strong>{existing.grand_total}/20</strong>
+                          ✓ Assessed {new Date(existing.date_assessed).toLocaleDateString('en-ZA')} — <strong>{existing.grand_total}/20</strong> · {termView}
                         </div>
                       )}
                     </div>
@@ -1585,6 +1593,7 @@ function AssessmentsTab({assessments,setAssessments,exportReport,exportClassSumm
           learner={editing}
           className={selClass}
           phase={phaseForClass(selClass)}
+          activeTerm={termView}
           onClose={()=>setEditing(null)}
           onSaved={(record, isUpdate)=>{
             setAssessments(p => isUpdate ? p.map(a=>a.id===record.id?record:a) : [record,...p]);
@@ -1603,7 +1612,7 @@ function AssessmentsTab({assessments,setAssessments,exportReport,exportClassSumm
 }
 
 /* ── Assessment form modal ──────────────────────────────────── */
-function AssessmentModal({learner,className,phase,onClose,onSaved,onDelete}){
+function AssessmentModal({learner,className,phase,activeTerm,onClose,onSaved,onDelete}){
   const existing = learner.existing;
   const isUpdate = !!existing;
 
@@ -1638,7 +1647,7 @@ function AssessmentModal({learner,className,phase,onClose,onSaved,onDelete}){
         surname: learner.surname,
         firstname: learner.firstname,
         class_name: className,
-        term: 'Term 2',
+        term: existing?.term || activeTerm || 'Term 2',
         year: new Date().getFullYear(),
         phase,
         date_assessed: existing?.date_assessed || new Date().toISOString().split('T')[0],
@@ -1680,6 +1689,7 @@ function AssessmentModal({learner,className,phase,onClose,onSaved,onDelete}){
             <p style={{color:'#333',fontSize:'14px'}}>
               <strong>{learner.surname}, {learner.firstname}</strong> — {className} ({phase === 'foundation' ? 'Foundation Phase' : 'Intermediate Phase'})
             </p>
+            <p style={{color:'#667eea',fontSize:'13px',fontWeight:700}}>{existing?.term || activeTerm || 'Term 2'}</p>
           </div>
           <div style={{background:'#667eea22',color:'#667eea',padding:'10px 16px',borderRadius:'12px',fontWeight:700,fontSize:'18px'}}>
             {grand}/20
