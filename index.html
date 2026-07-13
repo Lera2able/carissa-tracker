@@ -3238,8 +3238,15 @@ function TeacherView({onEditName}){
 /* ════════════════════════════════════════════════════════════════
    APP ROOT - mode tabs (teacher / coordinator / admin), login
    ════════════════════════════════════════════════════════════════ */
+// Session created by teacher.html (Teacher Portal login page)
+let TEACHER_SESSION = null;
+try{ TEACHER_SESSION = JSON.parse(sessionStorage.getItem('carissa_teacher_session')||'null'); }catch(e){}
+// Teacher portal mode: /?portal=teacher opens LearnWorld directly as the teacher dashboard
+let PORTAL_MODE = false;
+try{ PORTAL_MODE = new URLSearchParams(window.location.search).get('portal')==='teacher'; }catch(e){}
+
 function App(){
-  const [mode,setMode]=useState('teacher'); // 'teacher' | 'coordinator' | 'admin'
+  const [mode,setMode]=useState((TEACHER_SESSION || PORTAL_MODE) ? 'learnworld' : 'teacher'); // 'teacher' | 'coordinator' | 'admin' | 'learnworld'
   const [showLogin,setShowLogin]=useState(false);
   const [isAdmin,setIsAdmin]=useState(false);
   const [editTarget,setEditTarget]=useState(null); // {row, onSave}
@@ -3275,7 +3282,7 @@ function App(){
             </div>
           </div>
           <div style={{display:'flex',gap:'8px',flexWrap:'wrap',alignItems:'center'}}>
-            <button onClick={()=>switchTo('learnworld')} style={{padding:'8px 16px',borderRadius:'20px',border:'1px solid rgba(255,255,255,0.5)',color:'white',fontSize:'13px',fontWeight:600,background:mode==='learnworld'?'rgba(255,255,255,0.3)':'rgba(255,255,255,0.1)',cursor:'pointer'}}>🌐 LearnWorld</button>
+            {!TEACHER_SESSION && !PORTAL_MODE && <button onClick={()=>switchTo('learnworld')} style={{padding:'8px 16px',borderRadius:'20px',border:'1px solid rgba(255,255,255,0.5)',color:'white',fontSize:'13px',fontWeight:600,background:mode==='learnworld'?'rgba(255,255,255,0.3)':'rgba(255,255,255,0.1)',cursor:'pointer'}}>🌐 LearnWorld</button>}
             {isAdmin && <span style={{padding:'8px 14px',borderRadius:'20px',background:'rgba(255,255,255,0.2)',fontSize:'13px',fontWeight:600}}>🔓 Admin</span>}
           </div>
         </div>
@@ -3284,12 +3291,12 @@ function App(){
       {/* MODE TABS */}
       <div style={{maxWidth:'1300px',margin:'14px auto 0',padding:'0 16px'}}>
         <div style={{display:'flex',gap:'8px',flexWrap:'wrap',background:'white',padding:'8px',borderRadius:'12px',boxShadow:'0 4px 14px rgba(0,0,0,0.06)'}}>
-          {[
+          {((TEACHER_SESSION || PORTAL_MODE) ? [] : [
             ['teacher','👩‍🏫 Teacher'],
             ['coordinator','📋 Coordinator'],
             ['learnworld','🌐 LearnWorld'],
             ['admin','🔐 Admin Dashboard']
-          ].map(([k,l])=>(
+          ]).map(([k,l])=>(
             <button key={k} onClick={()=>switchTo(k)} style={{padding:'12px 18px',borderRadius:'8px',border:'none',cursor:'pointer',fontSize:'15px',fontWeight:600,flex:'1 1 auto',minWidth:'160px',background:mode===k?'linear-gradient(135deg,#667eea,#764ba2)':'transparent',color:mode===k?'white':'#666'}}>
               {l}
             </button>
@@ -3339,8 +3346,8 @@ root.render(<App/>);
    Class-filtered view of: assessments, assignment progress, resources
    ════════════════════════════════════════════════════════════════ */
 function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
-  const [selClass,setSelClass]=useState('');
-  const [teacherAuth,setTeacherAuth]=useState(null); // logged-in teacher registration row
+  const [selClass,setSelClass]=useState(TEACHER_SESSION ? TEACHER_SESSION.class_name : '');
+  const [teacherAuth,setTeacherAuth]=useState(TEACHER_SESSION); // logged-in teacher (portal session or in-page login)
   const [loginEmail,setLoginEmail]=useState('');
   const [loginPin,setLoginPin]=useState('');
   const [loginErr,setLoginErr]=useState('');
@@ -3364,7 +3371,11 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
     }catch(e){ setLoginErr('Could not reach the server. Please check your connection and try again.'); }
     setLoginBusy(false);
   };
-  const teacherLogout = ()=>{ setTeacherAuth(null); setSelClass(''); setLoginEmail(''); setLoginPin(''); setLoginErr(''); };
+  const teacherLogout = ()=>{
+    try{ sessionStorage.removeItem('carissa_teacher_session'); }catch(e){}
+    if(TEACHER_SESSION){ TEACHER_SESSION=null; window.location.href='teacher.html'; return; }
+    setTeacherAuth(null); setSelClass(''); setLoginEmail(''); setLoginPin(''); setLoginErr('');
+  };
 
   const [tab,setTab]=useState('assessments');
   const [assessments,setAssessments]=useState([]);
@@ -3451,7 +3462,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
           </div>
           {loginErr && <div style={{background:'#fdecec',color:'#c0392b',border:'1px solid #f5c6c6',borderRadius:'10px',padding:'11px 13px',fontSize:'13px',margin:'10px 0',lineHeight:1.45}}>{loginErr}</div>}
           <button style={{...btn,width:'100%',marginTop:'10px',opacity:loginBusy?0.6:1}} disabled={loginBusy} onClick={teacherLogin}>{loginBusy?'Signing in...':'Log in →'}</button>
-          <p style={{color:'#999',fontSize:'12px',textAlign:'center',marginTop:'14px'}}>No login yet? Register first, then the coordinator will send your PIN.</p>
+          <p style={{color:'#999',fontSize:'12px',textAlign:'center',marginTop:'14px'}}>No login yet? <a href="teacher-register.html" style={{color:'#667eea',fontWeight:600}}>Register here</a>, then the coordinator will send your PIN. Forgotten your PIN? Contact Ma'am Mogajane.</p>
         </div>
       ) : !selClass ? (
         <div style={card}>
@@ -3468,7 +3479,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
             {[
               ['assessments',`📝 Assessments (${classAssessments.length})`],
               ['progress',`📈 Track Progress (${classAssignments.length})`],
-              ['reading','📖 Reading (1-Min)'],
+              ...(teacherAuth ? [['reading','📖 1-Minute Reading']] : []),
               ['resources',`📁 Resources (${resources.length})`],
             ].map(([k,l])=>(
               <button key={k} onClick={()=>setTab(k)} style={{padding:'10px 16px',borderRadius:'8px',border:'none',cursor:'pointer',fontSize:'14px',fontWeight:600,flex:'1 1 auto',minWidth:'130px',background:tab===k?'linear-gradient(135deg,#667eea,#764ba2)':'transparent',color:tab===k?'white':'#666'}}>
@@ -3478,8 +3489,8 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
           </div>
 
           {/* ── Reading (1-Min) tab ──────────────── */}
-          {tab==='reading' && (
-            <ReadingAssessmentTab key={selClass} reading={reading} setReading={setReading} initialClass={selClass} lockClass={!adminAccess}/>
+          {tab==='reading' && teacherAuth && (
+            <ReadingAssessmentTab key={selClass} reading={reading} setReading={setReading} initialClass={selClass} lockClass={true}/>
           )}
 
           {/* ── Assessments tab ──────────────────── */}
