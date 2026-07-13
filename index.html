@@ -3480,9 +3480,14 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
         </select>
         </>)}
         {!adminAccess && teacherAuth && (
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'10px',background:'rgba(255,255,255,0.15)',padding:'12px 16px',borderRadius:'10px'}}>
-            <div style={{fontSize:'14px'}}>
-              👋 Logged in as <strong>{teacherAuth.first_name} {teacherAuth.surname}</strong> — <strong>{teacherAuth.class_name}</strong>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'10px',background:'rgba(255,255,255,0.15)',padding:'14px 16px',borderRadius:'10px'}}>
+            <div>
+              <div style={{fontSize:'18px',fontWeight:700,marginBottom:'4px'}}>
+                Welcome, {teacherAuth.first_name} {teacherAuth.surname}
+              </div>
+              <div style={{fontSize:'13px',opacity:0.95,lineHeight:1.5}}>
+                Teacher linked to <strong>{teacherAuth.email}</strong> • Class: <strong>{teacherAuth.class_name}</strong>
+              </div>
             </div>
             <button onClick={teacherLogout} style={{padding:'7px 14px',borderRadius:'8px',border:'1px solid rgba(255,255,255,0.6)',background:'transparent',color:'white',fontWeight:600,cursor:'pointer',fontSize:'13px'}}>Sign out</button>
           </div>
