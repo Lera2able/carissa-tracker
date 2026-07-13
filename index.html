@@ -3671,16 +3671,16 @@ function TeacherClassListTab({selClass, teacherAuth, interventions, setIntervent
     <div style={card}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'10px',marginBottom:'10px'}}>
         <div>
-          <h3 style={{...ctitle,marginBottom:'2px'}}>👥 {selClass} — Classlist</h3>
+          <h3 style={{...ctitle,marginBottom:'2px'}}>Classlist: {selClass}</h3>
           <p style={{fontSize:'13px',color:'#666'}}>
             This classlist is only for the teacher who is logged in. Adding a learner here sends that learner to the intervention list for admin review.
           </p>
         </div>
         <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
-          <span style={{background:'#eef2ff',color:'#4f46e5',padding:'7px 12px',borderRadius:'999px',fontSize:'12px',fontWeight:700'}}>
+          <span style={{background:'#eef2ff',color:'#4f46e5',padding:'7px 12px',borderRadius:'999px',fontSize:'12px',fontWeight:'700'}}>
             {learners.length} learners
           </span>
-          <span style={{background:'#fff3e0',color:'#f97316',padding:'7px 12px',borderRadius:'999px',fontSize:'12px',fontWeight:700'}}>
+          <span style={{background:'#fff3e0',color:'#f97316',padding:'7px 12px',borderRadius:'999px',fontSize:'12px',fontWeight:'700'}}>
             {interventions.length} on intervention list
           </span>
         </div>
@@ -3693,7 +3693,7 @@ function TeacherClassListTab({selClass, teacherAuth, interventions, setIntervent
             <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 14px',background:onList?'#fff7ed':'#f8f9fa',borderRadius:'10px',borderLeft:`4px solid ${onList?'#f97316':'#cbd5e1'}`,gap:'10px',flexWrap:'wrap'}}>
               <div style={{fontSize:'14px',color:'#333'}}>
                 <strong>{learner.number}.</strong> <strong>{learner.surname}</strong>, {learner.firstname}
-                {onList && <span style={{marginLeft:'10px',fontSize:'12px',color:'#f97316',fontWeight:700}}>● On intervention list</span>}
+                {onList && <span style={{marginLeft:'10px',fontSize:'12px',color:'#f97316',fontWeight:'700'}}>On intervention list</span>}
               </div>
               {!onList ? (
                 <button style={{...sbtn,background:'#667eea',fontSize:'12px',padding:'7px 12px'}} onClick={()=>setModalFor(learner)}>
