@@ -114,7 +114,8 @@ const READING_AGE_KEY = [
 ];
 const READING_TERMS = ['Term 1','Term 2','Term 3','Term 4'];
 function readingAgeFromWords(n){
-  if(n==null || isNaN(n) || n<=0) return null;
+  if(n==null || isNaN(n) || n<0) return null;
+  if(Number(n)===0) return '<6y 0m';
   const k = READING_AGE_KEY;
   if(n < k[0].w) return '<6y 0m';
   if(n >= k[k.length-1].w) return '13y 9m+';
