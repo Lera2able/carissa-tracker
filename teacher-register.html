@@ -199,19 +199,10 @@ form.addEventListener("submit", async (e) => {
       })
     });
 
-    if(res.status === 409){
-      showError("This email address has already been registered. If your details have changed, please contact Ma'am Mogajane directly.");
-      btn.disabled = false; btn.textContent = "Register";
-      return;
-    }
     if(!res.ok){
       const t = await res.text();
-      if(t.includes("23505")){
-        showError("This email address has already been registered. If your details have changed, please contact Ma'am Mogajane directly.");
-      } else {
-        showError("Something went wrong while submitting. Please check your connection and try again.");
-        console.error(t);
-      }
+      showError("Something went wrong while submitting. Please check your connection and try again.");
+      console.error(t);
       btn.disabled = false; btn.textContent = "Register";
       return;
     }
