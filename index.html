@@ -152,6 +152,14 @@ const readingAgeYearsFromLabel = label => {
   if(!label) return null;
   const txt=String(label).trim();
   if(!txt) return null;
+  if(/^\d+(\.\d+)?$/.test(txt)){
+    if(txt.includes('.')){
+      const [y,m='0']=txt.split('.');
+      const months = Math.min(parseInt(m,10)||0,11);
+      return Number(y) + (months/12);
+    }
+    return Number(txt);
+  }
   if(/^<\s*6y/i.test(txt)) return 6;
   const m=txt.match(/(\d+)\s*y\s*(\d+)\s*m?/i);
   if(m) return Number(m[1]) + (Number(m[2])/12);
@@ -166,7 +174,14 @@ const formatReadingAgeYears = age => {
   const months = Math.round((rounded-years)*12);
   return months===12 ? `${years+1}y 0m` : `${years}y ${months}m`;
 };
-const readingAgeLabelForRecord = r => r?.reading_age || readingAgeFromWords(Number(r?.words_correct));
+const readingAgeLabelForRecord = r => {
+  if(r?.reading_age){
+    const parsed = readingAgeYearsFromLabel(r.reading_age);
+    if(parsed!=null) return formatReadingAgeYears(parsed);
+    return String(r.reading_age);
+  }
+  return readingAgeFromWords(Number(r?.words_correct));
+};
 const classTargetReadingAgeYears = className => {
   const m=String(className||'').match(/Grade\s+(\d+)/i);
   if(!m) return null;
@@ -175,11 +190,78 @@ const classTargetReadingAgeYears = className => {
 const readingStatusFor = (className, readingAgeLabel) => {
   const actual=readingAgeYearsFromLabel(readingAgeLabel);
   const target=classTargetReadingAgeYears(className);
-  if(actual==null || target==null) return {code:'na',label:'No age',bg:'#f3f4f6',fg:'#6b7280',diff:null,target};
+  if(actual==null || target==null) return {code:'amber',label:'Amber',bg:'#fef3c7',fg:'#92400e',diff:null,target};
   const diff=actual-target;
-  if(diff >= 0) return {code:'green',label:'On track',bg:'#dcfce7',fg:'#166534',diff,target};
-  if(diff >= -1) return {code:'amber',label:'Watch',bg:'#fef3c7',fg:'#92400e',diff,target};
-  return {code:'red',label:'Support needed',bg:'#fee2e2',fg:'#991b1b',diff,target};
+  if(diff >= 0) return {code:'green',label:'Green',bg:'#dcfce7',fg:'#166534',diff,target};
+  if(diff >= -1) return {code:'amber',label:'Amber',bg:'#fef3c7',fg:'#92400e',diff,target};
+  return {code:'red',label:'Red',bg:'#fee2e2',fg:'#991b1b',diff,target};
+};
+const levenshtein = (a,b) => {
+  const s=normalizeReadingName(a), t=normalizeReadingName(b);
+  const m=s.length, n=t.length;
+  if(!m) return n;
+  if(!n) return m;
+  const dp=Array.from({length:m+1},(_,i)=>Array(n+1).fill(0));
+  for(let i=0;i<=m;i++) dp[i][0]=i;
+  for(let j=0;j<=n;j++) dp[0][j]=j;
+  for(let i=1;i<=m;i++){
+    for(let j=1;j<=n;j++){
+      const cost = s[i-1]===t[j-1]?0:1;
+      dp[i][j]=Math.min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1]+cost);
+    }
+  }
+  return dp[m][n];
+};
+const rosterAlignedRecordsForClassTerm = (allReading, className, term) => {
+  const roster = CLASS_DATA[className] || [];
+  const latest = latestReadingRecordsForTerm(allReading, term).filter(r=>r.class_name===className);
+  const exactMap = new Map(latest.map(r=>[readingKey(className,r.surname,r.firstname,term), r]));
+  const usedIds = new Set();
+  return roster.map((learner, idx)=>{
+    const exact = exactMap.get(readingKey(className, learner.surname, learner.firstname, term));
+    if(exact){
+      usedIds.add(exact.id || `exact-${idx}`);
+      return {...exact, matchedFrom:'exact'};
+    }
+    const firstNorm = normalizeReadingName(learner.firstname);
+    const lastNorm = normalizeReadingName(learner.surname);
+    let best = null;
+    let bestScore = -999;
+    latest.forEach(r=>{
+      const candidateId = r.id || `${r.surname}-${r.firstname}-${r.words_correct}`;
+      if(usedIds.has(candidateId)) return;
+      const rf = normalizeReadingName(r.firstname);
+      const rs = normalizeReadingName(r.surname);
+      const firstDist = levenshtein(firstNorm, rf);
+      const lastDist = levenshtein(lastNorm, rs);
+      const firstClose = firstNorm===rf || firstDist<=2 || firstNorm.includes(rf) || rf.includes(firstNorm);
+      const lastClose = lastNorm===rs || lastDist<=2 || lastNorm.includes(rs) || rs.includes(lastNorm);
+      if(!firstClose && !lastClose) return;
+      const score = (firstNorm===rf?6:-firstDist) + (lastNorm===rs?6:-lastDist);
+      if(score > bestScore){
+        bestScore = score;
+        best = r;
+      }
+    });
+    if(best && bestScore >= 2){
+      usedIds.add(best.id || `fuzzy-${idx}`);
+      return {...best, surname:learner.surname, firstname:learner.firstname, matchedFrom:'fuzzy'};
+    }
+    return {
+      id:`synthetic-${className}-${idx}-${term}`,
+      class_name:className,
+      surname:learner.surname,
+      firstname:learner.firstname,
+      words_correct:0,
+      reading_age:null,
+      term,
+      year:2026,
+      date_assessed:null,
+      created_at:null,
+      syntheticZero:true,
+      matchedFrom:'missing'
+    };
+  });
 };
 const summarizeReadingForClass = (records, className) => {
   const avgWords = records.length ? Math.round(records.reduce((s,r)=>s+(Number(r.words_correct)||0),0)/records.length) : null;
@@ -2529,7 +2611,11 @@ function ReadingAssessmentTab({reading,setReading,initialClass,lockClass}){
   const showMsg=m=>{setMsg(m);setTimeout(()=>setMsg(''),5000);};
 
   const classLearners=selClass?(CLASS_DATA[selClass]||[]):[];
-  const termRecords = useMemo(()=>latestReadingRecordsForTerm(reading, termView).filter(r=>r.class_name===selClass),[reading,termView,selClass]);
+  const termRecords = useMemo(()=>{
+    if(!selClass) return [];
+    if(termView==='Term 2') return rosterAlignedRecordsForClassTerm(reading, selClass, 'Term 2');
+    return latestReadingRecordsForTerm(reading, termView).filter(r=>r.class_name===selClass);
+  },[reading,termView,selClass]);
   const summary = useMemo(()=>summarizeReadingForClass(termRecords, selClass),[termRecords,selClass]);
   const filtered=search.trim()
     ? classLearners.filter(l=>(`${l.surname} ${l.firstname}`).toLowerCase().includes(search.toLowerCase()))
@@ -2620,16 +2706,18 @@ function ReadingAssessmentTab({reading,setReading,initialClass,lockClass}){
                   const ageLabel = readingAgeLabelForRecord(r);
                   const status = readingStatusFor(selClass, ageLabel);
                   return (
-                    <div key={r.id||i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 14px',background:status.bg,borderRadius:'10px',borderLeft:`5px solid ${status.fg}`,gap:'10px',flexWrap:'wrap'}}>
+                    <div key={r.id||i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 14px',background:status.bg,borderRadius:'10px',border:`1px solid ${status.fg}33`,borderLeft:`8px solid ${status.fg}`,gap:'10px',flexWrap:'wrap'}}>
                       <div style={{flex:1,minWidth:'220px'}}>
-                        <div style={{fontWeight:700,color:'#333',fontSize:'14px'}}>{r.surname}, {r.firstname}</div>
+                        <div style={{display:'inline-block',fontWeight:800,color:status.fg,fontSize:'14px',background:'rgba(255,255,255,0.78)',padding:'5px 10px',borderRadius:'999px',marginBottom:'5px'}}>
+                          {r.surname}, {r.firstname}
+                        </div>
                         <div style={{fontSize:'12px',color:'#475569',marginTop:'3px'}}>
                           {r.words_correct} words/min · Reading age <strong>{ageLabel||'—'}</strong> · Desired age <strong>{formatReadingAgeYears(status.target)}</strong>
                         </div>
                       </div>
                       <div style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
                         <span style={{background:'rgba(255,255,255,0.75)',color:status.fg,padding:'5px 10px',borderRadius:'999px',fontSize:'12px',fontWeight:700}}>{status.label}</span>
-                        <span style={{fontSize:'12px',color:'#64748b'}}>{new Date(r.date_assessed||r.created_at).toLocaleDateString('en-ZA')}</span>
+                        <span style={{fontSize:'12px',color:'#64748b'}}>{r.date_assessed||r.created_at ? new Date(r.date_assessed||r.created_at).toLocaleDateString('en-ZA') : 'Roster-aligned zero'}</span>
                       </div>
                     </div>
                   );
@@ -2841,6 +2929,9 @@ function ReadingResultsTab({reading}){
   const [search,setSearch]=useState('');
 
   const latest = useMemo(()=>{
+    if(termFilter==='Term 2'){
+      return ASSESS_CLASS_NAMES.flatMap(cn=>rosterAlignedRecordsForClassTerm(reading, cn, 'Term 2'));
+    }
     return latestReadingRecordsForTerm(reading, termFilter);
   },[reading,termFilter]);
 
@@ -2865,7 +2956,7 @@ function ReadingResultsTab({reading}){
       'Words/Min':r.words_correct,'Approx Reading Age':readingAgeLabelForRecord(r)||'',
       'Desired Age':formatReadingAgeYears(classTargetReadingAgeYears(r.class_name)),
       'Status':readingStatusFor(r.class_name, readingAgeLabelForRecord(r)).label,
-      'Term':r.term||'','Date Assessed':new Date(r.date_assessed||r.created_at).toLocaleDateString('en-ZA')
+      'Term':r.term||'','Date Assessed':r.date_assessed||r.created_at?new Date(r.date_assessed||r.created_at).toLocaleDateString('en-ZA'):'Roster-aligned zero'
     }));
     const ws=XLSX.utils.json_to_sheet(data);
     ws['!cols']=[{wch:12},{wch:18},{wch:16},{wch:10},{wch:16},{wch:14},{wch:16},{wch:10},{wch:14}];
@@ -2945,7 +3036,7 @@ function ReadingResultsTab({reading}){
                         <span style={{background:status.bg,color:status.fg,padding:'4px 8px',borderRadius:'999px',fontSize:'12px',fontWeight:700}}>{status.label}</span>
                       </td>
                       <td style={{padding:'9px 8px'}}>{r.term||'—'}</td>
-                      <td style={{padding:'9px 8px',whiteSpace:'nowrap',color:'#777'}}>{new Date(r.date_assessed||r.created_at).toLocaleDateString('en-ZA')}</td>
+                      <td style={{padding:'9px 8px',whiteSpace:'nowrap',color:'#777'}}>{r.date_assessed||r.created_at ? new Date(r.date_assessed||r.created_at).toLocaleDateString('en-ZA') : 'Roster-aligned zero'}</td>
                         </>;
                       })()}
                     </tr>
@@ -3547,6 +3638,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
   const [loginEmail,setLoginEmail]=useState('');
   const [loginPin,setLoginPin]=useState('');
   const [rememberDevice,setRememberDevice]=useState(true);
+  const [assessmentTermView,setAssessmentTermView]=useState('Term 2');
   const [loginErr,setLoginErr]=useState('');
   const [loginBusy,setLoginBusy]=useState(false);
 
@@ -3603,7 +3695,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
     })();
   },[]);
 
-  const classAssessments = selClass ? assessments.filter(x=>x.class_name===selClass) : [];
+  const classAssessments = selClass ? assessments.filter(x=>x.class_name===selClass && x.term===assessmentTermView) : [];
   const classAssignments = selClass ? assignments.filter(x=>x.class_name===selClass) : [];
   const classInterventions = selClass ? interventions.filter(x=>x.class_name===selClass) : [];
 
@@ -3726,8 +3818,19 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
                   </>
                 )}
               </div>
+              <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'12px'}}>
+                {['Term 2','Term 3'].map(t=>(
+                  <button key={t} onClick={()=>setAssessmentTermView(t)} style={{padding:'9px 14px',borderRadius:'999px',border:assessmentTermView===t?'none':'1px solid #dbe2f0',background:assessmentTermView===t?'linear-gradient(135deg,#667eea,#764ba2)':'#f8fafc',color:assessmentTermView===t?'white':'#475569',fontWeight:700,cursor:'pointer'}}>
+                    {t==='Term 2' ? 'Term 2 eLearning Assessment' : 'Term 3'}
+                  </button>
+                ))}
+              </div>
               {classAssessments.length===0 ? (
-                <p style={{color:'#999',textAlign:'center',padding:'30px'}}>No assessments have been done for this class yet. Once an admin captures them in the Assessments tab they'll appear here.</p>
+                <p style={{color:'#999',textAlign:'center',padding:'30px'}}>
+                  {assessmentTermView==='Term 2'
+                    ? 'No Term 2 eLearning assessments have been done for this class yet. Once an admin captures them in the Assessments tab they will appear here.'
+                    : 'Term 3 is blank at the moment, so no assessment marks are shown yet.'}
+                </p>
               ) : (
                 <div style={{overflowX:'auto'}}>
                   <table style={{width:'100%',borderCollapse:'collapse',fontSize:'13px'}}>
