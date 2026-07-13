@@ -3252,8 +3252,30 @@ function TeacherView({onEditName}){
    APP ROOT - mode tabs (teacher / coordinator / admin), login
    ════════════════════════════════════════════════════════════════ */
 // Session created by teacher.html (Teacher Portal login page)
-let TEACHER_SESSION = null;
-try{ TEACHER_SESSION = JSON.parse(sessionStorage.getItem('carissa_teacher_session')||'null'); }catch(e){}
+const TEACHER_SESSION_KEY = 'carissa_teacher_session';
+const TEACHER_REMEMBER_KEY = 'carissa_teacher_session_persistent';
+const loadTeacherSession = () => {
+  try{
+    const remembered = localStorage.getItem(TEACHER_REMEMBER_KEY);
+    if(remembered) return JSON.parse(remembered);
+  }catch(e){}
+  try{
+    const sessionOnly = sessionStorage.getItem(TEACHER_SESSION_KEY);
+    if(sessionOnly) return JSON.parse(sessionOnly);
+  }catch(e){}
+  return null;
+};
+const saveTeacherSession = (session, rememberDevice) => {
+  try{ sessionStorage.removeItem(TEACHER_SESSION_KEY); }catch(e){}
+  try{ localStorage.removeItem(TEACHER_REMEMBER_KEY); }catch(e){}
+  if(!session) return;
+  try{
+    const payload = JSON.stringify(session);
+    if(rememberDevice) localStorage.setItem(TEACHER_REMEMBER_KEY, payload);
+    else sessionStorage.setItem(TEACHER_SESSION_KEY, payload);
+  }catch(e){}
+};
+let TEACHER_SESSION = loadTeacherSession();
 // Teacher portal mode: /?portal=teacher opens LearnWorld directly as the teacher dashboard
 let PORTAL_MODE = false;
 try{ PORTAL_MODE = new URLSearchParams(window.location.search).get('portal')==='teacher'; }catch(e){}
@@ -3363,6 +3385,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
   const [teacherAuth,setTeacherAuth]=useState(TEACHER_SESSION); // logged-in teacher (portal session or in-page login)
   const [loginEmail,setLoginEmail]=useState('');
   const [loginPin,setLoginPin]=useState('');
+  const [rememberDevice,setRememberDevice]=useState(true);
   const [loginErr,setLoginErr]=useState('');
   const [loginBusy,setLoginBusy]=useState(false);
 
@@ -3376,6 +3399,8 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
       const rows = await db.get('carissa_teacher_registrations',
         `email=ilike.${encodeURIComponent(email)}&pin=eq.${encodeURIComponent(pin)}&login_enabled=eq.true&order=created_at.desc`);
       if(rows.length){
+        saveTeacherSession(rows[0], rememberDevice);
+        TEACHER_SESSION = rows[0];
         setTeacherAuth(rows[0]);
         setSelClass(rows[0].class_name);
       }else{
@@ -3385,8 +3410,8 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
     setLoginBusy(false);
   };
   const teacherLogout = ()=>{
-    try{ sessionStorage.removeItem('carissa_teacher_session'); }catch(e){}
-    if(TEACHER_SESSION){ TEACHER_SESSION=null; window.location.href='teacher.html'; return; }
+    saveTeacherSession(null, false);
+    if(TEACHER_SESSION){ TEACHER_SESSION=null; window.location.href=`${window.location.pathname}?portal=teacher`; return; }
     setTeacherAuth(null); setSelClass(''); setLoginEmail(''); setLoginPin(''); setLoginErr('');
   };
 
@@ -3476,6 +3501,15 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
             <label style={lbl}>PIN</label>
             <input style={inp} type="password" inputMode="numeric" value={loginPin} onChange={e=>setLoginPin(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')teacherLogin();}}/>
           </div>
+          <label style={{display:'flex',alignItems:'center',gap:'10px',margin:'10px 0 4px',cursor:'pointer',fontSize:'13px',color:'#555',fontWeight:500}}>
+            <input
+              type="checkbox"
+              checked={rememberDevice}
+              onChange={e=>setRememberDevice(e.target.checked)}
+              style={{width:'16px',height:'16px',cursor:'pointer'}}
+            />
+            Remember this device so the teacher stays logged in on this PC or phone
+          </label>
           {loginErr && <div style={{background:'#fdecec',color:'#c0392b',border:'1px solid #f5c6c6',borderRadius:'10px',padding:'11px 13px',fontSize:'13px',margin:'10px 0',lineHeight:1.45}}>{loginErr}</div>}
           <button style={{...btn,width:'100%',marginTop:'10px',opacity:loginBusy?0.6:1}} disabled={loginBusy} onClick={teacherLogin}>{loginBusy?'Signing in...':'Log in →'}</button>
           <p style={{color:'#999',fontSize:'12px',textAlign:'center',marginTop:'14px'}}>No login yet? <a href="teacher-register.html" style={{color:'#667eea',fontWeight:600}}>Register here</a>, then the coordinator will send your PIN. Forgotten your PIN? Contact Ma'am Mogajane.</p>
