@@ -112,6 +112,7 @@ const READING_AGE_KEY = [
   {w:12,age:6.0},{w:30,age:7.0},{w:50,age:8.0},{w:70,age:9.0},
   {w:80,age:10.083},{w:92,age:11.0},{w:102,age:12.0},{w:115,age:13.0},{w:121,age:13.75}
 ];
+const READING_TERMS = ['Term 1','Term 2','Term 3','Term 4'];
 function readingAgeFromWords(n){
   if(n==null || isNaN(n) || n<=0) return null;
   const k = READING_AGE_KEY;
@@ -128,6 +129,70 @@ function readingAgeFromWords(n){
   const years=Math.floor(a), months=Math.round((a-years)*12);
   return months===12 ? `${years+1}y 0m` : `${years}y ${months}m`;
 }
+const normalizeReadingName = v => String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+const readingKey = (className,surname,firstname,term='') => [
+  normalizeReadingName(className),
+  normalizeReadingName(surname),
+  normalizeReadingName(firstname),
+  normalizeReadingName(term)
+].join('||');
+const latestReadingRecordsForTerm = (rows, term) => {
+  const map={};
+  rows
+    .filter(r=>(r.term||'')===term)
+    .forEach(r=>{
+      const k=readingKey(r.class_name,r.surname,r.firstname,r.term||'');
+      const d=new Date(r.date_assessed||r.created_at||0);
+      if(!map[k] || d>new Date(map[k].date_assessed||map[k].created_at||0)) map[k]=r;
+    });
+  return Object.values(map);
+};
+const readingAgeYearsFromLabel = label => {
+  if(!label) return null;
+  const txt=String(label).trim();
+  if(!txt) return null;
+  if(/^<\s*6y/i.test(txt)) return 6;
+  const m=txt.match(/(\d+)\s*y\s*(\d+)\s*m?/i);
+  if(m) return Number(m[1]) + (Number(m[2])/12);
+  const plus=txt.match(/(\d+)\s*y\s*(\d+)\s*m?\+/i);
+  if(plus) return Number(plus[1]) + (Number(plus[2])/12);
+  return null;
+};
+const formatReadingAgeYears = age => {
+  if(age==null || isNaN(age)) return '—';
+  const rounded = Math.max(0, Math.round(age*12)/12);
+  const years = Math.floor(rounded);
+  const months = Math.round((rounded-years)*12);
+  return months===12 ? `${years+1}y 0m` : `${years}y ${months}m`;
+};
+const readingAgeLabelForRecord = r => r?.reading_age || readingAgeFromWords(Number(r?.words_correct));
+const classTargetReadingAgeYears = className => {
+  const m=String(className||'').match(/Grade\s+(\d+)/i);
+  if(!m) return null;
+  return Number(m[1]) + 6;
+};
+const readingStatusFor = (className, readingAgeLabel) => {
+  const actual=readingAgeYearsFromLabel(readingAgeLabel);
+  const target=classTargetReadingAgeYears(className);
+  if(actual==null || target==null) return {code:'na',label:'No age',bg:'#f3f4f6',fg:'#6b7280',diff:null,target};
+  const diff=actual-target;
+  if(diff >= 0) return {code:'green',label:'On track',bg:'#dcfce7',fg:'#166534',diff,target};
+  if(diff >= -1) return {code:'amber',label:'Watch',bg:'#fef3c7',fg:'#92400e',diff,target};
+  return {code:'red',label:'Support needed',bg:'#fee2e2',fg:'#991b1b',diff,target};
+};
+const summarizeReadingForClass = (records, className) => {
+  const avgWords = records.length ? Math.round(records.reduce((s,r)=>s+(Number(r.words_correct)||0),0)/records.length) : null;
+  const ageValues = records.map(readingAgeLabelForRecord).map(readingAgeYearsFromLabel).filter(v=>v!=null);
+  const avgAgeYears = ageValues.length ? ageValues.reduce((s,v)=>s+v,0)/ageValues.length : null;
+  const targetYears = classTargetReadingAgeYears(className);
+  const status = readingStatusFor(className, formatReadingAgeYears(avgAgeYears));
+  const counts = {green:0, amber:0, red:0};
+  records.forEach(r=>{
+    const code = readingStatusFor(className, readingAgeLabelForRecord(r)).code;
+    if(counts[code]!=null) counts[code]+=1;
+  });
+  return {avgWords, avgAgeYears, targetYears, status, counts};
+};
 
 /* ════════════════════════════════════════════════════════════════
    SHARED STYLES & SMALL COMPONENTS
@@ -2458,19 +2523,54 @@ function ReadingAssessmentTab({reading,setReading,initialClass,lockClass}){
   const [selClass,setSelClass]=useState(initialClass||'');
   const [search,setSearch]=useState('');
   const [editing,setEditing]=useState(null);
+  const [termView,setTermView]=useState('Term 2');
   const [msg,setMsg]=useState('');
   const showMsg=m=>{setMsg(m);setTimeout(()=>setMsg(''),5000);};
 
   const classLearners=selClass?(CLASS_DATA[selClass]||[]):[];
+  const termRecords = useMemo(()=>latestReadingRecordsForTerm(reading, termView).filter(r=>r.class_name===selClass),[reading,termView,selClass]);
+  const summary = useMemo(()=>summarizeReadingForClass(termRecords, selClass),[termRecords,selClass]);
   const filtered=search.trim()
     ? classLearners.filter(l=>(`${l.surname} ${l.firstname}`).toLowerCase().includes(search.toLowerCase()))
     : classLearners;
-
-  const latestFor=(cls,surname,firstname)=>{
-    const recs=reading.filter(r=>r.class_name===cls&&r.surname===surname&&r.firstname===firstname);
+  const shownResults = termRecords
+    .filter(r=>!search || `${r.surname} ${r.firstname}`.toLowerCase().includes(search.toLowerCase()))
+    .slice()
+    .sort((a,b)=>a.surname.localeCompare(b.surname)||a.firstname.localeCompare(b.firstname));
+  const latestFor=(cls,surname,firstname,term)=>{
+    const key = readingKey(cls,surname,firstname,term);
+    const recs=reading.filter(r=>readingKey(r.class_name,r.surname,r.firstname,r.term||'')===key);
     if(!recs.length) return null;
     return recs.slice().sort((a,b)=>new Date(b.date_assessed||b.created_at)-new Date(a.date_assessed||a.created_at))[0];
   };
+  const summaryCards = selClass ? (
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))',gap:'10px',marginBottom:'16px'}}>
+      <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px 14px'}}>
+        <div style={{fontSize:'12px',color:'#64748b',marginBottom:'4px'}}>Learners with scores</div>
+        <div style={{fontSize:'22px',fontWeight:700,color:'#334155'}}>{termRecords.length}</div>
+      </div>
+      <div style={{background:'#eef2ff',border:'1px solid #c7d2fe',borderRadius:'12px',padding:'12px 14px'}}>
+        <div style={{fontSize:'12px',color:'#6366f1',marginBottom:'4px'}}>Average score</div>
+        <div style={{fontSize:'22px',fontWeight:700,color:'#3730a3'}}>{summary.avgWords!=null?`${summary.avgWords} wpm`:'—'}</div>
+      </div>
+      <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px 14px'}}>
+        <div style={{fontSize:'12px',color:'#64748b',marginBottom:'4px'}}>Class reading age</div>
+        <div style={{fontSize:'22px',fontWeight:700,color:'#334155'}}>{formatReadingAgeYears(summary.avgAgeYears)}</div>
+      </div>
+      <div style={{background:summary.status.bg,border:`1px solid ${summary.status.fg}22`,borderRadius:'12px',padding:'12px 14px'}}>
+        <div style={{fontSize:'12px',color:summary.status.fg,marginBottom:'4px'}}>Desired age by grade</div>
+        <div style={{fontSize:'22px',fontWeight:700,color:summary.status.fg}}>{formatReadingAgeYears(summary.targetYears)}</div>
+      </div>
+      <div style={{background:'#ffffff',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px 14px'}}>
+        <div style={{fontSize:'12px',color:'#64748b',marginBottom:'6px'}}>Red / Amber / Green</div>
+        <div style={{display:'flex',gap:'6px',flexWrap:'wrap'}}>
+          <span style={{background:'#fee2e2',color:'#991b1b',padding:'4px 8px',borderRadius:'999px',fontSize:'12px',fontWeight:700}}>R {summary.counts.red}</span>
+          <span style={{background:'#fef3c7',color:'#92400e',padding:'4px 8px',borderRadius:'999px',fontSize:'12px',fontWeight:700}}>A {summary.counts.amber}</span>
+          <span style={{background:'#dcfce7',color:'#166534',padding:'4px 8px',borderRadius:'999px',fontSize:'12px',fontWeight:700}}>G {summary.counts.green}</span>
+        </div>
+      </div>
+    </div>
+  ) : null;
 
   return (
     <div>
@@ -2478,7 +2578,7 @@ function ReadingAssessmentTab({reading,setReading,initialClass,lockClass}){
       <div style={{...card,marginBottom:'14px'}}>
         <h3 style={{...ctitle,marginBottom:'10px'}}>📖 One-Minute Reading Assessment</h3>
         <p style={{color:'#666',fontSize:'13px',marginBottom:'14px'}}>
-          Pick a class, then click <strong>+ Start</strong> next to a learner. A 60-second timer runs while the learner reads aloud; when it stops, record the number of words read correctly.
+          Use <strong>Term 2 Results</strong> to view imported class results and reading-age status. Use <strong>Term 3 Entry</strong> to capture the new round of assessments without showing old marks as current entries.
         </p>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:'12px'}}>
           {!lockClass && (
@@ -2494,30 +2594,70 @@ function ReadingAssessmentTab({reading,setReading,initialClass,lockClass}){
             <input style={inp} placeholder="Type a name to filter..." value={search} onChange={e=>setSearch(e.target.value)} disabled={!selClass}/>
           </div>
         </div>
+        <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginTop:'14px'}}>
+          {['Term 2','Term 3'].map(t=>(
+            <button key={t} onClick={()=>setTermView(t)} style={{padding:'9px 14px',borderRadius:'999px',border:termView===t?'none':'1px solid #dbe2f0',background:termView===t?'linear-gradient(135deg,#667eea,#764ba2)':'#f8fafc',color:termView===t?'white':'#475569',fontWeight:700,cursor:'pointer'}}>
+              {t==='Term 2'?'Term 2 Results':'Term 3 Entry'}
+            </button>
+          ))}
+        </div>
       </div>
 
       {selClass && (
         <div style={card}>
-          <h3 style={ctitle}>{selClass} — Learners ({filtered.length})</h3>
-          {filtered.length===0 ? (
+          <h3 style={ctitle}>{selClass} — {termView==='Term 2'?'Term 2 Results':'Term 3 Entry'}</h3>
+          {summaryCards}
+          <div style={{fontSize:'13px',margin:'-4px 0 16px',color:summary.status.fg}}>
+            Class reading age is <strong>{formatReadingAgeYears(summary.avgAgeYears)}</strong>. Desired chronological reading age for <strong>{selClass}</strong> is <strong>{formatReadingAgeYears(summary.targetYears)}</strong>.
+          </div>
+          {termView==='Term 2' ? (
+            shownResults.length===0 ? (
+              <p style={{color:'#999',textAlign:'center',padding:'20px'}}>No Term 2 reading results were found for this class.</p>
+            ) : (
+              <div style={{display:'grid',gap:'8px'}}>
+                {shownResults.map((r,i)=>{
+                  const ageLabel = readingAgeLabelForRecord(r);
+                  const status = readingStatusFor(selClass, ageLabel);
+                  return (
+                    <div key={r.id||i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 14px',background:status.bg,borderRadius:'10px',borderLeft:`5px solid ${status.fg}`,gap:'10px',flexWrap:'wrap'}}>
+                      <div style={{flex:1,minWidth:'220px'}}>
+                        <div style={{fontWeight:700,color:'#333',fontSize:'14px'}}>{r.surname}, {r.firstname}</div>
+                        <div style={{fontSize:'12px',color:'#475569',marginTop:'3px'}}>
+                          {r.words_correct} words/min · Reading age <strong>{ageLabel||'—'}</strong> · Desired age <strong>{formatReadingAgeYears(status.target)}</strong>
+                        </div>
+                      </div>
+                      <div style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
+                        <span style={{background:'rgba(255,255,255,0.75)',color:status.fg,padding:'5px 10px',borderRadius:'999px',fontSize:'12px',fontWeight:700}}>{status.label}</span>
+                        <span style={{fontSize:'12px',color:'#64748b'}}>{new Date(r.date_assessed||r.created_at).toLocaleDateString('en-ZA')}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          ) : filtered.length===0 ? (
             <p style={{color:'#999',textAlign:'center',padding:'20px'}}>No learners match your search.</p>
           ) : (
             <div style={{display:'grid',gap:'8px'}}>
               {filtered.map((l,i)=>{
-                const existing=latestFor(selClass,l.surname,l.firstname);
+                const existing=latestFor(selClass,l.surname,l.firstname,'Term 3');
+                const ageLabel = readingAgeLabelForRecord(existing);
+                const status = existing ? readingStatusFor(selClass, ageLabel) : {bg:'#f8f9fa',fg:'#64748b',label:'No Term 3 mark yet'};
                 return (
-                  <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 14px',background:existing?'#e8f5e9':'#f8f9fa',borderRadius:'10px',borderLeft:`5px solid ${existing?'#28a745':'#cbd5e1'}`,gap:'10px',flexWrap:'wrap'}}>
+                  <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 14px',background:existing?status.bg:'#f8f9fa',borderRadius:'10px',borderLeft:`5px solid ${existing?status.fg:'#cbd5e1'}`,gap:'10px',flexWrap:'wrap'}}>
                     <div style={{flex:1,minWidth:'180px'}}>
                       <div style={{fontWeight:600,color:'#333',fontSize:'14px'}}>{l.surname}, {l.firstname}</div>
-                      {existing && (
-                        <div style={{fontSize:'12px',color:'#155724',marginTop:'2px'}}>
-                          ✓ {existing.words_correct} words/min · {existing.term||''} · {new Date(existing.date_assessed||existing.created_at).toLocaleDateString('en-ZA')}{existing.reading_age?` · approx age ${existing.reading_age}`:''}
+                      {existing ? (
+                        <div style={{fontSize:'12px',color:status.fg,marginTop:'2px'}}>
+                          ✓ {existing.words_correct} words/min · Term 3 · {new Date(existing.date_assessed||existing.created_at).toLocaleDateString('en-ZA')} · reading age {ageLabel||'—'}
                         </div>
+                      ) : (
+                        <div style={{fontSize:'12px',color:'#64748b',marginTop:'2px'}}>No Term 3 mark captured yet.</div>
                       )}
                     </div>
                     <div style={{display:'flex',gap:'8px',flexShrink:0,flexWrap:'wrap'}}>
                       <button style={{...sbtn,background:existing?'#667eea':'#f97316',fontSize:'13px'}} onClick={()=>setEditing({...l,existing:existing||null})}>
-                        {existing?'✏️ View / Re-test':'+ Start'}
+                        {existing?'✏️ View / Re-test':'+ Start Term 3'}
                       </button>
                     </div>
                   </div>
@@ -2533,6 +2673,7 @@ function ReadingAssessmentTab({reading,setReading,initialClass,lockClass}){
           learner={editing}
           className={selClass}
           phase={phaseForClass(selClass)}
+          forcedTerm={termView}
           onClose={()=>setEditing(null)}
           onSaved={(record,isUpdate)=>{
             setReading(p=>isUpdate?p.map(r=>r.id===record.id?record:r):[record,...p]);
@@ -2550,7 +2691,7 @@ function ReadingAssessmentTab({reading,setReading,initialClass,lockClass}){
   );
 }
 
-function ReadingAssessmentModal({learner,className,phase,onClose,onSaved,onDelete}){
+function ReadingAssessmentModal({learner,className,phase,forcedTerm,onClose,onSaved,onDelete}){
   const existing=learner.existing;
   const isUpdate=!!existing;
   const DURATION=60;
@@ -2562,9 +2703,11 @@ function ReadingAssessmentModal({learner,className,phase,onClose,onSaved,onDelet
 
   const [words,setWords]=useState(existing&&existing.words_correct!=null?String(existing.words_correct):'');
   const [errs,setErrs]=useState(existing&&existing.errors!=null?String(existing.errors):'');
-  const [term,setTerm]=useState((existing&&existing.term)||'Term 2');
+  const [term,setTerm]=useState((existing&&existing.term)||forcedTerm||'Term 3');
   const [notes,setNotes]=useState((existing&&existing.notes)||'');
   const [busy,setBusy]=useState(false);
+
+  useEffect(()=>{ if(forcedTerm) setTerm(forcedTerm); },[forcedTerm]);
 
   useEffect(()=>()=>{ if(intervalRef.current) clearInterval(intervalRef.current); },[]);
 
@@ -2656,9 +2799,13 @@ function ReadingAssessmentModal({learner,className,phase,onClose,onSaved,onDelet
 
         <div style={{marginBottom:'12px'}}>
           <label style={lbl}>Term</label>
-          <select style={inp} value={term} onChange={e=>setTerm(e.target.value)}>
-            {['Term 1','Term 2','Term 3','Term 4'].map(t=>(<option key={t} value={t}>{t}</option>))}
-          </select>
+          {forcedTerm ? (
+            <div style={{...inp,background:'#f8fafc',color:'#334155'}}>{term}</div>
+          ) : (
+            <select style={inp} value={term} onChange={e=>setTerm(e.target.value)}>
+              {READING_TERMS.map(t=>(<option key={t} value={t}>{t}</option>))}
+            </select>
+          )}
         </div>
         <div style={{marginBottom:'16px'}}>
           <label style={lbl}>Notes (optional)</label>
@@ -2689,24 +2836,18 @@ function ReadingAssessmentModal({learner,className,phase,onClose,onSaved,onDelet
    ════════════════════════════════════════════════════════════════ */
 function ReadingResultsTab({reading}){
   const [filterClass,setFilterClass]=useState('all');
+  const [termFilter,setTermFilter]=useState('Term 2');
   const [search,setSearch]=useState('');
 
-  // latest (final) record per learner
   const latest = useMemo(()=>{
-    const map={};
-    reading.forEach(r=>{
-      const k=`${r.class_name}||${r.surname}||${r.firstname}`;
-      const d=new Date(r.date_assessed||r.created_at);
-      if(!map[k] || d>new Date(map[k].date_assessed||map[k].created_at)) map[k]=r;
-    });
-    return Object.values(map);
-  },[reading]);
+    return latestReadingRecordsForTerm(reading, termFilter);
+  },[reading,termFilter]);
 
   const perClass = useMemo(()=>ASSESS_CLASS_NAMES.map(cn=>{
     const recs=latest.filter(r=>r.class_name===cn);
     const total=(CLASS_DATA[cn]||[]).length;
-    const avg=recs.length?Math.round(recs.reduce((s,r)=>s+(Number(r.words_correct)||0),0)/recs.length):null;
-    return {cn,assessed:recs.length,total,avg};
+    const summary=summarizeReadingForClass(recs, cn);
+    return {cn,assessed:recs.length,total,avg:summary.avgWords,avgAgeYears:summary.avgAgeYears,targetYears:summary.targetYears,status:summary.status};
   }),[latest]);
 
   const shown = latest
@@ -2720,14 +2861,16 @@ function ReadingResultsTab({reading}){
   const exportExcel = ()=>{
     const data = shown.map(r=>({
       'Class':r.class_name,'Surname':r.surname,'First Name':r.firstname,
-      'Words/Min':r.words_correct,'Approx Reading Age':r.reading_age||'',
+      'Words/Min':r.words_correct,'Approx Reading Age':readingAgeLabelForRecord(r)||'',
+      'Desired Age':formatReadingAgeYears(classTargetReadingAgeYears(r.class_name)),
+      'Status':readingStatusFor(r.class_name, readingAgeLabelForRecord(r)).label,
       'Term':r.term||'','Date Assessed':new Date(r.date_assessed||r.created_at).toLocaleDateString('en-ZA')
     }));
     const ws=XLSX.utils.json_to_sheet(data);
-    ws['!cols']=[{wch:12},{wch:18},{wch:16},{wch:10},{wch:16},{wch:10},{wch:14}];
+    ws['!cols']=[{wch:12},{wch:18},{wch:16},{wch:10},{wch:16},{wch:14},{wch:16},{wch:10},{wch:14}];
     const wb=XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb,ws,'Reading Results');
-    XLSX.writeFile(wb,'Carissa_Reading_Results.xlsx');
+    XLSX.writeFile(wb,`Carissa_Reading_${termFilter.replace(/\s+/g,'_')}_Results.xlsx`);
   };
 
   return (
@@ -2737,17 +2880,18 @@ function ReadingResultsTab({reading}){
           <h2 style={{color:'#333'}}>📖 Reading Results — All Classes</h2>
           <button onClick={exportExcel} disabled={!shown.length} style={{padding:'9px 14px',borderRadius:'8px',border:'none',background:'linear-gradient(135deg,#667eea,#764ba2)',color:'white',fontWeight:600,cursor:shown.length?'pointer':'not-allowed',opacity:shown.length?1:.5}}>⬇ Export to Excel</button>
         </div>
-        <p style={{color:'#888',fontSize:'13px',marginBottom:'16px'}}>Final one-minute reading scores captured by the class teachers. Each learner's most recent assessment counts as their final score.</p>
+        <p style={{color:'#888',fontSize:'13px',marginBottom:'16px'}}>Final one-minute reading scores captured by the class teachers. Term summaries are colour coded against the expected chronological reading age for each grade.</p>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:'10px'}}>
           {perClass.map(c=>(
             <div key={c.cn} onClick={()=>setFilterClass(filterClass===c.cn?'all':c.cn)}
               style={{cursor:'pointer',padding:'12px',borderRadius:'10px',textAlign:'center',
-                background:filterClass===c.cn?'linear-gradient(135deg,#667eea,#764ba2)':'#f5f6ff',
-                color:filterClass===c.cn?'white':'#444',
+                background:filterClass===c.cn?'linear-gradient(135deg,#667eea,#764ba2)':c.status.bg,
+                color:filterClass===c.cn?'white':c.status.fg,
                 border:filterClass===c.cn?'none':'1px solid #e3e6f0'}}>
               <div style={{fontWeight:700,fontSize:'14px'}}>{c.cn}</div>
               <div style={{fontSize:'12px',opacity:.85,marginTop:'3px'}}>{c.assessed}/{c.total} assessed</div>
               <div style={{fontSize:'13px',fontWeight:600,marginTop:'2px'}}>{c.avg!==null?`avg ${c.avg} wpm`:'—'}</div>
+              <div style={{fontSize:'12px',opacity:.85,marginTop:'2px'}}>{formatReadingAgeYears(c.avgAgeYears)} / target {formatReadingAgeYears(c.targetYears)}</div>
             </div>
           ))}
         </div>
@@ -2755,6 +2899,12 @@ function ReadingResultsTab({reading}){
 
       <div style={card}>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:'12px',marginBottom:'14px'}}>
+          <div>
+            <label style={lbl}>Term</label>
+            <select style={inp} value={termFilter} onChange={e=>setTermFilter(e.target.value)}>
+              {READING_TERMS.map(t=><option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
           <div>
             <label style={lbl}>Class</label>
             <select style={inp} value={filterClass} onChange={e=>setFilterClass(e.target.value)}>
@@ -2768,25 +2918,35 @@ function ReadingResultsTab({reading}){
           </div>
         </div>
         {shown.length===0
-          ? <p style={{color:'#999',textAlign:'center',padding:'30px'}}>No reading scores recorded yet{filterClass!=='all'?` for ${filterClass}`:''}. Scores appear here as class teachers complete their one-minute assessments.</p>
+          ? <p style={{color:'#999',textAlign:'center',padding:'30px'}}>No reading scores recorded yet for {termFilter}{filterClass!=='all'?` in ${filterClass}`:''}. Scores appear here as class teachers complete their one-minute assessments.</p>
           : <div style={{overflowX:'auto'}}>
               <table style={{width:'100%',borderCollapse:'collapse',fontSize:'14px'}}>
                 <thead>
                   <tr style={{background:'#f5f6ff',color:'#555',textAlign:'left'}}>
-                    {['Class','Surname','First Name','Words/Min','Approx Reading Age','Term','Date'].map((h,i)=>
+                    {['Class','Surname','First Name','Words/Min','Reading Age','Desired Age','Status','Term','Date'].map((h,i)=>
                       <th key={i} style={{padding:'10px 8px',borderBottom:'2px solid #e3e6f0',whiteSpace:'nowrap'}}>{h}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {shown.map((r,i)=>(
                     <tr key={i} style={{background:i%2?'#fafbff':'white'}}>
+                      {(()=>{
+                        const ageLabel = readingAgeLabelForRecord(r);
+                        const status = readingStatusFor(r.class_name, ageLabel);
+                        return <>
                       <td style={{padding:'9px 8px',whiteSpace:'nowrap'}}>{r.class_name}</td>
                       <td style={{padding:'9px 8px',fontWeight:600,color:'#333'}}>{r.surname}</td>
                       <td style={{padding:'9px 8px'}}>{r.firstname}</td>
                       <td style={{padding:'9px 8px',fontWeight:700,color:'#4c51bf'}}>{r.words_correct}</td>
-                      <td style={{padding:'9px 8px'}}>{r.reading_age||'—'}</td>
+                      <td style={{padding:'9px 8px'}}>{ageLabel||'—'}</td>
+                      <td style={{padding:'9px 8px'}}>{formatReadingAgeYears(status.target)}</td>
+                      <td style={{padding:'9px 8px'}}>
+                        <span style={{background:status.bg,color:status.fg,padding:'4px 8px',borderRadius:'999px',fontSize:'12px',fontWeight:700}}>{status.label}</span>
+                      </td>
                       <td style={{padding:'9px 8px'}}>{r.term||'—'}</td>
                       <td style={{padding:'9px 8px',whiteSpace:'nowrap',color:'#777'}}>{new Date(r.date_assessed||r.created_at).toLocaleDateString('en-ZA')}</td>
+                        </>;
+                      })()}
                     </tr>
                   ))}
                 </tbody>
