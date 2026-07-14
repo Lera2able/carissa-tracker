@@ -3999,7 +3999,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
           <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'14px',background:'white',padding:'8px',borderRadius:'12px',boxShadow:'0 4px 14px rgba(0,0,0,0.06)'}}>
             {[
               ['dashboard',`🏠 Dashboard`],
-              ['assessments',`📝 Assessments (${classAssessments.length})`],
+              ['assessments',`📝 Assessments`],
               ['progress',`📈 Track Progress (${classAssignments.length})`],
               ...(teacherAuth ? [['classlist',`👥 Classlist (${(CLASS_DATA[selClass]||[]).length})`]] : []),
               ...(teacherAuth ? [['reading','📖 1-Minute Reading']] : []),
