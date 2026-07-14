@@ -114,7 +114,8 @@ function render(filter){
         <div class="pinbox" id="p${i}">
           <div class="pin" id="pin${i}"></div>
           <p>This is your login PIN. Keep it private.<br/>
-          <a href="https://tracker.carissaprimary.co.za/?portal=teacher">Go to the Teacher Portal &rarr;</a></p>
+          Tap the PIN to open the eLearning Teacher Portal with your PIN already filled in.<br/>
+          <a id="portal${i}" href="https://tracker.carissaprimary.co.za/?portal=teacher">Go to the Teacher Portal &rarr;</a></p>
         </div>
       </div>
     </div>`).join("");
@@ -136,7 +137,11 @@ function reveal(i){
   const err = document.getElementById("err"+i);
   if(entered && entered === (t.email||"").toLowerCase()){
     document.getElementById("v"+i).style.display = "none";
-    document.getElementById("pin"+i).textContent = t.pin;
+    const href = "https://tracker.carissaprimary.co.za/?portal=teacher"
+      + "&email=" + encodeURIComponent(t.email||"")
+      + "&pin=" + encodeURIComponent(t.pin||"");
+    document.getElementById("pin"+i).innerHTML = `<a href="${href}" style="color:inherit;text-decoration:none;">${esc(t.pin||"")}</a>`;
+    document.getElementById("portal"+i).href = href;
     document.getElementById("p"+i).style.display = "block";
     err.style.display = "none";
   } else {
