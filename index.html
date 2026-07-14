@@ -3804,7 +3804,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
   const [loginEmail,setLoginEmail]=useState('');
   const [loginPin,setLoginPin]=useState('');
   const [rememberDevice,setRememberDevice]=useState(true);
-  const [assessmentTermView,setAssessmentTermView]=useState('Term 2');
+  const [assessmentTermView,setAssessmentTermView]=useState('');
   const [loginErr,setLoginErr]=useState('');
   const [loginBusy,setLoginBusy]=useState(false);
 
@@ -3908,7 +3908,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
     setChatBusy(false);
   };
 
-  const classAssessments = selClass ? assessments.filter(x=>x.class_name===selClass && x.term===assessmentTermView) : [];
+  const classAssessments = selClass && assessmentTermView ? assessments.filter(x=>x.class_name===selClass && x.term===assessmentTermView) : [];
   const classAssignments = selClass ? assignments.filter(x=>x.class_name===selClass) : [];
   const classInterventions = selClass ? interventions.filter(x=>x.class_name===selClass) : [];
 
@@ -4080,7 +4080,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
             <div style={card}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',marginBottom:'12px'}}>
                 <h3 style={{...ctitle,marginBottom:0}}>{selClass} — Assessments</h3>
-                {classAssessments.length>0 && (
+                {assessmentTermView && classAssessments.length>0 && (
                   <>
                     <button style={{...sbtn,background:'#10b981',fontSize:'13px'}} onClick={()=>exportClassSummary(selClass, classAssessments[0].phase, classAssessments)}>
                       📊 Class Summary
@@ -4091,21 +4091,26 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
                   </>
                 )}
               </div>
+              <p style={{color:'#666',fontSize:'13px',marginBottom:'12px'}}>Open the folder you want to view. Assessment marks stay inside the selected term folder.</p>
               <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'12px'}}>
                 {['Term 2','Term 3'].map(t=>(
-                  <button key={t} onClick={()=>setAssessmentTermView(t)} style={{padding:'9px 14px',borderRadius:'999px',border:assessmentTermView===t?'none':'1px solid #dbe2f0',background:assessmentTermView===t?'linear-gradient(135deg,#667eea,#764ba2)':'#f8fafc',color:assessmentTermView===t?'white':'#475569',fontWeight:700,cursor:'pointer'}}>
-                    {t==='Term 2' ? 'Term 2 eLearning Assessment' : 'Term 3'}
+                  <button key={t} onClick={()=>setAssessmentTermView(assessmentTermView===t?'':t)} style={{padding:'9px 14px',borderRadius:'999px',border:assessmentTermView===t?'none':'1px solid #dbe2f0',background:assessmentTermView===t?'linear-gradient(135deg,#667eea,#764ba2)':'#f8fafc',color:assessmentTermView===t?'white':'#475569',fontWeight:700,cursor:'pointer'}}>
+                    {assessmentTermView===t ? '📂 ' : '📁 '}{t==='Term 2' ? 'Term 2 eLearning Assessment' : 'Term 3'}
                   </button>
                 ))}
               </div>
-              {classAssessments.length===0 ? (
+              {!assessmentTermView ? (
+                <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'26px 18px',textAlign:'center',color:'#64748b'}}>
+                  Select a term folder above to open its assessments.
+                </div>
+              ) : classAssessments.length===0 ? (
                 <p style={{color:'#999',textAlign:'center',padding:'30px'}}>
                   {assessmentTermView==='Term 2'
                     ? 'No Term 2 eLearning assessments have been done for this class yet. Once an admin captures them in the Assessments tab they will appear here.'
                     : 'Term 3 is blank at the moment, so no assessment marks are shown yet.'}
                 </p>
               ) : (
-                <div style={{overflowX:'auto'}}>
+                <div style={{overflowX:'auto',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',background:'#fff'}}>
                   <table style={{width:'100%',borderCollapse:'collapse',fontSize:'13px'}}>
                     <thead>
                       <tr style={{borderBottom:'2px solid #eee',background:'#f8f9fa'}}>
