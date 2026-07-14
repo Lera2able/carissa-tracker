@@ -2605,6 +2605,7 @@ const SUBTABS = [
   ['reading','📖 Reading Results'],
   ['learners','👥 Learners'],
   ['registrations','🧑‍🏫 Registrations'],
+  ['chats','💬 Chats'],
   ['audit','🛡 Audit & Recovery'],
 ];
 
@@ -3187,6 +3188,157 @@ function TeacherRegistrationsTab(){
   );
 }
 
+/* ════════════════════════════════════════════════════════════════
+   ADMIN DASHBOARD: CHATS TAB
+   Teacher ↔ Admin support chat messages
+   ════════════════════════════════════════════════════════════════ */
+function ChatsAdminTab({chats,setChats}){
+  const [selEmail,setSelEmail]=useState('');
+  const [reply,setReply]=useState('');
+  const [sending,setSending]=useState(false);
+  const [search,setSearch]=useState('');
+
+  const threads = useMemo(()=>{
+    const map = {};
+    (chats||[]).forEach(m=>{
+      const email=(m.teacher_email||'').toLowerCase();
+      if(!email) return;
+      if(!map[email]) map[email] = {email, class_name:m.class_name||'', teacher_first_name:m.teacher_first_name||'', teacher_surname:m.teacher_surname||'', last_at:0, last_msg:''};
+      const t = map[email];
+      const ts = new Date(m.created_at||m.updated_at||0).getTime() || 0;
+      if(ts > t.last_at){
+        t.last_at = ts;
+        t.last_msg = m.message_text || '';
+        t.class_name = m.class_name || t.class_name;
+        t.teacher_first_name = m.teacher_first_name || t.teacher_first_name;
+        t.teacher_surname = m.teacher_surname || t.teacher_surname;
+      }
+    });
+    return Object.values(map)
+      .filter(t=>{
+        if(!search) return true;
+        const s = search.toLowerCase();
+        return [t.email,t.class_name,t.teacher_first_name,t.teacher_surname].some(v=>(v||'').toLowerCase().includes(s));
+      })
+      .sort((a,b)=>b.last_at-a.last_at);
+  },[chats,search]);
+
+  useEffect(()=>{
+    if(!selEmail && threads.length) setSelEmail(threads[0].email);
+  },[threads,selEmail]);
+
+  const selected = threads.find(t=>t.email===selEmail) || null;
+  const msgs = (chats||[])
+    .filter(m=>(m.teacher_email||'').toLowerCase()===selEmail)
+    .slice()
+    .sort((a,b)=>new Date(a.created_at||a.updated_at||0)-new Date(b.created_at||b.updated_at||0));
+
+  const send = async()=>{
+    if(!selected) return;
+    const text = reply.trim();
+    if(!text) return;
+    setSending(true);
+    try{
+      const payload = {
+        teacher_email: selected.email,
+        class_name: selected.class_name || null,
+        teacher_first_name: selected.teacher_first_name || null,
+        teacher_surname: selected.teacher_surname || null,
+        sender_role: 'admin',
+        message_text: text,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      const rows = await db.post('carissa_teacher_chats', payload);
+      setChats(prev=>[...(prev||[]), ...(rows||[payload])]);
+      setReply('');
+    }catch(e){
+      alert('Chat send failed. Please confirm the chat table exists in Supabase.\n\n' + e.message);
+    }
+    setSending(false);
+  };
+
+  return (
+    <div style={card}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'10px',marginBottom:'10px'}}>
+        <h2 style={{color:'#333',marginBottom:0}}>💬 Chats</h2>
+        <button onClick={async()=>{
+          try{
+            const data = await db.get('carissa_teacher_chats','order=created_at.asc');
+            setChats(data);
+          }catch(e){
+            alert('Could not refresh chats: ' + e.message);
+          }
+        }} style={{...sbtn,background:'#667eea',fontSize:'13px'}}>🔄 Refresh</button>
+      </div>
+      <p style={{color:'#888',fontSize:'13px',marginBottom:'14px'}}>Messages from teachers appear here. Reply to send a message back to the teacher.</p>
+
+      <div style={{display:'grid',gridTemplateColumns:'320px 1fr',gap:'12px',alignItems:'start'}}>
+        <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px'}}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search teacher/class/email..."
+            style={{...inp,marginBottom:'10px',fontSize:'13px'}}/>
+          {threads.length===0 ? (
+            <div style={{color:'#999',textAlign:'center',padding:'18px'}}>No chat messages yet.</div>
+          ) : (
+            <div style={{display:'grid',gap:'8px',maxHeight:'520px',overflow:'auto',paddingRight:'4px'}}>
+              {threads.map(t=>{
+                const name = [t.teacher_first_name,t.teacher_surname].filter(Boolean).join(' ').trim();
+                return (
+                  <div key={t.email} onClick={()=>setSelEmail(t.email)}
+                    style={{cursor:'pointer',padding:'10px 10px',borderRadius:'10px',border:'1px solid #e2e8f0',background:selEmail===t.email?'#eef2ff':'white'}}>
+                    <div style={{fontWeight:800,color:'#333',fontSize:'13px'}}>{name || t.email}</div>
+                    <div style={{fontSize:'12px',color:'#64748b'}}>{t.class_name || '—'} · {t.email}</div>
+                    <div style={{fontSize:'12px',color:'#64748b',marginTop:'4px',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{t.last_msg || ''}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',minHeight:'560px',display:'flex',flexDirection:'column'}}>
+          {!selected ? (
+            <div style={{color:'#999',textAlign:'center',padding:'24px'}}>Select a teacher to view the chat.</div>
+          ) : (
+            <>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',marginBottom:'10px'}}>
+                <div>
+                  <div style={{fontWeight:900,color:'#333'}}>{([selected.teacher_first_name,selected.teacher_surname].filter(Boolean).join(' ')||selected.email)}</div>
+                  <div style={{fontSize:'12px',color:'#64748b'}}>{selected.class_name || '—'} · {selected.email}</div>
+                </div>
+              </div>
+
+              <div style={{flex:1,overflow:'auto',background:'#f8fafc',borderRadius:'10px',padding:'10px',border:'1px solid #eef2f7'}}>
+                {msgs.length===0 ? (
+                  <div style={{color:'#999',textAlign:'center',padding:'18px'}}>No messages in this chat yet.</div>
+                ) : msgs.map((m,i)=>{
+                  const isAdmin = (m.sender_role||'')==='admin';
+                  return (
+                    <div key={m.id||i} style={{display:'flex',justifyContent:isAdmin?'flex-end':'flex-start',marginBottom:'8px'}}>
+                      <div style={{maxWidth:'80%',background:isAdmin?'#667eea':'#ffffff',color:isAdmin?'white':'#111827',border:'1px solid '+(isAdmin?'#667eea':'#e2e8f0'),borderRadius:'12px',padding:'10px 12px'}}>
+                        <div style={{fontSize:'13px',whiteSpace:'pre-wrap'}}>{m.message_text}</div>
+                        <div style={{fontSize:'11px',opacity:0.8,marginTop:'6px'}}>{new Date(m.created_at||m.updated_at||Date.now()).toLocaleString('en-ZA')}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div style={{display:'flex',gap:'8px',marginTop:'10px',alignItems:'flex-end',flexWrap:'wrap'}}>
+                <textarea value={reply} onChange={e=>setReply(e.target.value)} rows={2} placeholder="Type your reply to the teacher..."
+                  style={{...inp,flex:1,minWidth:'240px',resize:'vertical',fontSize:'13px'}}/>
+                <button onClick={send} disabled={sending || !reply.trim()} style={{...sbtn,background:'#10b981',opacity:(sending||!reply.trim())?0.6:1}}>
+                  {sending?'Sending...':'Send'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AdminDashboard(){
   const [subTab,setSubTab]=useState('overview');
   const [interventions,setInterventions]=useState([]);
@@ -3194,6 +3346,7 @@ function AdminDashboard(){
   const [assignments,setAssignments]=useState([]);
   const [assessments,setAssessments]=useState([]);
   const [reading,setReading]=useState([]);
+  const [chats,setChats]=useState([]);
   const [overrides,setOverrides]=useState([]);
   const [loading,setLoading]=useState(true);
   const [projectMode,setProjectMode]=useState(null); // null | {phase}
@@ -3201,13 +3354,14 @@ function AdminDashboard(){
   useEffect(()=>{
     (async()=>{
       try{
-        const [int_, res, asn, asm, ovr, rdg] = await Promise.all([
+        const [int_, res, asn, asm, ovr, rdg, ch] = await Promise.all([
           db.get('carissa_interventions','order=created_at.desc'),
           db.get('carissa_resources','order=created_at.desc'),
           db.get('carissa_resource_assignments','order=created_at.desc'),
           db.get('carissa_elearning_assessments','order=created_at.desc'),
           db.get('carissa_learner_overrides','order=updated_at.desc'),
           db.get('carissa_reading_assessments','order=created_at.desc').catch(()=>[]),
+          db.get('carissa_teacher_chats','order=created_at.asc').catch(()=>[]),
         ]);
         setInterventions(int_);
         setResources(res);
@@ -3215,6 +3369,7 @@ function AdminDashboard(){
         setAssessments(asm);
         setOverrides(ovr);
         setReading(rdg);
+        setChats(ch);
       }catch(e){console.error(e);}
       setLoading(false);
     })();
@@ -3249,6 +3404,7 @@ function AdminDashboard(){
       {subTab==='reading' && <ReadingResultsTab reading={reading}/>}
       {subTab==='learners' && <LearnersAdminTab overrides={overrides} setOverrides={setOverrides} setAssessments={setAssessments}/>}
       {subTab==='registrations' && <TeacherRegistrationsTab/>}
+      {subTab==='chats' && <ChatsAdminTab chats={chats} setChats={setChats}/>}
       {subTab==='audit' && <AuditAdminTab/>}
 
       {projectMode && (
@@ -3678,12 +3834,16 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
     setTeacherAuth(null); setSelClass(''); setLoginEmail(''); setLoginPin(''); setLoginErr('');
   };
 
-  const [tab,setTab]=useState('assessments');
+  const [tab,setTab]=useState('dashboard');
   const [assessments,setAssessments]=useState([]);
   const [assignments,setAssignments]=useState([]);
   const [resources,setResources]=useState([]);
   const [reading,setReading]=useState([]);
   const [interventions,setInterventions]=useState([]);
+  const [chatRows,setChatRows]=useState([]);
+  const [chatText,setChatText]=useState('');
+  const [chatBusy,setChatBusy]=useState(false);
+  const [chatErr,setChatErr]=useState('');
   const [loading,setLoading]=useState(true);
   const [msg,setMsg]=useState('');
   const [notes,setNotes]=useState({});
@@ -3704,6 +3864,49 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
       setLoading(false);
     })();
   },[]);
+
+  const loadTeacherChats = useCallback(async()=>{
+    if(!teacherAuth?.email) return;
+    setChatErr('');
+    try{
+      const email = teacherAuth.email.toLowerCase();
+      const rows = await db.get('carissa_teacher_chats',`teacher_email=eq.${encodeURIComponent(email)}&order=created_at.asc`).catch(()=>[]);
+      setChatRows(rows||[]);
+    }catch(e){
+      setChatErr('Chat is not set up yet. Please ask the administrator to create the chat table.');
+    }
+  },[teacherAuth]);
+
+  useEffect(()=>{
+    if(!adminAccess && teacherAuth?.email){
+      loadTeacherChats();
+    }
+  },[adminAccess,teacherAuth,loadTeacherChats]);
+
+  const sendTeacherChat = async()=>{
+    const text = chatText.trim();
+    if(!text || !teacherAuth?.email) return;
+    setChatBusy(true);
+    setChatErr('');
+    try{
+      const payload = {
+        teacher_email: teacherAuth.email.toLowerCase(),
+        teacher_first_name: teacherAuth.first_name || null,
+        teacher_surname: teacherAuth.surname || null,
+        class_name: teacherAuth.class_name || selClass || null,
+        sender_role: 'teacher',
+        message_text: text,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      const rows = await db.post('carissa_teacher_chats', payload);
+      setChatRows(prev=>[...(prev||[]), ...(rows||[payload])]);
+      setChatText('');
+    }catch(e){
+      setChatErr('Message could not be sent. Please confirm the chat table exists.');
+    }
+    setChatBusy(false);
+  };
 
   const classAssessments = selClass ? assessments.filter(x=>x.class_name===selClass && x.term===assessmentTermView) : [];
   const classAssignments = selClass ? assignments.filter(x=>x.class_name===selClass) : [];
@@ -3795,6 +3998,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
           {/* Sub-tabs */}
           <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'14px',background:'white',padding:'8px',borderRadius:'12px',boxShadow:'0 4px 14px rgba(0,0,0,0.06)'}}>
             {[
+              ['dashboard',`🏠 Dashboard`],
               ['assessments',`📝 Assessments (${classAssessments.length})`],
               ['progress',`📈 Track Progress (${classAssignments.length})`],
               ...(teacherAuth ? [['classlist',`👥 Classlist (${(CLASS_DATA[selClass]||[]).length})`]] : []),
@@ -3806,6 +4010,65 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
               </button>
             ))}
           </div>
+
+          {/* ── Dashboard tab (Teacher ↔ Admin chat + AI tools) ──────────────── */}
+          {tab==='dashboard' && teacherAuth && (
+            <div style={card}>
+              <h3 style={{...ctitle,marginBottom:'10px'}}>🏠 Dashboard</h3>
+              <p style={{color:'#666',fontSize:'13px',marginBottom:'14px'}}>
+                Use this chat to request worksheets, resources, learner support, or any help from the eLearning support team.
+                Messages go to the administrator dashboard under <strong>Chats</strong>.
+              </p>
+
+              <div style={{display:'grid',gridTemplateColumns:'1fr',gap:'12px'}}>
+                {/* Folder: Chats */}
+                <div style={{border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',background:'#f8fafc'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',marginBottom:'10px'}}>
+                    <div style={{fontWeight:900,color:'#333'}}>💬 Chat with Admin</div>
+                    <button onClick={loadTeacherChats} style={{...sbtn,background:'#667eea',fontSize:'12px'}}>🔄 Refresh</button>
+                  </div>
+                  {chatErr && <div style={{background:'#fff7ed',border:'1px solid #fed7aa',color:'#9a3412',padding:'10px 12px',borderRadius:'10px',fontSize:'13px',marginBottom:'10px'}}>{chatErr}</div>}
+
+                  <div style={{background:'white',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'10px',maxHeight:'340px',overflow:'auto'}}>
+                    {(chatRows||[]).length===0 ? (
+                      <div style={{color:'#999',textAlign:'center',padding:'18px'}}>No messages yet. Type a request below to start a chat.</div>
+                    ) : (chatRows||[]).map((m,i)=>{
+                      const isTeacher = (m.sender_role||'')==='teacher';
+                      return (
+                        <div key={m.id||i} style={{display:'flex',justifyContent:isTeacher?'flex-end':'flex-start',marginBottom:'8px'}}>
+                          <div style={{maxWidth:'80%',background:isTeacher?'#667eea':'#ffffff',color:isTeacher?'white':'#111827',border:'1px solid '+(isTeacher?'#667eea':'#e2e8f0'),borderRadius:'12px',padding:'10px 12px'}}>
+                            <div style={{fontSize:'13px',whiteSpace:'pre-wrap'}}>{m.message_text}</div>
+                            <div style={{fontSize:'11px',opacity:0.8,marginTop:'6px'}}>{new Date(m.created_at||m.updated_at||Date.now()).toLocaleString('en-ZA')}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div style={{display:'flex',gap:'8px',marginTop:'10px',alignItems:'flex-end',flexWrap:'wrap'}}>
+                    <textarea value={chatText} onChange={e=>setChatText(e.target.value)} rows={2} placeholder="Type your request (worksheets, resources, support)..."
+                      style={{...inp,flex:1,minWidth:'240px',resize:'vertical',fontSize:'13px'}}/>
+                    <button onClick={sendTeacherChat} disabled={chatBusy || !chatText.trim()} style={{...sbtn,background:'#10b981',opacity:(chatBusy||!chatText.trim())?0.6:1}}>
+                      {chatBusy?'Sending...':'Send'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Folder: AI tools */}
+                <div style={{border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',background:'#ffffff'}}>
+                  <div style={{fontWeight:900,color:'#333',marginBottom:'8px'}}>🤖 AI support (optional)</div>
+                  <p style={{color:'#666',fontSize:'13px',marginBottom:'10px'}}>
+                    We can add an AI helper inside the dashboard, similar to Khanmigo/Gemini for Educators.
+                    For security, it needs a server-side key (we should not put API keys in the browser).
+                  </p>
+                  <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+                    <a href="https://www.khanmigo.ai/teachers" target="_blank" rel="noreferrer" style={{...sbtn,background:'#667eea',textDecoration:'none',fontSize:'13px'}}>Open Khanmigo</a>
+                    <a href="https://edu.google.com/gemini/" target="_blank" rel="noreferrer" style={{...sbtn,background:'#7c3aed',textDecoration:'none',fontSize:'13px'}}>Open Gemini for Education</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ── Reading (1-Min) tab ──────────────── */}
           {tab==='reading' && teacherAuth && (
