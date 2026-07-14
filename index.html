@@ -3814,6 +3814,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
   const [assessmentTermView,setAssessmentTermView]=useState('');
   const [loginErr,setLoginErr]=useState('');
   const [loginBusy,setLoginBusy]=useState(false);
+  const autoLoginRef = useRef(false);
 
   const teacherLogin = async()=>{
     setLoginErr('');
@@ -3839,6 +3840,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
     saveTeacherSession(null, false);
     if(TEACHER_SESSION){ TEACHER_SESSION=null; window.location.href=`${window.location.pathname}?portal=teacher`; return; }
     setTeacherAuth(null); setSelClass(''); setLoginEmail(''); setLoginPin(''); setLoginErr('');
+    autoLoginRef.current = false;
   };
 
   const [tab,setTab]=useState('dashboard');
@@ -3889,6 +3891,13 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
       loadTeacherChats();
     }
   },[adminAccess,teacherAuth,loadTeacherChats]);
+
+  useEffect(()=>{
+    if(adminAccess || teacherAuth || loginBusy || autoLoginRef.current) return;
+    if(!loginEmail.trim() || !loginPin.trim()) return;
+    autoLoginRef.current = true;
+    teacherLogin();
+  },[adminAccess,teacherAuth,loginBusy,loginEmail,loginPin]);
 
   const sendTeacherChat = async()=>{
     const text = chatText.trim();
@@ -3973,7 +3982,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
           <p style={{color:'#666',fontSize:'13px',textAlign:'center',marginBottom:'16px'}}>Log in with the email address you registered and the PIN sent to you. You will only see your own class.</p>
           {(loginEmail || loginPin) && (
             <div style={{background:'#eef2ff',color:'#3730a3',border:'1px solid #c7d2fe',borderRadius:'10px',padding:'10px 12px',fontSize:'13px',marginBottom:'12px',lineHeight:1.45}}>
-              Your secure link has filled in your login details. Check them, then tap <strong>Log in</strong>.
+              Your secure link has filled in your login details. We will try to log you in automatically.
             </div>
           )}
           <div style={{marginBottom:'12px'}}>
