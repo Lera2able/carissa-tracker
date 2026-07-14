@@ -3857,6 +3857,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
   const [msg,setMsg]=useState('');
   const [notes,setNotes]=useState({});
   const showMsg = m => {setMsg(m);setTimeout(()=>setMsg(''),5000);};
+  const secureLinkMode = !!(loginEmail || loginPin);
 
   useEffect(()=>{
     (async()=>{
@@ -3980,30 +3981,41 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
         <div style={{...card,maxWidth:'440px',margin:'0 auto'}}>
           <h3 style={{...ctitle,textAlign:'center'}}>🔐 Teacher Login</h3>
           <p style={{color:'#666',fontSize:'13px',textAlign:'center',marginBottom:'16px'}}>Log in with the email address you registered and the PIN sent to you. You will only see your own class.</p>
-          {(loginEmail || loginPin) && (
-            <div style={{background:'#eef2ff',color:'#3730a3',border:'1px solid #c7d2fe',borderRadius:'10px',padding:'10px 12px',fontSize:'13px',marginBottom:'12px',lineHeight:1.45}}>
-              Your secure link has filled in your login details. We will try to log you in automatically.
+          {secureLinkMode ? (
+            <div style={{background:'#eef2ff',color:'#3730a3',border:'1px solid #c7d2fe',borderRadius:'14px',padding:'20px 18px',textAlign:'center'}}>
+              <div style={{fontSize:'34px',marginBottom:'10px'}}>{loginBusy ? '🔄' : '🔐'}</div>
+              <div style={{fontWeight:800,fontSize:'16px',marginBottom:'6px'}}>{loginBusy ? 'Logging you in...' : 'Secure teacher login'}</div>
+              <div style={{fontSize:'13px',lineHeight:1.5}}>
+                Your secure link has filled in your login details.
+                {loginBusy ? ' Please wait while we sign you in.' : ' If the login does not continue automatically, tap below.'}
+              </div>
+              {!loginBusy && (
+                <button style={{...btn,width:'100%',marginTop:'14px'}} onClick={teacherLogin}>Continue to Dashboard →</button>
+              )}
             </div>
+          ) : (
+            <>
+              <div style={{marginBottom:'12px'}}>
+                <label style={lbl}>Email Address</label>
+                <input style={inp} type="email" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} autoComplete="email"/>
+              </div>
+              <div style={{marginBottom:'6px'}}>
+                <label style={lbl}>PIN</label>
+                <input style={inp} type="password" inputMode="numeric" value={loginPin} onChange={e=>setLoginPin(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')teacherLogin();}}/>
+              </div>
+              <label style={{display:'flex',alignItems:'center',gap:'10px',margin:'10px 0 4px',cursor:'pointer',fontSize:'13px',color:'#555',fontWeight:500}}>
+                <input
+                  type="checkbox"
+                  checked={rememberDevice}
+                  onChange={e=>setRememberDevice(e.target.checked)}
+                  style={{width:'16px',height:'16px',cursor:'pointer'}}
+                />
+                Remember this device so the teacher stays logged in on this PC or phone
+              </label>
+              <button style={{...btn,width:'100%',marginTop:'10px',opacity:loginBusy?0.6:1}} disabled={loginBusy} onClick={teacherLogin}>{loginBusy?'Signing in...':'Log in →'}</button>
+            </>
           )}
-          <div style={{marginBottom:'12px'}}>
-            <label style={lbl}>Email Address</label>
-            <input style={inp} type="email" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} autoComplete="email"/>
-          </div>
-          <div style={{marginBottom:'6px'}}>
-            <label style={lbl}>PIN</label>
-            <input style={inp} type="password" inputMode="numeric" value={loginPin} onChange={e=>setLoginPin(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')teacherLogin();}}/>
-          </div>
-          <label style={{display:'flex',alignItems:'center',gap:'10px',margin:'10px 0 4px',cursor:'pointer',fontSize:'13px',color:'#555',fontWeight:500}}>
-            <input
-              type="checkbox"
-              checked={rememberDevice}
-              onChange={e=>setRememberDevice(e.target.checked)}
-              style={{width:'16px',height:'16px',cursor:'pointer'}}
-            />
-            Remember this device so the teacher stays logged in on this PC or phone
-          </label>
           {loginErr && <div style={{background:'#fdecec',color:'#c0392b',border:'1px solid #f5c6c6',borderRadius:'10px',padding:'11px 13px',fontSize:'13px',margin:'10px 0',lineHeight:1.45}}>{loginErr}</div>}
-          <button style={{...btn,width:'100%',marginTop:'10px',opacity:loginBusy?0.6:1}} disabled={loginBusy} onClick={teacherLogin}>{loginBusy?'Signing in...':'Log in →'}</button>
           <p style={{color:'#999',fontSize:'12px',textAlign:'center',marginTop:'14px'}}>No login yet? <a href="teacher-register.html" style={{color:'#667eea',fontWeight:600}}>Register here</a>, then the coordinator will send your PIN. Forgotten your PIN? Contact Ma'am Mogajane.</p>
         </div>
       ) : !selClass ? (
