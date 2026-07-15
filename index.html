@@ -4174,6 +4174,10 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
       await db.patch('carissa_resource_assignments',`id=eq.${id}`,{status,progress_notes:note||null,updated_at:new Date().toISOString()});
       setAssignments(p=>p.map(a=>a.id===id?{...a,status,progress_notes:note}:a));
       showMsg('✓ Progress updated.');
+      try{
+        const title = resTitle(id);
+        await logTeacherAudit(`progress_update:${status}:${String(title||'').slice(0,40)}`, selClass);
+      }catch(e){}
     }catch(e){alert('Error: '+e.message);}
   };
 
@@ -4280,9 +4284,9 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
         <div style={card}>
           <p style={{color:'#999',textAlign:'center',padding:'30px'}}>Pick a class above to view assessments and progress. The Resources tab works without a class too.</p>
           <div style={{textAlign:'center'}}>
-            <button style={{...sbtn,background:'#667eea'}} onClick={()=>setTab('resources')}>📁 Skip ahead to Resources Library</button>
+            <button style={{...sbtn,background:'#667eea'}} onClick={()=>{ setTab('resources'); logTeacherAudit('open_tab:resources', selClass); }}>📁 Skip ahead to Resources Library</button>
           </div>
-          {tab==='resources' && <ResourcesLibrary resources={resources}/>}
+          {tab==='resources' && <ResourcesLibrary resources={resources} onAudit={(type,r)=>logTeacherAudit(`${type}:${String(r?.title||'').slice(0,40)}`, selClass)}/>}
         </div>
       ) : (
         <>
@@ -4296,7 +4300,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
               ...(teacherAuth ? [['reading','📖 1-Minute Reading']] : []),
               ['resources',`📁 Resources (${resources.length})`],
             ].map(([k,l])=>(
-              <button key={k} onClick={()=>setTab(k)} style={{padding:'10px 16px',borderRadius:'8px',border:'none',cursor:'pointer',fontSize:'14px',fontWeight:600,flex:'1 1 auto',minWidth:'130px',background:tab===k?'linear-gradient(135deg,#667eea,#764ba2)':'transparent',color:tab===k?'white':'#666'}}>
+              <button key={k} onClick={()=>{ setTab(k); logTeacherAudit(`open_tab:${k}`, selClass); }} style={{padding:'10px 16px',borderRadius:'8px',border:'none',cursor:'pointer',fontSize:'14px',fontWeight:600,flex:'1 1 auto',minWidth:'130px',background:tab===k?'linear-gradient(135deg,#667eea,#764ba2)':'transparent',color:tab===k?'white':'#666'}}>
                 {l}
               </button>
             ))}
@@ -4385,7 +4389,11 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
               <p style={{color:'#666',fontSize:'13px',marginBottom:'12px'}}>Open the folder you want to view. Assessment marks stay inside the selected term folder.</p>
               <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'12px'}}>
                 {['Term 2','Term 3'].map(t=>(
-                  <button key={t} onClick={()=>setAssessmentTermView(assessmentTermView===t?'':t)} style={{padding:'9px 14px',borderRadius:'999px',border:assessmentTermView===t?'none':'1px solid #dbe2f0',background:assessmentTermView===t?'linear-gradient(135deg,#667eea,#764ba2)':'#f8fafc',color:assessmentTermView===t?'white':'#475569',fontWeight:700,cursor:'pointer'}}>
+                  <button key={t} onClick={()=>{
+                    const next = assessmentTermView===t ? '' : t;
+                    setAssessmentTermView(next);
+                    if(next) logTeacherAudit(`open_assessments:${next}`, selClass);
+                  }} style={{padding:'9px 14px',borderRadius:'999px',border:assessmentTermView===t?'none':'1px solid #dbe2f0',background:assessmentTermView===t?'linear-gradient(135deg,#667eea,#764ba2)':'#f8fafc',color:assessmentTermView===t?'white':'#475569',fontWeight:700,cursor:'pointer'}}>
                     {assessmentTermView===t ? '📂 ' : '📁 '}{t==='Term 2' ? 'Term 2 eLearning Assessment' : 'Term 3'}
                   </button>
                 ))}
@@ -4504,7 +4512,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
           )}
 
           {/* ── Resources tab ─────────────────────── */}
-          {tab==='resources' && <ResourcesLibrary resources={resources}/>}
+          {tab==='resources' && <ResourcesLibrary resources={resources} onAudit={(type,r)=>logTeacherAudit(`${type}:${String(r?.title||'').slice(0,40)}`, selClass)}/>}
         </>
       )}
     </div>
@@ -4585,7 +4593,7 @@ function TeacherClassListTab({selClass, teacherAuth, interventions, setIntervent
 }
 
 /* ── Resources Library (read-only, shared by LearnWorld) ──── */
-function ResourcesLibrary({resources}){
+function ResourcesLibrary({resources, onAudit}){
   const [search,setSearch]=useState('');
   const [filterType,setFT]=useState('all');
   const typeIcon = t => RESOURCE_TYPES.find(x=>x.v===t)?.icon || '📎';
@@ -4645,7 +4653,14 @@ function ResourcesLibrary({resources}){
                       </div>
                       {r.description && <p style={{fontSize:'13px',color:'#666',marginTop:'4px'}}>{r.description}</p>}
                     </div>
-                    <a href={r.url} target="_blank" rel="noreferrer" download={/\.zip($|\?)/i.test(r.url||'') ? '' : undefined} style={{...sbtn,background:'#28a745',textDecoration:'none',display:'inline-block',flexShrink:0}}>
+                    <a
+                      href={r.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      download={/\.zip($|\?)/i.test(r.url||'') ? '' : undefined}
+                      onClick={()=>{ try{ onAudit && onAudit('resource_open', r); }catch(e){} }}
+                      style={{...sbtn,background:'#28a745',textDecoration:'none',display:'inline-block',flexShrink:0}}
+                    >
                       {/\.zip($|\?)/i.test(r.url||'') ? '⬇ Download' : '🔗 Open / Download'}
                     </a>
                   </div>
