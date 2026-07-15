@@ -1,0 +1,13 @@
+name = "carissa-tracker-ai"
+main = "src/index.js"
+compatibility_date = "2026-07-15"
+
+# Deploy this Worker and then add a route in Cloudflare:
+#   tracker.carissaprimary.co.za/api/ai*
+#
+# Secrets to set (via dashboard or `wrangler secret put`):
+#   OPENAI_API_KEY
+#
+# Optional:
+#   ALLOWED_ORIGIN (default: https://tracker.carissaprimary.co.za)
+

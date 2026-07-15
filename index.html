@@ -3475,7 +3475,7 @@ function TeacherAuditTab({events,setEvents}){
    NOTE: Needs a server-side /api/ai endpoint to actually answer.
    ════════════════════════════════════════════════════════════════ */
 function TraeAssistantTab(){
-  const [msgs,setMsgs]=useState([{role:'system',text:'Type a request here if you need help managing the tracker website or resources. (AI responses require the /api/ai endpoint to be configured.)'}]);
+  const [msgs,setMsgs]=useState([{role:'system',text:'Type a request here if you need help managing the tracker website or resources. If the AI endpoint is configured, you will get an answer here.'}]);
   const [text,setText]=useState('');
   const [busy,setBusy]=useState(false);
 
@@ -3504,7 +3504,7 @@ function TraeAssistantTab(){
   return (
     <div style={card}>
       <h2 style={{color:'#333',marginBottom:'10px'}}>🤖 TRAE Assistant</h2>
-      <p style={{color:'#888',fontSize:'13px',marginBottom:'12px'}}>This is a built-in help panel. To enable real AI replies inside the website, we must connect a secure server-side endpoint.</p>
+      <p style={{color:'#888',fontSize:'13px',marginBottom:'12px'}}>If you see “AI is not configured yet”, it means `/api/ai` is not connected. Once connected, you can ask for help here anytime.</p>
       <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',maxHeight:'420px',overflow:'auto',marginBottom:'10px'}}>
         {msgs.map((m,i)=>(
           <div key={i} style={{display:'flex',justifyContent:m.role==='user'?'flex-end':'flex-start',marginBottom:'8px'}}>
