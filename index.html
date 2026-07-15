@@ -538,6 +538,13 @@ function ResourcesTab({resources,setResources}){
   };
 
   const typeIcon = t => RESOURCE_TYPES.find(x=>x.v===t)?.icon || '📎';
+  const resourceFolder = r => (r.grade_range || 'General').trim() || 'General';
+  const groupedResources = resources.reduce((acc,r)=>{
+    const folder = resourceFolder(r);
+    if(!acc[folder]) acc[folder]=[];
+    acc[folder].push(r);
+    return acc;
+  },{});
 
   return (
     <div>
@@ -591,23 +598,34 @@ function ResourcesTab({resources,setResources}){
         {resources.length===0
           ? <p style={{color:'#999',textAlign:'center',padding:'30px'}}>No resources added yet. Add one above.</p>
           : (
-            <div style={{display:'grid',gap:'12px'}}>
-              {resources.map(r=>(
-                <div key={r.id} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'16px',background:'#f8f9fa',borderRadius:'10px',borderLeft:'5px solid #667eea',gap:'12px',flexWrap:'wrap'}}>
-                  <div style={{flex:1,minWidth:'200px'}}>
-                    <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px'}}>
-                      <span style={{fontSize:'20px'}}>{typeIcon(r.type)}</span>
-                      <span style={{fontWeight:700,color:'#333',fontSize:'15px'}}>{r.title}</span>
-                    </div>
-                    <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'4px'}}>
-                      {r.subject && <span style={{background:'#667eea22',color:'#667eea',padding:'2px 8px',borderRadius:'10px',fontSize:'11px'}}>{r.subject}</span>}
-                      {r.grade_range && <span style={{background:'#28a74522',color:'#28a745',padding:'2px 8px',borderRadius:'10px',fontSize:'11px'}}>{r.grade_range}</span>}
-                    </div>
-                    {r.description && <p style={{fontSize:'13px',color:'#666',marginTop:'4px'}}>{r.description}</p>}
+            <div style={{display:'grid',gap:'14px'}}>
+              {Object.entries(groupedResources).map(([folder,rows])=>(
+                <div key={folder} style={{border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',background:'#fff'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'10px'}}>
+                    <span style={{fontSize:'20px'}}>📁</span>
+                    <span style={{fontWeight:800,color:'#334155'}}>{folder}</span>
+                    <span style={{background:'#eef2ff',color:'#4f46e5',padding:'2px 8px',borderRadius:'999px',fontSize:'11px',fontWeight:700}}>{rows.length}</span>
                   </div>
-                  <div style={{display:'flex',gap:'8px',flexShrink:0}}>
-                    <a href={r.url} target="_blank" rel="noreferrer" style={{...sbtn,background:'#28a745',textDecoration:'none',display:'inline-block'}}>🔗 Open</a>
-                    <button style={{...sbtn,background:'#dc3545'}} onClick={()=>handleDelete(r.id)}>🗑 Delete</button>
+                  <div style={{display:'grid',gap:'12px'}}>
+                    {rows.map(r=>(
+                      <div key={r.id} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'16px',background:'#f8f9fa',borderRadius:'10px',borderLeft:'5px solid #667eea',gap:'12px',flexWrap:'wrap'}}>
+                        <div style={{flex:1,minWidth:'200px'}}>
+                          <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px'}}>
+                            <span style={{fontSize:'20px'}}>{typeIcon(r.type)}</span>
+                            <span style={{fontWeight:700,color:'#333',fontSize:'15px'}}>{r.title}</span>
+                          </div>
+                          <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'4px'}}>
+                            {r.subject && <span style={{background:'#667eea22',color:'#667eea',padding:'2px 8px',borderRadius:'10px',fontSize:'11px'}}>{r.subject}</span>}
+                            {r.grade_range && <span style={{background:'#28a74522',color:'#28a745',padding:'2px 8px',borderRadius:'10px',fontSize:'11px'}}>{r.grade_range}</span>}
+                          </div>
+                          {r.description && <p style={{fontSize:'13px',color:'#666',marginTop:'4px'}}>{r.description}</p>}
+                        </div>
+                        <div style={{display:'flex',gap:'8px',flexShrink:0}}>
+                          <a href={r.url} target="_blank" rel="noreferrer" download={/\.zip($|\?)/i.test(r.url||'') ? '' : undefined} style={{...sbtn,background:'#28a745',textDecoration:'none',display:'inline-block'}}>{/\.zip($|\?)/i.test(r.url||'') ? '⬇ Download' : '🔗 Open'}</a>
+                          <button style={{...sbtn,background:'#dc3545'}} onClick={()=>handleDelete(r.id)}>🗑 Delete</button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -4331,15 +4349,22 @@ function ResourcesLibrary({resources}){
   const [search,setSearch]=useState('');
   const [filterType,setFT]=useState('all');
   const typeIcon = t => RESOURCE_TYPES.find(x=>x.v===t)?.icon || '📎';
+  const resourceFolder = r => (r.grade_range || 'General').trim() || 'General';
   const filtered = resources.filter(r=>{
-    const ms = !search.trim() || (`${r.title} ${r.subject||''} ${r.grade_range||''} ${r.description||''}`).toLowerCase().includes(search.toLowerCase());
+    const ms = !search.trim() || (`${r.title} ${r.subject||''} ${r.grade_range||''} ${r.description||''} ${resourceFolder(r)}`).toLowerCase().includes(search.toLowerCase());
     const mt = filterType==='all' || r.type===filterType;
     return ms && mt;
   });
+  const grouped = filtered.reduce((acc,r)=>{
+    const folder = resourceFolder(r);
+    if(!acc[folder]) acc[folder]=[];
+    acc[folder].push(r);
+    return acc;
+  },{});
   return (
     <div style={card}>
       <h3 style={ctitle}>📁 Resource Library</h3>
-      <p style={{color:'#666',fontSize:'13px',marginBottom:'14px'}}>Resources shared by the admin. Click <strong>Open</strong> to view or download.</p>
+      <p style={{color:'#666',fontSize:'13px',marginBottom:'14px'}}>Resources shared by the admin. Open a folder, then click <strong>Open</strong> or <strong>Download</strong>.</p>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:'10px',marginBottom:'14px'}}>
         <div>
           <label style={lbl}>Search</label>
@@ -4358,21 +4383,34 @@ function ResourcesLibrary({resources}){
           {resources.length===0 ? 'No resources have been uploaded yet.' : 'No resources match your filter.'}
         </p>
       ) : (
-        <div style={{display:'grid',gap:'10px'}}>
-          {filtered.map(r=>(
-            <div key={r.id} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'14px',background:'#f8f9fa',borderRadius:'10px',borderLeft:'5px solid #667eea',gap:'12px',flexWrap:'wrap'}}>
-              <div style={{flex:1,minWidth:'200px'}}>
-                <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px'}}>
-                  <span style={{fontSize:'20px'}}>{typeIcon(r.type)}</span>
-                  <span style={{fontWeight:700,color:'#333',fontSize:'15px'}}>{r.title}</span>
-                </div>
-                <div style={{display:'flex',gap:'6px',flexWrap:'wrap',marginBottom:'4px'}}>
-                  {r.subject && <span style={{background:'#667eea22',color:'#667eea',padding:'2px 8px',borderRadius:'10px',fontSize:'11px'}}>{r.subject}</span>}
-                  {r.grade_range && <span style={{background:'#28a74522',color:'#28a745',padding:'2px 8px',borderRadius:'10px',fontSize:'11px'}}>{r.grade_range}</span>}
-                </div>
-                {r.description && <p style={{fontSize:'13px',color:'#666',marginTop:'4px'}}>{r.description}</p>}
+        <div style={{display:'grid',gap:'12px'}}>
+          {Object.entries(grouped).map(([folder,rows])=>(
+            <div key={folder} style={{border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',background:'#fff'}}>
+              <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'10px'}}>
+                <span style={{fontSize:'20px'}}>📁</span>
+                <span style={{fontWeight:800,color:'#334155'}}>{folder}</span>
+                <span style={{background:'#eef2ff',color:'#4f46e5',padding:'2px 8px',borderRadius:'999px',fontSize:'11px',fontWeight:700}}>{rows.length}</span>
               </div>
-              <a href={r.url} target="_blank" rel="noreferrer" style={{...sbtn,background:'#28a745',textDecoration:'none',display:'inline-block',flexShrink:0}}>🔗 Open / Download</a>
+              <div style={{display:'grid',gap:'10px'}}>
+                {rows.map(r=>(
+                  <div key={r.id} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'14px',background:'#f8f9fa',borderRadius:'10px',borderLeft:'5px solid #667eea',gap:'12px',flexWrap:'wrap'}}>
+                    <div style={{flex:1,minWidth:'200px'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px'}}>
+                        <span style={{fontSize:'20px'}}>{typeIcon(r.type)}</span>
+                        <span style={{fontWeight:700,color:'#333',fontSize:'15px'}}>{r.title}</span>
+                      </div>
+                      <div style={{display:'flex',gap:'6px',flexWrap:'wrap',marginBottom:'4px'}}>
+                        {r.subject && <span style={{background:'#667eea22',color:'#667eea',padding:'2px 8px',borderRadius:'10px',fontSize:'11px'}}>{r.subject}</span>}
+                        {r.grade_range && <span style={{background:'#28a74522',color:'#28a745',padding:'2px 8px',borderRadius:'10px',fontSize:'11px'}}>{r.grade_range}</span>}
+                      </div>
+                      {r.description && <p style={{fontSize:'13px',color:'#666',marginTop:'4px'}}>{r.description}</p>}
+                    </div>
+                    <a href={r.url} target="_blank" rel="noreferrer" download={/\.zip($|\?)/i.test(r.url||'') ? '' : undefined} style={{...sbtn,background:'#28a745',textDecoration:'none',display:'inline-block',flexShrink:0}}>
+                      {/\.zip($|\?)/i.test(r.url||'') ? '⬇ Download' : '🔗 Open / Download'}
+                    </a>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
