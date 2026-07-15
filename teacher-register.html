@@ -157,6 +157,44 @@ function validEmail(v){
 }
 function tidy(s){ return s.trim().replace(/\s+/g," "); }
 
+function randPin(){
+  return String(Math.floor(10000 + Math.random()*90000));
+}
+
+async function getAllUsedPins(){
+  try{
+    const url = SB + "/rest/v1/carissa_teacher_registrations?select=pin&pin=not.is.null&limit=5000";
+    const res = await fetch(url, { headers: { apikey: KEY, Authorization: "Bearer " + KEY } });
+    if(!res.ok) return new Set();
+    const rows = await res.json();
+    return new Set((rows||[]).map(r=>String(r.pin||"")).filter(Boolean));
+  }catch(e){
+    return new Set();
+  }
+}
+
+async function ensureTeacherPin(email){
+  // If the teacher already has a PIN, reuse it. Otherwise generate a new unique PIN.
+  let existing = [];
+  try{
+    const q = SB + "/rest/v1/carissa_teacher_registrations?select=class_name,pin&email=eq." + encodeURIComponent(email) + "&order=created_at.desc&limit=2000";
+    const r0 = await fetch(q, { headers: { apikey: KEY, Authorization: "Bearer " + KEY } });
+    if(r0.ok) existing = await r0.json();
+  }catch(e){}
+
+  const existingPin = (existing||[]).map(x=>String(x.pin||"").trim()).find(Boolean) || "";
+  if(existingPin) return { pin: existingPin, existing };
+
+  const used = await getAllUsedPins();
+  let pin = randPin();
+  let tries = 0;
+  while(used.has(pin) && tries < 20){
+    pin = randPin();
+    tries += 1;
+  }
+  return { pin, existing };
+}
+
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   clearError();
@@ -182,14 +220,25 @@ form.addEventListener("submit", async (e) => {
   btn.textContent = "Submitting...";
 
   try {
-    // Avoid duplicate submissions: load existing classes for this email once.
-    let existing = [];
-    try{
-      const q = SB + "/rest/v1/carissa_teacher_registrations?select=class_name&email=eq." + encodeURIComponent(email);
-      const r0 = await fetch(q, { headers: { apikey: KEY, Authorization: "Bearer " + KEY } });
-      if(r0.ok) existing = await r0.json();
-    }catch(e){}
+    // Ensure 1 teacher = 1 PIN (works across multiple selected classes)
+    const pinInfo = await ensureTeacherPin(email);
+    const pin = pinInfo.pin;
+    const existing = pinInfo.existing || [];
     const existingSet = new Set((existing||[]).map(x=>x.class_name));
+
+    // Ensure any existing rows for this teacher are enabled and share the same PIN
+    try{
+      await fetch(SB + "/rest/v1/carissa_teacher_registrations?email=eq." + encodeURIComponent(email), {
+        method: "PATCH",
+        headers: {
+          apikey: KEY,
+          Authorization: "Bearer " + KEY,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal"
+        },
+        body: JSON.stringify({ pin: pin, login_enabled: true, updated_at: new Date().toISOString() })
+      });
+    }catch(e){}
 
     for(const className of classNames){
       if(existingSet.has(className)) continue;
@@ -206,7 +255,10 @@ form.addEventListener("submit", async (e) => {
           surname: surname,
           class_name: className,
           whatsapp: whatsapp,
-          email: email
+          email: email,
+          pin: pin,
+          login_enabled: true,
+          updated_at: new Date().toISOString()
         })
       });
 
@@ -224,7 +276,8 @@ form.addEventListener("submit", async (e) => {
     document.getElementById("successMsg").innerHTML =
       "Thank you, <b>" + firstName + " " + surname + "</b>.<br/>" +
       "Your registration for <b>" + classNames.join(", ") + "</b> has been received.<br/><br/>" +
-      "Ma'am Mogajane will create your tracker login and send the details to <b>" + email + "</b>.";
+      "You can access your login PIN here: <a href='https://tracker.carissaprimary.co.za/pins' target='_blank' rel='noreferrer'>https://tracker.carissaprimary.co.za/pins</a><br/>" +
+      "Tap your name, confirm your email address, then click your PIN to log in.";
   } catch(err) {
     showError("Could not reach the server. Please check your internet connection and try again.");
     console.error(err);
