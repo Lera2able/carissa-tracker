@@ -325,7 +325,52 @@ function summarizeUpdateResult(className, term, extractedRows, updatedRows, unch
   return lines.filter(Boolean).join("\n\n");
 }
 
-async function handleReadingUpdateAction(env, message, attachments) {
+function summarizePreviewResult(className, term, proposedUpdates, unchangedRows, unmatchedRows) {
+  const lines = [
+    `I found ${proposedUpdates.length} proposed change(s) for ${className} ${term}.`,
+    "Please review them, then click `Apply changes` if they look correct.",
+    proposedUpdates
+      .slice(0, 12)
+      .map(
+        (row) => `- ${row.firstname} ${row.surname}: ${row.before} → ${row.after} words/min`
+      )
+      .join("\n"),
+  ];
+
+  if (unchangedRows.length) {
+    lines.push(
+      `${unchangedRows.length} learner record(s) already match the attached sheet and will not be changed.`
+    );
+  }
+
+  if (unmatchedRows.length) {
+    lines.push(
+      `I could not safely match ${unmatchedRows.length} row(s) from the image to the current roster. They will be ignored unless you correct them manually.`
+    );
+  }
+
+  return lines.filter(Boolean).join("\n\n");
+}
+
+function buildReadingUpdatePreview(className, term, proposedUpdates, unchangedRows, unmatchedRows) {
+  return {
+    answer: summarizePreviewResult(className, term, proposedUpdates, unchangedRows, unmatchedRows),
+    pendingAction: {
+      type: "reading_updates",
+      className,
+      term,
+      updates: proposedUpdates.map((row) => ({
+        id: row.id,
+        surname: row.surname,
+        firstname: row.firstname,
+        before: row.before,
+        after: row.after,
+      })),
+    },
+  };
+}
+
+async function buildReadingUpdateProposal(env, message, attachments) {
   const { className, term } = parseClassAndTerm(message);
   if (!className || !term) {
     return {
@@ -415,25 +460,98 @@ async function handleReadingUpdateAction(env, message, attachments) {
     };
   }
 
-  for (const row of proposedUpdates) {
+  if (!proposedUpdates.length) {
+    return {
+      answer: summarizeUpdateResult(
+        className,
+        term,
+        extractedRows,
+        [],
+        unchangedRows,
+        unmatchedRows
+      ),
+    };
+  }
+
+  return buildReadingUpdatePreview(
+    className,
+    term,
+    proposedUpdates,
+    unchangedRows,
+    unmatchedRows
+  );
+}
+
+async function applyReadingUpdates(pendingAction) {
+  if (!pendingAction || pendingAction.type !== "reading_updates") {
+    return { answer: "There is no pending reading update to apply." };
+  }
+
+  const className = String(pendingAction.className || "").trim();
+  const term = String(pendingAction.term || "").trim();
+  const updates = Array.isArray(pendingAction.updates) ? pendingAction.updates : [];
+
+  if (!className || !term || !updates.length) {
+    return { answer: "The pending reading update is incomplete, so I did not apply anything." };
+  }
+
+  const records = await fetchReadingRecords(className, term);
+  const recordMap = new Map(records.map((row) => [String(row.id), row]));
+
+  const updatedRows = [];
+  const unchangedRows = [];
+  const unmatchedRows = [];
+
+  for (const row of updates) {
+    const existing = recordMap.get(String(row.id || ""));
+    if (!existing) {
+      unmatchedRows.push({
+        surname: row.surname,
+        firstname: row.firstname,
+        words_correct: row.after,
+      });
+      continue;
+    }
+    const currentWords = Number(existing.words_correct);
+    const beforeWords = Number(row.before);
+    const afterWords = Number(row.after);
+
+    if (currentWords === afterWords) {
+      unchangedRows.push({
+        surname: existing.surname,
+        firstname: existing.firstname,
+        words_correct: currentWords,
+      });
+      continue;
+    }
+
+    if (currentWords !== beforeWords) {
+      unmatchedRows.push({
+        surname: existing.surname,
+        firstname: existing.firstname,
+        words_correct: afterWords,
+      });
+      continue;
+    }
+
     const patched = await supabasePatch("carissa_reading_assessments", `id=eq.${row.id}`, {
-      words_correct: row.after,
-      reading_age: readingAgeFromWords(row.after),
+      words_correct: afterWords,
+      reading_age: readingAgeFromWords(afterWords),
       updated_at: new Date().toISOString(),
     });
     if (patched?.[0]) {
-      updatedRows.push(row);
+      updatedRows.push({
+        surname: existing.surname,
+        firstname: existing.firstname,
+        before: beforeWords,
+        after: afterWords,
+      });
     }
   }
 
   return {
     answer: summarizeUpdateResult(
-      className,
-      term,
-      extractedRows,
-      updatedRows,
-      unchangedRows,
-      unmatchedRows
+      className, term, updates, updatedRows, unchangedRows, unmatchedRows
     ),
   };
 }
@@ -513,15 +631,20 @@ export default {
       return jsonResponse({ error: "Invalid JSON body" }, 400, corsOrigin);
     }
 
+    const action = String(body?.action || "").trim();
     const message = String(body?.message || "").trim();
     const attachments = sanitizeAttachments(body?.attachments);
     if (!message && attachments.length === 0) {
-      return jsonResponse({ error: "Missing `message`" }, 400, corsOrigin);
+      if (action !== "apply_reading_updates") {
+        return jsonResponse({ error: "Missing `message`" }, 400, corsOrigin);
+      }
     }
 
     try {
-      const result = wantsReadingSheetUpdate(message, attachments)
-        ? await handleReadingUpdateAction(env, message, attachments)
+      const result = action === "apply_reading_updates"
+        ? await applyReadingUpdates(body?.pendingAction)
+        : wantsReadingSheetUpdate(message, attachments)
+        ? await buildReadingUpdateProposal(env, message, attachments)
         : await handleGeneralAssistant(env, message, attachments);
 
       return jsonResponse(result, 200, corsOrigin);

@@ -3493,6 +3493,22 @@ function TraeAssistantTab(){
     if(fileRef.current) fileRef.current.value = '';
   };
 
+  const addAssistantMessage = data => {
+    const answer = data.answer || data.message || JSON.stringify(data);
+    setMsgs(p=>[...p,{role:'assistant',text:answer,pendingAction:data.pendingAction||null}]);
+  };
+
+  const requestAssistant = async payload => {
+    const res = await fetch('/api/ai', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(data?.error || 'AI is not configured on this website yet.');
+    addAssistantMessage(data);
+  };
+
   const send = async()=>{
     const t = text.trim();
     if(!t && files.length===0) return;
@@ -3518,20 +3534,27 @@ function TraeAssistantTab(){
           url
         });
       }
-      const res = await fetch('/api/ai', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          message:t || 'Please review the attached file(s).',
-          attachments:uploadedFiles
-        })
+      await requestAssistant({
+        message:t || 'Please review the attached file(s).',
+        attachments:uploadedFiles
       });
-      if(!res.ok) throw new Error('AI is not configured on this website yet.');
-      const data = await res.json();
-      const answer = data.answer || data.message || JSON.stringify(data);
-      setMsgs(p=>[...p,{role:'assistant',text:answer}]);
     }catch(e){
       setMsgs(p=>[...p,{role:'assistant',text:e?.message ? `Upload or AI request failed: ${e.message}` : 'AI is not configured yet. If you want this to work, we must add a secure backend (Cloudflare Worker or Supabase Edge Function) for Gemini/OpenAI.'}]);
+    }
+    setBusy(false);
+  };
+
+  const applyPendingAction = async(pendingAction)=>{
+    if(!pendingAction || busy) return;
+    setMsgs(p=>[...p,{role:'user',text:'Apply changes'}]);
+    setBusy(true);
+    try{
+      await requestAssistant({
+        action:'apply_reading_updates',
+        pendingAction
+      });
+    }catch(e){
+      setMsgs(p=>[...p,{role:'assistant',text:e?.message ? `Apply failed: ${e.message}` : 'Could not apply the pending changes.'}]);
     }
     setBusy(false);
   };
@@ -3543,7 +3566,16 @@ function TraeAssistantTab(){
       <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',maxHeight:'420px',overflow:'auto',marginBottom:'10px'}}>
         {msgs.map((m,i)=>(
           <div key={i} style={{display:'flex',justifyContent:m.role==='user'?'flex-end':'flex-start',marginBottom:'8px'}}>
-            <div style={{maxWidth:'86%',background:m.role==='user'?'#667eea':'#ffffff',color:m.role==='user'?'white':'#111827',border:'1px solid '+(m.role==='user'?'#667eea':'#e2e8f0'),borderRadius:'12px',padding:'10px 12px',whiteSpace:'pre-wrap',fontSize:'13px'}}>{m.text}</div>
+            <div style={{maxWidth:'86%',background:m.role==='user'?'#667eea':'#ffffff',color:m.role==='user'?'white':'#111827',border:'1px solid '+(m.role==='user'?'#667eea':'#e2e8f0'),borderRadius:'12px',padding:'10px 12px',whiteSpace:'pre-wrap',fontSize:'13px'}}>
+              <div>{m.text}</div>
+              {m.role==='assistant' && m.pendingAction && (
+                <div style={{marginTop:'10px'}}>
+                  <button onClick={()=>applyPendingAction(m.pendingAction)} disabled={busy} style={{...sbtn,background:'#f97316',fontSize:'12px',padding:'8px 12px',opacity:busy?0.6:1}}>
+                    Apply changes
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         ))}
       </div>
