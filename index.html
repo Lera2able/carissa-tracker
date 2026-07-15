@@ -3824,7 +3824,7 @@ root.render(<App/>);
    Class-filtered view of: assessments, assignment progress, resources
    ════════════════════════════════════════════════════════════════ */
 function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
-  const [selClass,setSelClass]=useState(TEACHER_SESSION ? TEACHER_SESSION.class_name : '');
+  const [selClass,setSelClass]=useState(TEACHER_SESSION ? (TEACHER_SESSION.active_class_name || TEACHER_SESSION.class_name) : '');
   const [teacherAuth,setTeacherAuth]=useState(TEACHER_SESSION); // logged-in teacher (portal session or in-page login)
   const [loginEmail,setLoginEmail]=useState(PREFILLED_TEACHER_EMAIL);
   const [loginPin,setLoginPin]=useState(PREFILLED_TEACHER_PIN);
@@ -3844,10 +3844,17 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
       const rows = await db.get('carissa_teacher_registrations',
         `email=ilike.${encodeURIComponent(email)}&pin=eq.${encodeURIComponent(pin)}&login_enabled=eq.true&order=created_at.desc`);
       if(rows.length){
-        saveTeacherSession(rows[0], rememberDevice);
-        TEACHER_SESSION = rows[0];
-        setTeacherAuth(rows[0]);
-        setSelClass(rows[0].class_name);
+        const classNames = [...new Set(rows.map(r=>r.class_name).filter(Boolean))];
+        const merged = {
+          ...rows[0],
+          class_name: classNames[0] || rows[0].class_name,
+          class_names: classNames,
+          active_class_name: classNames[0] || rows[0].class_name
+        };
+        saveTeacherSession(merged, rememberDevice);
+        TEACHER_SESSION = merged;
+        setTeacherAuth(merged);
+        setSelClass(merged.active_class_name);
       }else{
         setLoginErr('Login failed. Please check your email and PIN, or contact the coordinator if you have not received your login details yet.');
       }
@@ -3876,6 +3883,9 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
   const [notes,setNotes]=useState({});
   const showMsg = m => {setMsg(m);setTimeout(()=>setMsg(''),5000);};
   const secureLinkMode = !!(loginEmail || loginPin);
+  const teacherClasses = !adminAccess && teacherAuth
+    ? (teacherAuth.class_names && teacherAuth.class_names.length ? teacherAuth.class_names : [teacherAuth.class_name]).filter(Boolean)
+    : [];
 
   useEffect(()=>{
     (async()=>{
@@ -3928,7 +3938,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
         teacher_email: teacherAuth.email.toLowerCase(),
         teacher_first_name: teacherAuth.first_name || null,
         teacher_surname: teacherAuth.surname || null,
-        class_name: teacherAuth.class_name || selClass || null,
+        class_name: selClass || teacherAuth.active_class_name || teacherAuth.class_name || null,
         sender_role: 'teacher',
         message_text: text,
         created_at: new Date().toISOString(),
@@ -3987,10 +3997,31 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
                 Welcome, {teacherAuth.first_name} {teacherAuth.surname}
               </div>
               <div style={{fontSize:'13px',opacity:0.95,lineHeight:1.5}}>
-                Teacher linked to <strong>{teacherAuth.email}</strong> • Class: <strong>{teacherAuth.class_name}</strong>
+                Teacher linked to <strong>{teacherAuth.email}</strong> • Access: <strong>{teacherClasses.join(', ') || teacherAuth.class_name}</strong>
               </div>
             </div>
-            <button onClick={teacherLogout} style={{padding:'7px 14px',borderRadius:'8px',border:'1px solid rgba(255,255,255,0.6)',background:'transparent',color:'white',fontWeight:600,cursor:'pointer',fontSize:'13px'}}>Sign out</button>
+            <div style={{display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap'}}>
+              {teacherClasses.length > 1 && (
+                <select
+                  style={{...inp,color:'#333',minWidth:'180px',margin:0}}
+                  value={selClass}
+                  onChange={e=>{
+                    const next = e.target.value;
+                    setSelClass(next);
+                    setTeacherAuth(prev=>{
+                      if(!prev) return prev;
+                      const updated = {...prev, active_class_name: next};
+                      saveTeacherSession(updated, rememberDevice);
+                      TEACHER_SESSION = updated;
+                      return updated;
+                    });
+                  }}
+                >
+                  {teacherClasses.map(n=><option key={n} value={n}>{n}</option>)}
+                </select>
+              )}
+              <button onClick={teacherLogout} style={{padding:'7px 14px',borderRadius:'8px',border:'1px solid rgba(255,255,255,0.6)',background:'transparent',color:'white',fontWeight:600,cursor:'pointer',fontSize:'13px'}}>Sign out</button>
+            </div>
           </div>
         )}
       </div>
@@ -3998,7 +4029,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
       {!adminAccess && !teacherAuth ? (
         <div style={{...card,maxWidth:'440px',margin:'0 auto'}}>
           <h3 style={{...ctitle,textAlign:'center'}}>🔐 Teacher Login</h3>
-          <p style={{color:'#666',fontSize:'13px',textAlign:'center',marginBottom:'16px'}}>Log in with the email address you registered and the PIN sent to you. You will only see your own class.</p>
+          <p style={{color:'#666',fontSize:'13px',textAlign:'center',marginBottom:'16px'}}>Log in with the email address you registered and the PIN sent to you. If you are linked to more than one class, one PIN will let you switch between those classes.</p>
           {secureLinkMode ? (
             <div style={{background:'#eef2ff',color:'#3730a3',border:'1px solid #c7d2fe',borderRadius:'14px',padding:'20px 18px',textAlign:'center'}}>
               <div style={{fontSize:'34px',marginBottom:'10px'}}>{loginBusy ? '🔄' : '🔐'}</div>
