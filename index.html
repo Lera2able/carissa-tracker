@@ -3093,50 +3093,93 @@ function TeacherRegistrationsTab(){
   },[]);
   useEffect(()=>{ load(); },[load]);
 
-  // Emails appearing more than once (so duplicates are easy to spot)
-  const dupEmails = useMemo(()=>{
-    const c={};
-    rows.forEach(r=>{ const e=(r.email||'').toLowerCase(); c[e]=(c[e]||0)+1; });
-    return new Set(Object.keys(c).filter(e=>c[e]>1));
+  // Group registrations by teacher email so multi-class teachers appear once.
+  const groups = useMemo(()=>{
+    const map = {};
+    rows.forEach(r=>{
+      const email = (r.email||'').trim().toLowerCase();
+      if(!email) return;
+      if(!map[email]){
+        map[email] = {
+          email,
+          first_name: r.first_name || '',
+          surname: r.surname || '',
+          whatsapp: r.whatsapp || '',
+          class_names: [],
+          pins: new Set(),
+          login_enabled_any: false,
+          latest_created_at: r.created_at,
+          row_ids: [],
+        };
+      }
+      const g = map[email];
+      g.first_name = g.first_name || r.first_name || '';
+      g.surname = g.surname || r.surname || '';
+      g.whatsapp = g.whatsapp || r.whatsapp || '';
+      if(r.class_name) g.class_names.push(r.class_name);
+      if(r.pin) g.pins.add(String(r.pin));
+      if(r.login_enabled) g.login_enabled_any = true;
+      g.row_ids.push(r.id);
+      if(new Date(r.created_at) > new Date(g.latest_created_at)) g.latest_created_at = r.created_at;
+    });
+    return Object.values(map).map(g=>{
+      const classes = [...new Set(g.class_names)].sort((a,b)=>a.localeCompare(b));
+      const pins = [...g.pins];
+      return {
+        ...g,
+        class_names: classes,
+        pin: pins.length===1 ? pins[0] : (pins.length>1 ? 'MIXED' : ''),
+        pin_count: pins.length,
+      };
+    }).sort((a,b)=>{
+      const an = `${a.surname} ${a.first_name}`.toLowerCase();
+      const bn = `${b.surname} ${b.first_name}`.toLowerCase();
+      return an.localeCompare(bn);
+    });
   },[rows]);
 
-  const filtered = rows.filter(r=>{
+  const filtered = groups.filter(g=>{
     if(!search) return true;
     const s=search.toLowerCase();
-    return [r.first_name,r.surname,r.class_name,r.whatsapp,r.email].some(v=>(v||'').toLowerCase().includes(s));
+    return [g.first_name,g.surname,g.email,g.whatsapp,(g.class_names||[]).join(' ')].some(v=>(v||'').toLowerCase().includes(s));
   });
 
   const registeredClasses = new Set(rows.map(r=>r.class_name));
   const missing = CLASS_NAMES.filter(c=>!registeredClasses.has(c));
 
-  const createLogin = async(r)=>{
-    const isNew = !r.pin;
-    if(!isNew && !confirm(`${r.first_name} ${r.surname} already has a PIN. Generate a NEW one?\n\nThe old PIN will stop working.`)) return;
+  const createLogin = async(g)=>{
+    const isNew = !g.pin || g.pin==='MIXED';
+    const name = `${g.first_name} ${g.surname}`.trim() || g.email;
+    if(!isNew && !confirm(`${name} already has a PIN. Generate a NEW one?\n\nThe old PIN will stop working for ALL their classes.`)) return;
     const pin = String(Math.floor(10000 + Math.random()*90000));
     try{
-      await db.patch('carissa_teacher_registrations',`id=eq.${r.id}`,{pin, login_enabled:true, updated_at:new Date().toISOString()});
-      setRows(prev=>prev.map(x=>x.id===r.id?{...x,pin,login_enabled:true}:x));
-      alert(`Login ${isNew?'created':'regenerated'} for ${r.first_name} ${r.surname} (${r.class_name}).\n\nEmail: ${r.email}\nPIN: ${pin}\n\nPlease send these details to the teacher.`);
+      await db.patch('carissa_teacher_registrations',`email=ilike.${encodeURIComponent(g.email)}`,{pin, login_enabled:true, updated_at:new Date().toISOString()});
+      setRows(prev=>prev.map(x=>(x.email||'').toLowerCase()===g.email?{...x,pin,login_enabled:true}:x));
+      alert(`Login ${isNew?'created':'regenerated'} for ${name}.\n\nEmail: ${g.email}\nPIN: ${pin}\n\nThis PIN works for ALL linked classes:\n${(g.class_names||[]).join(', ')}`);
     }catch(e){ alert('Could not save the PIN: '+e.message); }
   };
 
-  const handleDelete = async(r)=>{
-    if(!confirm(`Delete the registration for ${r.first_name} ${r.surname} (${r.class_name})?\n\nThis cannot be undone.`)) return;
+  const handleDelete = async(g)=>{
+    const name = `${g.first_name} ${g.surname}`.trim() || g.email;
+    if(!confirm(`Delete ALL registrations for ${name}?\n\nClasses:\n${(g.class_names||[]).join(', ')}\n\nThis cannot be undone.`)) return;
     try{
-      await db.del('carissa_teacher_registrations',`id=eq.${r.id}`);
-      setRows(prev=>prev.filter(x=>x.id!==r.id));
+      await db.del('carissa_teacher_registrations',`email=ilike.${encodeURIComponent(g.email)}`);
+      setRows(prev=>prev.filter(x=>(x.email||'').toLowerCase()!==g.email));
     }catch(e){ alert('Delete failed: '+e.message); }
   };
 
   const exportExcel = ()=>{
-    const data = rows.map(r=>({
-      'First Name':r.first_name,'Surname':r.surname,'Class':r.class_name,
-      'WhatsApp':r.whatsapp,'Email':r.email,
-      'Login PIN':r.pin||'',
-      'Submitted':new Date(r.created_at).toLocaleString('en-ZA')
+    const data = groups.map(g=>({
+      'First Name':g.first_name,
+      'Surname':g.surname,
+      'Classes':(g.class_names||[]).join(', '),
+      'WhatsApp':g.whatsapp,
+      'Email':g.email,
+      'Login PIN':g.pin && g.pin!=='MIXED' ? g.pin : '',
+      'Submitted (latest)':new Date(g.latest_created_at).toLocaleString('en-ZA')
     }));
     const ws = XLSX.utils.json_to_sheet(data);
-    ws['!cols']=[{wch:16},{wch:18},{wch:18},{wch:16},{wch:30},{wch:10},{wch:20}];
+    ws['!cols']=[{wch:16},{wch:18},{wch:44},{wch:16},{wch:30},{wch:10},{wch:24}];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Teacher Registrations');
     XLSX.writeFile(wb, 'Carissa_Teacher_Registrations.xlsx');
@@ -3147,7 +3190,7 @@ function TeacherRegistrationsTab(){
   return (
     <div style={card}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'10px',marginBottom:'6px'}}>
-        <h2 style={{color:'#333'}}>🧑‍🏫 Teacher Registrations ({rows.length})</h2>
+        <h2 style={{color:'#333'}}>🧑‍🏫 Teacher Registrations ({groups.length})</h2>
         <div style={{display:'flex',gap:'8px'}}>
           <button onClick={load} style={{padding:'9px 14px',borderRadius:'8px',border:'2px solid #667eea',background:'white',color:'#667eea',fontWeight:600,cursor:'pointer'}}>🔄 Refresh</button>
           <button onClick={exportExcel} disabled={!rows.length} style={{padding:'9px 14px',borderRadius:'8px',border:'none',background:'linear-gradient(135deg,#667eea,#764ba2)',color:'white',fontWeight:600,cursor:rows.length?'pointer':'not-allowed',opacity:rows.length?1:.5}}>⬇ Export to Excel</button>
@@ -3169,32 +3212,36 @@ function TeacherRegistrationsTab(){
             <table style={{width:'100%',borderCollapse:'collapse',fontSize:'14px'}}>
               <thead>
                 <tr style={{background:'#f5f6ff',color:'#555',textAlign:'left'}}>
-                  {['#','First Name','Surname','Class','WhatsApp','Email','Login','Submitted',''].map((h,i)=>
+                  {['#','First Name','Surname','Classes','WhatsApp','Email','Login','Submitted',''].map((h,i)=>
                     <th key={i} style={{padding:'10px 8px',borderBottom:'2px solid #e3e6f0',whiteSpace:'nowrap'}}>{h}</th>)}
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((r,i)=>{
-                  const dup = dupEmails.has((r.email||'').toLowerCase());
+                {filtered.map((g,i)=>{
                   return (
-                    <tr key={r.id} style={{background: dup?'#fff8e6': i%2?'#fafbff':'white'}}>
+                    <tr key={g.email} style={{background: i%2?'#fafbff':'white'}}>
                       <td style={{padding:'9px 8px',color:'#999'}}>{i+1}</td>
-                      <td style={{padding:'9px 8px',fontWeight:600,color:'#333'}}>{r.first_name}</td>
-                      <td style={{padding:'9px 8px',fontWeight:600,color:'#333'}}>{r.surname}</td>
-                      <td style={{padding:'9px 8px'}}>{r.class_name}</td>
-                      <td style={{padding:'9px 8px',whiteSpace:'nowrap'}}>{r.whatsapp}</td>
-                      <td style={{padding:'9px 8px'}}>{r.email}{dup && <span title="This email appears more than once" style={{marginLeft:'6px'}}>⚠️</span>}</td>
-                      <td style={{padding:'9px 8px',whiteSpace:'nowrap'}}>
-                        {r.pin
-                          ? <span>
-                              <code style={{background:'#eef1ff',color:'#4c51bf',padding:'3px 8px',borderRadius:'6px',fontWeight:700,letterSpacing:'1px'}}>{r.pin}</code>
-                              <button onClick={()=>createLogin(r)} title="Generate a new PIN" style={{border:'none',background:'transparent',cursor:'pointer',marginLeft:'4px'}}>↻</button>
-                            </span>
-                          : <button onClick={()=>createLogin(r)} style={{padding:'5px 10px',borderRadius:'7px',border:'none',background:'linear-gradient(135deg,#667eea,#764ba2)',color:'white',fontSize:'12px',fontWeight:600,cursor:'pointer'}}>🔑 Create login</button>}
+                      <td style={{padding:'9px 8px',fontWeight:600,color:'#333'}}>{g.first_name}</td>
+                      <td style={{padding:'9px 8px',fontWeight:600,color:'#333'}}>{g.surname}</td>
+                      <td style={{padding:'9px 8px',minWidth:'240px'}}>
+                        <span style={{fontSize:'13px'}}>{g.class_names.join(', ')}</span>
+                        {g.class_names.length>1 && <span style={{marginLeft:'6px'}} title="Multi-class teacher">🧩</span>}
                       </td>
-                      <td style={{padding:'9px 8px',whiteSpace:'nowrap',color:'#777'}}>{new Date(r.created_at).toLocaleDateString('en-ZA')} {new Date(r.created_at).toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'})}</td>
+                      <td style={{padding:'9px 8px',whiteSpace:'nowrap'}}>{g.whatsapp}</td>
+                      <td style={{padding:'9px 8px'}}>{g.email}</td>
+                      <td style={{padding:'9px 8px',whiteSpace:'nowrap'}}>
+                        {g.pin && g.pin!=='MIXED'
+                          ? <span>
+                              <code style={{background:'#eef1ff',color:'#4c51bf',padding:'3px 8px',borderRadius:'6px',fontWeight:700,letterSpacing:'1px'}}>{g.pin}</code>
+                              <button onClick={()=>createLogin(g)} title="Generate a new PIN" style={{border:'none',background:'transparent',cursor:'pointer',marginLeft:'4px'}}>↻</button>
+                            </span>
+                          : <button onClick={()=>createLogin(g)} style={{padding:'5px 10px',borderRadius:'7px',border:'none',background:'linear-gradient(135deg,#667eea,#764ba2)',color:'white',fontSize:'12px',fontWeight:600,cursor:'pointer'}}>
+                              {g.pin==='MIXED'?'🧹 Fix PIN':'🔑 Create login'}
+                            </button>}
+                      </td>
+                      <td style={{padding:'9px 8px',whiteSpace:'nowrap',color:'#777'}}>{new Date(g.latest_created_at).toLocaleDateString('en-ZA')} {new Date(g.latest_created_at).toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'})}</td>
                       <td style={{padding:'9px 8px'}}>
-                        <button onClick={()=>handleDelete(r)} title="Delete this entry" style={{border:'none',background:'transparent',cursor:'pointer',fontSize:'15px'}}>🗑</button>
+                        <button onClick={()=>handleDelete(g)} title="Delete this teacher (all classes)" style={{border:'none',background:'transparent',cursor:'pointer',fontSize:'15px'}}>🗑</button>
                       </td>
                     </tr>
                   );

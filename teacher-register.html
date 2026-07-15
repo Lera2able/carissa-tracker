@@ -182,7 +182,17 @@ form.addEventListener("submit", async (e) => {
   btn.textContent = "Submitting...";
 
   try {
+    // Avoid duplicate submissions: load existing classes for this email once.
+    let existing = [];
+    try{
+      const q = SB + "/rest/v1/carissa_teacher_registrations?select=class_name&email=eq." + encodeURIComponent(email);
+      const r0 = await fetch(q, { headers: { apikey: KEY, Authorization: "Bearer " + KEY } });
+      if(r0.ok) existing = await r0.json();
+    }catch(e){}
+    const existingSet = new Set((existing||[]).map(x=>x.class_name));
+
     for(const className of classNames){
+      if(existingSet.has(className)) continue;
       const res = await fetch(SB + "/rest/v1/carissa_teacher_registrations", {
         method: "POST",
         headers: {

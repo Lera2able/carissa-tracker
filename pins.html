@@ -168,6 +168,31 @@ async function load(){
     const res = await fetch(url, { headers: { apikey: KEY, Authorization: "Bearer " + KEY } });
     teachers = await res.json();
     if(!Array.isArray(teachers)) teachers = [];
+
+    // Group by teacher email so multi-class teachers appear once with one PIN.
+    const map = {};
+    teachers.forEach(t=>{
+      const email = (t.email||"").toLowerCase().trim();
+      if(!email) return;
+      if(!map[email]){
+        map[email] = {
+          first_name: t.first_name || "",
+          surname: t.surname || "",
+          email,
+          pin: t.pin || "",
+          class_names: []
+        };
+      }
+      const g = map[email];
+      if(t.class_name) g.class_names.push(t.class_name);
+      // Prefer an existing pin if present (should be unified server-side)
+      if(!g.pin && t.pin) g.pin = t.pin;
+    });
+    teachers = Object.values(map).map(t=>{
+      const classes = Array.from(new Set(t.class_names)).sort((a,b)=>a.localeCompare(b));
+      return { ...t, class_name: classes.join(", ") };
+    }).sort((a,b)=>(`${a.surname} ${a.first_name}`).localeCompare(`${b.surname} ${b.first_name}`));
+
     if(teachers.length > 6) document.getElementById("q").style.display = "block";
     render("");
   }catch(e){
