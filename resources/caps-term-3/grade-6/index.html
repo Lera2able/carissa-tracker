@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Grade 6 (CAPS Term 3)</title>
+    <style>
+      body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:#f6f7fb;color:#111827}
+      .wrap{max-width:1180px;margin:0 auto;padding:22px 14px}
+      .crumb{font-size:12px;margin-bottom:10px}
+      .crumb a{color:#4f46e5;text-decoration:none;font-weight:700}
+      .card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:14px 14px;box-shadow:0 10px 30px rgba(17,24,39,0.06)}
+      h1{margin:0 0 6px;font-size:20px}
+      p{margin:0 0 12px;color:#4b5563;font-size:13px;line-height:1.5}
+      .layout{display:grid;grid-template-columns:360px 1fr;gap:12px}
+      .list{max-height:74vh;overflow:auto;border:1px solid #e5e7eb;border-radius:12px;background:#f9fafb}
+      .item{padding:10px 12px;border-bottom:1px solid #e5e7eb}
+      .item:last-child{border-bottom:none}
+      .title{font-weight:800;font-size:13px;margin-bottom:6px}
+      .btns{display:flex;gap:8px;flex-wrap:wrap}
+      a.btn{display:inline-block;text-decoration:none;padding:7px 10px;border-radius:10px;font-weight:800;font-size:12px}
+      a.preview{background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe}
+      a.download{background:#dcfce7;color:#166534;border:1px solid #86efac}
+      .viewer{border:1px solid #e5e7eb;border-radius:12px;background:#fff;overflow:hidden}
+      iframe{width:100%;height:74vh;border:0;background:#fff}
+      .note{font-size:12px;color:#6b7280;margin-top:8px}
+      .group{padding:10px 12px;background:#fff;border-bottom:1px solid #e5e7eb;font-weight:900;color:#111827}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="crumb"><a href="/?portal=teacher">Teacher Portal</a> &nbsp;·&nbsp; <a href="/resources/">Resources</a></div>
+      <div class="card">
+        <h1>Grade 6 • CAPS-aligned • Term 3 (Generated Pack)</h1>
+        <p>Click <strong>Preview</strong> to open the worksheet in the viewer, then click <strong>Download</strong> to save it.</p>
+        <div class="layout">
+          <div class="list" id="list"></div>
+          <div class="viewer">
+            <iframe id="viewer" title="Preview"></iframe>
+          </div>
+        </div>
+        <div class="note">If the preview does not load, click <strong>Preview</strong> again to open in a new tab.</div>
+      </div>
+    </div>
+    <script>
+      const items = [{group:'Mathematics',name:'Mathematics: Decimals',path:'grade-6-term-3-mathematics.pdf'},{group:'English HL',name:'English HL: Language structures',path:'grade-6-term-3-english-hl.pdf'},{group:'Natural Sciences',name:'Natural Sciences: Ecosystems',path:'grade-6-term-3-natural-sciences.pdf'},{group:'Social Sciences',name:'Social Sciences: Trade & transport',path:'grade-6-term-3-social-sciences.pdf'}];
+      const byGroup = items.reduce((acc,f)=>{(acc[f.group] ||= []).push(f); return acc;}, {} );
+      const list = document.getElementById('list');
+      const viewer = document.getElementById('viewer');
+      function setPreview(relPath){ viewer.src = encodeURI(relPath); }
+      Object.keys(byGroup).forEach(group=>{
+        const header = document.createElement('div');
+        header.className='group';
+        header.textContent = group;
+        list.appendChild(header);
+        byGroup[group].forEach(f=>{
+          const row = document.createElement('div'); row.className='item';
+          const t = document.createElement('div'); t.className='title'; t.textContent=f.name;
+          const btns = document.createElement('div'); btns.className='btns';
+          const preview = document.createElement('a');
+          preview.className='btn preview'; preview.href=encodeURI(f.path);
+          preview.target='_blank'; preview.rel='noreferrer'; preview.textContent='Preview';
+          preview.addEventListener('click', ()=>setPreview(f.path));
+          const download = document.createElement('a');
+          download.className='btn download'; download.href=encodeURI(f.path);
+          download.download=''; download.textContent='Download';
+          btns.appendChild(preview); btns.appendChild(download);
+          row.appendChild(t); row.appendChild(btns);
+          list.appendChild(row);
+        });
+      });
+      if(items.length) setPreview(items[0].path);
+    </script>
+  </body>
+</html>
