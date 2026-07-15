@@ -180,6 +180,7 @@ const readingAgeLabelForRecord = r => {
     if(parsed!=null) return formatReadingAgeYears(parsed);
     return String(r.reading_age);
   }
+  if(r?.words_correct==null || r?.words_correct==='') return null;
   return readingAgeFromWords(Number(r?.words_correct));
 };
 const classTargetReadingAgeYears = className => {
@@ -252,7 +253,7 @@ const rosterAlignedRecordsForClassTerm = (allReading, className, term) => {
       class_name:className,
       surname:learner.surname,
       firstname:learner.firstname,
-      words_correct:0,
+      words_correct:null,
       reading_age:null,
       term,
       year:2026,
@@ -264,7 +265,8 @@ const rosterAlignedRecordsForClassTerm = (allReading, className, term) => {
   });
 };
 const summarizeReadingForClass = (records, className) => {
-  const avgWords = records.length ? Math.round(records.reduce((s,r)=>s+(Number(r.words_correct)||0),0)/records.length) : null;
+  const validWordValues = records.map(r=>Number(r.words_correct)).filter(v=>!isNaN(v) && v>=0);
+  const avgWords = validWordValues.length ? Math.round(validWordValues.reduce((s,v)=>s+v,0)/validWordValues.length) : null;
   const ageValues = records.map(readingAgeLabelForRecord).map(readingAgeYearsFromLabel).filter(v=>v!=null);
   const avgAgeYears = ageValues.length ? ageValues.reduce((s,v)=>s+v,0)/ageValues.length : null;
   const targetYears = classTargetReadingAgeYears(className);
@@ -2736,6 +2738,7 @@ function ReadingAssessmentTab({reading,setReading,initialClass,lockClass}){
                 {shownResults.map((r,i)=>{
                   const ageLabel = readingAgeLabelForRecord(r);
                   const status = readingStatusFor(selClass, ageLabel);
+                  const missingMatch = r.syntheticZero || r.words_correct==null;
                   return (
                     <div key={r.id||i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 14px',background:status.bg,borderRadius:'10px',border:`1px solid ${status.fg}33`,borderLeft:`8px solid ${status.fg}`,gap:'10px',flexWrap:'wrap'}}>
                       <div style={{flex:1,minWidth:'220px'}}>
@@ -2743,12 +2746,14 @@ function ReadingAssessmentTab({reading,setReading,initialClass,lockClass}){
                           {r.surname}, {r.firstname}
                         </div>
                         <div style={{fontSize:'12px',color:'#475569',marginTop:'3px'}}>
-                          {r.words_correct} words/min · Reading age <strong>{ageLabel||'—'}</strong> · Desired age <strong>{formatReadingAgeYears(status.target)}</strong>
+                          {missingMatch
+                            ? <>No matched Term 2 result yet · Reading age <strong>—</strong> · Desired age <strong>{formatReadingAgeYears(status.target)}</strong></>
+                            : <>{r.words_correct} words/min · Reading age <strong>{ageLabel||'—'}</strong> · Desired age <strong>{formatReadingAgeYears(status.target)}</strong></>}
                         </div>
                       </div>
                       <div style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
-                        <span style={{background:'rgba(255,255,255,0.75)',color:status.fg,padding:'5px 10px',borderRadius:'999px',fontSize:'12px',fontWeight:700}}>{status.label}</span>
-                        <span style={{fontSize:'12px',color:'#64748b'}}>{r.date_assessed||r.created_at ? new Date(r.date_assessed||r.created_at).toLocaleDateString('en-ZA') : 'Roster-aligned zero'}</span>
+                        <span style={{background:'rgba(255,255,255,0.75)',color:status.fg,padding:'5px 10px',borderRadius:'999px',fontSize:'12px',fontWeight:700}}>{missingMatch?'No match':status.label}</span>
+                        <span style={{fontSize:'12px',color:'#64748b'}}>{r.date_assessed||r.created_at ? new Date(r.date_assessed||r.created_at).toLocaleDateString('en-ZA') : 'Roster not matched'}</span>
                       </div>
                     </div>
                   );
@@ -2984,10 +2989,10 @@ function ReadingResultsTab({reading}){
   const exportExcel = ()=>{
     const data = shown.map(r=>({
       'Class':r.class_name,'Surname':r.surname,'First Name':r.firstname,
-      'Words/Min':r.words_correct,'Approx Reading Age':readingAgeLabelForRecord(r)||'',
+      'Words/Min':r.words_correct==null?'':r.words_correct,'Approx Reading Age':readingAgeLabelForRecord(r)||'',
       'Desired Age':formatReadingAgeYears(classTargetReadingAgeYears(r.class_name)),
-      'Status':readingStatusFor(r.class_name, readingAgeLabelForRecord(r)).label,
-      'Term':r.term||'','Date Assessed':r.date_assessed||r.created_at?new Date(r.date_assessed||r.created_at).toLocaleDateString('en-ZA'):'Roster-aligned zero'
+      'Status':(r.syntheticZero || r.words_correct==null)?'No match':readingStatusFor(r.class_name, readingAgeLabelForRecord(r)).label,
+      'Term':r.term||'','Date Assessed':r.date_assessed||r.created_at?new Date(r.date_assessed||r.created_at).toLocaleDateString('en-ZA'):'Roster not matched'
     }));
     const ws=XLSX.utils.json_to_sheet(data);
     ws['!cols']=[{wch:12},{wch:18},{wch:16},{wch:10},{wch:16},{wch:14},{wch:16},{wch:10},{wch:14}];
@@ -3056,18 +3061,19 @@ function ReadingResultsTab({reading}){
                       {(()=>{
                         const ageLabel = readingAgeLabelForRecord(r);
                         const status = readingStatusFor(r.class_name, ageLabel);
+                        const missingMatch = r.syntheticZero || r.words_correct==null;
                         return <>
                       <td style={{padding:'9px 8px',whiteSpace:'nowrap'}}>{r.class_name}</td>
                       <td style={{padding:'9px 8px',fontWeight:600,color:'#333'}}>{r.surname}</td>
                       <td style={{padding:'9px 8px'}}>{r.firstname}</td>
-                      <td style={{padding:'9px 8px',fontWeight:700,color:'#4c51bf'}}>{r.words_correct}</td>
-                      <td style={{padding:'9px 8px'}}>{ageLabel||'—'}</td>
+                      <td style={{padding:'9px 8px',fontWeight:700,color:'#4c51bf'}}>{missingMatch?'—':r.words_correct}</td>
+                      <td style={{padding:'9px 8px'}}>{missingMatch?'—':(ageLabel||'—')}</td>
                       <td style={{padding:'9px 8px'}}>{formatReadingAgeYears(status.target)}</td>
                       <td style={{padding:'9px 8px'}}>
-                        <span style={{background:status.bg,color:status.fg,padding:'4px 8px',borderRadius:'999px',fontSize:'12px',fontWeight:700}}>{status.label}</span>
+                        <span style={{background:status.bg,color:status.fg,padding:'4px 8px',borderRadius:'999px',fontSize:'12px',fontWeight:700}}>{missingMatch?'No match':status.label}</span>
                       </td>
                       <td style={{padding:'9px 8px'}}>{r.term||'—'}</td>
-                      <td style={{padding:'9px 8px',whiteSpace:'nowrap',color:'#777'}}>{r.date_assessed||r.created_at ? new Date(r.date_assessed||r.created_at).toLocaleDateString('en-ZA') : 'Roster-aligned zero'}</td>
+                      <td style={{padding:'9px 8px',whiteSpace:'nowrap',color:'#777'}}>{r.date_assessed||r.created_at ? new Date(r.date_assessed||r.created_at).toLocaleDateString('en-ZA') : 'Roster not matched'}</td>
                         </>;
                       })()}
                     </tr>
