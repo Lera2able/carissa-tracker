@@ -131,6 +131,7 @@ function readingAgeFromWords(n){
   return months===12 ? `${years+1}y 0m` : `${years}y ${months}m`;
 }
 const normalizeReadingName = v => String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+const normalizeReadingPrimaryToken = v => normalizeReadingName(String(v||'').trim().split(/\s+/)[0]||'');
 const readingKey = (className,surname,firstname,term='') => [
   normalizeReadingName(className),
   normalizeReadingName(surname),
@@ -219,26 +220,33 @@ const rosterAlignedRecordsForClassTerm = (allReading, className, term) => {
   const exactMap = new Map(latest.map(r=>[readingKey(className,r.surname,r.firstname,term), r]));
   const usedIds = new Set();
   return roster.map((learner, idx)=>{
-    const exact = exactMap.get(readingKey(className, learner.surname, learner.firstname, term));
+    const baseSurname = learner._origSurname || learner.surname;
+    const baseFirstname = learner._origFirstname || learner.firstname;
+    const exact = exactMap.get(readingKey(className, baseSurname, baseFirstname, term))
+      || exactMap.get(readingKey(className, learner.surname, learner.firstname, term));
     if(exact){
       usedIds.add(exact.id || `exact-${idx}`);
-      return {...exact, matchedFrom:'exact'};
+      return {...exact, surname:learner.surname, firstname:learner.firstname, matchedFrom:'exact'};
     }
-    const firstNorm = normalizeReadingName(learner.firstname);
-    const lastNorm = normalizeReadingName(learner.surname);
+    const firstNorm = normalizeReadingName(baseFirstname);
+    const firstPrimary = normalizeReadingPrimaryToken(baseFirstname);
+    const lastNorm = normalizeReadingName(baseSurname);
     let best = null;
     let bestScore = -999;
     latest.forEach(r=>{
       const candidateId = r.id || `${r.surname}-${r.firstname}-${r.words_correct}`;
       if(usedIds.has(candidateId)) return;
       const rf = normalizeReadingName(r.firstname);
+      const rfPrimary = normalizeReadingPrimaryToken(r.firstname);
       const rs = normalizeReadingName(r.surname);
       const firstDist = levenshtein(firstNorm, rf);
       const lastDist = levenshtein(lastNorm, rs);
-      const firstClose = firstNorm===rf || firstDist<=2 || firstNorm.includes(rf) || rf.includes(firstNorm);
+      const firstClose = firstNorm===rf || firstPrimary===rfPrimary || firstDist<=2 || firstNorm.includes(rf) || rf.includes(firstNorm) || (firstPrimary && rfPrimary && (firstPrimary.includes(rfPrimary) || rfPrimary.includes(firstPrimary)));
       const lastClose = lastNorm===rs || lastDist<=2 || lastNorm.includes(rs) || rs.includes(lastNorm);
       if(!firstClose && !lastClose) return;
-      const score = (firstNorm===rf?6:-firstDist) + (lastNorm===rs?6:-lastDist);
+      const firstScore = firstNorm===rf ? 8 : firstPrimary===rfPrimary ? 6 : (firstNorm.includes(rf) || rf.includes(firstNorm) ? 4 : -firstDist);
+      const lastScore = lastNorm===rs ? 8 : (lastNorm.includes(rs) || rs.includes(lastNorm) ? 4 : -lastDist);
+      const score = firstScore + lastScore;
       if(score > bestScore){
         bestScore = score;
         best = r;
