@@ -164,7 +164,7 @@ async function load(){
     const url = SB + "/rest/v1/carissa_teacher_registrations"
       + "?select=first_name,surname,class_name,email,pin"
       + "&login_enabled=eq.true&pin=not.is.null"
-      + "&order=surname.asc,first_name.asc";
+      + "&order=class_name.asc,surname.asc,first_name.asc";
     const res = await fetch(url, { headers: { apikey: KEY, Authorization: "Bearer " + KEY } });
     teachers = await res.json();
     if(!Array.isArray(teachers)) teachers = [];
@@ -190,8 +190,29 @@ async function load(){
     });
     teachers = Object.values(map).map(t=>{
       const classes = Array.from(new Set(t.class_names)).sort((a,b)=>a.localeCompare(b));
-      return { ...t, class_name: classes.join(", ") };
-    }).sort((a,b)=>(`${a.surname} ${a.first_name}`).localeCompare(`${b.surname} ${b.first_name}`));
+      return { ...t, class_names: classes, class_name: classes.join(", ") };
+    }).sort((a,b)=>{
+      // Sort by grade (Grade R first, then Grade 1 ... Grade 7), then by class name, then by surname.
+      const gradeKey = (cls)=>{
+        const c = (cls||"").trim();
+        if(/^Grade\s*R\b/i.test(c)) return 0;
+        const m = c.match(/Grade\s+(\d+)/i);
+        if(m) return parseInt(m[1],10);
+        return 99;
+      };
+      const minGrade = (arr)=>{
+        const xs = (arr||[]).map(gradeKey);
+        return xs.length ? Math.min(...xs) : 99;
+      };
+      const ag = minGrade(a.class_names);
+      const bg = minGrade(b.class_names);
+      if(ag !== bg) return ag - bg;
+      const aFirstClass = (a.class_names && a.class_names[0]) ? a.class_names[0] : "";
+      const bFirstClass = (b.class_names && b.class_names[0]) ? b.class_names[0] : "";
+      const cc = aFirstClass.localeCompare(bFirstClass);
+      if(cc) return cc;
+      return (`${a.surname} ${a.first_name}`).localeCompare(`${b.surname} ${b.first_name}`);
+    });
 
     if(teachers.length > 6) document.getElementById("q").style.display = "block";
     render("");

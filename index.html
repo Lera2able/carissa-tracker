@@ -3132,6 +3132,9 @@ function TeacherRegistrationsTab(){
         pin_count: pins.length,
       };
     }).sort((a,b)=>{
+      // Most recent registrations first (teacher #1 = latest submission)
+      const dt = new Date(b.latest_created_at) - new Date(a.latest_created_at);
+      if(dt) return dt;
       const an = `${a.surname} ${a.first_name}`.toLowerCase();
       const bn = `${b.surname} ${b.first_name}`.toLowerCase();
       return an.localeCompare(bn);
