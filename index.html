@@ -2623,6 +2623,8 @@ const SUBTABS = [
   ['reading','📖 Reading Results'],
   ['learners','👥 Learners'],
   ['registrations','🧑‍🏫 Registrations'],
+  ['teacher_audit','🧾 Teacher Audit'],
+  ['assistant','🤖 TRAE Assistant'],
   ['chats','💬 Chats'],
   ['audit','🛡 Audit & Recovery'],
 ];
@@ -3409,6 +3411,118 @@ function ChatsAdminTab({chats,setChats}){
   );
 }
 
+/* ════════════════════════════════════════════════════════════════
+   ADMIN DASHBOARD: TEACHER AUDIT TAB
+   Tracks teacher logins and class switches
+   ════════════════════════════════════════════════════════════════ */
+function TeacherAuditTab({events,setEvents}){
+  const [search,setSearch]=useState('');
+  const filtered = (events||[]).filter(e=>{
+    if(!search) return true;
+    const s = search.toLowerCase();
+    return [e.teacher_email,e.teacher_name,e.class_name,e.event_type,e.user_agent].some(v=>(v||'').toLowerCase().includes(s));
+  });
+  return (
+    <div style={card}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',marginBottom:'10px'}}>
+        <h2 style={{color:'#333',marginBottom:0}}>🧾 Teacher Audit</h2>
+        <button onClick={async()=>{
+          try{
+            const data = await db.get('carissa_teacher_audit','order=created_at.desc&limit=500');
+            setEvents(data||[]);
+          }catch(e){
+            alert('Could not load teacher audit. Please confirm the table exists in Supabase.\n\n' + e.message);
+          }
+        }} style={{...sbtn,background:'#667eea',fontSize:'13px'}}>🔄 Refresh</button>
+      </div>
+      <p style={{color:'#888',fontSize:'13px',marginBottom:'12px'}}>This shows teacher logins, logouts, and class switches (latest first).</p>
+      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by teacher, email, class, event..."
+        style={{width:'100%',padding:'11px 14px',border:'2px solid #e3e6f0',borderRadius:'10px',marginBottom:'14px',fontSize:'14px'}}/>
+
+      {filtered.length===0 ? (
+        <div style={{textAlign:'center',color:'#999',padding:'30px 0'}}>No audit events yet.</div>
+      ) : (
+        <div style={{overflowX:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse',fontSize:'13px'}}>
+            <thead>
+              <tr style={{background:'#f5f6ff',color:'#555',textAlign:'left'}}>
+                {['Time','Teacher','Email','Class','Event','Device'].map((h,i)=>(
+                  <th key={i} style={{padding:'10px 8px',borderBottom:'2px solid #e3e6f0',whiteSpace:'nowrap'}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((e,i)=>(
+                <tr key={e.id||i} style={{background:i%2?'#fafbff':'white'}}>
+                  <td style={{padding:'9px 8px',whiteSpace:'nowrap',color:'#777'}}>{new Date(e.created_at||Date.now()).toLocaleString('en-ZA')}</td>
+                  <td style={{padding:'9px 8px',fontWeight:700,color:'#333'}}>{e.teacher_name || '—'}</td>
+                  <td style={{padding:'9px 8px'}}>{e.teacher_email || '—'}</td>
+                  <td style={{padding:'9px 8px'}}>{e.class_name || '—'}</td>
+                  <td style={{padding:'9px 8px',whiteSpace:'nowrap'}}>{e.event_type || '—'}</td>
+                  <td style={{padding:'9px 8px',maxWidth:'340px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={e.user_agent||''}>{e.user_agent || ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ADMIN DASHBOARD: TRAE ASSISTANT (UI shell)
+   NOTE: Needs a server-side /api/ai endpoint to actually answer.
+   ════════════════════════════════════════════════════════════════ */
+function TraeAssistantTab(){
+  const [msgs,setMsgs]=useState([{role:'system',text:'Type a request here if you need help managing the tracker website or resources. (AI responses require the /api/ai endpoint to be configured.)'}]);
+  const [text,setText]=useState('');
+  const [busy,setBusy]=useState(false);
+
+  const send = async()=>{
+    const t = text.trim();
+    if(!t) return;
+    setMsgs(p=>[...p,{role:'user',text:t}]);
+    setText('');
+    setBusy(true);
+    try{
+      const res = await fetch('/api/ai', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({message:t})
+      });
+      if(!res.ok) throw new Error('AI is not configured on this website yet.');
+      const data = await res.json();
+      const answer = data.answer || data.message || JSON.stringify(data);
+      setMsgs(p=>[...p,{role:'assistant',text:answer}]);
+    }catch(e){
+      setMsgs(p=>[...p,{role:'assistant',text:'AI is not configured yet. If you want this to work, we must add a secure backend (Cloudflare Worker or Supabase Edge Function) for Gemini/OpenAI.'}]);
+    }
+    setBusy(false);
+  };
+
+  return (
+    <div style={card}>
+      <h2 style={{color:'#333',marginBottom:'10px'}}>🤖 TRAE Assistant</h2>
+      <p style={{color:'#888',fontSize:'13px',marginBottom:'12px'}}>This is a built-in help panel. To enable real AI replies inside the website, we must connect a secure server-side endpoint.</p>
+      <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',maxHeight:'420px',overflow:'auto',marginBottom:'10px'}}>
+        {msgs.map((m,i)=>(
+          <div key={i} style={{display:'flex',justifyContent:m.role==='user'?'flex-end':'flex-start',marginBottom:'8px'}}>
+            <div style={{maxWidth:'86%',background:m.role==='user'?'#667eea':'#ffffff',color:m.role==='user'?'white':'#111827',border:'1px solid '+(m.role==='user'?'#667eea':'#e2e8f0'),borderRadius:'12px',padding:'10px 12px',whiteSpace:'pre-wrap',fontSize:'13px'}}>{m.text}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{display:'flex',gap:'8px',alignItems:'flex-end',flexWrap:'wrap'}}>
+        <textarea value={text} onChange={e=>setText(e.target.value)} rows={2} placeholder="Type your request (e.g., upload Grade 2 resources, fix pins, add new feature)..."
+          style={{...inp,flex:1,minWidth:'240px',resize:'vertical',fontSize:'13px'}}/>
+        <button onClick={send} disabled={busy || !text.trim()} style={{...sbtn,background:'#10b981',opacity:(busy||!text.trim())?0.6:1}}>
+          {busy?'Sending...':'Send'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function AdminDashboard(){
   const [subTab,setSubTab]=useState('overview');
   const [interventions,setInterventions]=useState([]);
@@ -3417,6 +3531,7 @@ function AdminDashboard(){
   const [assessments,setAssessments]=useState([]);
   const [reading,setReading]=useState([]);
   const [chats,setChats]=useState([]);
+  const [auditEvents,setAuditEvents]=useState([]);
   const [overrides,setOverrides]=useState([]);
   const [loading,setLoading]=useState(true);
   const [projectMode,setProjectMode]=useState(null); // null | {phase}
@@ -3424,7 +3539,7 @@ function AdminDashboard(){
   useEffect(()=>{
     (async()=>{
       try{
-        const [int_, res, asn, asm, ovr, rdg, ch] = await Promise.all([
+        const [int_, res, asn, asm, ovr, rdg, ch, aud] = await Promise.all([
           db.get('carissa_interventions','order=created_at.desc'),
           db.get('carissa_resources','order=created_at.desc'),
           db.get('carissa_resource_assignments','order=created_at.desc'),
@@ -3432,6 +3547,7 @@ function AdminDashboard(){
           db.get('carissa_learner_overrides','order=updated_at.desc'),
           db.get('carissa_reading_assessments','order=created_at.desc').catch(()=>[]),
           db.get('carissa_teacher_chats','order=created_at.asc').catch(()=>[]),
+          db.get('carissa_teacher_audit','order=created_at.desc&limit=300').catch(()=>[]),
         ]);
         setInterventions(int_);
         setResources(res);
@@ -3440,6 +3556,7 @@ function AdminDashboard(){
         setOverrides(ovr);
         setReading(rdg);
         setChats(ch);
+        setAuditEvents(aud);
       }catch(e){console.error(e);}
       setLoading(false);
     })();
@@ -3474,6 +3591,8 @@ function AdminDashboard(){
       {subTab==='reading' && <ReadingResultsTab reading={reading}/>}
       {subTab==='learners' && <LearnersAdminTab overrides={overrides} setOverrides={setOverrides} setAssessments={setAssessments}/>}
       {subTab==='registrations' && <TeacherRegistrationsTab/>}
+      {subTab==='teacher_audit' && <TeacherAuditTab events={auditEvents} setEvents={setAuditEvents}/>}
+      {subTab==='assistant' && <TraeAssistantTab/>}
       {subTab==='chats' && <ChatsAdminTab chats={chats} setChats={setChats}/>}
       {subTab==='audit' && <AuditAdminTab/>}
 
@@ -3766,7 +3885,9 @@ const saveTeacherSession = (session, rememberDevice) => {
 let TEACHER_SESSION = loadTeacherSession();
 // Teacher portal mode: /?portal=teacher opens LearnWorld directly as the teacher dashboard
 let PORTAL_MODE = false;
+let ADMIN_PORTAL_MODE = false;
 try{ PORTAL_MODE = new URLSearchParams(window.location.search).get('portal')==='teacher'; }catch(e){}
+try{ ADMIN_PORTAL_MODE = new URLSearchParams(window.location.search).get('portal')==='admin'; }catch(e){}
 let PREFILLED_TEACHER_EMAIL = '';
 let PREFILLED_TEACHER_PIN = '';
 try{
@@ -3776,7 +3897,10 @@ try{
 }catch(e){}
 
 function App(){
-  const [mode,setMode]=useState((TEACHER_SESSION || PORTAL_MODE) ? 'learnworld' : 'teacher'); // 'teacher' | 'coordinator' | 'admin' | 'learnworld'
+  const [mode,setMode]=useState(
+    (TEACHER_SESSION || PORTAL_MODE) ? 'learnworld'
+    : (ADMIN_PORTAL_MODE ? 'admin' : 'teacher')
+  ); // 'teacher' | 'coordinator' | 'admin' | 'learnworld'
   const [showLogin,setShowLogin]=useState(false);
   const [isAdmin,setIsAdmin]=useState(false);
   const [editTarget,setEditTarget]=useState(null); // {row, onSave}
@@ -3794,6 +3918,11 @@ function App(){
     if(m==='admin' && !isAdmin){ setShowLogin(true); return; }
     setMode(m);
   };
+
+  useEffect(()=>{
+    // Dedicated admin link (e.g. /admin.html → /?portal=admin) should prompt for admin PIN automatically.
+    if(ADMIN_PORTAL_MODE && !isAdmin) setShowLogin(true);
+  },[isAdmin]);
 
   if(!overridesReady){
     return <div style={{display:'flex',justifyContent:'center',alignItems:'center',minHeight:'100vh',color:'#667eea',fontSize:'16px'}}>Loading…</div>;
@@ -3821,7 +3950,7 @@ function App(){
       {/* MODE TABS */}
       <div style={{maxWidth:'1300px',margin:'14px auto 0',padding:'0 16px'}}>
         <div style={{display:'flex',gap:'8px',flexWrap:'wrap',background:'white',padding:'8px',borderRadius:'12px',boxShadow:'0 4px 14px rgba(0,0,0,0.06)'}}>
-          {((TEACHER_SESSION || PORTAL_MODE) ? [] : [
+          {((TEACHER_SESSION || PORTAL_MODE || ADMIN_PORTAL_MODE) ? [] : [
             ['teacher','👩‍🏫 Teacher'],
             ['coordinator','📋 Coordinator'],
             ['learnworld','🌐 LearnWorld'],
@@ -3907,6 +4036,16 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
         TEACHER_SESSION = merged;
         setTeacherAuth(merged);
         setSelClass(merged.active_class_name);
+        try{
+          await db.post('carissa_teacher_audit', {
+            teacher_email: (merged.email||'').toLowerCase(),
+            teacher_name: `${merged.first_name||''} ${merged.surname||''}`.trim() || null,
+            class_name: merged.active_class_name || merged.class_name || null,
+            event_type: 'login',
+            user_agent: (navigator && navigator.userAgent) ? navigator.userAgent : null,
+            created_at: new Date().toISOString(),
+          });
+        }catch(e){}
       }else{
         setLoginErr('Login failed. Please check your email and PIN, or contact the coordinator if you have not received your login details yet.');
       }
@@ -3914,6 +4053,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
     setLoginBusy(false);
   };
   const teacherLogout = ()=>{
+    logTeacherAudit('logout', selClass);
     saveTeacherSession(null, false);
     if(TEACHER_SESSION){ TEACHER_SESSION=null; window.location.href=`${window.location.pathname}?portal=teacher`; return; }
     setTeacherAuth(null); setSelClass(''); setLoginEmail(''); setLoginPin(''); setLoginErr('');
@@ -3938,6 +4078,22 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
   const teacherClasses = !adminAccess && teacherAuth
     ? (teacherAuth.class_names && teacherAuth.class_names.length ? teacherAuth.class_names : [teacherAuth.class_name]).filter(Boolean)
     : [];
+
+  const logTeacherAudit = async(event_type, className)=>{
+    try{
+      if(!teacherAuth?.email) return;
+      await db.post('carissa_teacher_audit', {
+        teacher_email: (teacherAuth.email||'').toLowerCase(),
+        teacher_name: `${teacherAuth.first_name||''} ${teacherAuth.surname||''}`.trim() || null,
+        class_name: className || selClass || teacherAuth.active_class_name || teacherAuth.class_name || null,
+        event_type,
+        user_agent: (navigator && navigator.userAgent) ? navigator.userAgent : null,
+        created_at: new Date().toISOString(),
+      });
+    }catch(e){
+      // Silent if audit table is not created yet
+    }
+  };
 
   useEffect(()=>{
     (async()=>{
@@ -4059,6 +4215,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
                   value={selClass}
                   onChange={e=>{
                     const next = e.target.value;
+                    logTeacherAudit('switch_class', next);
                     setSelClass(next);
                     setTeacherAuth(prev=>{
                       if(!prev) return prev;
