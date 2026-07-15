@@ -3478,25 +3478,54 @@ function TraeAssistantTab(){
   const [msgs,setMsgs]=useState([{role:'system',text:'Type a request here if you need help managing the tracker website or resources. If the AI endpoint is configured, you will get an answer here.'}]);
   const [text,setText]=useState('');
   const [busy,setBusy]=useState(false);
+  const [files,setFiles]=useState([]);
+  const fileRef = useRef();
+
+  const removeFile = idx => setFiles(p=>p.filter((_,i)=>i!==idx));
+  const clearFiles = () => {
+    setFiles([]);
+    if(fileRef.current) fileRef.current.value = '';
+  };
 
   const send = async()=>{
     const t = text.trim();
-    if(!t) return;
-    setMsgs(p=>[...p,{role:'user',text:t}]);
+    if(!t && files.length===0) return;
+    const pendingFiles = [...files];
+    const uploadedFiles = [];
+    const label = [
+      t || 'Please review the attached file(s).',
+      pendingFiles.length ? `Files: ${pendingFiles.map(f=>f.name).join(', ')}` : ''
+    ].filter(Boolean).join('\n');
+    setMsgs(p=>[...p,{role:'user',text:label}]);
     setText('');
+    clearFiles();
     setBusy(true);
     try{
+      for(const file of pendingFiles){
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+        const path = `assistant-uploads/${Date.now()}_${safeName}`;
+        const url = await db.upload(path,file);
+        uploadedFiles.push({
+          name:file.name,
+          type:file.type || 'application/octet-stream',
+          size:file.size || 0,
+          url
+        });
+      }
       const res = await fetch('/api/ai', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({message:t})
+        body: JSON.stringify({
+          message:t || 'Please review the attached file(s).',
+          attachments:uploadedFiles
+        })
       });
       if(!res.ok) throw new Error('AI is not configured on this website yet.');
       const data = await res.json();
       const answer = data.answer || data.message || JSON.stringify(data);
       setMsgs(p=>[...p,{role:'assistant',text:answer}]);
     }catch(e){
-      setMsgs(p=>[...p,{role:'assistant',text:'AI is not configured yet. If you want this to work, we must add a secure backend (Cloudflare Worker or Supabase Edge Function) for Gemini/OpenAI.'}]);
+      setMsgs(p=>[...p,{role:'assistant',text:e?.message ? `Upload or AI request failed: ${e.message}` : 'AI is not configured yet. If you want this to work, we must add a secure backend (Cloudflare Worker or Supabase Edge Function) for Gemini/OpenAI.'}]);
     }
     setBusy(false);
   };
@@ -3504,7 +3533,7 @@ function TraeAssistantTab(){
   return (
     <div style={card}>
       <h2 style={{color:'#333',marginBottom:'10px'}}>🤖 TRAE Assistant</h2>
-      <p style={{color:'#888',fontSize:'13px',marginBottom:'12px'}}>If you see “AI is not configured yet”, it means `/api/ai` is not connected. Once connected, you can ask for help here anytime.</p>
+      <p style={{color:'#888',fontSize:'13px',marginBottom:'12px'}}>If you see “AI is not configured yet”, it means `/api/ai` is not connected. Once connected, you can ask for help here anytime, and you can also attach files to your request.</p>
       <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',maxHeight:'420px',overflow:'auto',marginBottom:'10px'}}>
         {msgs.map((m,i)=>(
           <div key={i} style={{display:'flex',justifyContent:m.role==='user'?'flex-end':'flex-start',marginBottom:'8px'}}>
@@ -3512,13 +3541,35 @@ function TraeAssistantTab(){
           </div>
         ))}
       </div>
+      {files.length>0 && (
+        <div style={{display:'flex',flexWrap:'wrap',gap:'8px',marginBottom:'10px'}}>
+          {files.map((file,i)=>(
+            <div key={`${file.name}-${i}`} style={{display:'flex',alignItems:'center',gap:'8px',background:'#eef2ff',border:'1px solid #c7d2fe',borderRadius:'999px',padding:'6px 10px',fontSize:'12px',color:'#3730a3'}}>
+              <span>📎 {file.name}</span>
+              <button onClick={()=>removeFile(i)} style={{border:'none',background:'transparent',color:'#4338ca',cursor:'pointer',fontWeight:800,padding:0}}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
       <div style={{display:'flex',gap:'8px',alignItems:'flex-end',flexWrap:'wrap'}}>
         <textarea value={text} onChange={e=>setText(e.target.value)} rows={2} placeholder="Type your request (e.g., upload Grade 2 resources, fix pins, add new feature)..."
           style={{...inp,flex:1,minWidth:'240px',resize:'vertical',fontSize:'13px'}}/>
-        <button onClick={send} disabled={busy || !text.trim()} style={{...sbtn,background:'#10b981',opacity:(busy||!text.trim())?0.6:1}}>
-          {busy?'Sending...':'Send'}
+        <input ref={fileRef} type="file" multiple style={{display:'none'}} onChange={e=>setFiles(Array.from(e.target.files||[]))}/>
+        <button onClick={()=>fileRef.current && fileRef.current.click()} disabled={busy} style={{...sbtn,background:'#6366f1',opacity:busy?0.6:1}}>
+          Upload files
+        </button>
+        <button onClick={send} disabled={busy || (!text.trim() && files.length===0)} style={{...sbtn,background:'#10b981',opacity:(busy || (!text.trim() && files.length===0))?0.6:1}}>
+          {busy?(files.length?'Uploading...':'Sending...'):'Send'}
         </button>
       </div>
+      {files.length>0 && (
+        <div style={{marginTop:'8px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap'}}>
+          <span style={{fontSize:'12px',color:'#64748b'}}>{files.length} file(s) selected</span>
+          <button onClick={clearFiles} disabled={busy} style={{border:'none',background:'transparent',color:'#4f46e5',cursor:'pointer',fontSize:'12px',fontWeight:700,padding:0}}>
+            Clear files
+          </button>
+        </div>
+      )}
     </div>
   );
 }

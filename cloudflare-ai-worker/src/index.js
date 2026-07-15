@@ -59,15 +59,63 @@ export default {
     }
 
     const message = String(body?.message || "").trim();
-    if (!message) {
+    const attachments = Array.isArray(body?.attachments)
+      ? body.attachments
+          .filter((item) => item && item.url)
+          .slice(0, 5)
+          .map((item) => ({
+            name: String(item.name || "Attachment").slice(0, 200),
+            type: String(item.type || "application/octet-stream").slice(0, 120),
+            size: Number(item.size || 0) || 0,
+            url: String(item.url || ""),
+          }))
+      : [];
+
+    if (!message && attachments.length === 0) {
       return jsonResponse({ error: "Missing `message`" }, 400, corsOrigin);
     }
+
+    const attachmentSummary = attachments.length
+      ? "Attached files:\n" +
+        attachments
+          .map(
+            (file) =>
+              `- ${file.name} (${file.type || "file"}, ${file.size || 0} bytes): ${file.url}`
+          )
+          .join("\n")
+      : "";
+
+    const userText = [
+      message ? `User request:\n${message}` : "User request:\nPlease review the attached file(s).",
+      attachmentSummary,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
+    const imageInputs = attachments
+      .filter(
+        (file) =>
+          /^image\//i.test(file.type) &&
+          /supabase\.co\/storage\/v1\/object\/public\//i.test(file.url)
+      )
+      .slice(0, 3)
+      .map((file) => ({
+        type: "image_url",
+        image_url: { url: file.url },
+      }));
+
+    const userContent = imageInputs.length
+      ? [{ type: "text", text: userText }, ...imageInputs]
+      : userText;
 
     // Short, safe system prompt: helpful for your school tracker, no secrets.
     const systemPrompt =
       "You are TRAE, the assistant for the Carissa Primary School Learner Tracker admin dashboard. " +
       "Be concise and practical. If asked to change code, explain the steps clearly. " +
-      "Do not reveal any API keys, tokens, or private data. If you are unsure, ask a short clarification question.";
+      "Do not reveal any API keys, tokens, or private data. " +
+      "When files are attached, refer to them by name and URL. " +
+      "Images may be provided directly for visual review, while non-image files are shared as links only. " +
+      "If you are unsure, ask a short clarification question.";
 
     // OpenAI Chat Completions (simple + widely supported)
     const resp = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -82,7 +130,7 @@ export default {
         max_tokens: 500,
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: message },
+          { role: "user", content: userContent },
         ],
       }),
     });
@@ -104,4 +152,3 @@ export default {
     return jsonResponse({ answer }, 200, corsOrigin);
   },
 };
-
