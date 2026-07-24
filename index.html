@@ -45,6 +45,24 @@ const db = {
   upload: async(path,file)=>{const r=await fetch(`${SB}/storage/v1/object/carissa-resources/${path}`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,"Content-Type":file.type,"x-upsert":"true"},body:file});if(!r.ok)throw new Error(await r.text());return `${SB}/storage/v1/object/public/carissa-resources/${path}`;},
 };
 
+const ADMIN_DISCIPLINE_SEEN_KEY = 'carissa_admin_last_seen_discipline_at';
+const ADMIN_AUDIT_POLL_MS = 30000;
+const safeJsonParse = (s, fallback=null) => { try { return JSON.parse(s || '{}'); } catch { return fallback; } };
+const parseDisciplineEntry = (row) => {
+  const obj = safeJsonParse(row?.user_agent, null);
+  if(!obj) return null;
+  if(obj.discipline) return obj.discipline;
+  if(obj.delta !== undefined && obj.learner) return obj;
+  return null;
+};
+const getStoredDisciplineSeenAt = () => {
+  try{ return Number(localStorage.getItem(ADMIN_DISCIPLINE_SEEN_KEY) || 0) || 0; }
+  catch(_e){ return 0; }
+};
+const setStoredDisciplineSeenAt = (ts) => {
+  try{ localStorage.setItem(ADMIN_DISCIPLINE_SEEN_KEY, String(Number(ts)||0)); }catch(_e){}
+};
+
 /* ── Constants ───────────────────────────────────────────────── */
 const INTERVENTION_OPTIONS = ["English","Reading","Writing","Mathematics","Other"];
 const LEGACY_BARRIER_MAP = {
@@ -3820,6 +3838,7 @@ function AdminDashboard(){
   const [overrides,setOverrides]=useState([]);
   const [loading,setLoading]=useState(true);
   const [projectMode,setProjectMode]=useState(null); // null | {phase}
+  const [lastSeenDisciplineAt,setLastSeenDisciplineAt]=useState(()=>getStoredDisciplineSeenAt());
 
   useEffect(()=>{
     (async()=>{
@@ -3847,17 +3866,80 @@ function AdminDashboard(){
     })();
   },[]);
 
+  useEffect(()=>{
+    const pullAudit = async()=>{
+      try{
+        const aud = await db.get('carissa_teacher_audit','order=created_at.desc&limit=300').catch(()=>[]);
+        setAuditEvents(Array.isArray(aud) ? aud : []);
+      }catch(e){
+        console.error(e);
+      }
+    };
+    const id = setInterval(pullAudit, ADMIN_AUDIT_POLL_MS);
+    return ()=>clearInterval(id);
+  },[]);
+
+  const disciplineNotifications = useMemo(()=>{
+    return (auditEvents||[])
+      .filter(e=>e?.event_type==='discipline')
+      .map(e=>{
+        const discipline = parseDisciplineEntry(e);
+        const ts = e?.created_at ? new Date(e.created_at).getTime() : 0;
+        return { row:e, discipline, ts };
+      })
+      .filter(x=>x.ts && x.discipline?.learner)
+      .sort((a,b)=>b.ts-a.ts);
+  },[auditEvents]);
+
+  const unseenDiscipline = useMemo(()=>{
+    return disciplineNotifications.filter(x=>x.ts > lastSeenDisciplineAt);
+  },[disciplineNotifications,lastSeenDisciplineAt]);
+
+  const markDisciplineSeen = useCallback(()=>{
+    const newestTs = disciplineNotifications[0]?.ts || Date.now();
+    setLastSeenDisciplineAt(newestTs);
+    setStoredDisciplineSeenAt(newestTs);
+  },[disciplineNotifications]);
+
+  useEffect(()=>{
+    if(subTab==='discipline' && unseenDiscipline.length){
+      markDisciplineSeen();
+    }
+  },[subTab, unseenDiscipline.length, markDisciplineSeen]);
+
   if(loading) return <div style={{textAlign:'center',padding:'80px',color:'#667eea',fontSize:'18px'}}>Loading dashboard...</div>;
 
   return (
     <>
       <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'14px',background:'white',padding:'8px',borderRadius:'12px',boxShadow:'0 4px 14px rgba(0,0,0,0.06)'}}>
-        {SUBTABS.map(([k,l])=>(
+        {SUBTABS.map(([k,l])=>{
+          const label = k==='discipline' && unseenDiscipline.length ? `${l} (${unseenDiscipline.length} new)` : l;
+          return (
           <button key={k} onClick={()=>setSubTab(k)} style={{padding:'10px 16px',borderRadius:'8px',border:'none',cursor:'pointer',fontSize:'14px',fontWeight:600,flex:'1 1 auto',minWidth:'130px',background:subTab===k?'linear-gradient(135deg,#667eea,#764ba2)':'transparent',color:subTab===k?'white':'#666'}}>
-            {l}
+            {label}
           </button>
-        ))}
+        )})}
       </div>
+
+      {unseenDiscipline.length>0 && subTab!=='discipline' && (
+        <div style={{...card,marginBottom:'14px',border:'1px solid #fde68a',background:'#fffbeb'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'12px',flexWrap:'wrap'}}>
+            <div>
+              <div style={{fontWeight:900,color:'#92400e',fontSize:'16px',marginBottom:'4px'}}>⚠️ New discipline entries</div>
+              <div style={{fontSize:'13px',color:'#78350f',lineHeight:1.55}}>
+                {unseenDiscipline.length} new discipline {unseenDiscipline.length===1 ? 'entry has' : 'entries have'} been added by teachers.
+                {unseenDiscipline[0]?.discipline?.learner && (
+                  <> Latest: <strong>{unseenDiscipline[0].discipline.learner.firstname} {unseenDiscipline[0].discipline.learner.surname}</strong> ({unseenDiscipline[0].discipline.learner.class_name || unseenDiscipline[0].row.class_name || '—'}) at {new Date(unseenDiscipline[0].ts).toLocaleString('en-ZA')}.</>
+                )}
+              </div>
+            </div>
+            <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+              <button onClick={()=>setSubTab('discipline')} style={{...sbtn,background:'#d97706',fontSize:'13px'}}>Open Discipline</button>
+              <button onClick={markDisciplineSeen} style={{...sbtn,background:'#6b7280',fontSize:'13px'}}>Mark as seen</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {subTab==='overview' && <OverviewTab interventions={interventions} resources={resources} assignments={assignments} assessments={assessments}/>}
       {subTab==='interventions' && <InterventionsAdminTab interventions={interventions} setInterventions={setInterventions}/>}
