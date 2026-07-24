@@ -2631,6 +2631,7 @@ const SUBTABS = [
   ['progress','📈 Progress'],
   ['assessments','📝 Assessments'],
   ['reading','📖 Reading Results'],
+  ['discipline','⚖️ Discipline'],
   ['learners','👥 Learners'],
   ['registrations','🧑‍🏫 Registrations'],
   ['teacher_audit','🧾 Teacher Audit'],
@@ -3484,6 +3485,193 @@ function TeacherAuditTab({events,setEvents}){
   );
 }
 
+function DisciplineAdminTab(){
+  const [events,setEvents]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [search,setSearch]=useState('');
+  const [onlyFlagged,setOnlyFlagged]=useState(true);
+  const [selectedKey,setSelectedKey]=useState(null);
+
+  const safeParse = (s) => { try { return JSON.parse(s || '{}'); } catch { return null; } };
+  const parseDiscipline = (ua) => {
+    const obj = safeParse(ua);
+    if(!obj) return null;
+    if(obj.discipline) return obj.discipline;
+    if(obj.delta !== undefined && obj.learner) return obj;
+    return null;
+  };
+  const mkKey = (cls, sur, first) => `${cls}|${String(sur||'').trim().toLowerCase()}|${String(first||'').trim().toLowerCase()}`;
+
+  const refresh = async()=>{
+    setLoading(true);
+    try{
+      const qs = `event_type=in.(discipline,discipline_action_required)&order=created_at.desc&limit=5000`;
+      const res = await db.get('carissa_teacher_audit', qs);
+      setEvents(Array.isArray(res)?res:[]);
+    }catch(e){
+      alert('Could not load discipline records. Please confirm carissa_teacher_audit exists in Supabase.\n\n' + e.message);
+    }
+    setLoading(false);
+  };
+
+  useEffect(()=>{ refresh(); }, []);
+
+  const { totalsArr, recordsByKey } = useMemo(()=>{
+    const totals = {};
+    const byKey = {};
+    (events||[]).forEach(r=>{
+      const d = parseDiscipline(r.user_agent);
+      if(!d || !d.learner) return;
+      const cls = d.learner.class_name || r.class_name || '';
+      const key = mkKey(cls, d.learner.surname, d.learner.firstname);
+      const delta = Number(d.delta || 0);
+      if(!totals[key]) totals[key] = { key, class_name: cls, surname: d.learner.surname, firstname: d.learner.firstname, points: 0, merits: 0, demerits: 0, lastAt: 0, lastTeacher: '' };
+      totals[key].points += delta;
+      if(delta > 0) totals[key].merits += 1;
+      if(delta < 0) totals[key].demerits += 1;
+      const at = r.created_at ? new Date(r.created_at).getTime() : 0;
+      if(at > (totals[key].lastAt||0)){
+        totals[key].lastAt = at;
+        totals[key].lastTeacher = r.teacher_name || r.teacher_email || '';
+      }
+      if(!byKey[key]) byKey[key] = [];
+      byKey[key].push({ row: r, discipline: d, at });
+    });
+    Object.keys(byKey).forEach(k=>byKey[k].sort((a,b)=>(b.at||0)-(a.at||0)));
+    const arr = Object.values(totals)
+      .sort((a,b)=> (a.points - b.points) || ((b.lastAt||0)-(a.lastAt||0)));
+    return { totalsArr: arr, recordsByKey: byKey };
+  }, [events]);
+
+  const filtered = useMemo(()=>{
+    const s = search.trim().toLowerCase();
+    return totalsArr.filter(t=>{
+      if(onlyFlagged && t.points > -5) return false;
+      if(!s) return true;
+      const hay = `${t.class_name} ${t.surname} ${t.firstname} ${t.lastTeacher}`.toLowerCase();
+      return hay.includes(s);
+    });
+  }, [totalsArr, search, onlyFlagged]);
+
+  const selectedRecords = selectedKey ? (recordsByKey[selectedKey] || []) : [];
+
+  return (
+    <div style={card}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',marginBottom:'10px'}}>
+        <div>
+          <h2 style={{color:'#333',marginBottom:'4px'}}>⚖️ Discipline</h2>
+          <p style={{color:'#888',fontSize:'13px',margin:0}}>
+            Merits are +1 point, demerits are -1 point. Learners at -5 are flagged (yellow). Learners at -10 require action (red).
+          </p>
+        </div>
+        <div style={{display:'flex',gap:'8px',flexWrap:'wrap',alignItems:'center'}}>
+          <button onClick={refresh} style={{...sbtn,background:'#667eea',fontSize:'13px'}} disabled={loading}>{loading?'Loading...':'🔄 Refresh'}</button>
+        </div>
+      </div>
+
+      <div style={{display:'flex',gap:'10px',flexWrap:'wrap',marginBottom:'12px'}}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search learner, class, or teacher..."
+          style={{flex:'1 1 320px',padding:'11px 14px',border:'2px solid #e3e6f0',borderRadius:'10px',fontSize:'14px'}}/>
+        <label style={{display:'flex',gap:'8px',alignItems:'center',fontSize:'13px',color:'#444'}}>
+          <input type="checkbox" checked={onlyFlagged} onChange={e=>setOnlyFlagged(e.target.checked)}/>
+          Show flagged only (≤ -5)
+        </label>
+        <div style={{fontSize:'13px',color:'#666',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'999px',padding:'8px 12px'}}>
+          Learners: <strong>{filtered.length}</strong>
+        </div>
+      </div>
+
+      {filtered.length===0 ? (
+        <div style={{textAlign:'center',color:'#999',padding:'30px 0'}}>No discipline totals found yet.</div>
+      ) : (
+        <div style={{display:'grid',gridTemplateColumns:'1fr',gap:'10px'}}>
+          <div style={{overflowX:'auto',border:'1px solid #e2e8f0',borderRadius:'12px',background:'#fff'}}>
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:'13px'}}>
+              <thead>
+                <tr style={{background:'#f8f9fa',borderBottom:'2px solid #eee',textAlign:'left'}}>
+                  {['Learner','Class','Points','Records','Last update'].map(h=>(
+                    <th key={h} style={{padding:'10px',color:'#666',fontWeight:600,whiteSpace:'nowrap'}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((t,i)=>{
+                  const rowBg = t.points <= -10 ? '#fff1f2' : t.points <= -5 ? '#fffbeb' : (i%2?'#fafbff':'#fff');
+                  const pill = t.points <= -10
+                    ? {bg:'#fee2e2',fg:'#b91c1c',txt:`${t.points} • Action`}
+                    : t.points <= -5
+                      ? {bg:'#fef9c3',fg:'#a16207',txt:`${t.points} • Flag`}
+                      : {bg:'#eef2ff',fg:'#4f46e5',txt:`${t.points}`};
+                  return (
+                    <tr key={t.key} style={{borderBottom:'1px solid #f0f0f0',background:rowBg,cursor:'pointer'}}
+                      onClick={()=>setSelectedKey(t.key)}>
+                      <td style={{padding:'10px',fontWeight:800}}>{t.surname}, {t.firstname}</td>
+                      <td style={{padding:'10px'}}>{t.class_name}</td>
+                      <td style={{padding:'10px'}}>
+                        <span style={{background:pill.bg,color:pill.fg,padding:'3px 9px',borderRadius:'999px',fontSize:'12px',fontWeight:800}}>
+                          {pill.txt}
+                        </span>
+                      </td>
+                      <td style={{padding:'10px',color:'#666'}}>{t.merits} merits / {t.demerits} demerits</td>
+                      <td style={{padding:'10px',whiteSpace:'nowrap',color:'#666'}}>
+                        {t.lastAt ? `${new Date(t.lastAt).toLocaleDateString('en-ZA')} · ${t.lastTeacher||'—'}` : '—'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {selectedKey && (
+            <div style={{border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',background:'#fff'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',marginBottom:'10px'}}>
+                <div style={{fontWeight:900,color:'#333'}}>Records for: {selectedRecords[0]?.discipline?.learner?.surname}, {selectedRecords[0]?.discipline?.learner?.firstname} ({selectedRecords[0]?.discipline?.learner?.class_name})</div>
+                <button onClick={()=>setSelectedKey(null)} style={{...sbtn,background:'#6c757d',fontSize:'12px',padding:'6px 10px'}}>Close</button>
+              </div>
+              {selectedRecords.length===0 ? (
+                <div style={{color:'#999'}}>No records found.</div>
+              ) : (
+                <div style={{display:'grid',gap:'8px'}}>
+                  {selectedRecords.slice(0, 60).map((x,idx)=>{
+                    const d = x.discipline || {};
+                    const delta = Number(d.delta||0);
+                    const tag = delta > 0 ? {bg:'#dcfce7',fg:'#166534',txt:'Merit +1'} : {bg:'#fee2e2',fg:'#b91c1c',txt:'Demerit -1'};
+                    return (
+                      <div key={idx} style={{border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px 12px',background:'#fafbff'}}>
+                        <div style={{display:'flex',justifyContent:'space-between',gap:'10px',flexWrap:'wrap'}}>
+                          <div style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap'}}>
+                            <span style={{background:tag.bg,color:tag.fg,padding:'3px 9px',borderRadius:'999px',fontSize:'12px',fontWeight:800}}>{tag.txt}</span>
+                            {d.behaviour && <span style={{fontSize:'12px',color:'#444',fontWeight:700}}>{d.behaviour}</span>}
+                          </div>
+                          <div style={{fontSize:'12px',color:'#64748b'}}>{x.row?.created_at ? new Date(x.row.created_at).toLocaleString('en-ZA') : ''} · {x.row?.teacher_name || x.row?.teacher_email || ''}</div>
+                        </div>
+                        {d.comment && <div style={{marginTop:'6px',fontSize:'13px',color:'#333'}}>{d.comment}</div>}
+                        {(d.behaviour_more || d.action_taken) && (
+                          <div style={{marginTop:'6px',fontSize:'12px',color:'#555'}}>
+                            {d.behaviour_more && <div><strong>More info:</strong> {d.behaviour_more}</div>}
+                            {d.action_taken && <div><strong>Action taken:</strong> {d.action_taken}</div>}
+                          </div>
+                        )}
+                        {(d.committee_notified!=null || d.parents_contacted!=null) && (
+                          <div style={{marginTop:'6px',fontSize:'12px',color:'#555'}}>
+                            <strong>Committee:</strong> {d.committee_notified ? 'Yes' : 'No'} · <strong>Parents:</strong> {d.parents_contacted ? 'Yes' : 'No'}
+                            {d.parent_contact_details ? ` · ${d.parent_contact_details}` : ''}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ════════════════════════════════════════════════════════════════
    ADMIN DASHBOARD: TRAE ASSISTANT (UI shell)
    NOTE: Needs a server-side /api/ai endpoint to actually answer.
@@ -3686,6 +3874,7 @@ function AdminDashboard(){
         />
       )}
       {subTab==='reading' && <ReadingResultsTab reading={reading}/>}
+      {subTab==='discipline' && <DisciplineAdminTab />}
       {subTab==='learners' && <LearnersAdminTab overrides={overrides} setOverrides={setOverrides} setAssessments={setAssessments}/>}
       {subTab==='registrations' && <TeacherRegistrationsTab/>}
       {subTab==='teacher_audit' && <TeacherAuditTab events={auditEvents} setEvents={setAuditEvents}/>}
@@ -4394,6 +4583,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
               ['assessments',`📝 Assessments`],
               ['progress',`📈 Track Progress (${classAssignments.length})`],
               ...(teacherAuth ? [['classlist',`👥 Classlist (${(CLASS_DATA[selClass]||[]).length})`]] : []),
+              ...(teacherAuth ? [['discipline','⚖️ Discipline']] : []),
               ...(teacherAuth ? [['reading','📖 1-Minute Reading']] : []),
               ['resources',`📁 Resources (${resources.length})`],
             ].map(([k,l])=>(
@@ -4465,6 +4655,16 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
           {/* ── Reading (1-Min) tab ──────────────── */}
           {tab==='reading' && teacherAuth && (
             <ReadingAssessmentTab key={selClass} reading={reading} setReading={setReading} initialClass={selClass} lockClass={true}/>
+          )}
+
+          {/* ── Discipline tab ────────────────────── */}
+          {tab==='discipline' && teacherAuth && (
+            <TeacherDisciplineTab
+              teacherAuth={teacherAuth}
+              defaultClass={selClass}
+              showMsg={showMsg}
+              onAudit={(evt, cls)=>logTeacherAudit(evt, cls || selClass)}
+            />
           )}
 
           {/* ── Assessments tab ──────────────────── */}
@@ -4611,6 +4811,335 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
           {/* ── Resources tab ─────────────────────── */}
           {tab==='resources' && <ResourcesLibrary resources={resources} onAudit={(type,r)=>logTeacherAudit(`${type}:${String(r?.title||'').slice(0,40)}`, selClass)}/>}
         </>
+      )}
+    </div>
+  );
+}
+
+function TeacherDisciplineTab({ teacherAuth, defaultClass, showMsg, onAudit }){
+  const teacherName = `${teacherAuth?.first_name || ''} ${teacherAuth?.surname || ''}`.trim() || 'Teacher';
+  const teacherEmail = teacherAuth?.email || '';
+
+  const [selGrade, setSelGrade] = useState(defaultClass || CLASS_NAMES[0] || '');
+  const [q, setQ] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [rows, setRows] = useState([]); // raw discipline audit rows
+  const [totals, setTotals] = useState({}); // learnerKey -> { points, merits, demerits, lastAt }
+  const [modalFor, setModalFor] = useState(null);
+
+  const [kind, setKind] = useState('merit'); // merit | demerit
+  const [comment, setComment] = useState('');
+  const [behaviour, setBehaviour] = useState('Disruption');
+  const [behaviourMore, setBehaviourMore] = useState('');
+  const [actionTaken, setActionTaken] = useState('');
+  const [committeeNotified, setCommitteeNotified] = useState(false);
+  const [parentsContacted, setParentsContacted] = useState(false);
+  const [parentContactDetails, setParentContactDetails] = useState('');
+
+  const safeParse = (s) => {
+    try { return JSON.parse(s || '{}'); } catch { return null; }
+  };
+
+  const parseDiscipline = (ua) => {
+    const obj = safeParse(ua);
+    if(!obj) return null;
+    if(obj.discipline) return obj.discipline;
+    if(obj.delta !== undefined && obj.learner) return obj;
+    return null;
+  };
+
+  const mkKey = (cls, sur, first) => `${cls}|${String(sur||'').trim().toLowerCase()}|${String(first||'').trim().toLowerCase()}`;
+
+  const calcTotals = (auditRows) => {
+    const map = {};
+    (auditRows || []).forEach(r => {
+      const d = parseDiscipline(r.user_agent);
+      if(!d || !d.learner) return;
+      const cls = d.learner.class_name || r.class_name || '';
+      const k = mkKey(cls, d.learner.surname, d.learner.firstname);
+      const delta = Number(d.delta || 0);
+      const isMerit = delta > 0;
+      const isDemerit = delta < 0;
+      if(!map[k]) map[k] = { points: 0, merits: 0, demerits: 0, lastAt: null };
+      map[k].points += delta;
+      if(isMerit) map[k].merits += 1;
+      if(isDemerit) map[k].demerits += 1;
+      const at = r.created_at ? new Date(r.created_at).getTime() : null;
+      if(at && (!map[k].lastAt || at > map[k].lastAt)) map[k].lastAt = at;
+    });
+    return map;
+  };
+
+  const loadForClass = async (cls) => {
+    if(!cls) return;
+    setBusy(true);
+    try{
+      const qs = `event_type=eq.discipline&class_name=eq.${encodeURIComponent(cls)}&order=created_at.desc&limit=5000`;
+      const res = await db.get('carissa_teacher_audit', qs);
+      const list = Array.isArray(res) ? res : [];
+      setRows(list);
+      setTotals(calcTotals(list));
+      onAudit && onAudit('open_discipline', cls);
+    }catch(e){
+      alert('Error loading discipline records: ' + e.message);
+    }finally{
+      setBusy(false);
+    }
+  };
+
+  const loadAll = async () => {
+    setBusy(true);
+    try{
+      const qs = `event_type=eq.discipline&order=created_at.desc&limit=5000`;
+      const res = await db.get('carissa_teacher_audit', qs);
+      const list = Array.isArray(res) ? res : [];
+      setRows(list);
+      setTotals(calcTotals(list));
+      onAudit && onAudit('open_discipline_all', selGrade);
+    }catch(e){
+      alert('Error loading discipline records: ' + e.message);
+    }finally{
+      setBusy(false);
+    }
+  };
+
+  useEffect(()=>{
+    if(q.trim().length >= 2) loadAll();
+    else loadForClass(selGrade);
+  }, [selGrade]);
+
+  const allLearners = useMemo(()=>{
+    const out = [];
+    CLASS_NAMES.forEach(c=>{
+      (CLASS_DATA[c]||[]).forEach(l=>out.push({...l, class_name:c}));
+    });
+    return out;
+  }, []);
+
+  const visibleLearners = useMemo(()=>{
+    const qq = q.trim().toLowerCase();
+    if(qq.length >= 2){
+      return allLearners.filter(l=>{
+        const name = `${l.surname||''} ${l.firstname||''}`.toLowerCase();
+        return name.includes(qq);
+      }).slice(0, 120);
+    }
+    return (CLASS_DATA[selGrade] || []).map(l=>({...l, class_name: selGrade}));
+  }, [q, selGrade, allLearners]);
+
+  const openModal = (l) => {
+    setModalFor(l);
+    setKind('merit');
+    setComment('');
+    setBehaviour('Disruption');
+    setBehaviourMore('');
+    setActionTaken('');
+    setCommitteeNotified(false);
+    setParentsContacted(false);
+    setParentContactDetails('');
+  };
+
+  const saveRecord = async () => {
+    if(!modalFor) return;
+    const delta = kind === 'merit' ? 1 : -1;
+    const cls = modalFor.class_name || selGrade;
+    const discipline = {
+      learner: {
+        surname: modalFor.surname,
+        firstname: modalFor.firstname,
+        class_name: cls,
+        learner_no: modalFor.number || null,
+      },
+      type: kind,
+      delta,
+      comment: comment.trim() || null,
+      behaviour: kind==='demerit' ? behaviour : null,
+      behaviour_more: kind==='demerit' ? (behaviourMore.trim() || null) : null,
+      action_taken: kind==='demerit' ? (actionTaken.trim() || null) : null,
+      committee_notified: kind==='demerit' ? !!committeeNotified : null,
+      parents_contacted: kind==='demerit' ? !!parentsContacted : null,
+      parent_contact_details: kind==='demerit' ? (parentContactDetails.trim() || null) : null,
+    };
+    const ua = JSON.stringify({ ua: (typeof navigator!=='undefined' ? navigator.userAgent : ''), discipline });
+    try{
+      const payload = {
+        teacher_email: teacherEmail || null,
+        teacher_name: teacherName || null,
+        class_name: cls,
+        event_type: 'discipline',
+        user_agent: ua
+      };
+      const created = await db.post('carissa_teacher_audit', payload);
+      const newRow = Array.isArray(created) ? created[0] : created;
+      const nextRows = [newRow || {...payload, id:`temp-${Date.now()}`, created_at: new Date().toISOString()}, ...rows];
+      setRows(nextRows);
+      const nextTotals = calcTotals(nextRows);
+      setTotals(nextTotals);
+
+      const k = mkKey(cls, modalFor.surname, modalFor.firstname);
+      const pts = nextTotals[k]?.points ?? 0;
+      if(pts <= -10){
+        showMsg && showMsg(`⚠️ Action required: ${modalFor.firstname} ${modalFor.surname} is at ${pts} points.`);
+        try{
+          await db.post('carissa_teacher_audit', {
+            teacher_email: teacherEmail || null,
+            teacher_name: teacherName || null,
+            class_name: cls,
+            event_type: 'discipline_action_required',
+            user_agent: JSON.stringify({ ua: (typeof navigator!=='undefined' ? navigator.userAgent : ''), discipline, points: pts })
+          });
+        }catch(_e){ /* ignore */ }
+      }else if(pts <= -5){
+        showMsg && showMsg(`⚠️ Flag: ${modalFor.firstname} ${modalFor.surname} is at ${pts} points.`);
+      }else{
+        showMsg && showMsg(`✓ Saved ${kind} for ${modalFor.firstname} ${modalFor.surname}.`);
+      }
+      onAudit && onAudit(`discipline_add:${kind}`, cls);
+      setModalFor(null);
+    }catch(e){
+      alert('Error saving record: ' + e.message);
+    }
+  };
+
+  const badgeFor = (pts) => {
+    if(pts <= -10) return { bg:'#fee2e2', color:'#b91c1c', label:`${pts} pts • Action` };
+    if(pts <= -5) return { bg:'#fef9c3', color:'#a16207', label:`${pts} pts • Flag` };
+    return { bg:'#eef2ff', color:'#4f46e5', label:`${pts} pts` };
+  };
+
+  return (
+    <div style={card}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:'10px',marginBottom:'10px'}}>
+        <div>
+          <h3 style={{...ctitle,marginBottom:'2px'}}>⚖️ Discipline (Merits & Demerits)</h3>
+          <p style={{fontSize:'13px',color:'#666',marginBottom:'0'}}>
+            Each merit is <strong>+1</strong> point and each demerit is <strong>-1</strong> point. Learners at <strong>-5</strong> are flagged (yellow), and at <strong>-10</strong> require action (red).
+          </p>
+        </div>
+        <div style={{display:'flex',gap:'8px',flexWrap:'wrap',alignItems:'center'}}>
+          <select value={selGrade} onChange={e=>setSelGrade(e.target.value)} style={{...inp, minWidth:'180px'}}>
+            {CLASS_NAMES.map(c=>(<option key={c} value={c}>{c}</option>))}
+          </select>
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search learner (surname or name)..." style={{...inp, minWidth:'240px'}} />
+          <button onClick={()=>{ if(q.trim().length>=2) loadAll(); else loadForClass(selGrade); }} style={{...sbtn, background:'#667eea', fontSize:'13px'}} disabled={busy}>
+            {busy ? 'Loading...' : 'Refresh'}
+          </button>
+        </div>
+      </div>
+
+      <div style={{overflowX:'auto',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',background:'#fff'}}>
+        <table style={{width:'100%',borderCollapse:'collapse',fontSize:'13px'}}>
+          <thead>
+            <tr style={{borderBottom:'2px solid #eee',background:'#f8f9fa'}}>
+              {['Learner','Class','Points','Records','Action'].map(h=>(
+                <th key={h} style={{textAlign:'left',padding:'10px',color:'#666',fontWeight:600,whiteSpace:'nowrap'}}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {visibleLearners.map(l=>{
+              const cls = l.class_name || selGrade;
+              const k = mkKey(cls, l.surname, l.firstname);
+              const t = totals[k] || { points: 0, merits: 0, demerits: 0 };
+              const b = badgeFor(t.points);
+              const rowBg = t.points <= -10 ? '#fff1f2' : t.points <= -5 ? '#fffbeb' : 'transparent';
+              return (
+                <tr key={`${cls}-${l.surname}-${l.firstname}-${l.number||''}`} style={{borderBottom:'1px solid #f0f0f0', background: rowBg}}>
+                  <td style={{padding:'10px',fontWeight:700}}>{l.surname}, {l.firstname}</td>
+                  <td style={{padding:'10px'}}>{cls}</td>
+                  <td style={{padding:'10px'}}>
+                    <span style={{background:b.bg,color:b.color,padding:'3px 9px',borderRadius:'999px',fontSize:'12px',fontWeight:800}}>
+                      {b.label}
+                    </span>
+                  </td>
+                  <td style={{padding:'10px',color:'#666'}}>
+                    {t.merits} merits / {t.demerits} demerits
+                  </td>
+                  <td style={{padding:'10px'}}>
+                    <button style={{...sbtn,background:'#10b981',fontSize:'12px',padding:'6px 10px'}} onClick={()=>openModal(l)}>
+                      + Add record
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {modalFor && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'center',justifyContent:'center',padding:'20px',zIndex:50}}>
+          <div style={{width:'min(760px, 96vw)',background:'#fff',borderRadius:'16px',padding:'18px 18px 14px',boxShadow:'0 18px 50px rgba(0,0,0,0.25)'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'12px'}}>
+              <div>
+                <div style={{fontWeight:900,color:'#111',fontSize:'16px'}}>Add discipline record</div>
+                <div style={{color:'#666',fontSize:'13px'}}>{modalFor.firstname} {modalFor.surname} • {modalFor.class_name || selGrade}</div>
+              </div>
+              <button onClick={()=>setModalFor(null)} style={{...sbtn,background:'#6c757d',fontSize:'12px',padding:'6px 10px'}}>Close</button>
+            </div>
+
+            <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginTop:'12px'}}>
+              <button onClick={()=>setKind('merit')} style={{...sbtn,background:kind==='merit'?'#10b981':'#e2e8f0',color:kind==='merit'?'#fff':'#111',fontSize:'12px'}}>
+                ✅ Merit (+1)
+              </button>
+              <button onClick={()=>setKind('demerit')} style={{...sbtn,background:kind==='demerit'?'#ef4444':'#e2e8f0',color:kind==='demerit'?'#fff':'#111',fontSize:'12px'}}>
+                ⚠️ Demerit (-1)
+              </button>
+            </div>
+
+            {kind==='demerit' && (
+              <div style={{marginTop:'12px',display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:'10px'}}>
+                <div>
+                  <div style={{fontSize:'12px',fontWeight:700,color:'#555',marginBottom:'6px'}}>Behaviour</div>
+                  <select value={behaviour} onChange={e=>setBehaviour(e.target.value)} style={inp}>
+                    {['Disruption','Disrespect','Fighting','Bullying','Late','Homework not done','Uniform','Other'].map(o=>(
+                      <option key={o} value={o}>{o}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <div style={{fontSize:'12px',fontWeight:700,color:'#555',marginBottom:'6px'}}>Action taken by teacher</div>
+                  <input value={actionTaken} onChange={e=>setActionTaken(e.target.value)} placeholder="e.g., warning, moved seat, detention..." style={inp}/>
+                </div>
+                <div style={{gridColumn:'1 / -1'}}>
+                  <div style={{fontSize:'12px',fontWeight:700,color:'#555',marginBottom:'6px'}}>More info about behaviour</div>
+                  <textarea value={behaviourMore} onChange={e=>setBehaviourMore(e.target.value)} rows={2} placeholder="Extra context (what happened, where, who was involved)..."
+                    style={{...inp,resize:'vertical'}}/>
+                </div>
+                <div style={{display:'flex',gap:'14px',flexWrap:'wrap',alignItems:'center'}}>
+                  <label style={{display:'flex',gap:'8px',alignItems:'center',fontSize:'13px',color:'#444'}}>
+                    <input type="checkbox" checked={committeeNotified} onChange={e=>setCommitteeNotified(e.target.checked)}/> Disciplinary committee notified?
+                  </label>
+                  <label style={{display:'flex',gap:'8px',alignItems:'center',fontSize:'13px',color:'#444'}}>
+                    <input type="checkbox" checked={parentsContacted} onChange={e=>setParentsContacted(e.target.checked)}/> Parents contacted?
+                  </label>
+                </div>
+                {parentsContacted && (
+                  <div style={{gridColumn:'1 / -1'}}>
+                    <div style={{fontSize:'12px',fontWeight:700,color:'#555',marginBottom:'6px'}}>Parent contact details</div>
+                    <input value={parentContactDetails} onChange={e=>setParentContactDetails(e.target.value)} placeholder="e.g., called mother, WhatsApp message, meeting scheduled..."
+                      style={inp}/>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={{marginTop:'12px'}}>
+              <div style={{fontSize:'12px',fontWeight:700,color:'#555',marginBottom:'6px'}}>Comment / description</div>
+              <textarea value={comment} onChange={e=>setComment(e.target.value)} rows={3} placeholder="Write a clear description of the merit or demerit..."
+                style={{...inp,resize:'vertical'}}/>
+            </div>
+
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',marginTop:'14px'}}>
+              <div style={{fontSize:'12px',color:'#666'}}>
+                Records are saved per learner and cannot be edited in the teacher dashboard.
+              </div>
+              <button onClick={saveRecord} style={{...sbtn,background:'#667eea'}} disabled={busy}>
+                {busy ? 'Saving...' : 'Save record'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
