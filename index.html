@@ -352,7 +352,17 @@ function AdminLoginModal({onSuccess,onClose}){
     if(pin.trim()===FALLBACK_PIN){onSuccess();setBusy(false);return;}
     try{
       const d = await db.get('carissa_config','key=eq.admin_pin');
-      if(d.length>0 && d[0].value===pin.trim()) onSuccess();
+      let configPin = '';
+      if(d.length>0){
+        const raw = d[0].value;
+        try{
+          const parsed = JSON.parse(raw || '{}');
+          configPin = (parsed && typeof parsed === 'object' && parsed.pin) ? parsed.pin : raw;
+        }catch(_e){
+          configPin = raw;
+        }
+      }
+      if(configPin===pin.trim()) onSuccess();
       else setErr('Incorrect PIN. Please try again.');
     }catch{setErr('Could not verify. Check connection.');}
     setBusy(false);
@@ -4382,18 +4392,14 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
   const [loginErr,setLoginErr]=useState('');
   const [loginBusy,setLoginBusy]=useState(false);
   const autoLoginRef = useRef(false);
-  const ADMIN_SHARED_TEACHERS = useMemo(()=>(
-    new Set([
-      'leratom2012@gmail.com',
-      'rivaldom2000@gmail.com',
-      'rosetherduma1070@gmail.com',
-    ])
-  ),[]);
   const DEFAULT_CLASS_BY_EMAIL = useMemo(()=>({
     'rivaldom2000@gmail.com': 'Grade 6.2',
     'rosetherduma1070@gmail.com': 'Grade 6.1',
   }),[]);
-  const canOpenAdmin = !!(teacherAuth?.email && ADMIN_SHARED_TEACHERS.has(String(teacherAuth.email).toLowerCase()));
+  const canOpenAdmin = !!(
+    teacherAuth?.email &&
+    sharedAdminEmails.includes(String(teacherAuth.email).toLowerCase())
+  );
   const openAdmin = ()=>{ window.location.href = `${window.location.pathname}?portal=admin`; };
 
   const teacherLogin = async()=>{
@@ -4457,6 +4463,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
   const [loading,setLoading]=useState(true);
   const [msg,setMsg]=useState('');
   const [notes,setNotes]=useState({});
+  const [sharedAdminEmails,setSharedAdminEmails]=useState([]);
   const showMsg = m => {setMsg(m);setTimeout(()=>setMsg(''),5000);};
   const secureLinkMode = !!(loginEmail || loginPin);
   const teacherClasses = !adminAccess && teacherAuth
@@ -4482,14 +4489,27 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
   useEffect(()=>{
     (async()=>{
       try{
-        const [a, asn, r, rdg, ints] = await Promise.all([
+        const [a, asn, r, rdg, ints, adminCfg] = await Promise.all([
           db.get('carissa_elearning_assessments','order=created_at.desc'),
           db.get('carissa_resource_assignments','order=created_at.desc'),
           db.get('carissa_resources','order=created_at.desc'),
           db.get('carissa_reading_assessments','order=created_at.desc').catch(()=>[]),
           db.get('carissa_interventions','order=created_at.desc').catch(()=>[]),
+          db.get('carissa_config','key=eq.admin_pin').catch(()=>[]),
         ]);
         setAssessments(a); setAssignments(asn); setResources(r); setReading(rdg); setInterventions(ints);
+        try{
+          const raw = adminCfg?.[0]?.value || '{}';
+          const parsed = JSON.parse(raw);
+          const emails = Array.isArray(parsed)
+            ? parsed.map(v=>String(v||'').trim().toLowerCase()).filter(Boolean)
+            : Array.isArray(parsed?.shared_admin_teachers)
+              ? parsed.shared_admin_teachers.map(v=>String(v||'').trim().toLowerCase()).filter(Boolean)
+            : [];
+          setSharedAdminEmails([...new Set(emails)]);
+        }catch(_e){
+          setSharedAdminEmails([]);
+        }
       }catch(e){console.error(e);}
       setLoading(false);
     })();
