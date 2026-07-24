@@ -3535,7 +3535,7 @@ function TeacherAuditTab({events,setEvents}){
   );
 }
 
-function DisciplineAdminTab(){
+function DisciplineAdminTab({adminUser}){
   const [events,setEvents]=useState([]);
   const [loading,setLoading]=useState(true);
   const [search,setSearch]=useState('');
@@ -3596,6 +3596,28 @@ function DisciplineAdminTab(){
     return { totalsArr: arr, recordsByKey: byKey };
   }, [events]);
 
+  const adminHistoryByKey = useMemo(()=>{
+    const out = {};
+    (events||[]).forEach(r=>{
+      if(!['discipline_admin_edit','discipline_admin_delete'].includes(r?.event_type)) return;
+      const obj = safeParse(r.user_agent);
+      const discipline = obj?.discipline || obj?.before || obj?.after || null;
+      const learner = discipline?.learner || obj?.learner || null;
+      if(!learner) return;
+      const cls = learner.class_name || r.class_name || '';
+      const key = mkKey(cls, learner.surname, learner.firstname);
+      if(!out[key]) out[key] = [];
+      out[key].push({
+        row: r,
+        action: r.event_type === 'discipline_admin_delete' ? 'delete' : 'edit',
+        at: r.created_at ? new Date(r.created_at).getTime() : 0,
+        details: obj || {},
+      });
+    });
+    Object.keys(out).forEach(k=>out[k].sort((a,b)=>(b.at||0)-(a.at||0)));
+    return out;
+  }, [events]);
+
   const filtered = useMemo(()=>{
     const s = search.trim().toLowerCase();
     return totalsArr.filter(t=>{
@@ -3607,6 +3629,7 @@ function DisciplineAdminTab(){
   }, [totalsArr, search, onlyFlagged]);
 
   const selectedRecords = selectedKey ? (recordsByKey[selectedKey] || []) : [];
+  const selectedAdminHistory = selectedKey ? (adminHistoryByKey[selectedKey] || []) : [];
   const startEdit = (row, discipline) => {
     setEditingId(row?.id || null);
     setEditForm({
@@ -3636,9 +3659,28 @@ function DisciplineAdminTab(){
       parent_contact_details: editForm.type==='demerit' ? (editForm.parent_contact_details.trim() || null) : null,
     };
     const current = safeParse(row.user_agent) || {};
-    const payload = { user_agent: JSON.stringify({ ...current, discipline: nextDiscipline }) };
+    const stamp = {
+      at: new Date().toISOString(),
+      by_email: adminUser?.email || null,
+      by_name: `${adminUser?.first_name || ''} ${adminUser?.surname || ''}`.trim() || null,
+    };
+    const payload = { user_agent: JSON.stringify({ ...current, discipline: nextDiscipline, last_admin_edit: stamp }) };
     try{
       await db.patch('carissa_teacher_audit',`id=eq.${row.id}`,payload);
+      await db.post('carissa_teacher_audit', {
+        teacher_email: (adminUser?.email || '').toLowerCase() || null,
+        teacher_name: `${adminUser?.first_name || ''} ${adminUser?.surname || ''}`.trim() || null,
+        class_name: nextDiscipline?.learner?.class_name || row.class_name || null,
+        event_type: 'discipline_admin_edit',
+        user_agent: JSON.stringify({
+          learner: nextDiscipline?.learner || null,
+          record_id: row.id,
+          before: originalDiscipline,
+          after: nextDiscipline,
+          edited_by: stamp,
+        }),
+        created_at: new Date().toISOString(),
+      }, 'return=minimal');
       cancelEdit();
       refresh();
     }catch(e){
@@ -3649,6 +3691,25 @@ function DisciplineAdminTab(){
     if(!row?.id) return;
     if(!confirm('Delete this disciplinary report? This cannot be undone.')) return;
     try{
+      const current = safeParse(row.user_agent) || {};
+      const discipline = parseDiscipline(row.user_agent);
+      await db.post('carissa_teacher_audit', {
+        teacher_email: (adminUser?.email || '').toLowerCase() || null,
+        teacher_name: `${adminUser?.first_name || ''} ${adminUser?.surname || ''}`.trim() || null,
+        class_name: discipline?.learner?.class_name || row.class_name || null,
+        event_type: 'discipline_admin_delete',
+        user_agent: JSON.stringify({
+          learner: discipline?.learner || null,
+          record_id: row.id,
+          deleted_record: current,
+          deleted_by: {
+            at: new Date().toISOString(),
+            by_email: adminUser?.email || null,
+            by_name: `${adminUser?.first_name || ''} ${adminUser?.surname || ''}`.trim() || null,
+          },
+        }),
+        created_at: new Date().toISOString(),
+      }, 'return=minimal');
       await db.del('carissa_teacher_audit',`id=eq.${row.id}`);
       refresh();
     }catch(e){
@@ -3795,11 +3856,28 @@ function DisciplineAdminTab(){
                             {d.parent_contact_details ? ` · ${d.parent_contact_details}` : ''}
                           </div>
                         )}
+                        {safeParse(x.row?.user_agent)?.last_admin_edit && (
+                          <div style={{marginTop:'6px',fontSize:'12px',color:'#6b7280'}}>
+                            <strong>Last admin edit:</strong> {safeParse(x.row?.user_agent)?.last_admin_edit?.by_name || safeParse(x.row?.user_agent)?.last_admin_edit?.by_email || 'Admin'} · {safeParse(x.row?.user_agent)?.last_admin_edit?.at ? new Date(safeParse(x.row?.user_agent)?.last_admin_edit?.at).toLocaleString('en-ZA') : ''}
+                          </div>
+                        )}
                           </>
                         )}
                       </div>
                     );
                   })}
+                </div>
+              )}
+              {selectedAdminHistory.length>0 && (
+                <div style={{marginTop:'12px',borderTop:'1px solid #e5e7eb',paddingTop:'12px'}}>
+                  <div style={{fontWeight:900,color:'#333',marginBottom:'8px'}}>Admin activity history</div>
+                  <div style={{display:'grid',gap:'8px'}}>
+                    {selectedAdminHistory.slice(0,20).map((h,idx)=>(
+                      <div key={idx} style={{border:'1px solid #e5e7eb',borderRadius:'10px',padding:'10px 12px',background:'#fcfcfd',fontSize:'12px',color:'#4b5563'}}>
+                        <strong>{h.action==='delete' ? 'Deleted report' : 'Edited report'}</strong> · {(h.details?.edited_by?.by_name || h.details?.deleted_by?.by_name || h.row?.teacher_name || h.row?.teacher_email || 'Admin')} · {h.at ? new Date(h.at).toLocaleString('en-ZA') : ''}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -3946,7 +4024,7 @@ function TraeAssistantTab(){
   );
 }
 
-function AdminDashboard({onBack}){
+function AdminDashboard({onBack,adminUser}){
   const [subTab,setSubTab]=useState('overview');
   const [interventions,setInterventions]=useState([]);
   const [resources,setResources]=useState([]);
@@ -4081,7 +4159,7 @@ function AdminDashboard({onBack}){
         />
       )}
       {subTab==='reading' && <ReadingResultsTab reading={reading}/>}
-      {subTab==='discipline' && <DisciplineAdminTab />}
+      {subTab==='discipline' && <DisciplineAdminTab adminUser={adminUser} />}
       {subTab==='learners' && <LearnersAdminTab overrides={overrides} setOverrides={setOverrides} setAssessments={setAssessments}/>}
       {subTab==='registrations' && <TeacherRegistrationsTab/>}
       {subTab==='teacher_audit' && <TeacherAuditTab events={auditEvents} setEvents={setAuditEvents}/>}
@@ -4470,7 +4548,7 @@ function App(){
         {mode==='teacher' && <TeacherView onEditName={(r,cb)=>setEditTarget({row:r,onSave:cb})}/>}
         {mode==='coordinator' && <CoordinatorView onEditName={(r,cb)=>setEditTarget({row:r,onSave:cb})}/>}
         {mode==='learnworld' && <LearnWorldView exportReport={exportAssessmentReport} exportClassSummary={exportClassSummary} adminAccess={isAdmin} requestAdminAccess={requestAdminAccess}/>}
-        {mode==='admin' && isAdmin && <AdminDashboard onBack={TEACHER_SESSION ? ()=>setMode('learnworld') : null}/>}
+        {mode==='admin' && isAdmin && <AdminDashboard onBack={TEACHER_SESSION ? ()=>setMode('learnworld') : null} adminUser={adminUser}/>}
       </div>
 
       {/* MODALS */}
