@@ -3557,7 +3557,7 @@ function DisciplineAdminTab({adminUser}){
   const refresh = async()=>{
     setLoading(true);
     try{
-      const qs = `event_type=in.(discipline,discipline_action_required)&order=created_at.desc&limit=5000`;
+      const qs = `event_type=in.(discipline,discipline_action_required,discipline_admin_edit,discipline_admin_delete,discipline_admin_restore)&order=created_at.desc&limit=5000`;
       const res = await db.get('carissa_teacher_audit', qs);
       setEvents(Array.isArray(res)?res:[]);
     }catch(e){
@@ -3568,38 +3568,47 @@ function DisciplineAdminTab({adminUser}){
 
   useEffect(()=>{ refresh(); }, []);
 
-  const { totalsArr, recordsByKey } = useMemo(()=>{
+  const { totalsArr, recordsByKey, archivedRecordsByKey } = useMemo(()=>{
     const totals = {};
     const byKey = {};
+    const archivedByKey = {};
     (events||[]).forEach(r=>{
       if(r?.event_type !== 'discipline') return;
+      const raw = safeParse(r.user_agent) || {};
+      const isArchived = !!(raw.archived || raw.archived_at);
       const d = parseDiscipline(r.user_agent);
       if(!d || !d.learner) return;
       const cls = d.learner.class_name || r.class_name || '';
       const key = mkKey(cls, d.learner.surname, d.learner.firstname);
+      const at = r.created_at ? new Date(r.created_at).getTime() : 0;
+      if(isArchived){
+        if(!archivedByKey[key]) archivedByKey[key] = [];
+        archivedByKey[key].push({ row: r, discipline: d, at, meta: raw });
+        return;
+      }
       const delta = Number(d.delta || 0);
       if(!totals[key]) totals[key] = { key, class_name: cls, surname: d.learner.surname, firstname: d.learner.firstname, points: 0, merits: 0, demerits: 0, lastAt: 0, lastTeacher: '' };
       totals[key].points += delta;
       if(delta > 0) totals[key].merits += 1;
       if(delta < 0) totals[key].demerits += 1;
-      const at = r.created_at ? new Date(r.created_at).getTime() : 0;
       if(at > (totals[key].lastAt||0)){
         totals[key].lastAt = at;
         totals[key].lastTeacher = r.teacher_name || r.teacher_email || '';
       }
       if(!byKey[key]) byKey[key] = [];
-      byKey[key].push({ row: r, discipline: d, at });
+      byKey[key].push({ row: r, discipline: d, at, meta: raw });
     });
     Object.keys(byKey).forEach(k=>byKey[k].sort((a,b)=>(b.at||0)-(a.at||0)));
+    Object.keys(archivedByKey).forEach(k=>archivedByKey[k].sort((a,b)=>(b.at||0)-(a.at||0)));
     const arr = Object.values(totals)
       .sort((a,b)=> (a.points - b.points) || ((b.lastAt||0)-(a.lastAt||0)));
-    return { totalsArr: arr, recordsByKey: byKey };
+    return { totalsArr: arr, recordsByKey: byKey, archivedRecordsByKey: archivedByKey };
   }, [events]);
 
   const adminHistoryByKey = useMemo(()=>{
     const out = {};
     (events||[]).forEach(r=>{
-      if(!['discipline_admin_edit','discipline_admin_delete'].includes(r?.event_type)) return;
+      if(!['discipline_admin_edit','discipline_admin_delete','discipline_admin_restore'].includes(r?.event_type)) return;
       const obj = safeParse(r.user_agent);
       const discipline = obj?.discipline || obj?.before || obj?.after || null;
       const learner = discipline?.learner || obj?.learner || null;
@@ -3607,9 +3616,14 @@ function DisciplineAdminTab({adminUser}){
       const cls = learner.class_name || r.class_name || '';
       const key = mkKey(cls, learner.surname, learner.firstname);
       if(!out[key]) out[key] = [];
+      const action = r.event_type === 'discipline_admin_delete'
+        ? 'delete'
+        : r.event_type === 'discipline_admin_restore'
+          ? 'restore'
+          : 'edit';
       out[key].push({
         row: r,
-        action: r.event_type === 'discipline_admin_delete' ? 'delete' : 'edit',
+        action,
         at: r.created_at ? new Date(r.created_at).getTime() : 0,
         details: obj || {},
       });
@@ -3629,7 +3643,9 @@ function DisciplineAdminTab({adminUser}){
   }, [totalsArr, search, onlyFlagged]);
 
   const selectedRecords = selectedKey ? (recordsByKey[selectedKey] || []) : [];
+  const selectedArchivedRecords = selectedKey ? (archivedRecordsByKey[selectedKey] || []) : [];
   const selectedAdminHistory = selectedKey ? (adminHistoryByKey[selectedKey] || []) : [];
+  const selectedHeaderRecord = selectedRecords[0] || selectedArchivedRecords[0] || null;
   const startEdit = (row, discipline) => {
     setEditingId(row?.id || null);
     setEditForm({
@@ -3689,10 +3705,23 @@ function DisciplineAdminTab({adminUser}){
   };
   const deleteRecord = async(row)=>{
     if(!row?.id) return;
-    if(!confirm('Delete this disciplinary report? This cannot be undone.')) return;
+    if(!confirm('Move this disciplinary report to the recycle bin?')) return;
     try{
       const current = safeParse(row.user_agent) || {};
       const discipline = parseDiscipline(row.user_agent);
+      const archivedBy = {
+        at: new Date().toISOString(),
+        by_email: adminUser?.email || null,
+        by_name: `${adminUser?.first_name || ''} ${adminUser?.surname || ''}`.trim() || null,
+      };
+      await db.patch('carissa_teacher_audit',`id=eq.${row.id}`,{
+        user_agent: JSON.stringify({
+          ...current,
+          archived: true,
+          archived_at: archivedBy.at,
+          archived_by: archivedBy,
+        })
+      });
       await db.post('carissa_teacher_audit', {
         teacher_email: (adminUser?.email || '').toLowerCase() || null,
         teacher_name: `${adminUser?.first_name || ''} ${adminUser?.surname || ''}`.trim() || null,
@@ -3702,18 +3731,52 @@ function DisciplineAdminTab({adminUser}){
           learner: discipline?.learner || null,
           record_id: row.id,
           deleted_record: current,
-          deleted_by: {
-            at: new Date().toISOString(),
-            by_email: adminUser?.email || null,
-            by_name: `${adminUser?.first_name || ''} ${adminUser?.surname || ''}`.trim() || null,
-          },
+          deleted_by: archivedBy,
         }),
         created_at: new Date().toISOString(),
       }, 'return=minimal');
-      await db.del('carissa_teacher_audit',`id=eq.${row.id}`);
       refresh();
     }catch(e){
-      alert('Could not delete discipline record: ' + e.message);
+      alert('Could not move discipline record to recycle bin: ' + e.message);
+    }
+  };
+  const restoreRecord = async(row)=>{
+    if(!row?.id) return;
+    if(!confirm('Restore this disciplinary report from the recycle bin?')) return;
+    try{
+      const current = safeParse(row.user_agent) || {};
+      const discipline = parseDiscipline(row.user_agent);
+      const restoredBy = {
+        at: new Date().toISOString(),
+        by_email: adminUser?.email || null,
+        by_name: `${adminUser?.first_name || ''} ${adminUser?.surname || ''}`.trim() || null,
+      };
+      const next = {
+        ...current,
+        archived: false,
+        archived_at: null,
+        archived_by: null,
+        last_admin_restore: restoredBy,
+      };
+      await db.patch('carissa_teacher_audit',`id=eq.${row.id}`,{
+        user_agent: JSON.stringify(next)
+      });
+      await db.post('carissa_teacher_audit', {
+        teacher_email: (adminUser?.email || '').toLowerCase() || null,
+        teacher_name: `${adminUser?.first_name || ''} ${adminUser?.surname || ''}`.trim() || null,
+        class_name: discipline?.learner?.class_name || row.class_name || null,
+        event_type: 'discipline_admin_restore',
+        user_agent: JSON.stringify({
+          learner: discipline?.learner || null,
+          record_id: row.id,
+          restored_record: next,
+          restored_by: restoredBy,
+        }),
+        created_at: new Date().toISOString(),
+      }, 'return=minimal');
+      refresh();
+    }catch(e){
+      alert('Could not restore discipline record: ' + e.message);
     }
   };
 
@@ -3788,7 +3851,7 @@ function DisciplineAdminTab({adminUser}){
           {selectedKey && (
             <div style={{border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',background:'#fff'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',marginBottom:'10px'}}>
-                <div style={{fontWeight:900,color:'#333'}}>Records for: {selectedRecords[0]?.discipline?.learner?.surname}, {selectedRecords[0]?.discipline?.learner?.firstname} ({selectedRecords[0]?.discipline?.learner?.class_name})</div>
+                <div style={{fontWeight:900,color:'#333'}}>Records for: {selectedHeaderRecord?.discipline?.learner?.surname}, {selectedHeaderRecord?.discipline?.learner?.firstname} ({selectedHeaderRecord?.discipline?.learner?.class_name})</div>
                 <button onClick={()=>setSelectedKey(null)} style={{...sbtn,background:'#6c757d',fontSize:'12px',padding:'6px 10px'}}>Close</button>
               </div>
               {selectedRecords.length===0 ? (
@@ -3810,7 +3873,7 @@ function DisciplineAdminTab({adminUser}){
                           <div style={{display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap'}}>
                             <div style={{fontSize:'12px',color:'#64748b'}}>{x.row?.created_at ? new Date(x.row.created_at).toLocaleString('en-ZA') : ''} · {x.row?.teacher_name || x.row?.teacher_email || ''}</div>
                             <button onClick={()=>startEdit(x.row, d)} style={{...sbtn,background:'#667eea',fontSize:'11px',padding:'5px 8px'}}>Edit</button>
-                            <button onClick={()=>deleteRecord(x.row)} style={{...sbtn,background:'#dc2626',fontSize:'11px',padding:'5px 8px'}}>Delete</button>
+                            <button onClick={()=>deleteRecord(x.row)} style={{...sbtn,background:'#dc2626',fontSize:'11px',padding:'5px 8px'}}>Recycle bin</button>
                           </div>
                         </div>
                         {isEditing ? (
@@ -3868,13 +3931,35 @@ function DisciplineAdminTab({adminUser}){
                   })}
                 </div>
               )}
+              {selectedArchivedRecords.length>0 && (
+                <div style={{marginTop:'12px',borderTop:'1px solid #e5e7eb',paddingTop:'12px'}}>
+                  <div style={{fontWeight:900,color:'#333',marginBottom:'8px'}}>Recycle bin</div>
+                  <div style={{display:'grid',gap:'8px'}}>
+                    {selectedArchivedRecords.slice(0,20).map((x,idx)=>{
+                      const d = x.discipline || {};
+                      const archivedBy = x.meta?.archived_by || {};
+                      return (
+                        <div key={idx} style={{border:'1px dashed #d1d5db',borderRadius:'10px',padding:'10px 12px',background:'#f9fafb'}}>
+                          <div style={{display:'flex',justifyContent:'space-between',gap:'10px',flexWrap:'wrap'}}>
+                            <div style={{fontSize:'12px',color:'#4b5563'}}>
+                              Archived by <strong>{archivedBy.by_name || archivedBy.by_email || 'Admin'}</strong> · {x.meta?.archived_at ? new Date(x.meta.archived_at).toLocaleString('en-ZA') : ''}
+                            </div>
+                            <button onClick={()=>restoreRecord(x.row)} style={{...sbtn,background:'#059669',fontSize:'11px',padding:'5px 8px'}}>Restore</button>
+                          </div>
+                          {d.comment && <div style={{marginTop:'6px',fontSize:'13px',color:'#333'}}>{d.comment}</div>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               {selectedAdminHistory.length>0 && (
                 <div style={{marginTop:'12px',borderTop:'1px solid #e5e7eb',paddingTop:'12px'}}>
                   <div style={{fontWeight:900,color:'#333',marginBottom:'8px'}}>Admin activity history</div>
                   <div style={{display:'grid',gap:'8px'}}>
                     {selectedAdminHistory.slice(0,20).map((h,idx)=>(
                       <div key={idx} style={{border:'1px solid #e5e7eb',borderRadius:'10px',padding:'10px 12px',background:'#fcfcfd',fontSize:'12px',color:'#4b5563'}}>
-                        <strong>{h.action==='delete' ? 'Deleted report' : 'Edited report'}</strong> · {(h.details?.edited_by?.by_name || h.details?.deleted_by?.by_name || h.row?.teacher_name || h.row?.teacher_email || 'Admin')} · {h.at ? new Date(h.at).toLocaleString('en-ZA') : ''}
+                        <strong>{h.action==='delete' ? 'Moved to recycle bin' : h.action==='restore' ? 'Restored report' : 'Edited report'}</strong> · {(h.details?.edited_by?.by_name || h.details?.deleted_by?.by_name || h.details?.restored_by?.by_name || h.row?.teacher_name || h.row?.teacher_email || 'Admin')} · {h.at ? new Date(h.at).toLocaleString('en-ZA') : ''}
                       </div>
                     ))}
                   </div>
