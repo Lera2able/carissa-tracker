@@ -48,6 +48,27 @@ const db = {
 const ADMIN_DISCIPLINE_SEEN_KEY = 'carissa_admin_last_seen_discipline_at';
 const ADMIN_AUDIT_POLL_MS = 30000;
 const safeJsonParse = (s, fallback=null) => { try { return JSON.parse(s || '{}'); } catch { return fallback; } };
+const parseAdminConfigValue = (raw) => {
+  const fallback = { pin: '', shared_admin_teachers: [] };
+  if(raw == null) return fallback;
+  try{
+    const parsed = JSON.parse(raw || '{}');
+    if(Array.isArray(parsed)){
+      return { pin: '', shared_admin_teachers: parsed.map(v=>String(v||'').trim().toLowerCase()).filter(Boolean) };
+    }
+    if(parsed && typeof parsed === 'object'){
+      return {
+        pin: String(parsed.pin || '').trim(),
+        shared_admin_teachers: Array.isArray(parsed.shared_admin_teachers)
+          ? parsed.shared_admin_teachers.map(v=>String(v||'').trim().toLowerCase()).filter(Boolean)
+          : [],
+      };
+    }
+  }catch(_e){
+    return { pin: String(raw || '').trim(), shared_admin_teachers: [] };
+  }
+  return fallback;
+};
 const parseDisciplineEntry = (row) => {
   const obj = safeJsonParse(row?.user_agent, null);
   if(!obj) return null;
@@ -341,29 +362,26 @@ function StatusBadge({status}){
 }
 
 /* ── Admin Login Modal ──────────────────────────────────────── */
-function AdminLoginModal({onSuccess,onClose}){
+function AdminLoginModal({onSuccess,onClose,prefillEmail}){
+  const [email,setEmail]=useState(prefillEmail || '');
   const [pin,setPin]=useState('');
   const [err,setErr]=useState('');
   const [busy,setBusy]=useState(false);
-  const FALLBACK_PIN = "Carissa2025";
   const verify = async () => {
-    if(!pin.trim()){setErr('Please enter the admin PIN.');return;}
+    const cleanEmail = String(email||'').trim().toLowerCase();
+    const cleanPin = String(pin||'').trim();
+    if(!cleanEmail || !cleanPin){setErr('Please enter your admin email and password.');return;}
     setBusy(true);setErr('');
-    if(pin.trim()===FALLBACK_PIN){onSuccess();setBusy(false);return;}
     try{
-      const d = await db.get('carissa_config','key=eq.admin_pin');
-      let configPin = '';
-      if(d.length>0){
-        const raw = d[0].value;
-        try{
-          const parsed = JSON.parse(raw || '{}');
-          configPin = (parsed && typeof parsed === 'object' && parsed.pin) ? parsed.pin : raw;
-        }catch(_e){
-          configPin = raw;
-        }
-      }
-      if(configPin===pin.trim()) onSuccess();
-      else setErr('Incorrect PIN. Please try again.');
+      const [cfgRows, regRows] = await Promise.all([
+        db.get('carissa_config','key=eq.admin_pin').catch(()=>[]),
+        db.get('carissa_teacher_registrations',`email=ilike.${encodeURIComponent(cleanEmail)}&pin=eq.${encodeURIComponent(cleanPin)}&login_enabled=eq.true&order=created_at.desc`).catch(()=>[])
+      ]);
+      const adminCfg = parseAdminConfigValue(cfgRows?.[0]?.value || '{}');
+      const allowed = (adminCfg.shared_admin_teachers || []).includes(cleanEmail);
+      if(!allowed){ setErr('This email does not have admin access.'); setBusy(false); return; }
+      if(regRows.length>0) onSuccess({email:cleanEmail, first_name: regRows[0].first_name || '', surname: regRows[0].surname || ''});
+      else setErr('Incorrect admin password. Please try again.');
     }catch{setErr('Could not verify. Check connection.');}
     setBusy(false);
   };
@@ -371,10 +389,14 @@ function AdminLoginModal({onSuccess,onClose}){
     <div style={ovly} onClick={onClose}>
       <div style={mdl} onClick={e=>e.stopPropagation()}>
         <h2 style={{marginBottom:'15px',color:'#667eea'}}>🔐 Admin Login</h2>
-        <p style={{marginBottom:'15px',color:'#666',fontSize:'14px'}}>Enter your admin PIN to access admin mode.</p>
+        <p style={{marginBottom:'15px',color:'#666',fontSize:'14px'}}>Enter your admin email and unique password to access admin mode.</p>
         <div style={{marginBottom:'15px'}}>
-          <label style={lbl}>Admin PIN</label>
-          <input style={inp} type="password" placeholder="Enter PIN..." value={pin} onChange={e=>setPin(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')verify();}} autoFocus/>
+          <label style={lbl}>Admin Email</label>
+          <input style={inp} type="email" placeholder="Enter email..." value={email} onChange={e=>setEmail(e.target.value)} autoFocus/>
+        </div>
+        <div style={{marginBottom:'15px'}}>
+          <label style={lbl}>Admin Password</label>
+          <input style={inp} type="password" placeholder="Enter password..." value={pin} onChange={e=>setPin(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')verify();}}/>
           {err && <p style={{color:'#dc3545',fontSize:'13px',marginTop:'6px'}}>{err}</p>}
         </div>
         <div style={{display:'flex',gap:'10px',flexWrap:'wrap'}}>
@@ -3519,6 +3541,8 @@ function DisciplineAdminTab(){
   const [search,setSearch]=useState('');
   const [onlyFlagged,setOnlyFlagged]=useState(true);
   const [selectedKey,setSelectedKey]=useState(null);
+  const [editingId,setEditingId]=useState(null);
+  const [editForm,setEditForm]=useState(null);
 
   const safeParse = (s) => { try { return JSON.parse(s || '{}'); } catch { return null; } };
   const parseDiscipline = (ua) => {
@@ -3548,6 +3572,7 @@ function DisciplineAdminTab(){
     const totals = {};
     const byKey = {};
     (events||[]).forEach(r=>{
+      if(r?.event_type !== 'discipline') return;
       const d = parseDiscipline(r.user_agent);
       if(!d || !d.learner) return;
       const cls = d.learner.class_name || r.class_name || '';
@@ -3582,6 +3607,54 @@ function DisciplineAdminTab(){
   }, [totalsArr, search, onlyFlagged]);
 
   const selectedRecords = selectedKey ? (recordsByKey[selectedKey] || []) : [];
+  const startEdit = (row, discipline) => {
+    setEditingId(row?.id || null);
+    setEditForm({
+      type: discipline?.type || 'merit',
+      comment: discipline?.comment || '',
+      behaviour: discipline?.behaviour || 'Disruption',
+      behaviour_more: discipline?.behaviour_more || '',
+      action_taken: discipline?.action_taken || '',
+      committee_notified: !!discipline?.committee_notified,
+      parents_contacted: !!discipline?.parents_contacted,
+      parent_contact_details: discipline?.parent_contact_details || '',
+    });
+  };
+  const cancelEdit = () => { setEditingId(null); setEditForm(null); };
+  const saveEdit = async(row, originalDiscipline)=>{
+    if(!row?.id || !editForm) return;
+    const nextDiscipline = {
+      ...originalDiscipline,
+      type: editForm.type,
+      delta: editForm.type==='merit' ? 1 : -1,
+      comment: editForm.comment.trim() || null,
+      behaviour: editForm.type==='demerit' ? (editForm.behaviour || null) : null,
+      behaviour_more: editForm.type==='demerit' ? (editForm.behaviour_more.trim() || null) : null,
+      action_taken: editForm.type==='demerit' ? (editForm.action_taken.trim() || null) : null,
+      committee_notified: editForm.type==='demerit' ? !!editForm.committee_notified : null,
+      parents_contacted: editForm.type==='demerit' ? !!editForm.parents_contacted : null,
+      parent_contact_details: editForm.type==='demerit' ? (editForm.parent_contact_details.trim() || null) : null,
+    };
+    const current = safeParse(row.user_agent) || {};
+    const payload = { user_agent: JSON.stringify({ ...current, discipline: nextDiscipline }) };
+    try{
+      await db.patch('carissa_teacher_audit',`id=eq.${row.id}`,payload);
+      cancelEdit();
+      refresh();
+    }catch(e){
+      alert('Could not save discipline changes: ' + e.message);
+    }
+  };
+  const deleteRecord = async(row)=>{
+    if(!row?.id) return;
+    if(!confirm('Delete this disciplinary report? This cannot be undone.')) return;
+    try{
+      await db.del('carissa_teacher_audit',`id=eq.${row.id}`);
+      refresh();
+    }catch(e){
+      alert('Could not delete discipline record: ' + e.message);
+    }
+  };
 
   return (
     <div style={card}>
@@ -3665,6 +3738,7 @@ function DisciplineAdminTab(){
                     const d = x.discipline || {};
                     const delta = Number(d.delta||0);
                     const tag = delta > 0 ? {bg:'#dcfce7',fg:'#166534',txt:'Merit +1'} : {bg:'#fee2e2',fg:'#b91c1c',txt:'Demerit -1'};
+                    const isEditing = editingId && x.row?.id===editingId;
                     return (
                       <div key={idx} style={{border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px 12px',background:'#fafbff'}}>
                         <div style={{display:'flex',justifyContent:'space-between',gap:'10px',flexWrap:'wrap'}}>
@@ -3672,8 +3746,42 @@ function DisciplineAdminTab(){
                             <span style={{background:tag.bg,color:tag.fg,padding:'3px 9px',borderRadius:'999px',fontSize:'12px',fontWeight:800}}>{tag.txt}</span>
                             {d.behaviour && <span style={{fontSize:'12px',color:'#444',fontWeight:700}}>{d.behaviour}</span>}
                           </div>
-                          <div style={{fontSize:'12px',color:'#64748b'}}>{x.row?.created_at ? new Date(x.row.created_at).toLocaleString('en-ZA') : ''} · {x.row?.teacher_name || x.row?.teacher_email || ''}</div>
+                          <div style={{display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap'}}>
+                            <div style={{fontSize:'12px',color:'#64748b'}}>{x.row?.created_at ? new Date(x.row.created_at).toLocaleString('en-ZA') : ''} · {x.row?.teacher_name || x.row?.teacher_email || ''}</div>
+                            <button onClick={()=>startEdit(x.row, d)} style={{...sbtn,background:'#667eea',fontSize:'11px',padding:'5px 8px'}}>Edit</button>
+                            <button onClick={()=>deleteRecord(x.row)} style={{...sbtn,background:'#dc2626',fontSize:'11px',padding:'5px 8px'}}>Delete</button>
+                          </div>
                         </div>
+                        {isEditing ? (
+                          <div style={{display:'grid',gap:'8px',marginTop:'8px'}}>
+                            <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+                              <button onClick={()=>setEditForm(p=>({...p,type:'merit'}))} style={{...sbtn,background:editForm?.type==='merit'?'#10b981':'#cbd5e1',fontSize:'11px',padding:'5px 8px',color:editForm?.type==='merit'?'#fff':'#111'}}>Merit</button>
+                              <button onClick={()=>setEditForm(p=>({...p,type:'demerit'}))} style={{...sbtn,background:editForm?.type==='demerit'?'#ef4444':'#cbd5e1',fontSize:'11px',padding:'5px 8px',color:editForm?.type==='demerit'?'#fff':'#111'}}>Demerit</button>
+                            </div>
+                            {editForm?.type==='demerit' && (
+                              <>
+                                <select value={editForm?.behaviour||'Disruption'} onChange={e=>setEditForm(p=>({...p,behaviour:e.target.value}))} style={inp}>
+                                  {['Disruption','Disrespect','Fighting','Bullying','Late','Homework not done','Uniform','Other'].map(o=><option key={o} value={o}>{o}</option>)}
+                                </select>
+                                <textarea rows={2} value={editForm?.behaviour_more||''} onChange={e=>setEditForm(p=>({...p,behaviour_more:e.target.value}))} placeholder="More info about behaviour..." style={{...inp,resize:'vertical'}}/>
+                                <input value={editForm?.action_taken||''} onChange={e=>setEditForm(p=>({...p,action_taken:e.target.value}))} placeholder="Action taken by teacher" style={inp}/>
+                                <label style={{display:'flex',gap:'8px',alignItems:'center',fontSize:'13px',color:'#444'}}>
+                                  <input type="checkbox" checked={!!editForm?.committee_notified} onChange={e=>setEditForm(p=>({...p,committee_notified:e.target.checked}))}/> Disciplinary committee notified?
+                                </label>
+                                <label style={{display:'flex',gap:'8px',alignItems:'center',fontSize:'13px',color:'#444'}}>
+                                  <input type="checkbox" checked={!!editForm?.parents_contacted} onChange={e=>setEditForm(p=>({...p,parents_contacted:e.target.checked}))}/> Parents contacted?
+                                </label>
+                                {editForm?.parents_contacted && <input value={editForm?.parent_contact_details||''} onChange={e=>setEditForm(p=>({...p,parent_contact_details:e.target.value}))} placeholder="Parent contact details" style={inp}/>}
+                              </>
+                            )}
+                            <textarea rows={3} value={editForm?.comment||''} onChange={e=>setEditForm(p=>({...p,comment:e.target.value}))} placeholder="Comment / description" style={{...inp,resize:'vertical'}}/>
+                            <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+                              <button onClick={()=>saveEdit(x.row, d)} style={{...sbtn,background:'#10b981',fontSize:'12px'}}>Save changes</button>
+                              <button onClick={cancelEdit} style={{...sbtn,background:'#6b7280',fontSize:'12px'}}>Cancel</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
                         {d.comment && <div style={{marginTop:'6px',fontSize:'13px',color:'#333'}}>{d.comment}</div>}
                         {(d.behaviour_more || d.action_taken) && (
                           <div style={{marginTop:'6px',fontSize:'12px',color:'#555'}}>
@@ -3686,6 +3794,8 @@ function DisciplineAdminTab(){
                             <strong>Committee:</strong> {d.committee_notified ? 'Yes' : 'No'} · <strong>Parents:</strong> {d.parents_contacted ? 'Yes' : 'No'}
                             {d.parent_contact_details ? ` · ${d.parent_contact_details}` : ''}
                           </div>
+                        )}
+                          </>
                         )}
                       </div>
                     );
@@ -3836,7 +3946,7 @@ function TraeAssistantTab(){
   );
 }
 
-function AdminDashboard(){
+function AdminDashboard({onBack}){
   const [subTab,setSubTab]=useState('overview');
   const [interventions,setInterventions]=useState([]);
   const [resources,setResources]=useState([]);
@@ -3921,6 +4031,11 @@ function AdminDashboard(){
 
   return (
     <>
+      {onBack && (
+        <div style={{display:'flex',justifyContent:'flex-end',marginBottom:'10px'}}>
+          <button onClick={onBack} style={{...sbtn,background:'#6b7280',fontSize:'13px'}}>← Back to Teacher Dashboard</button>
+        </div>
+      )}
       <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'14px',background:'white',padding:'8px',borderRadius:'12px',boxShadow:'0 4px 14px rgba(0,0,0,0.06)'}}>
         {SUBTABS.map(([k,l])=>{
           const label = k==='discipline' && unseenDiscipline.length ? `${l} (${unseenDiscipline.length} new)` : l;
@@ -4281,6 +4396,8 @@ function App(){
   ); // 'teacher' | 'coordinator' | 'admin' | 'learnworld'
   const [showLogin,setShowLogin]=useState(false);
   const [isAdmin,setIsAdmin]=useState(false);
+  const [adminUser,setAdminUser]=useState(null);
+  const [adminPrefillEmail,setAdminPrefillEmail]=useState('');
   const [editTarget,setEditTarget]=useState(null); // {row, onSave}
   const [overridesReady,setOverridesReady]=useState(false);
 
@@ -4293,8 +4410,13 @@ function App(){
   },[]);
 
   const switchTo = (m) => {
-    if(m==='admin' && !isAdmin){ setShowLogin(true); return; }
+    if(m==='admin' && !isAdmin){ setAdminPrefillEmail(TEACHER_SESSION?.email || ''); setShowLogin(true); return; }
     setMode(m);
+  };
+  const requestAdminAccess = (email='') => {
+    setAdminPrefillEmail(String(email || TEACHER_SESSION?.email || ''));
+    if(!isAdmin){ setShowLogin(true); return; }
+    setMode('admin');
   };
 
   useEffect(()=>{
@@ -4321,6 +4443,8 @@ function App(){
           <div style={{display:'flex',gap:'8px',flexWrap:'wrap',alignItems:'center'}}>
             {!TEACHER_SESSION && !PORTAL_MODE && <button onClick={()=>switchTo('learnworld')} style={{padding:'8px 16px',borderRadius:'20px',border:'1px solid rgba(255,255,255,0.5)',color:'white',fontSize:'13px',fontWeight:600,background:mode==='learnworld'?'rgba(255,255,255,0.3)':'rgba(255,255,255,0.1)',cursor:'pointer'}}>🌐 LearnWorld</button>}
             {isAdmin && <span style={{padding:'8px 14px',borderRadius:'20px',background:'rgba(255,255,255,0.2)',fontSize:'13px',fontWeight:600}}>🔓 Admin</span>}
+            {isAdmin && adminUser?.email && <span style={{padding:'8px 14px',borderRadius:'20px',background:'rgba(255,255,255,0.16)',fontSize:'13px',fontWeight:600}}>{adminUser.email}</span>}
+            {isAdmin && TEACHER_SESSION && <button onClick={()=>setMode('learnworld')} style={{padding:'8px 16px',borderRadius:'20px',border:'1px solid rgba(255,255,255,0.5)',color:'white',fontSize:'13px',fontWeight:600,background:'rgba(255,255,255,0.1)',cursor:'pointer'}}>← Back to Teacher</button>}
           </div>
         </div>
       </header>
@@ -4345,14 +4469,15 @@ function App(){
       <div style={{maxWidth:'1300px',margin:'14px auto',padding:'0 16px 50px'}}>
         {mode==='teacher' && <TeacherView onEditName={(r,cb)=>setEditTarget({row:r,onSave:cb})}/>}
         {mode==='coordinator' && <CoordinatorView onEditName={(r,cb)=>setEditTarget({row:r,onSave:cb})}/>}
-        {mode==='learnworld' && <LearnWorldView exportReport={exportAssessmentReport} exportClassSummary={exportClassSummary} adminAccess={isAdmin}/>}
-        {mode==='admin' && isAdmin && <AdminDashboard/>}
+        {mode==='learnworld' && <LearnWorldView exportReport={exportAssessmentReport} exportClassSummary={exportClassSummary} adminAccess={isAdmin} requestAdminAccess={requestAdminAccess}/>}
+        {mode==='admin' && isAdmin && <AdminDashboard onBack={TEACHER_SESSION ? ()=>setMode('learnworld') : null}/>}
       </div>
 
       {/* MODALS */}
       {showLogin && (
         <AdminLoginModal
-          onSuccess={()=>{setIsAdmin(true);setShowLogin(false);setMode('admin');}}
+          prefillEmail={adminPrefillEmail}
+          onSuccess={(user)=>{setAdminUser(user||null);setIsAdmin(true);setShowLogin(false);setMode('admin');}}
           onClose={()=>setShowLogin(false)}
         />
       )}
@@ -4382,7 +4507,7 @@ root.render(<App/>);
    LEARNWORLD - Teacher portal (NEW)
    Class-filtered view of: assessments, assignment progress, resources
    ════════════════════════════════════════════════════════════════ */
-function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
+function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestAdminAccess}){
   const [selClass,setSelClass]=useState(TEACHER_SESSION ? (TEACHER_SESSION.active_class_name || TEACHER_SESSION.class_name) : '');
   const [teacherAuth,setTeacherAuth]=useState(TEACHER_SESSION); // logged-in teacher (portal session or in-page login)
   const [loginEmail,setLoginEmail]=useState(PREFILLED_TEACHER_EMAIL);
@@ -4391,6 +4516,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
   const [assessmentTermView,setAssessmentTermView]=useState('');
   const [loginErr,setLoginErr]=useState('');
   const [loginBusy,setLoginBusy]=useState(false);
+  const [sharedAdminEmails,setSharedAdminEmails]=useState([]);
   const autoLoginRef = useRef(false);
   const DEFAULT_CLASS_BY_EMAIL = useMemo(()=>({
     'rivaldom2000@gmail.com': 'Grade 6.2',
@@ -4400,13 +4526,13 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
     teacherAuth?.email &&
     sharedAdminEmails.includes(String(teacherAuth.email).toLowerCase())
   );
-  const openAdmin = ()=>{ window.location.href = `${window.location.pathname}?portal=admin`; };
+  const openAdmin = ()=>{ requestAdminAccess && requestAdminAccess(teacherAuth?.email || ''); };
 
   const teacherLogin = async()=>{
     setLoginErr('');
     const email = loginEmail.trim().toLowerCase();
     const pin = loginPin.trim();
-    if(!email || !pin){ setLoginErr('Please enter both your email address and your PIN.'); return; }
+    if(!email || !pin){ setLoginErr('Please enter both your email address and your password/PIN.'); return; }
     setLoginBusy(true);
     try{
       const rows = await db.get('carissa_teacher_registrations',
@@ -4437,7 +4563,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
           });
         }catch(e){}
       }else{
-        setLoginErr('Login failed. Please check your email and PIN, or contact the coordinator if you have not received your login details yet.');
+        setLoginErr('Login failed. Please check your email and password/PIN, or contact the coordinator if you have not received your login details yet.');
       }
     }catch(e){ setLoginErr('Could not reach the server. Please check your connection and try again.'); }
     setLoginBusy(false);
@@ -4463,7 +4589,6 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
   const [loading,setLoading]=useState(true);
   const [msg,setMsg]=useState('');
   const [notes,setNotes]=useState({});
-  const [sharedAdminEmails,setSharedAdminEmails]=useState([]);
   const showMsg = m => {setMsg(m);setTimeout(()=>setMsg(''),5000);};
   const secureLinkMode = !!(loginEmail || loginPin);
   const teacherClasses = !adminAccess && teacherAuth
@@ -4498,18 +4623,8 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
           db.get('carissa_config','key=eq.admin_pin').catch(()=>[]),
         ]);
         setAssessments(a); setAssignments(asn); setResources(r); setReading(rdg); setInterventions(ints);
-        try{
-          const raw = adminCfg?.[0]?.value || '{}';
-          const parsed = JSON.parse(raw);
-          const emails = Array.isArray(parsed)
-            ? parsed.map(v=>String(v||'').trim().toLowerCase()).filter(Boolean)
-            : Array.isArray(parsed?.shared_admin_teachers)
-              ? parsed.shared_admin_teachers.map(v=>String(v||'').trim().toLowerCase()).filter(Boolean)
-            : [];
-          setSharedAdminEmails([...new Set(emails)]);
-        }catch(_e){
-          setSharedAdminEmails([]);
-        }
+        const parsedCfg = parseAdminConfigValue(adminCfg?.[0]?.value || '{}');
+        setSharedAdminEmails([...new Set(parsedCfg.shared_admin_teachers || [])]);
       }catch(e){console.error(e);}
       setLoading(false);
     })();
