@@ -345,7 +345,7 @@ function AdminLoginModal({onSuccess,onClose}){
   const [pin,setPin]=useState('');
   const [err,setErr]=useState('');
   const [busy,setBusy]=useState(false);
-  const FALLBACK_PIN = "Carissa@2025";
+  const FALLBACK_PIN = "Carissa2025";
   const verify = async () => {
     if(!pin.trim()){setErr('Please enter the admin PIN.');return;}
     setBusy(true);setErr('');
@@ -4382,6 +4382,19 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
   const [loginErr,setLoginErr]=useState('');
   const [loginBusy,setLoginBusy]=useState(false);
   const autoLoginRef = useRef(false);
+  const ADMIN_SHARED_TEACHERS = useMemo(()=>(
+    new Set([
+      'leratom2012@gmail.com',
+      'rivaldom2000@gmail.com',
+      'rosetherduma1070@gmail.com',
+    ])
+  ),[]);
+  const DEFAULT_CLASS_BY_EMAIL = useMemo(()=>({
+    'rivaldom2000@gmail.com': 'Grade 6.2',
+    'rosetherduma1070@gmail.com': 'Grade 6.1',
+  }),[]);
+  const canOpenAdmin = !!(teacherAuth?.email && ADMIN_SHARED_TEACHERS.has(String(teacherAuth.email).toLowerCase()));
+  const openAdmin = ()=>{ window.location.href = `${window.location.pathname}?portal=admin`; };
 
   const teacherLogin = async()=>{
     setLoginErr('');
@@ -4394,16 +4407,19 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
         `email=ilike.${encodeURIComponent(email)}&pin=eq.${encodeURIComponent(pin)}&login_enabled=eq.true&order=created_at.desc`);
       if(rows.length){
         const classNames = [...new Set(rows.map(r=>r.class_name).filter(Boolean))];
+        const preferred = DEFAULT_CLASS_BY_EMAIL[email] && classNames.includes(DEFAULT_CLASS_BY_EMAIL[email])
+          ? DEFAULT_CLASS_BY_EMAIL[email]
+          : (classNames[0] || rows[0].class_name);
         const merged = {
           ...rows[0],
-          class_name: classNames[0] || rows[0].class_name,
+          class_name: preferred,
           class_names: classNames,
-          active_class_name: classNames[0] || rows[0].class_name
+          active_class_name: preferred
         };
         saveTeacherSession(merged, rememberDevice);
         TEACHER_SESSION = merged;
         setTeacherAuth(merged);
-        setSelClass(merged.active_class_name);
+        setSelClass(preferred);
         try{
           await db.post('carissa_teacher_audit', {
             teacher_email: (merged.email||'').toLowerCase(),
@@ -4577,7 +4593,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
                 Welcome, {teacherAuth.first_name} {teacherAuth.surname}
               </div>
               <div style={{fontSize:'13px',opacity:0.95,lineHeight:1.5}}>
-                Teacher linked to <strong>{teacherAuth.email}</strong> • Access: <strong>{teacherClasses.join(', ') || teacherAuth.class_name}</strong>
+                Teacher linked to <strong>{teacherAuth.email}</strong> • Access: <strong>{teacherClasses.length>=10 ? 'All classes' : (teacherClasses.join(', ') || teacherAuth.class_name)}</strong>
               </div>
             </div>
             <div style={{display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap'}}>
@@ -4601,6 +4617,11 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
                   {teacherClasses.map(n=><option key={n} value={n}>{n}</option>)}
                 </select>
               )}
+              {canOpenAdmin && (
+                <button onClick={openAdmin} style={{padding:'7px 14px',borderRadius:'8px',border:'1px solid rgba(255,255,255,0.6)',background:'rgba(0,0,0,0.12)',color:'white',fontWeight:800,cursor:'pointer',fontSize:'13px'}}>
+                  🔐 Admin
+                </button>
+              )}
               <button onClick={teacherLogout} style={{padding:'7px 14px',borderRadius:'8px',border:'1px solid rgba(255,255,255,0.6)',background:'transparent',color:'white',fontWeight:600,cursor:'pointer',fontSize:'13px'}}>Sign out</button>
             </div>
           </div>
@@ -4610,7 +4631,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
       {!adminAccess && !teacherAuth ? (
         <div style={{...card,maxWidth:'440px',margin:'0 auto'}}>
           <h3 style={{...ctitle,textAlign:'center'}}>🔐 Teacher Login</h3>
-          <p style={{color:'#666',fontSize:'13px',textAlign:'center',marginBottom:'16px'}}>Log in with the email address you registered and the PIN sent to you. If you are linked to more than one class, one PIN will let you switch between those classes.</p>
+          <p style={{color:'#666',fontSize:'13px',textAlign:'center',marginBottom:'16px'}}>Log in with the email address you registered and your password/PIN. If you are linked to more than one class, one password/PIN will let you switch between those classes.</p>
           {secureLinkMode ? (
             <div style={{background:'#eef2ff',color:'#3730a3',border:'1px solid #c7d2fe',borderRadius:'14px',padding:'20px 18px',textAlign:'center'}}>
               <div style={{fontSize:'34px',marginBottom:'10px'}}>{loginBusy ? '🔄' : '🔐'}</div>
@@ -4630,8 +4651,8 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess}){
                 <input style={inp} type="email" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} autoComplete="email"/>
               </div>
               <div style={{marginBottom:'6px'}}>
-                <label style={lbl}>PIN</label>
-                <input style={inp} type="password" inputMode="numeric" value={loginPin} onChange={e=>setLoginPin(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')teacherLogin();}}/>
+                <label style={lbl}>Password / PIN</label>
+                <input style={inp} type="password" value={loginPin} onChange={e=>setLoginPin(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')teacherLogin();}} autoComplete="current-password"/>
               </div>
               <label style={{display:'flex',alignItems:'center',gap:'10px',margin:'10px 0 4px',cursor:'pointer',fontSize:'13px',color:'#555',fontWeight:500}}>
                 <input
