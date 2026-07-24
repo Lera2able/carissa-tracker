@@ -3649,6 +3649,22 @@ function DisciplineAdminTab({adminUser}){
   const selectedArchivedRecords = selectedKey ? (archivedRecordsByKey[selectedKey] || []) : [];
   const selectedAdminHistory = selectedKey ? (adminHistoryByKey[selectedKey] || []) : [];
   const selectedHeaderRecord = selectedRecords[0] || selectedArchivedRecords[0] || null;
+  const selectedLearnerSummary = useMemo(()=>{
+    if(!selectedKey) return null;
+    const base = totalsArr.find(t=>t.key===selectedKey) || null;
+    const latestAdmin = selectedAdminHistory[0] || null;
+    return {
+      points: base?.points ?? 0,
+      merits: base?.merits ?? 0,
+      demerits: base?.demerits ?? 0,
+      activeRecords: selectedRecords.length,
+      archivedRecords: selectedArchivedRecords.length,
+      latestTeacher: base?.lastTeacher || '—',
+      latestAdminAction: latestAdmin
+        ? `${latestAdmin.action==='delete' ? 'Moved to recycle bin' : latestAdmin.action==='restore' ? 'Restored report' : 'Edited report'} · ${latestAdmin.details?.edited_by?.by_name || latestAdmin.details?.deleted_by?.by_name || latestAdmin.details?.restored_by?.by_name || latestAdmin.row?.teacher_name || latestAdmin.row?.teacher_email || 'Admin'}`
+        : 'No admin actions yet',
+    };
+  }, [selectedKey, totalsArr, selectedRecords.length, selectedArchivedRecords.length, selectedAdminHistory]);
   const filteredAdminHistory = useMemo(()=>{
     const fromTs = historyFrom ? new Date(`${historyFrom}T00:00:00`).getTime() : 0;
     const toTs = historyTo ? new Date(`${historyTo}T23:59:59`).getTime() : 0;
@@ -3875,6 +3891,29 @@ function DisciplineAdminTab({adminUser}){
                 <div style={{fontWeight:900,color:'#333'}}>Records for: {selectedHeaderRecord?.discipline?.learner?.surname}, {selectedHeaderRecord?.discipline?.learner?.firstname} ({selectedHeaderRecord?.discipline?.learner?.class_name})</div>
                 <button onClick={()=>setSelectedKey(null)} style={{...sbtn,background:'#6c757d',fontSize:'12px',padding:'6px 10px'}}>Close</button>
               </div>
+              {selectedLearnerSummary && (
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:'10px',marginBottom:'12px'}}>
+                  <div style={{border:'1px solid #e5e7eb',borderRadius:'12px',padding:'10px 12px',background:selectedLearnerSummary.points <= -10 ? '#fff1f2' : selectedLearnerSummary.points <= -5 ? '#fffbeb' : '#f8fafc'}}>
+                    <div style={{fontSize:'11px',color:'#6b7280',marginBottom:'4px'}}>Net points</div>
+                    <div style={{fontSize:'22px',fontWeight:900,color:selectedLearnerSummary.points <= -10 ? '#b91c1c' : selectedLearnerSummary.points <= -5 ? '#a16207' : '#111827'}}>{selectedLearnerSummary.points}</div>
+                  </div>
+                  <div style={{border:'1px solid #e5e7eb',borderRadius:'12px',padding:'10px 12px',background:'#f8fafc'}}>
+                    <div style={{fontSize:'11px',color:'#6b7280',marginBottom:'4px'}}>Active records</div>
+                    <div style={{fontSize:'22px',fontWeight:900,color:'#111827'}}>{selectedLearnerSummary.activeRecords}</div>
+                    <div style={{fontSize:'12px',color:'#4b5563'}}>{selectedLearnerSummary.merits} merits / {selectedLearnerSummary.demerits} demerits</div>
+                  </div>
+                  <div style={{border:'1px solid #e5e7eb',borderRadius:'12px',padding:'10px 12px',background:'#f8fafc'}}>
+                    <div style={{fontSize:'11px',color:'#6b7280',marginBottom:'4px'}}>Archived records</div>
+                    <div style={{fontSize:'22px',fontWeight:900,color:'#111827'}}>{selectedLearnerSummary.archivedRecords}</div>
+                    <div style={{fontSize:'12px',color:'#4b5563'}}>Recycle bin items</div>
+                  </div>
+                  <div style={{border:'1px solid #e5e7eb',borderRadius:'12px',padding:'10px 12px',background:'#f8fafc'}}>
+                    <div style={{fontSize:'11px',color:'#6b7280',marginBottom:'4px'}}>Latest activity</div>
+                    <div style={{fontSize:'12px',fontWeight:800,color:'#111827',lineHeight:1.45}}>{selectedLearnerSummary.latestTeacher}</div>
+                    <div style={{fontSize:'11px',color:'#6b7280',marginTop:'4px',lineHeight:1.45}}>{selectedLearnerSummary.latestAdminAction}</div>
+                  </div>
+                </div>
+              )}
               {selectedRecords.length===0 ? (
                 <div style={{color:'#999'}}>No records found.</div>
               ) : (
