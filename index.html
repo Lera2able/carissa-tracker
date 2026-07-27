@@ -5786,6 +5786,7 @@ function TeacherDisciplineTab({ teacherAuth, defaultClass, showMsg, onAudit }){
    Based on the uploaded Foundation Phase Home Language exemplar.
    ════════════════════════════════════════════════════════════════ */
 function TeacherToolsTab({ teacherAuth, className, learners, onAudit }){
+  const [toolFolder,setToolFolder]=useState('english_hl');
   const gradeFromClass = useMemo(()=>{
     const s = String(className||'');
     const m = s.match(/Grade\s*([Rr]|[1-9])/);
@@ -6119,7 +6120,301 @@ function TeacherToolsTab({ teacherAuth, className, learners, onAudit }){
     }
   }),[]);
 
-  const cfg = TERM3[gradeFromClass || ''] || null;
+  const FAL_TERM3 = useMemo(()=>({
+    '1':{
+      programme:[
+        {
+          component:'Luister en praat',
+          skills:[
+            'Reageer op eenvoudige groete en afskeidsgroete.',
+            'Reageer op eenvoudige vrae en op mondelinge instruksies.',
+            'Sing liedjies en doen aksierympies.',
+            'Identifiseer ’n persoon, dier of voorwerp uit ’n eenvoudige mondelinge beskrywing.',
+            'Toon begrip van basiese mondelinge woordeskat deur in die klaskamer of op ’n prent na voorwerpe te wys en dit te benoem.'
+          ],
+          form:'Waarneming en mondeling',
+          tool:'Kontrolelys / Rubriek',
+          score:'10',
+          due:'Teen Week 9'
+        },
+        {
+          component:'Klanke',
+          skills:[
+            'Begin om verskillende beginklanke in woorde te identifiseer.'
+          ],
+          form:'Mondeling',
+          tool:'Kontrolelys',
+          score:'10',
+          due:'Teen Week 9'
+        },
+        {
+          component:'Lees',
+          skills:[
+            'Luister na ’n storie wat vertel word en reageer daarop.',
+            'Sluit by koorgedeeltes aan ná herhaalde lees van ’n teks.',
+            'Identifiseer en benoem mense, voorwerpe en diere in illustrasies.'
+          ],
+          form:'Waarneming',
+          tool:'Kontrolelys / Rubriek',
+          score:'10',
+          due:'Teen Week 9'
+        },
+        {
+          component:'Skryf',
+          skills:[
+            'Skryf ’n eenvoudige lys met ’n opskrif oor ’n tema (3-5 woorde).'
+          ],
+          form:'Geskrewe',
+          tool:'Kontrolelys',
+          score:'5',
+          due:'Teen Week 9'
+        }
+      ],
+      checklistGroups:[
+        {label:'Luister en praat', items:[
+          'Reageer op eenvoudige groete en afskeidsgroete',
+          'Sing liedjies en doen aksierympies',
+          'Reageer op eenvoudige vrae en mondelinge instruksies'
+        ]},
+        {label:'Klanke', items:[
+          'Begin om verskillende beginklanke in woorde te identifiseer'
+        ]},
+        {label:'Lees', items:[
+          'Luister en reageer op ’n storie wat vertel word',
+          'Sluit by koorgedeeltes aan ná herhaalde lees van ’n teks',
+          'Identifiseer en benoem mense, voorwerpe en diere in illustrasies'
+        ]},
+        {label:'Skryf', items:[
+          'Skryf ’n eenvoudige lys met ’n opskrif oor ’n tema (3-5 woorde)'
+        ]},
+        {label:'Kommentaar', items:['Onderwyser se kommentaar']}
+      ],
+      scoreCols:[
+        {group:'Luister en praat', text:'Identifiseer ’n persoon, dier of voorwerp uit ’n eenvoudige mondelinge beskrywing', score:'5'},
+        {group:'Luister en praat', text:'Toon begrip van basiese mondelinge woordeskat deur na voorwerpe te wys en dit te benoem', score:'5'},
+        {group:'Klanke', text:'Herken meervoude mondelings met “s” en “es”', score:'10'},
+        {group:'Lees', text:'Speel die storie uit en gebruik eenvoudige dialoog', score:'5'},
+        {group:'Lees', text:'Beantwoord eenvoudige vrae oor ’n storie wat gelees of vertel is', score:'5'},
+        {group:'Kommentaar', text:'Onderwyser se kommentaar', score:''}
+      ],
+      rubricSections:[
+        {
+          title:'Luister en praat',
+          activity:'Identifiseer ’n persoon, dier of voorwerp uit ’n eenvoudige mondelinge beskrywing',
+          levels:['Die leerder kan nie sonder ondersteuning ’n persoon, dier of voorwerp identifiseer nie.','Die leerder identifiseer slegs 1 van die 4 items onafhanklik.','Die leerder identifiseer 2 van die 4 items onafhanklik.','Die leerder identifiseer 3 van die gegewe items uit ’n mondelinge beskrywing.','Die leerder identifiseer al die items met selfvertroue uit die mondelinge beskrywing.']
+        },
+        {
+          title:'Luister en praat',
+          activity:'Toon begrip van basiese mondelinge woordeskat',
+          levels:['Kan nie sonder ondersteuning na die voorwerpe wys nie.','Wys na 1 voorwerp korrek.','Wys na 2 voorwerpe korrek.','Wys na 3 voorwerpe korrek.','Wys na al die voorwerpe korrek en met selfvertroue.']
+        }
+      ]
+    },
+    '2':{
+      programme:[
+        {
+          component:'Luister en praat',
+          skills:[
+            'Vertel ’n storie oor wat vertel of gelees is oor in 3 tot 4 sinne.',
+            'Gee ’n eenvoudige mondelinge weergawe.',
+            'Beantwoord eenvoudige letterlike vrae oor ’n teks of storie.',
+            'Toon begrip van basiese woordeskat.'
+          ],
+          form:'Waarneming en mondeling',
+          tool:'Rubriek / Kontrolelys',
+          score:'5',
+          due:'Teen Week 9'
+        },
+        {
+          component:'Klanke',
+          skills:[
+            'Bou en breek woordfamilies op.',
+            'Herken woorde met “-ing” en “-ed”.',
+            'Herken medeklinkerverbindinge soos sh, ch en th aan die begin en einde van woorde.',
+            'Spelling: woordlys van 10 woorde en 1-2 sinsdiktees.'
+          ],
+          form:'Geskrewe',
+          tool:'Kontrolelys / Rubriek',
+          score:'15',
+          due:'Teen Week 9'
+        },
+        {
+          component:'Lees',
+          skills:[
+            'Woordherkenning: 40-50 sigwoorde.',
+            'Mondelinge lees van 40-50 woorde.'
+          ],
+          form:'Waarneming',
+          tool:'Rubriek',
+          score:'5',
+          due:'Teen Week 9'
+        },
+        {
+          component:'Skryf',
+          skills:[
+            'Skryf en illustreer ’n verjaarsdagkaart of ’n word-beter-kaart.'
+          ],
+          form:'Geskrewe',
+          tool:'Rubriek / Kontrolelys',
+          score:'5',
+          due:'Teen Week 9'
+        }
+      ],
+      checklistGroups:[
+        {label:'Luister en praat', items:[
+          'Gee ’n eenvoudige weergawe',
+          'Beantwoord eenvoudige letterlike vrae oor ’n storie of teks',
+          'Toon begrip van basiese woordeskat'
+        ]},
+        {label:'Klanke', items:[
+          'Bou en breek woordfamilies op',
+          'Herken woorde met “-ing” en “-ed”',
+          'Herken medeklinkerverbindinge soos sh, ch en th'
+        ]},
+        {label:'Lees', items:[
+          'Woordherkenning: 40-50 sigwoorde'
+        ]},
+        {label:'Skryf', items:[
+          'Skryf ’n sin uit diktee en gebruik leestekens korrek'
+        ]},
+        {label:'Kommentaar', items:['Onderwyser se kommentaar']}
+      ],
+      scoreCols:[
+        {group:'Luister en praat', text:'Vertel ’n storie oor wat vertel of gelees is oor in 3 of 4 sinne', score:'5'},
+        {group:'Klanke', text:'Spelling: woordlys van 10 woorde en 1-2 sinsdiktees', score:'15'},
+        {group:'Lees', text:'Mondelinge lees: 40-50 woorde', score:'5'},
+        {group:'Skryf', text:'Skryf en illustreer ’n verjaarsdagkaart of word-beter-kaart', score:'5'},
+        {group:'Kommentaar', text:'Onderwyser se kommentaar', score:''}
+      ],
+      rubricSections:[
+        {
+          title:'Luister en praat',
+          activity:'Vertel ’n storie oor in 3 tot 4 sinne',
+          levels:['Kan met baie herhaling 1 sin ná die onderwyser herhaal.','Kan net 1 sin oor die begin van die storie oorvertel.','Kan die begin van die storie in 2 sinne oorvertel.','Kan die storie in 3 sinne vlot oorvertel met korrekte woordeskat in FAL.','Kan die storie in 4 of meer sinne vlot oorvertel met korrekte woordeskat in FAL.']
+        },
+        {
+          title:'Klanke',
+          activity:'Spelling: woordlys van 10 woorde en 1-2 sinsdiktees',
+          levels:['Kan nie bybly om sinne neer te skryf soos die onderwyser dikteer nie.','Benodig baie hulp om sinne uit diktee te skryf.','Skryf sommige sinne uit diktee met gedeeltelike akkuraatheid.','Skryf sinne uit diktee goed met redelike akkuraatheid.','Skryf sinne uit diktee uitstekend en akkuraat.']
+        }
+      ]
+    },
+    '3':{
+      programme:[
+        {
+          component:'Luister en praat',
+          skills:[
+            'Gee ’n kort mondelinge weergawe van ’n persoonlike ervaring of gebeurtenis.',
+            'Toon begrip van mondelinge woordeskat.',
+            'Luister na ’n storie en beantwoord begripstoetsvrae mondelings.'
+          ],
+          form:'Waarneming en mondeling',
+          tool:'Rubriek / Kontrolelys',
+          score:'5',
+          due:'Teen Week 9'
+        },
+        {
+          component:'Klanke',
+          skills:[
+            'Speltoets: woordlys van 15 woorde en 1-2 sinsdiktees.',
+            'Herken vokaaldiagrawe soos ia, ay, oi, oy en ou.',
+            'Herken medeklinkerverbindinge soos str, scr, tch, nch, ll, ss, ff en ph.'
+          ],
+          form:'Geskrewe',
+          tool:'Kontrolelys / Rubriek',
+          score:'15',
+          due:'Teen Week 9'
+        },
+        {
+          component:'Lees',
+          skills:[
+            'Toets sigwoorde individueel: 60-70 woorde.',
+            'Kies ’n teks met minstens 60-70 woorde vir mondelinge lees en beantwoord vrae.'
+          ],
+          form:'Mondeling',
+          tool:'Rubriek',
+          score:'10',
+          due:'Teen Week 9'
+        },
+        {
+          component:'Skryf',
+          skills:[
+            'Skryf ’n persoonlike weergawe van 5-6 sinne met hoofletters en punte.',
+            'Skryf sinne in die verlede tyd met redelike akkuraatheid.'
+          ],
+          form:'Geskrewe',
+          tool:'Kontrolelys / Rubriek',
+          score:'5',
+          due:'Teen Week 9'
+        }
+      ],
+      checklistGroups:[
+        {label:'Luister en praat', items:[
+          'Toon begrip van mondelinge woordeskat',
+          'Luister na ’n storie en beantwoord begripstoetsvrae mondelings'
+        ]},
+        {label:'Klanke', items:[
+          'Herken vokaaldiagrawe soos ia, ay, oi, oy en ou',
+          'Herken medeklinkerverbindinge soos str, scr, tch, nch, ll, ss, ff en ph'
+        ]},
+        {label:'Skryf', items:[
+          'Skryf sinne in die verlede tyd met redelike akkuraatheid'
+        ]},
+        {label:'Kommentaar', items:['Onderwyser se kommentaar']}
+      ],
+      scoreCols:[
+        {group:'Luister en praat', text:'Gee ’n kort mondelinge weergawe van ’n persoonlike ervaring of gebeurtenis', score:'5'},
+        {group:'Klanke', text:'Speltoets: woordlys van 15 woorde en 1-2 sinsdiktees', score:'15'},
+        {group:'Lees', text:'Sigwoorde: assesseer elke leerder individueel op 60-70 sigwoorde', score:'5'},
+        {group:'Lees', text:'Mondelinge lees: kies ’n teks met minstens 60-70 woorde en vra vrae', score:'5'},
+        {group:'Skryf', text:'Skryf ’n persoonlike weergawe van 5-6 sinne met hoofletters en punte', score:'5'},
+        {group:'Kommentaar', text:'Onderwyser se kommentaar', score:''}
+      ],
+      rubricSections:[
+        {
+          title:'Luister en praat',
+          activity:'Gee ’n kort mondelinge weergawe van ’n persoonlike ervaring of gebeurtenis in 4-5 sinne',
+          levels:['Met ’n raamwerk gee die leerder 1 eenvoudige sin met ondersteuning.','Met ’n raamwerk gee die leerder 2 sinne oor persoonlike nuus of ’n gebeurtenis.','Met ’n raamwerk gee die leerder 3 sinne oor persoonlike nuus of ’n gebeurtenis.','Gee ’n eenvoudige weergawe van 4 sinne oor ’n persoonlike ervaring of gebeurtenis.','Gee ’n eenvoudige weergawe van 5 sinne oor ’n persoonlike ervaring of gebeurtenis.']
+        },
+        {
+          title:'Lees',
+          activity:'Sigwoorde: 70-80 woorde',
+          levels:['Lees tussen 20-25 bekende sigwoorde met onderwyserondersteuning.','Herken en lees 50-59 bekende sigwoorde korrek.','Herken en lees 60-69 bekende sigwoorde korrek.','Herken en lees 70-79 sigwoorde selfstandig en korrek.','Herken en lees meer as 80 sigwoorde selfstandig en korrek.']
+        }
+      ]
+    }
+  }),[]);
+
+  const isFAL = toolFolder==='afrikaans_fal';
+  const ui = isFAL ? {
+    folderTitle:'Afrikaans FAL',
+    description:'Termyn 3 Afrikaans Eerste Addisionele Taal-hulpmiddels met klaslyste wat outomaties ingevoeg word.',
+    subjectLabel:'Afrikaans Eerste Addisionele Taal',
+    noCfg:'Hierdie aangehegte Afrikaans FAL-vorms is graadspesifiek vir Graad 1-3. Deel asseblief die korrekte dokument as jy dieselfde detail vir ’n ander graad wil hê.',
+    buttons:{
+      programme:'📄 Program van assessering',
+      checklist:'📝 Kontrolelys',
+      scores:'📊 Termyn 3 punte volgens rubrieke',
+      rubric:'📚 Graadrubriek'
+    },
+    included:'die korrekte Termyn 3-uitleg, klaslyste, gedetailleerde kontrolelysbeskrywings, graadspesifieke puntestate en ’n passende rubriek',
+    labels:{grade:'Graad', classlist:'Klaslys', includedForms:'Ingesluit', names:'Name van leerders', date:'Datum', score:'Punt', teacherComment:'Onderwyser se kommentaar'}
+  } : {
+    folderTitle:'English HL',
+    description:'Term 3 Foundation Phase Home Language tools with class lists inserted automatically.',
+    subjectLabel:'Home Language',
+    noCfg:'These attached Home Language forms are grade-specific for Grades 1–3 only. Please share the correct document for this class if you want the same detailed format outside Foundation Phase.',
+    buttons:{
+      programme:'📄 Program of assessment',
+      checklist:'📝 Checklist',
+      scores:'📊 Term 3 scores using rubrics',
+      rubric:'📚 Grade rubric'
+    },
+    included:'the correct Term 3 layout, class list insertion, detailed checklist descriptions, grade-specific score sheet headings, and a matching rubric template',
+    labels:{grade:'Grade', classlist:'Class list', includedForms:'Included forms', names:'Names of learners', date:'Date', score:'Score', teacherComment:'Teacher comment'}
+  };
+
+  const cfg = (isFAL ? FAL_TERM3 : TERM3)[gradeFromClass || ''] || null;
 
   const openPrintWindow = (title, bodyHtml, pageCss='A4 landscape', compact=false)=>{
     const html = `<!DOCTYPE html>
@@ -6168,9 +6463,9 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
     </div>
   </header>
   <div class="meta">
-    <div class="chip">${esc(className)} · Home Language · Grade ${esc(gradeFromClass || '—')} · Term 3</div>
-    <div class="chip">Teacher: ${esc(teacherAuth?.first_name || '')} ${esc(teacherAuth?.surname || '')}</div>
-    <div class="chip">Date: ${new Date().toLocaleDateString('en-ZA',{day:'2-digit',month:'long',year:'numeric'})}</div>
+    <div class="chip">${esc(className)} · ${esc(ui.subjectLabel)} · ${esc(ui.labels.grade)} ${esc(gradeFromClass || '—')} · ${isFAL ? 'Termyn 3' : 'Term 3'}</div>
+    <div class="chip">${isFAL ? 'Onderwyser' : 'Teacher'}: ${esc(teacherAuth?.first_name || '')} ${esc(teacherAuth?.surname || '')}</div>
+    <div class="chip">${ui.labels.date}: ${new Date().toLocaleDateString('en-ZA',{day:'2-digit',month:'long',year:'numeric'})}</div>
   </div>`}
   ${bodyHtml}
 </div>
@@ -6196,23 +6491,23 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
       </tr>
     `).join('');
     openPrintWindow(
-      `Home Language: Programme of Assessment: Grade ${gradeFromClass}: Term 3`,
-      `<div class="section-title">Programme of Assessment</div>
+      `${ui.subjectLabel}: ${isFAL ? 'Program van Assessering' : 'Programme of Assessment'}: ${isFAL ? 'Graad' : 'Grade'} ${gradeFromClass}: ${isFAL ? 'Termyn 3' : 'Term 3'}`,
+      `<div class="section-title">${isFAL ? 'Program van Assessering' : 'Programme of Assessment'}</div>
       <table>
         <thead>
           <tr>
-            <th>Component</th>
-            <th>What skills will be assessed</th>
-            <th>Form of Assessment</th>
-            <th>Assessment Tool</th>
-            <th>Score</th>
-            <th>Date to be completed</th>
-            <th>Date completed</th>
+            <th>${isFAL ? 'Komponent' : 'Component'}</th>
+            <th>${isFAL ? 'Watter vaardighede word geassesseer' : 'What skills will be assessed'}</th>
+            <th>${isFAL ? 'Vorm van assessering' : 'Form of Assessment'}</th>
+            <th>${isFAL ? 'Assesseringsinstrument' : 'Assessment Tool'}</th>
+            <th>${ui.labels.score}</th>
+            <th>${isFAL ? 'Datum waarop dit voltooi moet wees' : 'Date to be completed'}</th>
+            <th>${isFAL ? 'Datum voltooi' : 'Date completed'}</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
       </table>
-      <div class="note">Prepared from the Foundation Phase Home Language exemplar booklet, with the class context kept on the teacher dashboard.</div>`
+      <div class="note">${isFAL ? 'Hierdie vorm is gebaseer op die aangehegte FAL SBA-dokument en is aangepas vir die onderwyser se klaslys.' : 'Prepared from the Foundation Phase Home Language exemplar booklet, with the class context kept on the teacher dashboard.'}</div>`
     );
   };
 
@@ -6221,24 +6516,24 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
     const groups = cfg.checklistGroups;
     const totalCols = groups.reduce((s,g)=>s+g.items.length,0);
     const groupHead = groups.map(g=>`<th colspan="${g.items.length}" class="center">${esc(g.label)}</th>`).join('');
-    const itemHead = groups.flatMap(g=>g.items.map(item=>`<th class="${g.label==='Comment'?'commenthead':'wraphead'}">${esc(item)}</th>`)).join('');
+    const itemHead = groups.flatMap(g=>g.items.map(item=>`<th class="${(g.label==='Comment' || g.label==='Kommentaar')?'commenthead':'wraphead'}">${esc(item)}</th>`)).join('');
     const rows = sortedLearners.map((l,idx)=>{
       const name = `${esc(l.surname||'')}, ${esc(l.firstname||'')}`.replace(/^, /,'');
       return `<tr><td class="num">${idx+1}</td><td class="name">${name||'—'}</td>${Array.from({length:totalCols}).map(()=>'<td style="height:26px"></td>').join('')}</tr>`;
     }).join('');
     openPrintWindow(
-      `Home Language: GRADE ${gradeFromClass}: TERM 3 Checklist`,
+      `${ui.subjectLabel}: ${isFAL ? 'GRAAD' : 'GRADE'} ${gradeFromClass}: ${isFAL ? 'TERMYN 3 Kontrolelys' : 'TERM 3 Checklist'}`,
       `<table>
         <thead>
-          <tr><th colspan="${2+totalCols}" class="center" style="font-size:16px">Home Language: GRADE ${esc(gradeFromClass)}: TERM 3 Checklist</th></tr>
+          <tr><th colspan="${2+totalCols}" class="center" style="font-size:16px">${ui.subjectLabel}: ${isFAL ? 'GRAAD' : 'GRADE'} ${esc(gradeFromClass)}: ${isFAL ? 'TERMYN 3 Kontrolelys' : 'TERM 3 Checklist'}</th></tr>
           <tr><th colspan="2" rowspan="2" class="center" style="font-size:26px">✓ / ✗</th>${groupHead}</tr>
           <tr>${itemHead}</tr>
-          <tr><th colspan="2" class="center">Date</th>${Array.from({length:totalCols}).map(()=>'<th></th>').join('')}</tr>
-          <tr><th colspan="2" style="text-align:left">Names of learners</th>${Array.from({length:totalCols}).map(()=>'<th></th>').join('')}</tr>
+          <tr><th colspan="2" class="center">${ui.labels.date}</th>${Array.from({length:totalCols}).map(()=>'<th></th>').join('')}</tr>
+          <tr><th colspan="2" style="text-align:left">${ui.labels.names}</th>${Array.from({length:totalCols}).map(()=>'<th></th>').join('')}</tr>
         </thead>
         <tbody>${rows || `<tr><td colspan="${2+totalCols}">No learners found for this class.</td></tr>`}</tbody>
       </table>
-      <div class="note">Checklist layout follows the Term 3 grade-specific format from the exemplar. Tick or cross each descriptor for each learner.</div>`,
+      <div class="note">${isFAL ? 'Hierdie kontrolelys volg die graadspesifieke Termyn 3-formaat. Merk elke beskrywing vir elke leerder af.' : 'Checklist layout follows the Term 3 grade-specific format from the exemplar. Tick or cross each descriptor for each learner.'}</div>`,
       'A4 landscape',
       true
     );
@@ -6254,26 +6549,26 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
       else groups.push({label:c.group,count:1});
     });
     const groupHead = groups.map(g=>`<th colspan="${g.count}" class="center">${esc(g.label)}</th>`).join('');
-    const descHead = cols.map(c=>`<th class="${c.group==='Comment'?'commenthead':'wraphead'}">${esc(c.text)}</th>`).join('');
+    const descHead = cols.map(c=>`<th class="${(c.group==='Comment' || c.group==='Kommentaar')?'commenthead':'wraphead'}">${esc(c.text)}</th>`).join('');
     const scoreRow = cols.map(c=>`<th class="center">${esc(c.score || '')}</th>`).join('');
     const rows = sortedLearners.map((l,idx)=>{
       const name = `${esc(l.surname||'')}, ${esc(l.firstname||'')}`.replace(/^, /,'');
       return `<tr><td class="num">${idx+1}</td><td class="name">${name||'—'}</td>${Array.from({length:cols.length}).map(()=>'<td style="height:26px"></td>').join('')}</tr>`;
     }).join('');
     openPrintWindow(
-      `Home Language: GRADE ${gradeFromClass}: TERM 3 Scores using rubrics`,
+      `${ui.subjectLabel}: ${isFAL ? 'GRAAD' : 'GRADE'} ${gradeFromClass}: ${isFAL ? 'TERMYN 3 Punte volgens rubrieke' : 'TERM 3 Scores using rubrics'}`,
       `<table>
         <thead>
-          <tr><th colspan="${2+cols.length}" class="center" style="font-size:16px">Home Language: GRADE ${esc(gradeFromClass)}: TERM 3 Scores using rubrics</th></tr>
+          <tr><th colspan="${2+cols.length}" class="center" style="font-size:16px">${ui.subjectLabel}: ${isFAL ? 'GRAAD' : 'GRADE'} ${esc(gradeFromClass)}: ${isFAL ? 'TERMYN 3 Punte volgens rubrieke' : 'TERM 3 Scores using rubrics'}</th></tr>
           <tr><th colspan="2"></th>${groupHead}</tr>
           <tr><th colspan="2"></th>${descHead}</tr>
-          <tr><th colspan="2" class="center">Date</th>${Array.from({length:cols.length}).map(()=>'<th></th>').join('')}</tr>
-          <tr><th colspan="2" class="center">Score</th>${scoreRow}</tr>
-          <tr><th colspan="2" style="text-align:left">Names of learners</th>${Array.from({length:cols.length}).map(()=>'<th></th>').join('')}</tr>
+          <tr><th colspan="2" class="center">${ui.labels.date}</th>${Array.from({length:cols.length}).map(()=>'<th></th>').join('')}</tr>
+          <tr><th colspan="2" class="center">${ui.labels.score}</th>${scoreRow}</tr>
+          <tr><th colspan="2" style="text-align:left">${ui.labels.names}</th>${Array.from({length:cols.length}).map(()=>'<th></th>').join('')}</tr>
         </thead>
         <tbody>${rows || `<tr><td colspan="${2+cols.length}">No learners found for this class.</td></tr>`}</tbody>
       </table>
-      <div class="note">This marking sheet is built for the correct grade and Term 3 only, based on the exemplar structure.</div>`,
+      <div class="note">${isFAL ? 'Hierdie puntestaat is vir die korrekte graad en slegs vir Termyn 3 saamgestel, gebaseer op die aangehegte FAL-dokument.' : 'This marking sheet is built for the correct grade and Term 3 only, based on the exemplar structure.'}</div>`,
       'A4 landscape',
       true
     );
@@ -6303,8 +6598,8 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
       </table>
     `).join('');
     openPrintWindow(
-      `Home Language: Grade ${gradeFromClass} Rubric: Term 3`,
-      `${sections}<div class="note">Suggested rubric template for Grade ${esc(gradeFromClass)} Term 3. Use together with the checklist and score sheet.</div>`,
+      `${ui.subjectLabel}: ${isFAL ? 'Graad' : 'Grade'} ${gradeFromClass} ${isFAL ? 'Rubriek' : 'Rubric'}: ${isFAL ? 'Termyn 3' : 'Term 3'}`,
+      `${sections}<div class="note">${isFAL ? `Voorgestelde rubriek vir Graad ${esc(gradeFromClass)} Termyn 3. Gebruik dit saam met die kontrolelys en puntestaat.` : `Suggested rubric template for Grade ${esc(gradeFromClass)} Term 3. Use together with the checklist and score sheet.`}</div>`,
       'A4 landscape'
     );
   };
@@ -6315,42 +6610,47 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
         <div>
           <h3 style={{...ctitle,marginBottom:'6px'}}>🧰 Tools — {className}</h3>
           <div style={{color:'#666',fontSize:'13px',lineHeight:1.5}}>
-            Term 3 Foundation Phase Home Language tools with class lists inserted automatically. Includes the correct Grade 1–3 programme, checklist, score sheet, and rubric layout.
+            {ui.description}
           </div>
         </div>
-        <span style={{background:'#eef2ff',color:'#4f46e5',padding:'8px 12px',borderRadius:'999px',fontSize:'12px',fontWeight:800}}>Term 3 focus</span>
+        <span style={{background:'#eef2ff',color:'#4f46e5',padding:'8px 12px',borderRadius:'999px',fontSize:'12px',fontWeight:800}}>{isFAL ? 'Termyn 3 fokus' : 'Term 3 focus'}</span>
+      </div>
+
+      <div style={{display:'flex',gap:'10px',flexWrap:'wrap',marginBottom:'12px'}}>
+        <button onClick={()=>setToolFolder('english_hl')} style={{...sbtn,background:toolFolder==='english_hl' ? '#4f46e5' : '#cbd5e1',color:toolFolder==='english_hl' ? '#fff' : '#111827',fontSize:'13px'}}>📁 English HL</button>
+        <button onClick={()=>setToolFolder('afrikaans_fal')} style={{...sbtn,background:toolFolder==='afrikaans_fal' ? '#0f766e' : '#cbd5e1',color:toolFolder==='afrikaans_fal' ? '#fff' : '#111827',fontSize:'13px'}}>📁 Afrikaans FAL</button>
       </div>
 
       {!cfg ? (
         <div style={{background:'#fff7ed',border:'1px solid #fed7aa',color:'#9a3412',padding:'10px 12px',borderRadius:'10px',fontSize:'13px',lineHeight:1.5}}>
-          These attached Home Language forms are grade-specific for Grades 1–3 only. Please share the correct document for this class if you want the same detailed format outside Foundation Phase.
+          {ui.noCfg}
         </div>
       ) : (
         <>
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:'10px',marginBottom:'12px'}}>
             <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px'}}>
-              <div style={{fontSize:'12px',fontWeight:900,color:'#334155',marginBottom:'4px'}}>Grade</div>
-              <div style={{fontSize:'20px',fontWeight:900,color:'#111827'}}>Grade {gradeFromClass}</div>
+              <div style={{fontSize:'12px',fontWeight:900,color:'#334155',marginBottom:'4px'}}>{ui.labels.grade}</div>
+              <div style={{fontSize:'20px',fontWeight:900,color:'#111827'}}>{ui.labels.grade} {gradeFromClass}</div>
             </div>
             <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px'}}>
-              <div style={{fontSize:'12px',fontWeight:900,color:'#334155',marginBottom:'4px'}}>Class list</div>
+              <div style={{fontSize:'12px',fontWeight:900,color:'#334155',marginBottom:'4px'}}>{ui.labels.classlist}</div>
               <div style={{fontSize:'20px',fontWeight:900,color:'#111827'}}>{sortedLearners.length}</div>
             </div>
             <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px'}}>
-              <div style={{fontSize:'12px',fontWeight:900,color:'#334155',marginBottom:'4px'}}>Included forms</div>
-              <div style={{fontSize:'13px',fontWeight:700,color:'#475569'}}>Programme, Checklist, Scores, Rubric</div>
+              <div style={{fontSize:'12px',fontWeight:900,color:'#334155',marginBottom:'4px'}}>{ui.labels.includedForms}</div>
+              <div style={{fontSize:'13px',fontWeight:700,color:'#475569'}}>{isFAL ? 'Program, Kontrolelys, Punte, Rubriek' : 'Programme, Checklist, Scores, Rubric'}</div>
             </div>
           </div>
 
           <div style={{display:'flex',gap:'10px',flexWrap:'wrap'}}>
-            <button onClick={()=>{ renderProgramme(); onAudit && onAudit('tools:programme_term3'); }} style={{...sbtn,background:'#0f766e',fontSize:'13px'}}>📄 Program of assessment</button>
-            <button onClick={()=>{ renderChecklist(); onAudit && onAudit('tools:checklist_term3'); }} style={{...sbtn,background:'#10b981',fontSize:'13px'}}>📝 Checklist</button>
-            <button onClick={()=>{ renderScores(); onAudit && onAudit('tools:scores_term3'); }} style={{...sbtn,background:'#4f46e5',fontSize:'13px'}}>📊 Term 3 scores using rubrics</button>
-            <button onClick={()=>{ renderRubric(); onAudit && onAudit('tools:rubric_term3'); }} style={{...sbtn,background:'#7c3aed',fontSize:'13px'}}>📚 Grade rubric</button>
+            <button onClick={()=>{ renderProgramme(); onAudit && onAudit(`tools:${toolFolder}:programme_term3`); }} style={{...sbtn,background:'#0f766e',fontSize:'13px'}}>{ui.buttons.programme}</button>
+            <button onClick={()=>{ renderChecklist(); onAudit && onAudit(`tools:${toolFolder}:checklist_term3`); }} style={{...sbtn,background:'#10b981',fontSize:'13px'}}>{ui.buttons.checklist}</button>
+            <button onClick={()=>{ renderScores(); onAudit && onAudit(`tools:${toolFolder}:scores_term3`); }} style={{...sbtn,background:'#4f46e5',fontSize:'13px'}}>{ui.buttons.scores}</button>
+            <button onClick={()=>{ renderRubric(); onAudit && onAudit(`tools:${toolFolder}:rubric_term3`); }} style={{...sbtn,background:'#7c3aed',fontSize:'13px'}}>{ui.buttons.rubric}</button>
           </div>
 
           <div style={{marginTop:'12px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',fontSize:'13px',color:'#475569',lineHeight:1.6}}>
-            <strong>Included for this grade:</strong> the correct Term 3 layout, class list insertion, detailed checklist descriptions, grade-specific score sheet headings, and a matching rubric template.
+            <strong>{isFAL ? 'Ingesluit vir hierdie graad:' : 'Included for this grade:'}</strong> {ui.included}
           </div>
         </>
       )}
