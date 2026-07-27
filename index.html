@@ -6390,13 +6390,17 @@ function TeacherToolsTab({ teacherAuth, className, learners, onAudit }){
       programme:[
         {component:'Numbers, Operations & Relationships',skills:['Estimates and counts out objects reliably to 40 using grouping.','Counts forwards and backwards in 1s from any number between 0 and 80.','Counts forwards in multiples of 10s, 2s and 5s between 0 and 80.','Recalls addition and subtraction facts to 5.'],form:'Oral / Written',tool:'Checklist / Mental Maths Rubric',score:'10',due:'By end of term'},
         {component:'Number symbols & names',skills:['Recognises, identifies, reads and writes number names 1 to 10.','Reads number symbols 1 to 80.','Writes number symbols 1 to 20.'],form:'Written',tool:'Checklist / Classwork',score:'5',due:'By Week 8'},
-        {component:'Measurement / Patterns / Shape',skills:['Measures, compares and orders length using non-standard measures.','Copies, extends and describes simple number patterns.','Recognises and draws a line of symmetry in 2-D shapes.'],form:'Practical / Written',tool:'Checklist',score:'5',due:'By Week 9'}
+        {component:'Patterns, Functions & Algebra',skills:['Copies, extends and describes simple number sequences in 1s, 10s, 5s and 2s.'],form:'Written',tool:'Checklist',score:'5',due:'By Week 9'},
+        {component:'Space & Shape',skills:['Recognises and draws a line of symmetry in 2-D shapes.','Recognises geometric and non-geometric shapes.'],form:'Practical / Written',tool:'Checklist',score:'5',due:'By Week 9'},
+        {component:'Measurement',skills:['Estimates, measures, compares and orders length using non-standard measures.'],form:'Practical',tool:'Checklist',score:'5',due:'By Week 9'},
+        {component:'Data Handling',skills:['Records simple comparisons and talks about the comparison using classroom data or measurements.'],form:'Practical / Oral',tool:'Checklist',score:'5',due:'By Week 9'}
       ],
       checklistGroups:[
         {label:'Numbers, Operations & Relationships',items:['Estimates and counts objects to 40','Counts forwards and backwards in 1s to 80','Counts in 10s, 2s and 5s','Reads number symbols to 80','Recognises place value of numbers 11 to 15','Decomposes two-digit numbers into ten ones']},
         {label:'Patterns, Functions & Algebra',items:['Copies, extends and describes simple number sequences in 1s, 10s, 5s and 2s']},
         {label:'Space & Shape',items:['Recognises and draws a line of symmetry in 2-D','Recognises geometric and non-geometric shapes']},
         {label:'Measurement',items:['Estimates, measures, compares and orders length using non-standard measures']},
+        {label:'Data Handling',items:['Records a simple comparison and talks about the comparison']},
         {label:'Comments',items:['Teacher comment']}
       ],
       scoreCols:[
@@ -6404,22 +6408,33 @@ function TeacherToolsTab({ teacherAuth, className, learners, onAudit }){
         {group:'Numbers, Operations & Relationships',text:'Compares and orders numbers: smallest to greatest / before / after / middle',score:'5'},
         {group:'Numbers, Operations & Relationships',text:'Solves context problems using addition and subtraction with answers up to 15',score:'5'},
         {group:'Numbers, Operations & Relationships',text:'Equal sharing and grouping with whole numbers up to 15',score:'5'},
+        {group:'Patterns, Functions & Algebra',text:'Copies, extends and describes simple number patterns',score:'5'},
+        {group:'Space & Shape',text:'Recognises and describes symmetry and 2-D shapes',score:'5'},
+        {group:'Measurement',text:'Measures and compares length using non-standard measures',score:'5'},
+        {group:'Data Handling',text:'Records and explains a simple comparison',score:'5'},
         {group:'Comments',text:'Teacher comment',score:''}
       ],
       rubricSections:[
         {title:'Numbers, Operations & Relationships',activity:'Mental Maths: recalls addition and subtraction facts to 5',levels:['Does not recall addition and subtraction facts to 5.','Recalls addition facts to 2 with hesitation.','Recalls addition and subtraction facts to 3 correctly.','Recalls addition and subtraction facts to 4 correctly and rapidly.','Recalls addition and subtraction facts to 5 correctly and rapidly.']},
-        {title:'Numbers, Operations & Relationships',activity:'Equal sharing and grouping with whole numbers up to 15',levels:['Needs support to solve equal sharing and grouping problems.','Solves problems correctly up to 5 using support.','Solves equal sharing and grouping with answers up to 10.','Solves equal sharing and grouping with answers up to 15.','Explains solutions clearly and independently with equal sharing and grouping up to 15.']}
+        {title:'Numbers, Operations & Relationships',activity:'Equal sharing and grouping with whole numbers up to 15',levels:['Needs support to solve equal sharing and grouping problems.','Solves problems correctly up to 5 using support.','Solves equal sharing and grouping with answers up to 10.','Solves equal sharing and grouping with answers up to 15.','Explains solutions clearly and independently with equal sharing and grouping up to 15.']},
+        {title:'Measurement',activity:'Measures and compares length using non-standard measures',levels:['Needs full support to compare lengths.','Measures one object using a non-standard measure with support.','Measures two objects and compares them with some accuracy.','Measures and compares several objects correctly.','Measures, compares and explains the comparison confidently and correctly.']}
       ]
     },
     '2':{
       programme:[
         {component:'Numbers, Operations & Relationships',skills:['Estimate and count at least 180 everyday objects reliably.','Count forwards and backwards in 1s, 10s, 5s, 2s, 3s and 4s within the required ranges.','Rapidly recall addition and subtraction facts to 15.','Compare numbers to 75 and say which is 1/2/3/4 more or less.'],form:'Oral',tool:'Checklist / Rubric',score:'10',due:'By end of term'},
         {component:'Number symbols & place value',skills:['Identify, recognise and read number symbols up to 180.','Write number names 0 to 75.','Recognise place value of numbers 11 to 75.'],form:'Written',tool:'Checklist / Recording',score:'10',due:'By Week 8'},
-        {component:'Space & Shape',skills:['Recognise, name and sort 2-D shapes.','Use language of position.','Match different views of everyday objects.'],form:'Practical',tool:'Checklist',score:'5',due:'By Week 9'}
+        {component:'Patterns, Functions & Algebra',skills:['Copies, extends and describes numeric patterns and simple geometric patterns.'],form:'Written',tool:'Checklist',score:'5',due:'By Week 9'},
+        {component:'Space & Shape',skills:['Recognise, name and sort 2-D shapes.','Use language of position.','Match different views of everyday objects.'],form:'Practical',tool:'Checklist',score:'5',due:'By Week 9'},
+        {component:'Measurement',skills:['Measures, compares, orders and records everyday measurable quantities using suitable non-standard or simple standard measures.'],form:'Practical / Written',tool:'Checklist',score:'5',due:'By Week 9'},
+        {component:'Data Handling',skills:['Sorts objects or data into categories and answers simple questions about the data.'],form:'Practical / Oral',tool:'Checklist',score:'5',due:'By Week 9'}
       ],
       checklistGroups:[
         {label:'Numbers, Operations & Relationships',items:['Estimate and count at least 180 objects','Counts forwards/backwards in 1s, 10s, 5s, 2s, 3s and 4s','Compares numbers to 50/75 and says more/less','Recognises, identifies and reads number symbols to 180','Writes number names to 75','Recognises place value to 75']},
+        {label:'Patterns, Functions & Algebra',items:['Copies, extends and describes number and geometric patterns']},
         {label:'Space & Shape',items:['Recognises, names and sorts 2-D shapes','Uses language of position','Matches different views of everyday objects']},
+        {label:'Measurement',items:['Measures, compares and records everyday quantities']},
+        {label:'Data Handling',items:['Sorts data into categories and answers simple questions about the data']},
         {label:'Comments',items:['Teacher comment']}
       ],
       scoreCols:[
@@ -6427,21 +6442,32 @@ function TeacherToolsTab({ teacherAuth, className, learners, onAudit }){
         {group:'Numbers, Operations & Relationships',text:'Number symbols and number names to 180 / 75',score:'5'},
         {group:'Numbers, Operations & Relationships',text:'Describes, compares and orders whole numbers up to 75',score:'5'},
         {group:'Numbers, Operations & Relationships',text:'Context-free calculations and place value to 75',score:'5'},
+        {group:'Patterns, Functions & Algebra',text:'Copies, extends and describes patterns',score:'5'},
+        {group:'Space & Shape',text:'Recognises, names and sorts 2-D shapes and uses language of position',score:'5'},
+        {group:'Measurement',text:'Measures, compares and records quantities',score:'5'},
+        {group:'Data Handling',text:'Sorts and interprets simple data',score:'5'},
         {group:'Comments',text:'Teacher comment',score:''}
       ],
       rubricSections:[
-        {title:'Numbers, Operations & Relationships',activity:'Mental Maths: recall addition and subtraction facts to 15',levels:['Recalls addition and subtraction facts with support up to 5-6.','Recalls facts up to 8-9 with hesitation.','Recalls facts up to 11-10 correctly.','Recalls facts to 12-13 correctly.','Recalls facts to 14-15 correctly and rapidly.']}
+        {title:'Numbers, Operations & Relationships',activity:'Mental Maths: recall addition and subtraction facts to 15',levels:['Recalls addition and subtraction facts with support up to 5-6.','Recalls facts up to 8-9 with hesitation.','Recalls facts up to 11-10 correctly.','Recalls facts to 12-13 correctly.','Recalls facts to 14-15 correctly and rapidly.']},
+        {title:'Data Handling',activity:'Sorts and interprets simple data',levels:['Needs full support to sort objects or pictures.','Sorts one category correctly with support.','Sorts data into categories and answers one simple question.','Sorts and interprets simple data correctly.','Sorts, records and explains simple data confidently and correctly.']}
       ]
     },
     '3':{
       programme:[
         {component:'Numbers, Operations & Relationships',skills:['Groups up to at least 750 objects to estimate and count reliably.','Counts forwards and backwards in 1s, 10s, 5s, 2s, 3s, 4s, 20s, 25s, 50s and 100s in the required ranges.','Identifies, recognises and reads number symbols up to 1000.','Rapidly recalls addition and subtraction facts to 30.'],form:'Oral / Written',tool:'Checklist / Rubric',score:'10',due:'By end of term'},
         {component:'Calculations & problem solving',skills:['Compares numbers to 750 and says which is 1/2/3/4/5/10 more or less.','Adds and subtracts multiples of 10 from 100.','Solves word problems involving grouping, sharing, multiplication and fractions.'],form:'Written',tool:'Recording sheet / Rubric',score:'15',due:'By Week 9'},
-        {component:'Space & Shape',skills:['Identifies and describes shapes and spatial relationships.'],form:'Practical',tool:'Checklist',score:'5',due:'By Week 9'}
+        {component:'Patterns, Functions & Algebra',skills:['Describes, extends and completes numeric and geometric patterns.'],form:'Written',tool:'Checklist',score:'5',due:'By Week 9'},
+        {component:'Space & Shape',skills:['Identifies and describes shapes and spatial relationships.'],form:'Practical',tool:'Checklist',score:'5',due:'By Week 9'},
+        {component:'Measurement',skills:['Measures, compares and solves problems involving length, mass, capacity, time or money in suitable contexts.'],form:'Practical / Written',tool:'Checklist / Recording',score:'5',due:'By Week 9'},
+        {component:'Data Handling',skills:['Collects, organises and interprets simple data displays and answers questions about the data.'],form:'Practical / Written',tool:'Checklist / Recording',score:'5',due:'By Week 9'}
       ],
       checklistGroups:[
         {label:'Numbers, Operations & Relationships',items:['Groups to estimate and count to 750','Counts forwards/backwards in 1s, 10s, 5s, 2s, 3s, 4s','Counts in 20s, 25s, 50s and 100s','Compares numbers to 750','Reads number symbols and names to 1000','Adds/subtracts multiples of 10']},
+        {label:'Patterns, Functions & Algebra',items:['Describes, extends and completes numeric and geometric patterns']},
         {label:'Space & Shape',items:['Recognises and describes spatial relationships and shapes']},
+        {label:'Measurement',items:['Measures, compares and solves problems involving measures in context']},
+        {label:'Data Handling',items:['Collects, organises and interprets simple data']},
         {label:'Comments',items:['Teacher comment']}
       ],
       scoreCols:[
@@ -6449,10 +6475,15 @@ function TeacherToolsTab({ teacherAuth, className, learners, onAudit }){
         {group:'Numbers, Operations & Relationships',text:'Describes, compares and orders numbers to 750',score:'5'},
         {group:'Numbers, Operations & Relationships',text:'Context-free calculations: multiply, divide, add and subtract',score:'5'},
         {group:'Numbers, Operations & Relationships',text:'Solves word problems involving grouping, sharing and fractions',score:'5'},
+        {group:'Patterns, Functions & Algebra',text:'Describes and completes numeric and geometric patterns',score:'5'},
+        {group:'Space & Shape',text:'Identifies and describes space and shape concepts',score:'5'},
+        {group:'Measurement',text:'Measures and solves practical problems involving quantities',score:'5'},
+        {group:'Data Handling',text:'Collects, organises and interprets simple data',score:'5'},
         {group:'Comments',text:'Teacher comment',score:''}
       ],
       rubricSections:[
-        {title:'Numbers, Operations & Relationships',activity:'Recall addition and subtraction facts to 30',levels:['Recalls facts to 10 with support.','Recalls facts to 15 correctly.','Recalls facts to 20 correctly.','Recalls facts to 25 with speed and accuracy.','Recalls facts to 30 with speed and accuracy.']}
+        {title:'Numbers, Operations & Relationships',activity:'Recall addition and subtraction facts to 30',levels:['Recalls facts to 10 with support.','Recalls facts to 15 correctly.','Recalls facts to 20 correctly.','Recalls facts to 25 with speed and accuracy.','Recalls facts to 30 with speed and accuracy.']},
+        {title:'Patterns, Functions & Algebra',activity:'Describes and completes numeric and geometric patterns',levels:['Needs support to continue a pattern.','Continues a simple pattern with support.','Continues a pattern correctly and describes part of the rule.','Describes and extends numeric or geometric patterns correctly.','Describes, extends and explains the pattern rule confidently and correctly.']}
       ]
     }
   }),[]);
