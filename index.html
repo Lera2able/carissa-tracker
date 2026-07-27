@@ -5210,7 +5210,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
               ...(teacherAuth ? [['classlist',`👥 Classlist (${(CLASS_DATA[selClass]||[]).length})`]] : []),
               ...(teacherAuth ? [['discipline','⚖️ Discipline']] : []),
               ...(teacherAuth ? [['reading','📖 1-Minute Reading']] : []),
-              ...(teacherAuth ? [['tools','🧰 Tools (SBA)']] : []),
+              ...(teacherAuth ? [['tools','🧰 Tools']] : []),
               ['resources',`📁 Resources (${resources.length})`],
             ].map(([k,l])=>(
               <button key={k} onClick={()=>{ setTab(k); logTeacherAudit(`open_tab:${k}`, selClass); }} style={{padding:'10px 16px',borderRadius:'8px',border:'none',cursor:'pointer',fontSize:'14px',fontWeight:600,flex:'1 1 auto',minWidth:'130px',background:tab===k?'linear-gradient(135deg,#667eea,#764ba2)':'transparent',color:tab===k?'white':'#666'}}>
@@ -5782,20 +5782,16 @@ function TeacherDisciplineTab({ teacherAuth, defaultClass, showMsg, onAudit }){
 }
 
 /* ════════════════════════════════════════════════════════════════
-   TEACHER TOOLS: SBA printables (Home Language — Foundation Phase)
-   Inserts the class list into SBA-aligned marking/checklist sheets.
+   TEACHER TOOLS: Grade-specific Term 3 printables
+   Based on the uploaded Foundation Phase Home Language exemplar.
    ════════════════════════════════════════════════════════════════ */
 function TeacherToolsTab({ teacherAuth, className, learners, onAudit }){
-  const [term,setTerm]=useState('Term 1');
-  const [sheet,setSheet]=useState('checklist'); // checklist | scores
-
   const gradeFromClass = useMemo(()=>{
     const s = String(className||'');
     const m = s.match(/Grade\s*([Rr]|[1-9])/);
     if(!m) return null;
     return m[1].toUpperCase()==='R' ? 'R' : String(parseInt(m[1],10));
   },[className]);
-  const termNo = useMemo(()=> String(term).match(/Term\s*(\d)/)?.[1] || '1',[term]);
 
   const sortedLearners = useMemo(()=>{
     return [...(learners||[])].sort((a,b)=>
@@ -5804,89 +5800,339 @@ function TeacherToolsTab({ teacherAuth, className, learners, onAudit }){
     );
   },[learners]);
 
-  const CHECKLIST_COLS = useMemo(()=>{
-    const g = gradeFromClass;
-    const t = termNo;
-    // Based on the attached DBE SBA exemplar booklet (Grades 1–3 Home Language).
-    const map = {
-      '1':{
-        '1':['Listening & Writing','Reading: Phonics','Speaking','Emergent','Handwriting','Writing','Comment'],
-        '2':['Listening & Speaking','Phonics','Reading','Handwriting','Comment'],
-        '3':['Listening & Speaking','Phonics','Reading','Handwriting','Writing','Comment'],
-        '4':['Listening & Speaking','Phonics: Oral Reading','Handwriting','Comment'],
-      },
-      '2':{
-        '1':['Phonics: Oral','Reading','Writing','Comment'],
-        '2':['Phonics: Oral Reading','Comment'],
-        '3':['Phonics: Oral Reading','Writing','Comment'],
-        '4':['Phonics','Reading','Writing','Comment'],
-      },
-      '3':{
-        '1':['Phonics: Oral','Writing','Comment'],
-        '2':['Phonics: Oral','Writing','Comment'],
-        '3':['Phonics','Handwriting','Writing','Comment'],
-        '4':['Phonics','Handwriting','Comment'],
-      }
-    };
-    if(!g || !map[g] || !map[g][t]) return ['Checklist item 1','Checklist item 2','Comment'];
-    return map[g][t];
-  },[gradeFromClass, termNo]);
+  const esc = (s='') => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-  const SCORE_COLS = useMemo(()=>{
-    const g = gradeFromClass;
-    const t = termNo;
-    // “Scores using rubrics” sheets (Grades 1–3). We keep the headings short so they fit on paper.
-    const map = {
-      '1':{
-        '1':['Listening','Speaking','Phonics','Reading','Handwriting','Writing','Comment'],
-        '2':['Listening','Speaking','Phonics','Reading','Handwriting','Writing','Comment'],
-        '3':['Listening','Speaking','Phonics','Reading','Handwriting','Writing','Comment'],
-        '4':['Listening','Speaking','Phonics','Reading','Handwriting','Writing','Comment'],
-      },
-      '2':{
-        '1':['Listening','Speaking','Phonics','Reading','Handwriting','Writing','Comment'],
-        '2':['Listening','Speaking','Phonics','Reading','Handwriting','Writing','Comment'],
-        '3':['Listening','Speaking','Phonics','Reading','Handwriting','Writing','Comment'],
-        '4':['Listening','Speaking','Language usage','Phonics','Reading','Handwriting','Writing','Comment'],
-      },
-      '3':{
-        '1':['Listening','Speaking','Phonics','Reading','Handwriting','Writing','Comment'],
-        '2':['Listening','Speaking','Language usage','Phonics','Reading','Handwriting','Writing','Comment'],
-        '3':['Listening','Speaking','Phonics','Reading','Handwriting','Writing','Comment'],
-        '4':['Listening','Speaking','Language usage','Phonics','Reading','Handwriting','Writing','Comment'],
-      }
-    };
-    if(!g || !map[g] || !map[g][t]) return ['Score 1','Score 2','Comment'];
-    return map[g][t];
-  },[gradeFromClass, termNo]);
+  const TERM3 = useMemo(()=>({
+    '1':{
+      programme:[
+        {
+          component:'Listening and Speaking',
+          skills:[
+            'Talks about personal experiences, an event or a theme topic.',
+            'Sequences at least 5 pictures related to a familiar story or theme topic by matching captions with pictures.',
+            'Listens to instructions and announcements and responds appropriately.',
+            'Participates in class discussions, asking and answering questions.'
+          ],
+          form:'Observation & Oral',
+          tool:'Rubric',
+          score:'10',
+          due:'By Week 9'
+        },
+        {
+          component:'Phonics',
+          skills:[
+            'Identifies letter-sound relationships of all single letters.',
+            'Recognises short-vowel word families and builds 3- and 4-letter words.',
+            'Uses initial consonant blends and digraphs to build words.',
+            'Recognises plurals with “s” and “es”.'
+          ],
+          form:'Written',
+          tool:'Checklist / Worksheet',
+          score:'10',
+          due:'By Week 8'
+        },
+        {
+          component:'Reading',
+          skills:[
+            'Word recognition: reads sight words.',
+            'Oral reading from own book and responds to questions.'
+          ],
+          form:'Observation & Oral',
+          tool:'Rubric',
+          score:'10',
+          due:'By Week 9'
+        },
+        {
+          component:'Writing / Handwriting',
+          skills:[
+            'Forms lower- and upper-case letters correctly.',
+            'Copies and writes at least one short sentence.',
+            'Completes a text frame with missing words.'
+          ],
+          form:'Written',
+          tool:'Checklist / Classwork',
+          score:'15',
+          due:'By Week 9'
+        }
+      ],
+      checklistGroups:[
+        {label:'Listening & Speaking', items:[
+          'Listens to instructions and announcements and responds appropriately',
+          'Participates in class discussions, asking and answering questions',
+          'Uses appropriate language for different purposes such as greetings and messages',
+          'Listens to stories and answers open-ended and closed questions',
+          'Role plays characters in a story told or read by the teacher'
+        ]},
+        {label:'Phonics: Oral', items:[
+          'Recognises word families with short-vowel sounds',
+          'Builds 3- and 4-letter words using single sounds',
+          'Uses initial consonant blends and digraphs',
+          'Recognises plurals with “s” and “es”'
+        ]},
+        {label:'Reading', items:[
+          'Responds to listening / oral comprehension questions',
+          'Recognises sight words',
+          'Reads aloud from own book'
+        ]},
+        {label:'Writing', items:[
+          'Forms letters correctly',
+          'Copies and writes a short sentence',
+          'Completes a text frame with missing words'
+        ]},
+        {label:'Comment', items:['Teacher comment']}
+      ],
+      scoreCols:[
+        {group:'Listening & Speaking', text:'Talks about personal experiences, an event or theme topic', score:'5'},
+        {group:'Listening & Speaking', text:'Sequences at least 5 pictures and matches captions', score:'5'},
+        {group:'Phonics', text:'Identifies letter-sound relationships of all single letters', score:'10'},
+        {group:'Reading', text:'Word recognition: 40-50 sight words', score:'5'},
+        {group:'Reading', text:'Oral reading: 40-50 words in a passage', score:'5'},
+        {group:'Handwriting', text:'Forms lower-case and some upper-case letters correctly', score:'5'},
+        {group:'Writing', text:'Copies and writes at least one short sentence legibly', score:'5'},
+        {group:'Writing', text:'Completes a text frame with missing words', score:'5'},
+        {group:'Comment', text:'Teacher comment', score:''}
+      ],
+      rubricSections:[
+        {
+          title:'Listening and Speaking',
+          activity:'Sequences pictures, matches caption with pictures',
+          levels:['Struggles to sequence pictures and match picture with caption.','Attempts to sequence pictures in correct order but struggles to match captions.','Sequences pictures correctly and matches some captions correctly.','Good in sequencing pictures and matching pictures with captions correctly.','Excellent in sequencing pictures and matching captions with speed.']
+        },
+        {
+          title:'Listening and Speaking',
+          activity:'Talks about an event, story or personal experience',
+          levels:['Talks about a personal experience with support.','Talks about a personal experience or event in 1 sentence.','Talks about a personal experience or event in 2 sentences.','Talks about a personal experience or event in 3 sentences.','Talks about a personal experience or event in 3 or more sentences.']
+        },
+        {
+          title:'Phonics',
+          activity:'Identifies letter-sound relationships',
+          levels:['Identifies most single letters only.','Identifies 1-10 initial letter sounds with support.','Identifies 11-16 initial letter sounds correctly.','Identifies 17-20 initial letter sounds correctly.','Identifies 21-26 initial letter sounds correctly.']
+        },
+        {
+          title:'Reading',
+          activity:'Word recognition and oral reading',
+          levels:['Reads 1-19 sight words with teacher support.','Recognises and reads 20-29 sight words.','Recognises and reads 30-39 sight words correctly.','Recognises and reads 40-50 sight words confidently and correctly.','Recognises and reads more than 50 sight words confidently and correctly.']
+        }
+      ]
+    },
+    '2':{
+      programme:[
+        {
+          component:'Listening and Speaking',
+          skills:[
+            'Role plays a familiar situation or performs a dialogue with a peer from a familiar story.',
+            'Uses expression and appropriate language while speaking.'
+          ],
+          form:'Oral',
+          tool:'Rubric',
+          score:'5',
+          due:'Week 7'
+        },
+        {
+          component:'Phonics: Oral / Written',
+          skills:[
+            'Uses consonant blends and breaks down words.',
+            'Revises consonant digraphs and common double consonants.',
+            'Recognises onset and rime in more complex patterns.',
+            'Spelling and dictation.'
+          ],
+          form:'Written',
+          tool:'Checklist / Classwork',
+          score:'15',
+          due:'By Week 8'
+        },
+        {
+          component:'Reading',
+          skills:[
+            'Word recognition: 60-70 sight words.',
+            'Oral reading and answers questions.'
+          ],
+          form:'Observation & Oral',
+          tool:'Rubric',
+          score:'10',
+          due:'By Week 8'
+        },
+        {
+          component:'Writing / Handwriting',
+          skills:[
+            'Copies and writes short words in joined script or cursive.',
+            'Writes 1-2 personal experiences or paragraphs with correct punctuation.'
+          ],
+          form:'Written',
+          tool:'Checklist / Worksheet',
+          score:'15',
+          due:'By Week 9'
+        }
+      ],
+      checklistGroups:[
+        {label:'Phonics: Oral', items:[
+          'Identifies letter-sound relationships of all single letters',
+          'Revises plurals (“s”, “es”)',
+          'Uses “ed” at the end of words',
+          'Builds and blends words using consonant and vowel digraphs',
+          'Uses correct fluency, expression and intonation'
+        ]},
+        {label:'Reading', items:[
+          'Word recognition',
+          'Reads with fluency',
+          'Answers oral questions'
+        ]},
+        {label:'Writing', items:[
+          'Uses present, past and future tenses correctly',
+          'Copies joined-script words correctly',
+          'Writes about personal experiences'
+        ]},
+        {label:'Comment', items:['Teacher comment']}
+      ],
+      scoreCols:[
+        {group:'Listening & Speaking', text:'Role plays a familiar situation / performs a dialogue with a peer from a familiar story', score:'5'},
+        {group:'Phonics', text:'Uses consonant blends and revises common consonant digraphs', score:'10'},
+        {group:'Phonics', text:'Recognises onset/rime, vowel digraphs and spelling / dictation', score:'15'},
+        {group:'Reading', text:'Word recognition: 60-70 sight words', score:'5'},
+        {group:'Reading', text:'Oral reading & questions', score:'5'},
+        {group:'Handwriting', text:'Copies and writes short words and joined-script lines', score:'5'},
+        {group:'Writing', text:'Writes 1-2 personal experiences / short paragraphs', score:'5'},
+        {group:'Comment', text:'Teacher comment', score:''}
+      ],
+      rubricSections:[
+        {
+          title:'Listening and Speaking',
+          activity:'Role plays a familiar situation / performs a dialogue with a peer',
+          levels:['Reads with teacher support from a familiar story.','Performs a 1 sentence dialogue with a peer from a familiar story.','Performs a dialogue of 2 sentences with expression.','Performs a dialogue of 3 sentences fluently with expression.','Performs a dialogue of more than 3 sentences fluently with expression.']
+        },
+        {
+          title:'Reading',
+          activity:'Word recognition: 60 to 70 sight words',
+          levels:['Needs support from teacher and recognises less than 30 sight words.','Recognises and reads 40-49 sight words correctly.','Recognises and reads 50-59 sight words correctly.','Recognises and reads 60-69 sight words confidently and correctly.','Recognises and reads more than 70 sight words confidently and correctly in a minute.']
+        },
+        {
+          title:'Oral Reading',
+          activity:'Reads from own book and responds to questions',
+          levels:['Reads 30-39 words with teacher support.','Reads 40-49 words and responds correctly to 1-2 questions.','Reads 50-59 words and responds correctly to 3 questions.','Reads 60-70 words and responds correctly to 3 questions.','Reads more than 70 words and responds correctly to 3 questions.']
+        },
+        {
+          title:'Handwriting / Writing',
+          activity:'Writes joined-script letters, words and short personal texts',
+          levels:['Cannot yet copy and write letters correctly in joined script.','Copies 1-2 letters / short words with support.','Writes 3 letters or short joined-script words more accurately.','Writes 4-6 letters / words with correct formation and size.','Writes 8-10 letters / words accurately with good formation and size.']
+        }
+      ]
+    },
+    '3':{
+      programme:[
+        {
+          component:'Listening and Speaking',
+          skills:[
+            'Tells a story with a simple plot with a beginning, middle and end and different characters.',
+            'Uses props such as masks or puppets and integrates with Reading / Life Skills.'
+          ],
+          form:'Observation & Oral',
+          tool:'Rubric',
+          score:'5',
+          due:'By Week 6'
+        },
+        {
+          component:'Phonics: Written',
+          skills:[
+            'Recognises all vowel and consonant blends learnt so far.',
+            'Recognises silent letters in words.',
+            'Uses homonyms and homophones.',
+            'Spelling and dictation.'
+          ],
+          form:'Written',
+          tool:'Checklist worksheet / class workbook',
+          score:'25',
+          due:'By Week 9'
+        },
+        {
+          component:'Reading',
+          skills:[
+            'Word recognition: assesses 100 sight words.',
+            'Written comprehension: choose 2 graphical texts such as a bar graph, pictorial map, advertisement or weekly class roster.'
+          ],
+          form:'Observation & Written',
+          tool:'Rubric / Worksheet',
+          score:'25',
+          due:'By Week 8'
+        },
+        {
+          component:'Writing / Handwriting',
+          skills:[
+            'Copies and writes short words and short sentences in joined script with correct spacing.',
+            'Writes a familiar story with a title and a personal text such as a birthday invitation or letter.'
+          ],
+          form:'Written',
+          tool:'Rubric / Classwork',
+          score:'15',
+          due:'By Week 9'
+        }
+      ],
+      checklistGroups:[
+        {label:'Phonics', items:[
+          'Recognises all vowel and consonant blends learnt so far',
+          'Recognises silent letters in words: “k” in know, “l” in half, “b” in comb, “w” in write, “h” in hour',
+          'Homonyms: uses words that are pronounced and spelt the same but have different meanings such as fly',
+          'Homophones: uses words that sound the same but are spelt differently such as pair / pear / hair / hare'
+        ]},
+        {label:'Handwriting', items:[
+          'Writes with increasing speed'
+        ]},
+        {label:'Writing', items:[
+          'Uses different sentence types',
+          'Identifies and uses nouns, verbs, adjectives, pronouns, adverbs and prepositions',
+          'Joins sentences using conjunctions such as “and”, “but”'
+        ]},
+        {label:'Comment', items:['Teacher comment']}
+      ],
+      scoreCols:[
+        {group:'Listening & Speaking', text:'Tells a story with a simple plot with a beginning, middle and end and different characters', score:'5'},
+        {group:'Phonics', text:'Recognises all vowel and consonant blends, silent letters, homonyms and homophones', score:'10'},
+        {group:'Phonics', text:'Spelling test (20 words) and dictation (2 sentences)', score:'15'},
+        {group:'Reading', text:'Oral: word recognition - 100 sight words', score:'5'},
+        {group:'Reading', text:'Written comprehension: choose 2 graphical texts', score:'20'},
+        {group:'Handwriting', text:'Copies and writes short words and short sentences in the joined script', score:'5'},
+        {group:'Writing', text:'Writes and illustrates a familiar story with a title', score:'5'},
+        {group:'Writing', text:'Writes a personal text (40-50 words), e.g. birthday invitation or letter to a friend', score:'5'},
+        {group:'Comment', text:'Teacher comment', score:''}
+      ],
+      rubricSections:[
+        {
+          title:'Listening and Speaking',
+          activity:'Tells a story with a simple plot with a beginning, middle and end and different characters',
+          levels:['Struggles to tell the story and cannot identify the beginning, middle or end.','Attempts to tell a story but the sequence of events is confused.','Tells a simple story with a beginning, middle and end using appropriate language and gestures.','Good at telling a story with a beginning, middle and end and role plays the main character using expressive language and gestures.','Excellent when telling a story with a beginning, middle and end. Role plays characters and scenes using expressive language, gestures and voice appropriately.']
+        },
+        {
+          title:'Reading',
+          activity:'Word recognition: 100 sight words',
+          levels:['Needs support from teacher and recognises less than 60-69 sight words.','Recognises and reads 70-79 sight words correctly.','Recognises and reads 80-89 sight words correctly.','Recognises and reads 90-100 sight words confidently and correctly.','Recognises and reads more than 100 sight words from a word list confidently and correctly.']
+        },
+        {
+          title:'Handwriting',
+          activity:'Copies and writes short sentences in the joined script',
+          levels:['Copies and writes 1 short sentence in the joined script with support.','Able to copy and write at least 1 sentence but still needs support with formation / size / spacing.','Copies and writes at least 1-2 short sentences paying attention to correct letter formation.','Copies and writes 2-3 sentences in the joined script paying attention to correct letter formation, size and spacing.','Copies and writes 4-5 sentences in the joined script paying attention to correct letter formation, size and spacing.']
+        },
+        {
+          title:'Writing',
+          activity:'Writes a personal text and a familiar story with a title',
+          levels:['Writes an invitation in 10-19 words with support.','Writes an invitation or short letter in 20-29 words using a simple format.','Writes an invitation or short letter in 30-39 words using a simple format.','Writes an invitation or short letter in 40-49 words using a simple format, correct spelling and grammar.','Writes an invitation or short letter in more than 50 words using a simple format, correct spelling and grammar.']
+        }
+      ]
+    }
+  }),[]);
 
-  const exportSbaSheet = (kind)=>{
-    const esc = (s='') => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    const cols = kind==='scores' ? SCORE_COLS : CHECKLIST_COLS;
-    const title = kind==='scores' ? 'SBA Marking Sheet (Scores using Rubrics)' : 'SBA Checklist & Recording';
-    const subtitle = `Home Language · ${esc(className)} · ${esc(term)} · Grade ${esc(gradeFromClass||'—')}`;
-    const rows = (sortedLearners||[]).map((l,idx)=>{
-      const nm = `${esc(l.surname||'')}, ${esc(l.firstname||'')}`.trim().replace(/^, /,'');
-      const cells = cols.map(()=> `<td class="cell"></td>`).join('');
-      return `<tr>
-        <td class="num">${idx+1}</td>
-        <td class="name">${nm || '—'}</td>
-        ${cells}
-      </tr>`;
-    }).join('');
-    const headers = cols.map(c=>`<th>${esc(c)}</th>`).join('');
+  const cfg = TERM3[gradeFromClass || ''] || null;
 
+  const openPrintWindow = (title, bodyHtml, pageCss='A4 landscape')=>{
     const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"/>
-<title>${esc(title)} — ${esc(className)} — ${esc(term)}</title>
+<title>${esc(title)}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Segoe UI',Tahoma,sans-serif;background:#eef2ff;padding:14px;color:#111827;}
-.controls{max-width:1100px;margin:0 auto 10px;display:flex;justify-content:flex-end;gap:10px;}
+.controls{max-width:1180px;margin:0 auto 10px;display:flex;justify-content:flex-end;gap:10px;}
 .controls button{padding:9px 18px;border:none;border-radius:22px;font-weight:800;cursor:pointer;font-size:13px;}
 .btn-print{background:#4f46e5;color:#fff;}
 .btn-close{background:#6b7280;color:#fff;}
-.page{max-width:1100px;margin:0 auto;background:#fff;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,0.12);padding:18px 22px;}
+.page{max-width:1180px;margin:0 auto;background:#fff;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,0.12);padding:18px 22px;}
 header{display:flex;align-items:center;gap:14px;border-bottom:3px solid #4f46e5;padding-bottom:10px;margin-bottom:12px;}
 header img{height:56px;width:56px;object-fit:contain;border-radius:10px;background:#fff;}
 header h1{font-size:18px;color:#312e81;margin-bottom:2px;}
@@ -5894,13 +6140,17 @@ header p{font-size:12px;color:#6b7280;}
 .meta{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:10px 0 12px;}
 .meta .chip{border:1px solid #e5e7eb;background:#f8fafc;border-radius:999px;padding:8px 12px;font-size:12px;color:#374151;font-weight:700;}
 table{width:100%;border-collapse:collapse;font-size:12px;}
-th,td{border:1px solid #e5e7eb;padding:7px 8px;vertical-align:top;}
-th{background:#f8fafc;color:#374151;font-weight:900;white-space:nowrap;}
-td.num{width:34px;text-align:center;color:#6b7280;font-weight:800;}
-td.name{min-width:200px;font-weight:800;}
-td.cell{height:28px;}
+th,td{border:1px solid #111827;padding:6px 7px;vertical-align:top;}
+th{background:#f8fafc;color:#111827;font-weight:900;}
+.vertical{writing-mode:vertical-rl;transform:rotate(180deg);white-space:normal;text-align:left;min-width:42px;font-size:11px;line-height:1.2;padding:8px 3px;}
+.center{text-align:center;}
+.num{width:34px;text-align:center;}
+.name{min-width:220px;font-weight:800;}
+.small{font-size:11px;line-height:1.4;color:#4b5563;}
+.section-title{font-size:14px;font-weight:900;color:#312e81;margin:14px 0 8px;}
 .note{margin-top:12px;font-size:11px;color:#6b7280;line-height:1.5;}
-@page{size:A4 landscape;margin:0.8cm;}
+.badge{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid #e5e7eb;background:#f8fafc;font-size:12px;font-weight:700;color:#374151;}
+@page{size:${pageCss};margin:0.8cm;}
 @media print{body{background:#fff;padding:0;} .controls{display:none!important;} .page{box-shadow:none;border-radius:0;max-width:100%;padding:0;}}
 </style></head>
 <body>
@@ -5917,80 +6167,187 @@ td.cell{height:28px;}
     </div>
   </header>
   <div class="meta">
-    <div class="chip">${esc(subtitle)}</div>
-    <div class="chip">Teacher: ${esc(teacherAuth?.first_name||'')} ${esc(teacherAuth?.surname||'')}</div>
+    <div class="chip">${esc(className)} · Home Language · Grade ${esc(gradeFromClass || '—')} · Term 3</div>
+    <div class="chip">Teacher: ${esc(teacherAuth?.first_name || '')} ${esc(teacherAuth?.surname || '')}</div>
     <div class="chip">Date: ${new Date().toLocaleDateString('en-ZA',{day:'2-digit',month:'long',year:'numeric'})}</div>
   </div>
-  <table>
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Learner</th>
-        ${headers}
-      </tr>
-    </thead>
-    <tbody>
-      ${rows || `<tr><td colspan="${2+cols.length}">No learners found for this class.</td></tr>`}
-    </tbody>
-  </table>
-  <div class="note">
-    This sheet is generated from the teacher dashboard tools tab and inserts the class list automatically. Use it as a printable SBA working document aligned to the Foundation Phase Home Language exemplar structure.
-  </div>
+  ${bodyHtml}
 </div>
 </body></html>`;
-
     const w = window.open('', '_blank');
-    if(!w){ alert('Please allow pop-ups to open the sheet.'); return; }
-    w.document.open(); w.document.write(html); w.document.close();
+    if(!w){ alert('Please allow pop-ups to open the report.'); return; }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  };
+
+  const renderProgramme = ()=>{
+    if(!cfg) return;
+    const rows = cfg.programme.map(r=>`
+      <tr>
+        <td><strong>${esc(r.component)}</strong></td>
+        <td><ul style="padding-left:18px">${r.skills.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></td>
+        <td>${esc(r.form)}</td>
+        <td>${esc(r.tool)}</td>
+        <td class="center"><strong>${esc(r.score)}</strong></td>
+        <td class="center">${esc(r.due)}</td>
+        <td></td>
+      </tr>
+    `).join('');
+    openPrintWindow(
+      `Home Language: Programme of Assessment: Grade ${gradeFromClass}: Term 3`,
+      `<div class="section-title">Programme of Assessment</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Component</th>
+            <th>What skills will be assessed</th>
+            <th>Form of Assessment</th>
+            <th>Assessment Tool</th>
+            <th>Score</th>
+            <th>Date to be completed</th>
+            <th>Date completed</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="note">Prepared from the Foundation Phase Home Language exemplar booklet, with the class context kept on the teacher dashboard.</div>`
+    );
+  };
+
+  const renderChecklist = ()=>{
+    if(!cfg) return;
+    const groups = cfg.checklistGroups;
+    const totalCols = groups.reduce((s,g)=>s+g.items.length,0);
+    const groupHead = groups.map(g=>`<th colspan="${g.items.length}" class="center">${esc(g.label)}</th>`).join('');
+    const itemHead = groups.flatMap(g=>g.items.map(item=>`<th class="${g.label==='Comment'?'':'vertical'}">${esc(item)}</th>`)).join('');
+    const rows = sortedLearners.map((l,idx)=>{
+      const name = `${esc(l.surname||'')}, ${esc(l.firstname||'')}`.replace(/^, /,'');
+      return `<tr><td class="num">${idx+1}</td><td class="name">${name||'—'}</td>${Array.from({length:totalCols}).map(()=>'<td style="height:26px"></td>').join('')}</tr>`;
+    }).join('');
+    openPrintWindow(
+      `Home Language: GRADE ${gradeFromClass}: TERM 3 Checklist`,
+      `<table>
+        <thead>
+          <tr><th colspan="${2+totalCols}" class="center" style="font-size:16px">Home Language: GRADE ${esc(gradeFromClass)}: TERM 3 Checklist</th></tr>
+          <tr><th colspan="2" rowspan="2" class="center" style="font-size:26px">✓ / ✗</th>${groupHead}</tr>
+          <tr>${itemHead}</tr>
+          <tr><th colspan="2" class="center">Date</th>${Array.from({length:totalCols}).map(()=>'<th></th>').join('')}</tr>
+          <tr><th colspan="2" style="text-align:left">Names of learners</th>${Array.from({length:totalCols}).map(()=>'<th></th>').join('')}</tr>
+        </thead>
+        <tbody>${rows || `<tr><td colspan="${2+totalCols}">No learners found for this class.</td></tr>`}</tbody>
+      </table>
+      <div class="note">Checklist layout follows the Term 3 grade-specific format from the exemplar. Tick or cross each descriptor for each learner.</div>`
+    );
+  };
+
+  const renderScores = ()=>{
+    if(!cfg) return;
+    const cols = cfg.scoreCols;
+    const groups = [];
+    cols.forEach(c=>{
+      const prev = groups[groups.length-1];
+      if(prev && prev.label===c.group) prev.count += 1;
+      else groups.push({label:c.group,count:1});
+    });
+    const groupHead = groups.map(g=>`<th colspan="${g.count}" class="center">${esc(g.label)}</th>`).join('');
+    const descHead = cols.map(c=>`<th class="${c.group==='Comment'?'':'vertical'}">${esc(c.text)}</th>`).join('');
+    const scoreRow = cols.map(c=>`<th class="center">${esc(c.score || '')}</th>`).join('');
+    const rows = sortedLearners.map((l,idx)=>{
+      const name = `${esc(l.surname||'')}, ${esc(l.firstname||'')}`.replace(/^, /,'');
+      return `<tr><td class="num">${idx+1}</td><td class="name">${name||'—'}</td>${Array.from({length:cols.length}).map(()=>'<td style="height:26px"></td>').join('')}</tr>`;
+    }).join('');
+    openPrintWindow(
+      `Home Language: GRADE ${gradeFromClass}: TERM 3 Scores using rubrics`,
+      `<table>
+        <thead>
+          <tr><th colspan="${2+cols.length}" class="center" style="font-size:16px">Home Language: GRADE ${esc(gradeFromClass)}: TERM 3 Scores using rubrics</th></tr>
+          <tr><th colspan="2"></th>${groupHead}</tr>
+          <tr><th colspan="2"></th>${descHead}</tr>
+          <tr><th colspan="2" class="center">Date</th>${Array.from({length:cols.length}).map(()=>'<th></th>').join('')}</tr>
+          <tr><th colspan="2" class="center">Score</th>${scoreRow}</tr>
+          <tr><th colspan="2" style="text-align:left">Names of learners</th>${Array.from({length:cols.length}).map(()=>'<th></th>').join('')}</tr>
+        </thead>
+        <tbody>${rows || `<tr><td colspan="${2+cols.length}">No learners found for this class.</td></tr>`}</tbody>
+      </table>
+      <div class="note">This marking sheet is built for the correct grade and Term 3 only, based on the exemplar structure.</div>`
+    );
+  };
+
+  const renderRubric = ()=>{
+    if(!cfg) return;
+    const sections = cfg.rubricSections.map(s=>`
+      <div class="section-title">${esc(s.title)}</div>
+      <table style="margin-bottom:10px">
+        <thead>
+          <tr>
+            <th>Activity</th>
+            <th class="center">1</th>
+            <th class="center">2</th>
+            <th class="center">3</th>
+            <th class="center">4</th>
+            <th class="center">5</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>${esc(s.activity)}</strong></td>
+            ${s.levels.map(l=>`<td>${esc(l)}</td>`).join('')}
+          </tr>
+        </tbody>
+      </table>
+    `).join('');
+    openPrintWindow(
+      `Home Language: Grade ${gradeFromClass} Rubric: Term 3`,
+      `${sections}<div class="note">Suggested rubric template for Grade ${esc(gradeFromClass)} Term 3. Use together with the checklist and score sheet.</div>`,
+      'A4 landscape'
+    );
   };
 
   return (
     <div style={card}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'10px',flexWrap:'wrap',marginBottom:'10px'}}>
         <div>
-          <h3 style={{...ctitle,marginBottom:'6px'}}>🧰 Tools (SBA) — {className}</h3>
+          <h3 style={{...ctitle,marginBottom:'6px'}}>🧰 Tools — {className}</h3>
           <div style={{color:'#666',fontSize:'13px',lineHeight:1.5}}>
-            Generate printable SBA working sheets with your class list inserted automatically (marking sheets, checklists, and recording).
+            Term 3 Foundation Phase Home Language tools with class lists inserted automatically. Includes the correct Grade 1–3 programme, checklist, score sheet, and rubric layout.
           </div>
         </div>
-        <button onClick={()=>{ onAudit && onAudit('tools:open'); }} style={{...sbtn,background:'#667eea',fontSize:'12px'}}>Log tools open</button>
+        <span style={{background:'#eef2ff',color:'#4f46e5',padding:'8px 12px',borderRadius:'999px',fontSize:'12px',fontWeight:800}}>Term 3 focus</span>
       </div>
 
-      <div style={{display:'flex',gap:'10px',flexWrap:'wrap',marginBottom:'12px'}}>
-        <div style={{minWidth:'200px'}}>
-          <label style={lbl}>Term</label>
-          <select value={term} onChange={e=>setTerm(e.target.value)} style={inp}>
-            {['Term 1','Term 2','Term 3','Term 4'].map(t=><option key={t} value={t}>{t}</option>)}
-          </select>
+      {!cfg ? (
+        <div style={{background:'#fff7ed',border:'1px solid #fed7aa',color:'#9a3412',padding:'10px 12px',borderRadius:'10px',fontSize:'13px',lineHeight:1.5}}>
+          These attached Home Language forms are grade-specific for Grades 1–3 only. Please share the correct document for this class if you want the same detailed format outside Foundation Phase.
         </div>
-        <div style={{minWidth:'240px'}}>
-          <label style={lbl}>Sheet type</label>
-          <select value={sheet} onChange={e=>setSheet(e.target.value)} style={inp}>
-            <option value="checklist">Checklist & Recording (✓/✗)</option>
-            <option value="scores">Marking sheet (Scores using rubrics)</option>
-          </select>
-        </div>
-        <div style={{flex:'1 1 240px',minWidth:'240px'}}>
-          <label style={lbl}>Preview columns</label>
-          <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px 12px',fontSize:'12px',color:'#4b5563',lineHeight:1.5}}>
-            {(sheet==='scores' ? SCORE_COLS : CHECKLIST_COLS).join(' · ')}
+      ) : (
+        <>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:'10px',marginBottom:'12px'}}>
+            <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px'}}>
+              <div style={{fontSize:'12px',fontWeight:900,color:'#334155',marginBottom:'4px'}}>Grade</div>
+              <div style={{fontSize:'20px',fontWeight:900,color:'#111827'}}>Grade {gradeFromClass}</div>
+            </div>
+            <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px'}}>
+              <div style={{fontSize:'12px',fontWeight:900,color:'#334155',marginBottom:'4px'}}>Class list</div>
+              <div style={{fontSize:'20px',fontWeight:900,color:'#111827'}}>{sortedLearners.length}</div>
+            </div>
+            <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px'}}>
+              <div style={{fontSize:'12px',fontWeight:900,color:'#334155',marginBottom:'4px'}}>Included forms</div>
+              <div style={{fontSize:'13px',fontWeight:700,color:'#475569'}}>Programme, Checklist, Scores, Rubric</div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div style={{display:'flex',gap:'10px',flexWrap:'wrap'}}>
-        <button onClick={()=>{ exportSbaSheet('checklist'); onAudit && onAudit(`tools:sba_checklist:${term}`); }} style={{...sbtn,background:'#10b981',fontSize:'13px'}}>
-          🖨 Print checklist & recording
-        </button>
-        <button onClick={()=>{ exportSbaSheet('scores'); onAudit && onAudit(`tools:sba_scores:${term}`); }} style={{...sbtn,background:'#4f46e5',fontSize:'13px'}}>
-          🖨 Print marking sheet (rubric scores)
-        </button>
-      </div>
+          <div style={{display:'flex',gap:'10px',flexWrap:'wrap'}}>
+            <button onClick={()=>{ renderProgramme(); onAudit && onAudit('tools:programme_term3'); }} style={{...sbtn,background:'#0f766e',fontSize:'13px'}}>📄 Program of assessment</button>
+            <button onClick={()=>{ renderChecklist(); onAudit && onAudit('tools:checklist_term3'); }} style={{...sbtn,background:'#10b981',fontSize:'13px'}}>📝 Checklist</button>
+            <button onClick={()=>{ renderScores(); onAudit && onAudit('tools:scores_term3'); }} style={{...sbtn,background:'#4f46e5',fontSize:'13px'}}>📊 Term 3 scores using rubrics</button>
+            <button onClick={()=>{ renderRubric(); onAudit && onAudit('tools:rubric_term3'); }} style={{...sbtn,background:'#7c3aed',fontSize:'13px'}}>📚 Grade rubric</button>
+          </div>
 
-      {(!gradeFromClass || !['1','2','3','R'].includes(String(gradeFromClass))) && (
-        <div style={{marginTop:'12px',background:'#fff7ed',border:'1px solid #fed7aa',color:'#9a3412',padding:'10px 12px',borderRadius:'10px',fontSize:'13px',lineHeight:1.5}}>
-          Note: The attached SBA exemplar booklet is for Foundation Phase Home Language (Grades 1–3). For this class, the tools will still generate printable sheets, but the headings may need to be adjusted when you share the correct SBA document for this grade.
-        </div>
+          <div style={{marginTop:'12px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',fontSize:'13px',color:'#475569',lineHeight:1.6}}>
+            <strong>Included for this grade:</strong> the correct Term 3 layout, class list insertion, detailed checklist descriptions, grade-specific score sheet headings, and a matching rubric template.
+          </div>
+        </>
       )}
     </div>
   );
