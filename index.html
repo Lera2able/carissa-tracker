@@ -5861,7 +5861,7 @@ function TeacherToolsTab({ teacherAuth, className, learners, onAudit }){
   },[gradeFromClass, termNo]);
 
   const exportSbaSheet = (kind)=>{
-    const esc = (s='') => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',\"'\":'&#39;'}[c]));
+    const esc = (s='') => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const cols = kind==='scores' ? SCORE_COLS : CHECKLIST_COLS;
     const title = kind==='scores' ? 'SBA Marking Sheet (Scores using Rubrics)' : 'SBA Checklist & Recording';
     const subtitle = `Home Language · ${esc(className)} · ${esc(term)} · Grade ${esc(gradeFromClass||'—')}`;
