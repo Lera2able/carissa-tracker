@@ -6385,36 +6385,193 @@ function TeacherToolsTab({ teacherAuth, className, learners, onAudit }){
     }
   }),[]);
 
+  const MATH_TERM3 = useMemo(()=>({
+    '1':{
+      programme:[
+        {component:'Numbers, Operations & Relationships',skills:['Estimates and counts out objects reliably to 40 using grouping.','Counts forwards and backwards in 1s from any number between 0 and 80.','Counts forwards in multiples of 10s, 2s and 5s between 0 and 80.','Recalls addition and subtraction facts to 5.'],form:'Oral / Written',tool:'Checklist / Mental Maths Rubric',score:'10',due:'By end of term'},
+        {component:'Number symbols & names',skills:['Recognises, identifies, reads and writes number names 1 to 10.','Reads number symbols 1 to 80.','Writes number symbols 1 to 20.'],form:'Written',tool:'Checklist / Classwork',score:'5',due:'By Week 8'},
+        {component:'Measurement / Patterns / Shape',skills:['Measures, compares and orders length using non-standard measures.','Copies, extends and describes simple number patterns.','Recognises and draws a line of symmetry in 2-D shapes.'],form:'Practical / Written',tool:'Checklist',score:'5',due:'By Week 9'}
+      ],
+      checklistGroups:[
+        {label:'Numbers, Operations & Relationships',items:['Estimates and counts objects to 40','Counts forwards and backwards in 1s to 80','Counts in 10s, 2s and 5s','Reads number symbols to 80','Recognises place value of numbers 11 to 15','Decomposes two-digit numbers into ten ones']},
+        {label:'Patterns, Functions & Algebra',items:['Copies, extends and describes simple number sequences in 1s, 10s, 5s and 2s']},
+        {label:'Space & Shape',items:['Recognises and draws a line of symmetry in 2-D','Recognises geometric and non-geometric shapes']},
+        {label:'Measurement',items:['Estimates, measures, compares and orders length using non-standard measures']},
+        {label:'Comments',items:['Teacher comment']}
+      ],
+      scoreCols:[
+        {group:'Numbers, Operations & Relationships',text:'Mental Maths: recalls addition and subtraction facts to 5',score:'5'},
+        {group:'Numbers, Operations & Relationships',text:'Compares and orders numbers: smallest to greatest / before / after / middle',score:'5'},
+        {group:'Numbers, Operations & Relationships',text:'Solves context problems using addition and subtraction with answers up to 15',score:'5'},
+        {group:'Numbers, Operations & Relationships',text:'Equal sharing and grouping with whole numbers up to 15',score:'5'},
+        {group:'Comments',text:'Teacher comment',score:''}
+      ],
+      rubricSections:[
+        {title:'Numbers, Operations & Relationships',activity:'Mental Maths: recalls addition and subtraction facts to 5',levels:['Does not recall addition and subtraction facts to 5.','Recalls addition facts to 2 with hesitation.','Recalls addition and subtraction facts to 3 correctly.','Recalls addition and subtraction facts to 4 correctly and rapidly.','Recalls addition and subtraction facts to 5 correctly and rapidly.']},
+        {title:'Numbers, Operations & Relationships',activity:'Equal sharing and grouping with whole numbers up to 15',levels:['Needs support to solve equal sharing and grouping problems.','Solves problems correctly up to 5 using support.','Solves equal sharing and grouping with answers up to 10.','Solves equal sharing and grouping with answers up to 15.','Explains solutions clearly and independently with equal sharing and grouping up to 15.']}
+      ]
+    },
+    '2':{
+      programme:[
+        {component:'Numbers, Operations & Relationships',skills:['Estimate and count at least 180 everyday objects reliably.','Count forwards and backwards in 1s, 10s, 5s, 2s, 3s and 4s within the required ranges.','Rapidly recall addition and subtraction facts to 15.','Compare numbers to 75 and say which is 1/2/3/4 more or less.'],form:'Oral',tool:'Checklist / Rubric',score:'10',due:'By end of term'},
+        {component:'Number symbols & place value',skills:['Identify, recognise and read number symbols up to 180.','Write number names 0 to 75.','Recognise place value of numbers 11 to 75.'],form:'Written',tool:'Checklist / Recording',score:'10',due:'By Week 8'},
+        {component:'Space & Shape',skills:['Recognise, name and sort 2-D shapes.','Use language of position.','Match different views of everyday objects.'],form:'Practical',tool:'Checklist',score:'5',due:'By Week 9'}
+      ],
+      checklistGroups:[
+        {label:'Numbers, Operations & Relationships',items:['Estimate and count at least 180 objects','Counts forwards/backwards in 1s, 10s, 5s, 2s, 3s and 4s','Compares numbers to 50/75 and says more/less','Recognises, identifies and reads number symbols to 180','Writes number names to 75','Recognises place value to 75']},
+        {label:'Space & Shape',items:['Recognises, names and sorts 2-D shapes','Uses language of position','Matches different views of everyday objects']},
+        {label:'Comments',items:['Teacher comment']}
+      ],
+      scoreCols:[
+        {group:'Numbers, Operations & Relationships',text:'Mental Mathematics: rapidly recalls addition and subtraction facts to 15',score:'5'},
+        {group:'Numbers, Operations & Relationships',text:'Number symbols and number names to 180 / 75',score:'5'},
+        {group:'Numbers, Operations & Relationships',text:'Describes, compares and orders whole numbers up to 75',score:'5'},
+        {group:'Numbers, Operations & Relationships',text:'Context-free calculations and place value to 75',score:'5'},
+        {group:'Comments',text:'Teacher comment',score:''}
+      ],
+      rubricSections:[
+        {title:'Numbers, Operations & Relationships',activity:'Mental Maths: recall addition and subtraction facts to 15',levels:['Recalls addition and subtraction facts with support up to 5-6.','Recalls facts up to 8-9 with hesitation.','Recalls facts up to 11-10 correctly.','Recalls facts to 12-13 correctly.','Recalls facts to 14-15 correctly and rapidly.']}
+      ]
+    },
+    '3':{
+      programme:[
+        {component:'Numbers, Operations & Relationships',skills:['Groups up to at least 750 objects to estimate and count reliably.','Counts forwards and backwards in 1s, 10s, 5s, 2s, 3s, 4s, 20s, 25s, 50s and 100s in the required ranges.','Identifies, recognises and reads number symbols up to 1000.','Rapidly recalls addition and subtraction facts to 30.'],form:'Oral / Written',tool:'Checklist / Rubric',score:'10',due:'By end of term'},
+        {component:'Calculations & problem solving',skills:['Compares numbers to 750 and says which is 1/2/3/4/5/10 more or less.','Adds and subtracts multiples of 10 from 100.','Solves word problems involving grouping, sharing, multiplication and fractions.'],form:'Written',tool:'Recording sheet / Rubric',score:'15',due:'By Week 9'},
+        {component:'Space & Shape',skills:['Identifies and describes shapes and spatial relationships.'],form:'Practical',tool:'Checklist',score:'5',due:'By Week 9'}
+      ],
+      checklistGroups:[
+        {label:'Numbers, Operations & Relationships',items:['Groups to estimate and count to 750','Counts forwards/backwards in 1s, 10s, 5s, 2s, 3s, 4s','Counts in 20s, 25s, 50s and 100s','Compares numbers to 750','Reads number symbols and names to 1000','Adds/subtracts multiples of 10']},
+        {label:'Space & Shape',items:['Recognises and describes spatial relationships and shapes']},
+        {label:'Comments',items:['Teacher comment']}
+      ],
+      scoreCols:[
+        {group:'Numbers, Operations & Relationships',text:'Mental Mathematics: recalls addition and subtraction facts to 30',score:'5'},
+        {group:'Numbers, Operations & Relationships',text:'Describes, compares and orders numbers to 750',score:'5'},
+        {group:'Numbers, Operations & Relationships',text:'Context-free calculations: multiply, divide, add and subtract',score:'5'},
+        {group:'Numbers, Operations & Relationships',text:'Solves word problems involving grouping, sharing and fractions',score:'5'},
+        {group:'Comments',text:'Teacher comment',score:''}
+      ],
+      rubricSections:[
+        {title:'Numbers, Operations & Relationships',activity:'Recall addition and subtraction facts to 30',levels:['Recalls facts to 10 with support.','Recalls facts to 15 correctly.','Recalls facts to 20 correctly.','Recalls facts to 25 with speed and accuracy.','Recalls facts to 30 with speed and accuracy.']}
+      ]
+    }
+  }),[]);
+
+  const LIFE_TERM3 = useMemo(()=>({
+    '1':{
+      programme:[
+        {component:'Beginning Knowledge / Personal & Social Well-being',skills:['Knows important public buildings and places such as library, clinic and police station.','Knows different pets and how to care for them.','Greets people, waits my turn and respects others.'],form:'Oral / Practical / Observation',tool:'Checklist',score:'5',due:'By end of term'},
+        {component:'Plants and Seeds',skills:['Knows different types of plants, parts of a plant and uses of plants.'],form:'Oral / Practical',tool:'Checklist and Rubric',score:'5',due:'By end of term'},
+        {component:'Creative Arts / Physical Education',skills:['Sings songs and action rhymes.','Makes paintings, drawings and simple models.','Performs balance, dribbling, kicking, throwing and passing activities.'],form:'Observation / Practical',tool:'Checklist / Recording',score:'15',due:'By end of term'}
+      ],
+      checklistGroups:[
+        {label:'Beginning Knowledge & Personal and Social Well-being',items:['Knows important public buildings and places','Knows different pets and how to care for them','Greets people','Waits my turn','Respects others']},
+        {label:'Creative Arts',items:['Plays and sings songs and action rhymes','Does warm up and cool down activities','Can participate in freeze and movement activities','Does drawings and paintings of real and imaginary things','Makes models out of clay, play dough and recycled material']},
+        {label:'Physical Education',items:['Balancing, kicking, dribbling, throwing and passing activities']},
+        {label:'Comments',items:['Teacher comment']}
+      ],
+      scoreCols:[
+        {group:'Beginning Knowledge & Personal and Social Well-being',text:'Identification of healthy and unhealthy foods',score:'5'},
+        {group:'Beginning Knowledge & Personal and Social Well-being',text:'Knowledge of parts of a plant',score:'5'},
+        {group:'Creative Arts',text:'Listening skills through music, pitch, tempo, dynamics and duration',score:'5'},
+        {group:'Visual Arts',text:'Makes models out of clay, play dough and recycled material',score:'5'},
+        {group:'Physical Education',text:'Balances a bean bag',score:'5'},
+        {group:'Comments',text:'Teacher comment',score:''}
+      ],
+      rubricSections:[
+        {title:'Beginning Knowledge & Personal and Social Well-being',activity:'Identification of different foods',levels:['Identifies 1 healthy and 1 unhealthy food type.','Identifies 2 healthy and 2 unhealthy food types.','Identifies 3 healthy and 3 unhealthy food types.','Identifies 4 healthy and 4 unhealthy food types.','Identifies 5 healthy and 5 unhealthy food types.']},
+        {title:'Beginning Knowledge & Personal and Social Well-being',activity:'Identify, point and name at least 5 parts of a plant',levels:['Points to 1 part of a plant correctly.','Identifies and points to 2 parts of a plant correctly.','Identifies, points and names 3 parts of a plant correctly.','Identifies, points, draws and names 4 parts of a plant correctly.','Identifies, points, draws and names 5 parts of a plant correctly.']}
+      ]
+    },
+    '2':{
+      programme:[
+        {component:'Beginning Knowledge & Personal and Social Well-being',skills:['Knows soil, plant growth and creatures that live in soil.','Knows different types of transport: road, rail, air and water.','Knows community services and emergency services in the immediate locality.','Knows road safety rules for pedestrians, cyclists and passengers.'],form:'Oral / Practical / Written',tool:'Checklist / Rubric / Recording',score:'15',due:'By end of term'},
+        {component:'Creative Arts',skills:['Acts out short scenes from everyday life.','Performs traditional cultural dances.','Makes fantasy paintings and paintings of birds, fish, insects and flowers.'],form:'Practical',tool:'Checklist / Recording',score:'10',due:'By end of term'},
+        {component:'Physical Education',skills:['Plays movement games and typical ball games in a team.'],form:'Practical',tool:'Checklist / Recording',score:'5',due:'By end of term'}
+      ],
+      checklistGroups:[
+        {label:'Beginning Knowledge and Personal and Social Well-being',items:['Knows about the soil and its uses','Knows about different kinds of transport and uses','Knows about road safety and pedestrian safety','Knows about community services']},
+        {label:'Creative Arts',items:['Acts out short scenes from everyday life','Performs traditional cultural dances','Makes fantasy paintings and paintings of birds, fish, insects and flowers']},
+        {label:'Physical Education',items:['Plays movement games']},
+        {label:'Comments',items:['Teacher comment']}
+      ],
+      scoreCols:[
+        {group:'Beginning Knowledge & Personal and Social Well-being',text:'Story board / poster: knowledge of different types of transport',score:'5'},
+        {group:'Beginning Knowledge & Personal and Social Well-being',text:'Flash cards with emergency numbers',score:'5'},
+        {group:'Beginning Knowledge & Personal and Social Well-being',text:'Models of road signs and traffic light',score:'5'},
+        {group:'Creative Arts',text:'Puppet show in pairs or threes',score:'5'},
+        {group:'Visual Arts',text:'Make a puppet using recycled material',score:'5'},
+        {group:'Physical Education',text:'Play typical ball games in a team',score:'5'},
+        {group:'Comments',text:'Teacher comment',score:''}
+      ],
+      rubricSections:[
+        {title:'Beginning Knowledge & Personal and Social Well-being',activity:'Story board / Poster: Knowledge of different types of transport',levels:['Identifies 1 picture related to transport and pastes it on a poster.','Makes a storyboard or poster demonstrating 2 types of transport.','Makes a colourful storyboard / poster demonstrating 3 types of transport and writes captions.','Makes a colourful storyboard / poster demonstrating 4 types of transport and writes captions and 1 sentence on each.','Makes a colourful storyboard / poster demonstrating 4 types of transport and writes captions and 2 sentences on each.']}
+      ]
+    },
+    '3':{
+      programme:[
+        {component:'Beginning Knowledge & Personal and Social Well-being',skills:['Awareness of dangerous places, dangers of electricity, safety in moving vehicles, and poisonous / inflammable substances.','Rules: keeping my school litter free.','Compare between the past and the present in how people lived long ago.'],form:'Oral / Practical / Written',tool:'Checklist / Classwork book',score:'10',due:'By end of term'},
+        {component:'Space',skills:['Knowledge of stars, planets and space travel.'],form:'Practical / Written',tool:'Worksheet / Classwork book',score:'10',due:'By Week 6'},
+        {component:'Creative Arts / Physical Education',skills:['Performs rhythmic games and songs with movements.','Makes drawings, paintings, puppets, masks, constructions and crafts.','Plays ball games and indigenous games.'],form:'Practical',tool:'Recording / Rubric',score:'15',due:'By end of term'}
+      ],
+      checklistGroups:[
+        {label:'Beginning Knowledge & Personal and Social Well-being',items:['Knows about public safety rules and dangers','Knows about different types of pollution','Knows about how people lived long ago','Knows about space and space travel','Knows the religious and special days observed in the term']},
+        {label:'Creative Arts',items:['Demonstrates sensory awareness','Performs rhythmic games','Sings songs using appropriate movements','Mimes actions and sings / dances to voice contrasts','Does drawings and paintings using songs and rhymes']},
+        {label:'Physical Education',items:['Ball games and indigenous games']},
+        {label:'Comments',items:['Teacher comment']}
+      ],
+      scoreCols:[
+        {group:'Beginning Knowledge & Personal and Social Well-being',text:'Rules: Keeping my school litter free',score:'5'},
+        {group:'Beginning Knowledge & Personal and Social Well-being',text:'Space worksheet / space travel facts',score:'10'},
+        {group:'Creative Arts',text:'Body percussion and / or percussion instruments',score:'5'},
+        {group:'Visual Arts',text:'Create in 3D (constructing)',score:'5'},
+        {group:'Physical Education',text:'Balance and laterality',score:'5'},
+        {group:'Comments',text:'Teacher comment',score:''}
+      ],
+      rubricSections:[
+        {title:'Beginning Knowledge & Personal and Social Well-being',activity:'Rules: Keeping my school litter free (5 rules)',levels:['Writes 1 rule with support.','Writes 2 simple rules about keeping my school litter free.','Writes 3 simple and practical rules about keeping my school litter free.','Writes 4 simple and practical rules about keeping my school litter free.','Writes 5 simple and practical rules about keeping my school litter free.']}
+      ]
+    }
+  }),[]);
+
   const isFAL = toolFolder==='afrikaans_fal';
+  const isMath = toolFolder==='mathematics';
+  const isLife = toolFolder==='life_skills';
   const ui = isFAL ? {
     folderTitle:'Afrikaans FAL',
     description:'Termyn 3 Afrikaans Eerste Addisionele Taal-hulpmiddels met klaslyste wat outomaties ingevoeg word.',
     subjectLabel:'Afrikaans Eerste Addisionele Taal',
     noCfg:'Hierdie aangehegte Afrikaans FAL-vorms is graadspesifiek vir Graad 1-3. Deel asseblief die korrekte dokument as jy dieselfde detail vir ’n ander graad wil hê.',
-    buttons:{
-      programme:'📄 Program van assessering',
-      checklist:'📝 Kontrolelys',
-      scores:'📊 Termyn 3 punte volgens rubrieke',
-      rubric:'📚 Graadrubriek'
-    },
+    buttons:{programme:'📄 Program van assessering',checklist:'📝 Kontrolelys',scores:'📊 Termyn 3 punte volgens rubrieke',rubric:'📚 Graadrubriek'},
     included:'die korrekte Termyn 3-uitleg, klaslyste, gedetailleerde kontrolelysbeskrywings, graadspesifieke puntestate en ’n passende rubriek',
     labels:{grade:'Graad', classlist:'Klaslys', includedForms:'Ingesluit', names:'Name van leerders', date:'Datum', score:'Punt', teacherComment:'Onderwyser se kommentaar'}
+  } : isMath ? {
+    folderTitle:'Mathematics',
+    description:'Term 3 Foundation Phase Mathematics tools with class lists inserted automatically.',
+    subjectLabel:'Mathematics',
+    noCfg:'These attached Mathematics forms are grade-specific for Grades 1–3 only. Please share the correct document if you want the same detail for another grade.',
+    buttons:{programme:'📄 Program of assessment',checklist:'📝 Checklist',scores:'📊 Term 3 scores using rubrics',rubric:'📚 Grade rubric'},
+    included:'the correct Term 3 Mathematics layout, class list insertion, checklist descriptors, recording sheet headings, and a matching rubric template',
+    labels:{grade:'Grade', classlist:'Class list', includedForms:'Included forms', names:'Names of learners', date:'Date', score:'Score', teacherComment:'Teacher comment'}
+  } : isLife ? {
+    folderTitle:'Life Skills',
+    description:'Term 3 Foundation Phase Life Skills tools with class lists inserted automatically.',
+    subjectLabel:'Life Skills',
+    noCfg:'These attached Life Skills forms are grade-specific for Grades 1–3 only. Please share the correct document if you want the same detail for another grade.',
+    buttons:{programme:'📄 Program of assessment',checklist:'📝 Checklist',scores:'📊 Term 3 recording sheet',rubric:'📚 Grade rubric'},
+    included:'the correct Term 3 Life Skills layout, class list insertion, checklist descriptors, recording sheet headings, and a matching rubric template',
+    labels:{grade:'Grade', classlist:'Class list', includedForms:'Included forms', names:'Names of learners', date:'Date', score:'Score', teacherComment:'Teacher comment'}
   } : {
     folderTitle:'English HL',
     description:'Term 3 Foundation Phase Home Language tools with class lists inserted automatically.',
     subjectLabel:'Home Language',
     noCfg:'These attached Home Language forms are grade-specific for Grades 1–3 only. Please share the correct document for this class if you want the same detailed format outside Foundation Phase.',
-    buttons:{
-      programme:'📄 Program of assessment',
-      checklist:'📝 Checklist',
-      scores:'📊 Term 3 scores using rubrics',
-      rubric:'📚 Grade rubric'
-    },
+    buttons:{programme:'📄 Program of assessment',checklist:'📝 Checklist',scores:'📊 Term 3 scores using rubrics',rubric:'📚 Grade rubric'},
     included:'the correct Term 3 layout, class list insertion, detailed checklist descriptions, grade-specific score sheet headings, and a matching rubric template',
     labels:{grade:'Grade', classlist:'Class list', includedForms:'Included forms', names:'Names of learners', date:'Date', score:'Score', teacherComment:'Teacher comment'}
   };
 
-  const cfg = (isFAL ? FAL_TERM3 : TERM3)[gradeFromClass || ''] || null;
+  const cfg = (isFAL ? FAL_TERM3 : isMath ? MATH_TERM3 : isLife ? LIFE_TERM3 : TERM3)[gradeFromClass || ''] || null;
 
   const openPrintWindow = (title, bodyHtml, pageCss='A4 landscape', compact=false)=>{
     const html = `<!DOCTYPE html>
@@ -6619,6 +6776,8 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
       <div style={{display:'flex',gap:'10px',flexWrap:'wrap',marginBottom:'12px'}}>
         <button onClick={()=>setToolFolder('english_hl')} style={{...sbtn,background:toolFolder==='english_hl' ? '#4f46e5' : '#cbd5e1',color:toolFolder==='english_hl' ? '#fff' : '#111827',fontSize:'13px'}}>📁 English HL</button>
         <button onClick={()=>setToolFolder('afrikaans_fal')} style={{...sbtn,background:toolFolder==='afrikaans_fal' ? '#0f766e' : '#cbd5e1',color:toolFolder==='afrikaans_fal' ? '#fff' : '#111827',fontSize:'13px'}}>📁 Afrikaans FAL</button>
+        <button onClick={()=>setToolFolder('mathematics')} style={{...sbtn,background:toolFolder==='mathematics' ? '#dc2626' : '#cbd5e1',color:toolFolder==='mathematics' ? '#fff' : '#111827',fontSize:'13px'}}>📁 Mathematics</button>
+        <button onClick={()=>setToolFolder('life_skills')} style={{...sbtn,background:toolFolder==='life_skills' ? '#f59e0b' : '#cbd5e1',color:toolFolder==='life_skills' ? '#fff' : '#111827',fontSize:'13px'}}>📁 Life Skills</button>
       </div>
 
       {!cfg ? (
@@ -6638,7 +6797,7 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
             </div>
             <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px'}}>
               <div style={{fontSize:'12px',fontWeight:900,color:'#334155',marginBottom:'4px'}}>{ui.labels.includedForms}</div>
-              <div style={{fontSize:'13px',fontWeight:700,color:'#475569'}}>{isFAL ? 'Program, Kontrolelys, Punte, Rubriek' : 'Programme, Checklist, Scores, Rubric'}</div>
+              <div style={{fontSize:'13px',fontWeight:700,color:'#475569'}}>{isFAL ? 'Program, Kontrolelys, Punte, Rubriek' : isLife ? 'Programme, Checklist, Recording, Rubric' : 'Programme, Checklist, Scores, Rubric'}</div>
             </div>
           </div>
 
