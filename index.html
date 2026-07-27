@@ -6121,31 +6121,32 @@ function TeacherToolsTab({ teacherAuth, className, learners, onAudit }){
 
   const cfg = TERM3[gradeFromClass || ''] || null;
 
-  const openPrintWindow = (title, bodyHtml, pageCss='A4 landscape')=>{
+  const openPrintWindow = (title, bodyHtml, pageCss='A4 landscape', compact=false)=>{
     const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"/>
 <title>${esc(title)}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Segoe UI',Tahoma,sans-serif;background:#eef2ff;padding:14px;color:#111827;}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#eef2ff;padding:${compact ? '8px' : '14px'};color:#111827;}
 .controls{max-width:1180px;margin:0 auto 10px;display:flex;justify-content:flex-end;gap:10px;}
 .controls button{padding:9px 18px;border:none;border-radius:22px;font-weight:800;cursor:pointer;font-size:13px;}
 .btn-print{background:#4f46e5;color:#fff;}
 .btn-close{background:#6b7280;color:#fff;}
-.page{max-width:1180px;margin:0 auto;background:#fff;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,0.12);padding:18px 22px;}
-header{display:flex;align-items:center;gap:14px;border-bottom:3px solid #4f46e5;padding-bottom:10px;margin-bottom:12px;}
-header img{height:56px;width:56px;object-fit:contain;border-radius:10px;background:#fff;}
-header h1{font-size:18px;color:#312e81;margin-bottom:2px;}
-header p{font-size:12px;color:#6b7280;}
-.meta{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:10px 0 12px;}
+.page{max-width:1180px;margin:0 auto;background:#fff;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,0.12);padding:${compact ? '10px 14px' : '18px 22px'};}
+header{display:flex;align-items:center;gap:${compact ? '10px' : '14px'};border-bottom:3px solid #4f46e5;padding-bottom:${compact ? '6px' : '10px'};margin-bottom:${compact ? '8px' : '12px'};}
+header img{height:${compact ? '38px' : '56px'};width:${compact ? '38px' : '56px'};object-fit:contain;border-radius:10px;background:#fff;}
+header h1{font-size:${compact ? '15px' : '18px'};color:#312e81;margin-bottom:2px;}
+header p{font-size:${compact ? '11px' : '12px'};color:#6b7280;}
+.meta{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:${compact ? '6px 0 8px' : '10px 0 12px'};}
 .meta .chip{border:1px solid #e5e7eb;background:#f8fafc;border-radius:999px;padding:8px 12px;font-size:12px;color:#374151;font-weight:700;}
 table{width:100%;border-collapse:collapse;font-size:12px;}
 th,td{border:1px solid #111827;padding:6px 7px;vertical-align:top;}
 th{background:#f8fafc;color:#111827;font-weight:900;}
-.vertical{writing-mode:vertical-rl;transform:rotate(180deg);white-space:normal;text-align:left;min-width:42px;font-size:11px;line-height:1.2;padding:8px 3px;}
 .center{text-align:center;}
 .num{width:34px;text-align:center;}
 .name{min-width:220px;font-weight:800;}
+.wraphead{white-space:normal;word-break:break-word;overflow-wrap:anywhere;text-align:center;vertical-align:bottom;font-size:10px;line-height:1.15;width:72px;min-width:72px;padding:6px 4px;}
+.commenthead{white-space:normal;word-break:break-word;overflow-wrap:anywhere;text-align:center;vertical-align:bottom;font-size:10px;line-height:1.15;width:110px;min-width:110px;padding:6px 4px;}
 .small{font-size:11px;line-height:1.4;color:#4b5563;}
 .section-title{font-size:14px;font-weight:900;color:#312e81;margin:14px 0 8px;}
 .note{margin-top:12px;font-size:11px;color:#6b7280;line-height:1.5;}
@@ -6220,7 +6221,7 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
     const groups = cfg.checklistGroups;
     const totalCols = groups.reduce((s,g)=>s+g.items.length,0);
     const groupHead = groups.map(g=>`<th colspan="${g.items.length}" class="center">${esc(g.label)}</th>`).join('');
-    const itemHead = groups.flatMap(g=>g.items.map(item=>`<th class="${g.label==='Comment'?'':'vertical'}">${esc(item)}</th>`)).join('');
+    const itemHead = groups.flatMap(g=>g.items.map(item=>`<th class="${g.label==='Comment'?'commenthead':'wraphead'}">${esc(item)}</th>`)).join('');
     const rows = sortedLearners.map((l,idx)=>{
       const name = `${esc(l.surname||'')}, ${esc(l.firstname||'')}`.replace(/^, /,'');
       return `<tr><td class="num">${idx+1}</td><td class="name">${name||'—'}</td>${Array.from({length:totalCols}).map(()=>'<td style="height:26px"></td>').join('')}</tr>`;
@@ -6237,7 +6238,9 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
         </thead>
         <tbody>${rows || `<tr><td colspan="${2+totalCols}">No learners found for this class.</td></tr>`}</tbody>
       </table>
-      <div class="note">Checklist layout follows the Term 3 grade-specific format from the exemplar. Tick or cross each descriptor for each learner.</div>`
+      <div class="note">Checklist layout follows the Term 3 grade-specific format from the exemplar. Tick or cross each descriptor for each learner.</div>`,
+      'A4 landscape',
+      true
     );
   };
 
@@ -6251,7 +6254,7 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
       else groups.push({label:c.group,count:1});
     });
     const groupHead = groups.map(g=>`<th colspan="${g.count}" class="center">${esc(g.label)}</th>`).join('');
-    const descHead = cols.map(c=>`<th class="${c.group==='Comment'?'':'vertical'}">${esc(c.text)}</th>`).join('');
+    const descHead = cols.map(c=>`<th class="${c.group==='Comment'?'commenthead':'wraphead'}">${esc(c.text)}</th>`).join('');
     const scoreRow = cols.map(c=>`<th class="center">${esc(c.score || '')}</th>`).join('');
     const rows = sortedLearners.map((l,idx)=>{
       const name = `${esc(l.surname||'')}, ${esc(l.firstname||'')}`.replace(/^, /,'');
@@ -6270,7 +6273,9 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
         </thead>
         <tbody>${rows || `<tr><td colspan="${2+cols.length}">No learners found for this class.</td></tr>`}</tbody>
       </table>
-      <div class="note">This marking sheet is built for the correct grade and Term 3 only, based on the exemplar structure.</div>`
+      <div class="note">This marking sheet is built for the correct grade and Term 3 only, based on the exemplar structure.</div>`,
+      'A4 landscape',
+      true
     );
   };
 
