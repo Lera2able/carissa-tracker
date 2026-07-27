@@ -6127,26 +6127,26 @@ function TeacherToolsTab({ teacherAuth, className, learners, onAudit }){
 <title>${esc(title)}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Segoe UI',Tahoma,sans-serif;background:#eef2ff;padding:${compact ? '8px' : '14px'};color:#111827;}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:${compact ? '#ffffff' : '#eef2ff'};padding:${compact ? '4px' : '14px'};color:#111827;}
 .controls{max-width:1180px;margin:0 auto 10px;display:flex;justify-content:flex-end;gap:10px;}
 .controls button{padding:9px 18px;border:none;border-radius:22px;font-weight:800;cursor:pointer;font-size:13px;}
 .btn-print{background:#4f46e5;color:#fff;}
 .btn-close{background:#6b7280;color:#fff;}
-.page{max-width:1180px;margin:0 auto;background:#fff;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,0.12);padding:${compact ? '10px 14px' : '18px 22px'};}
+.page{max-width:1180px;margin:0 auto;background:#fff;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,0.12);padding:${compact ? '4px 6px' : '18px 22px'};}
 header{display:flex;align-items:center;gap:${compact ? '10px' : '14px'};border-bottom:3px solid #4f46e5;padding-bottom:${compact ? '6px' : '10px'};margin-bottom:${compact ? '8px' : '12px'};}
 header img{height:${compact ? '38px' : '56px'};width:${compact ? '38px' : '56px'};object-fit:contain;border-radius:10px;background:#fff;}
 header h1{font-size:${compact ? '15px' : '18px'};color:#312e81;margin-bottom:2px;}
 header p{font-size:${compact ? '11px' : '12px'};color:#6b7280;}
 .meta{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:${compact ? '6px 0 8px' : '10px 0 12px'};}
 .meta .chip{border:1px solid #e5e7eb;background:#f8fafc;border-radius:999px;padding:8px 12px;font-size:12px;color:#374151;font-weight:700;}
-table{width:100%;border-collapse:collapse;font-size:12px;}
-th,td{border:1px solid #111827;padding:6px 7px;vertical-align:top;}
+table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;}
+th,td{border:1px solid #111827;padding:${compact ? '4px 5px' : '6px 7px'};vertical-align:top;}
 th{background:#f8fafc;color:#111827;font-weight:900;}
 .center{text-align:center;}
 .num{width:34px;text-align:center;}
-.name{min-width:220px;font-weight:800;}
-.wraphead{white-space:normal;word-break:break-word;overflow-wrap:anywhere;text-align:center;vertical-align:bottom;font-size:10px;line-height:1.15;width:72px;min-width:72px;padding:6px 4px;}
-.commenthead{white-space:normal;word-break:break-word;overflow-wrap:anywhere;text-align:center;vertical-align:bottom;font-size:10px;line-height:1.15;width:110px;min-width:110px;padding:6px 4px;}
+.name{width:${compact ? '160px' : '220px'};min-width:${compact ? '160px' : '220px'};font-weight:800;}
+.wraphead{white-space:normal;word-break:break-word;overflow-wrap:anywhere;text-align:center;vertical-align:bottom;font-size:${compact ? '9px' : '10px'};line-height:1.1;width:${compact ? '58px' : '72px'};min-width:${compact ? '58px' : '72px'};padding:${compact ? '4px 3px' : '6px 4px'};}
+.commenthead{white-space:normal;word-break:break-word;overflow-wrap:anywhere;text-align:center;vertical-align:bottom;font-size:${compact ? '9px' : '10px'};line-height:1.1;width:${compact ? '90px' : '110px'};min-width:${compact ? '90px' : '110px'};padding:${compact ? '4px 3px' : '6px 4px'};}
 .small{font-size:11px;line-height:1.4;color:#4b5563;}
 .section-title{font-size:14px;font-weight:900;color:#312e81;margin:14px 0 8px;}
 .note{margin-top:12px;font-size:11px;color:#6b7280;line-height:1.5;}
@@ -6160,7 +6160,7 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
   <button class="btn-close" onclick="window.close()">✕ Close</button>
 </div>
 <div class="page">
-  <header>
+  ${compact ? '' : `<header>
     <img src="${LOGO}" alt="Carissa Primary"/>
     <div>
       <h1>Carissa Primary School</h1>
@@ -6171,7 +6171,7 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
     <div class="chip">${esc(className)} · Home Language · Grade ${esc(gradeFromClass || '—')} · Term 3</div>
     <div class="chip">Teacher: ${esc(teacherAuth?.first_name || '')} ${esc(teacherAuth?.surname || '')}</div>
     <div class="chip">Date: ${new Date().toLocaleDateString('en-ZA',{day:'2-digit',month:'long',year:'numeric'})}</div>
-  </div>
+  </div>`}
   ${bodyHtml}
 </div>
 </body></html>`;
