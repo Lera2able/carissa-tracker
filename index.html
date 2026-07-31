@@ -11,6 +11,7 @@
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f2ff;min-height:100vh;}
@@ -171,6 +172,73 @@ function readingAgeFromWords(n){
 }
 const normalizeReadingName = v => String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const normalizeReadingPrimaryToken = v => normalizeReadingName(String(v||'').trim().split(/\s+/)[0]||'');
+const MODERATION_TEMPLATE_PATH = 'moderation/carissa-lesson-observation-qms-data-sheet-fillable.pdf';
+const MODERATION_HEADS = [
+  {first_name:'Thandi', surname:'Mkhonza'},
+  {first_name:'Rosether', surname:'Duma'},
+  {first_name:'Rivaldo', surname:'Mashinini'},
+  {first_name:'Martha', surname:'Moyo'},
+];
+const MODERATION_PDF_FIELDS = [
+  'name','persal_number','subject','grade','date_of_observation','dh','educator',
+  'pre_obs_date','pre_1_environment','pre_2_curriculum','pre_3_assessment',
+  'post_obs_date','post_1_environment','post_2_curriculum','post_3_assessment',
+  'signature_dh','signature_teacher','date_dh','date_teacher'
+];
+const MODERATION_TEACHER_LABEL = MODERATION_HEADS.map(h=>`${h.first_name} ${h.surname}`).join(', ');
+const moderationPersonKey = (firstName='', surname='') => `${normalizeReadingName(firstName)}||${normalizeReadingName(surname)}`;
+const moderationUserLabel = (teacherAuth, adminAccess=false) => adminAccess
+  ? 'Superuser admin'
+  : `${teacherAuth?.first_name||''} ${teacherAuth?.surname||''}`.trim();
+function hasModerationAccess(teacherAuth, adminAccess=false){
+  if(adminAccess) return true;
+  if(!teacherAuth) return false;
+  const key = moderationPersonKey(teacherAuth.first_name, teacherAuth.surname);
+  return MODERATION_HEADS.some(h=>moderationPersonKey(h.first_name, h.surname)===key);
+}
+function moderationDefaultValues({teacherAuth, adminAccess=false, selClass=''} = {}){
+  const gradeValue = String(selClass||'').replace(/^Grade\s*/i,'');
+  const userLabel = moderationUserLabel(teacherAuth, adminAccess);
+  return {
+    name:'',
+    persal_number:'',
+    subject:'',
+    grade:gradeValue,
+    date_of_observation:'',
+    dh:userLabel,
+    educator:'',
+    pre_obs_date:'',
+    pre_1_environment:'',
+    pre_2_curriculum:'',
+    pre_3_assessment:'',
+    post_obs_date:'',
+    post_1_environment:'',
+    post_2_curriculum:'',
+    post_3_assessment:'',
+    signature_dh:userLabel,
+    signature_teacher:'',
+    date_dh:'',
+    date_teacher:''
+  };
+}
+function moderationFileName(form){
+  const safeEducator = String(form.educator||form.name||'moderation-tool')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g,'-')
+    .replace(/^-+|-+$/g,'') || 'moderation-tool';
+  const safeDate = String(form.date_of_observation||new Date().toISOString().slice(0,10)).replace(/[^0-9]+/g,'-');
+  return `carissa-moderation-${safeEducator}-${safeDate}.pdf`;
+}
+function downloadBlob(blob, fileName){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1500);
+}
 const readingKey = (className,surname,firstname,term='') => [
   normalizeReadingName(className),
   normalizeReadingName(surname),
@@ -2683,6 +2751,7 @@ const SUBTABS = [
   ['reading','📖 Reading Results'],
   ['discipline','⚖️ Discipline'],
   ['learners','👥 Learners'],
+  ['moderation','🗂 Moderation'],
   ['registrations','🧑‍🏫 Registrations'],
   ['teacher_audit','🧾 Teacher Audit'],
   ['assistant','🤖 TRAE Assistant'],
@@ -2690,6 +2759,209 @@ const SUBTABS = [
   ['audit','🛡 Audit & Recovery'],
 ];
 
+
+function ModerationToolsTab({teacherAuth=null, adminAccess=false, selClass=''}){
+  const accessAllowed = hasModerationAccess(teacherAuth, adminAccess);
+  const defaults = useMemo(
+    ()=>moderationDefaultValues({teacherAuth, adminAccess, selClass}),
+    [teacherAuth, adminAccess, selClass]
+  );
+  const draftKey = useMemo(()=>{
+    const identity = adminAccess
+      ? 'admin'
+      : normalizeReadingName(teacherAuth?.email || moderationUserLabel(teacherAuth, adminAccess) || 'moderation');
+    return `carissa_moderation_qms_${identity}`;
+  },[teacherAuth,adminAccess]);
+  const [form,setForm] = useState(defaults);
+  const [status,setStatus] = useState('');
+  const [busy,setBusy] = useState(false);
+
+  useEffect(()=>{
+    try{
+      const saved = localStorage.getItem(draftKey);
+      setForm(saved ? {...defaults, ...JSON.parse(saved)} : defaults);
+    }catch{
+      setForm(defaults);
+    }
+  },[draftKey,defaults]);
+
+  useEffect(()=>{
+    try{
+      localStorage.setItem(draftKey, JSON.stringify(form));
+    }catch{}
+  },[draftKey,form]);
+
+  if(!accessAllowed){
+    return (
+      <div style={card}>
+        <h3 style={ctitle}>🗂 Moderation Tools</h3>
+        <p style={{color:'#666',fontSize:'14px',lineHeight:1.6}}>
+          This tool is limited to departmental heads and the superuser admin.
+        </p>
+      </div>
+    );
+  }
+
+  const updateField = (key,value)=> setForm(prev=>({...prev,[key]:value}));
+
+  const resetDraft = ()=>{
+    const fresh = moderationDefaultValues({teacherAuth, adminAccess, selClass});
+    setForm(fresh);
+    try{ localStorage.removeItem(draftKey); }catch{}
+    setStatus('Draft cleared.');
+  };
+
+  const downloadFilledPdf = async()=>{
+    setBusy(true);
+    setStatus('');
+    try{
+      if(!window.PDFLib?.PDFDocument) throw new Error('PDF support is still loading. Please try again in a moment.');
+      const res = await fetch(MODERATION_TEMPLATE_PATH, {cache:'no-store'});
+      if(!res.ok) throw new Error('The moderation PDF template could not be loaded.');
+      const pdfDoc = await window.PDFLib.PDFDocument.load(await res.arrayBuffer());
+      const pdfForm = pdfDoc.getForm();
+      MODERATION_PDF_FIELDS.forEach(fieldName=>{
+        try{ pdfForm.getTextField(fieldName).setText(String(form[fieldName]||'')); }catch{}
+      });
+      try{ pdfForm.updateFieldAppearances(); }catch{}
+      try{ pdfForm.flatten(); }catch{}
+      const bytes = await pdfDoc.save();
+      downloadBlob(new Blob([bytes], {type:'application/pdf'}), moderationFileName(form));
+      setStatus('Filled moderation PDF downloaded.');
+    }catch(err){
+      setStatus(err?.message || 'Could not create the moderation PDF.');
+    }
+    setBusy(false);
+  };
+
+  return (
+    <div style={card}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'14px',flexWrap:'wrap',marginBottom:'14px'}}>
+        <div>
+          <h3 style={{...ctitle,marginBottom:'6px'}}>🗂 Moderation Tools</h3>
+          <p style={{color:'#666',fontSize:'14px',lineHeight:1.6,maxWidth:'820px'}}>
+            Use the Carissa QMS lesson observation tool here, then download a filled PDF. Access is available to {MODERATION_TEACHER_LABEL}, plus the superuser admin.
+          </p>
+        </div>
+        <div style={{background:'#eef2ff',border:'1px solid #c7d2fe',borderRadius:'12px',padding:'10px 12px',minWidth:'230px'}}>
+          <div style={{fontSize:'12px',color:'#4338ca',fontWeight:800,marginBottom:'4px'}}>Signed in as</div>
+          <div style={{fontSize:'14px',fontWeight:700,color:'#312e81'}}>{moderationUserLabel(teacherAuth, adminAccess)}</div>
+          <div style={{fontSize:'12px',color:'#6366f1',marginTop:'4px'}}>{adminAccess ? 'Superuser dashboard access' : 'Departmental head tool access'}</div>
+        </div>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:'12px',marginBottom:'14px'}}>
+        <div style={{border:'1px solid #e2e8f0',borderRadius:'12px',padding:'14px',background:'#f8fafc'}}>
+          <div style={{fontWeight:800,color:'#1f2937',marginBottom:'8px'}}>QMS lesson observation</div>
+          <div style={{fontSize:'13px',color:'#64748b',lineHeight:1.6}}>
+            This first version fills your Carissa moderation PDF template and downloads it to the device.
+          </div>
+        </div>
+        <div style={{border:'1px solid #e2e8f0',borderRadius:'12px',padding:'14px',background:'#f8fafc'}}>
+          <div style={{fontWeight:800,color:'#1f2937',marginBottom:'8px'}}>What it covers</div>
+          <div style={{fontSize:'13px',color:'#64748b',lineHeight:1.6}}>
+            Pre-observation notes, post-observation notes, signatures, dates, and lesson details for the official QMS sheet.
+          </div>
+        </div>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:'12px',marginBottom:'16px'}}>
+        <div>
+          <label style={lbl}>Name</label>
+          <input style={inp} value={form.name} onChange={e=>updateField('name', e.target.value)} placeholder="Enter name on the form"/>
+        </div>
+        <div>
+          <label style={lbl}>Persal number</label>
+          <input style={inp} value={form.persal_number} onChange={e=>updateField('persal_number', e.target.value)} placeholder="Enter Persal number"/>
+        </div>
+        <div>
+          <label style={lbl}>Subject</label>
+          <input style={inp} value={form.subject} onChange={e=>updateField('subject', e.target.value)} placeholder="Example: English HL"/>
+        </div>
+        <div>
+          <label style={lbl}>Grade / class</label>
+          <input style={inp} value={form.grade} onChange={e=>updateField('grade', e.target.value)} placeholder="Example: 5.2"/>
+        </div>
+        <div>
+          <label style={lbl}>Date of observation</label>
+          <input style={inp} type="date" value={form.date_of_observation} onChange={e=>updateField('date_of_observation', e.target.value)}/>
+        </div>
+        <div>
+          <label style={lbl}>DH</label>
+          <input style={inp} value={form.dh} onChange={e=>updateField('dh', e.target.value)} placeholder="Departmental head"/>
+        </div>
+        <div>
+          <label style={lbl}>Educator</label>
+          <input style={inp} value={form.educator} onChange={e=>updateField('educator', e.target.value)} placeholder="Observed educator"/>
+        </div>
+        <div>
+          <label style={lbl}>Pre-observation date</label>
+          <input style={inp} type="date" value={form.pre_obs_date} onChange={e=>updateField('pre_obs_date', e.target.value)}/>
+        </div>
+        <div>
+          <label style={lbl}>Post-observation date</label>
+          <input style={inp} type="date" value={form.post_obs_date} onChange={e=>updateField('post_obs_date', e.target.value)}/>
+        </div>
+        <div>
+          <label style={lbl}>DH signature</label>
+          <input style={inp} value={form.signature_dh} onChange={e=>updateField('signature_dh', e.target.value)} placeholder="DH signature"/>
+        </div>
+        <div>
+          <label style={lbl}>Teacher signature</label>
+          <input style={inp} value={form.signature_teacher} onChange={e=>updateField('signature_teacher', e.target.value)} placeholder="Teacher signature"/>
+        </div>
+        <div>
+          <label style={lbl}>DH date</label>
+          <input style={inp} type="date" value={form.date_dh} onChange={e=>updateField('date_dh', e.target.value)}/>
+        </div>
+        <div>
+          <label style={lbl}>Teacher date</label>
+          <input style={inp} type="date" value={form.date_teacher} onChange={e=>updateField('date_teacher', e.target.value)}/>
+        </div>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr',gap:'12px'}}>
+        {[
+          ['pre_1_environment','Pre-observation: creation of a positive learning and teacher environment'],
+          ['pre_2_curriculum','Pre-observation: curriculum knowledge, lesson planning and presentation'],
+          ['pre_3_assessment','Pre-observation: learner assessment and achievement'],
+          ['post_1_environment','Post-observation: creation of a positive learning and teacher environment'],
+          ['post_2_curriculum','Post-observation: curriculum knowledge, lesson planning and presentation'],
+          ['post_3_assessment','Post-observation: learner assessment and achievement'],
+        ].map(([field,label])=>(
+          <div key={field}>
+            <label style={lbl}>{label}</label>
+            <textarea
+              rows={4}
+              style={{...inp,resize:'vertical',minHeight:'112px'}}
+              value={form[field]}
+              onChange={e=>updateField(field, e.target.value)}
+              placeholder="Type your moderation notes here"
+            />
+          </div>
+        ))}
+      </div>
+
+      <div style={{display:'flex',gap:'10px',flexWrap:'wrap',marginTop:'18px'}}>
+        <button onClick={downloadFilledPdf} disabled={busy} style={{...sbtn,background:'#10b981',opacity:busy?0.65:1}}>
+          {busy ? 'Preparing PDF...' : 'Download filled PDF'}
+        </button>
+        <a href={MODERATION_TEMPLATE_PATH} target="_blank" rel="noreferrer" style={{...sbtn,background:'#667eea',textDecoration:'none'}}>
+          Open blank template
+        </a>
+        <button onClick={resetDraft} style={{...sbtn,background:'#f59e0b'}}>
+          Clear draft
+        </button>
+      </div>
+
+      {status && (
+        <div style={{marginTop:'12px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'11px 12px',fontSize:'13px',color:'#334155'}}>
+          {status}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /* ════════════════════════════════════════════════════════════════
    ONE-MINUTE READING ASSESSMENT
@@ -4470,6 +4742,7 @@ function AdminDashboard({onBack,adminUser}){
       {subTab==='reading' && <ReadingResultsTab reading={reading}/>}
       {subTab==='discipline' && <DisciplineAdminTab adminUser={adminUser} />}
       {subTab==='learners' && <LearnersAdminTab overrides={overrides} setOverrides={setOverrides} setAssessments={setAssessments}/>}
+      {subTab==='moderation' && <ModerationToolsTab adminAccess={true}/>}
       {subTab==='registrations' && <TeacherRegistrationsTab/>}
       {subTab==='teacher_audit' && <TeacherAuditTab events={auditEvents} setEvents={setAuditEvents}/>}
       {subTab==='assistant' && <TraeAssistantTab/>}
@@ -4981,6 +5254,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
   const teacherClasses = !adminAccess && teacherAuth
     ? (teacherAuth.class_names && teacherAuth.class_names.length ? teacherAuth.class_names : [teacherAuth.class_name]).filter(Boolean)
     : [];
+  const moderationAccess = hasModerationAccess(teacherAuth, adminAccess);
 
   const logTeacherAudit = async(event_type, className)=>{
     try{
@@ -5211,6 +5485,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
               ...(teacherAuth ? [['discipline','⚖️ Discipline']] : []),
               ...(teacherAuth ? [['reading','📖 1-Minute Reading']] : []),
               ...(teacherAuth ? [['tools','🧰 Tools']] : []),
+              ...(moderationAccess ? [['moderation','🗂 Moderation Tools']] : []),
               ['resources',`📁 Resources (${resources.length})`],
             ].map(([k,l])=>(
               <button key={k} onClick={()=>{ setTab(k); logTeacherAudit(`open_tab:${k}`, selClass); }} style={{padding:'10px 16px',borderRadius:'8px',border:'none',cursor:'pointer',fontSize:'14px',fontWeight:600,flex:'1 1 auto',minWidth:'130px',background:tab===k?'linear-gradient(135deg,#667eea,#764ba2)':'transparent',color:tab===k?'white':'#666'}}>
@@ -5301,6 +5576,11 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
               learners={CLASS_DATA[selClass] || []}
               onAudit={(evt)=>logTeacherAudit(evt, selClass)}
             />
+          )}
+
+          {/* ── Moderation tools tab ─────────────── */}
+          {tab==='moderation' && moderationAccess && (
+            <ModerationToolsTab teacherAuth={teacherAuth} adminAccess={adminAccess} selClass={selClass}/>
           )}
 
           {/* ── Assessments tab ──────────────────── */}
