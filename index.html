@@ -179,6 +179,12 @@ const MODERATION_HEADS = [
   {first_name:'Rivaldo', surname:'Mashinini'},
   {first_name:'Martha', surname:'Moyo'},
 ];
+const MODERATION_EMAILS = [
+  'thandimkhonza.ts@gmail.com',
+  'rosetherduma1070@gmail.com',
+  'rivaldom2000@gmail.com',
+  'moyo.martha@yahoo.com',
+];
 const MODERATION_PDF_FIELDS = [
   'name','persal_number','subject','grade','date_of_observation','dh','educator',
   'pre_obs_date','pre_1_environment','pre_2_curriculum','pre_3_assessment',
@@ -193,6 +199,8 @@ const moderationUserLabel = (teacherAuth, adminAccess=false) => adminAccess
 function hasModerationAccess(teacherAuth, adminAccess=false){
   if(adminAccess) return true;
   if(!teacherAuth) return false;
+  const email = String(teacherAuth.email||'').trim().toLowerCase();
+  if(email && MODERATION_EMAILS.includes(email)) return true;
   const key = moderationPersonKey(teacherAuth.first_name, teacherAuth.surname);
   return MODERATION_HEADS.some(h=>moderationPersonKey(h.first_name, h.surname)===key);
 }
@@ -5483,9 +5491,9 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
               ['progress',`📈 Track Progress (${classAssignments.length})`],
               ...(teacherAuth ? [['classlist',`👥 Classlist (${(CLASS_DATA[selClass]||[]).length})`]] : []),
               ...(teacherAuth ? [['discipline','⚖️ Discipline']] : []),
+              ...(moderationAccess ? [['moderation','🗂 Moderation Tools']] : []),
               ...(teacherAuth ? [['reading','📖 1-Minute Reading']] : []),
               ...(teacherAuth ? [['tools','🧰 Tools']] : []),
-              ...(moderationAccess ? [['moderation','🗂 Moderation Tools']] : []),
               ['resources',`📁 Resources (${resources.length})`],
             ].map(([k,l])=>(
               <button key={k} onClick={()=>{ setTab(k); logTeacherAudit(`open_tab:${k}`, selClass); }} style={{padding:'10px 16px',borderRadius:'8px',border:'none',cursor:'pointer',fontSize:'14px',fontWeight:600,flex:'1 1 auto',minWidth:'130px',background:tab===k?'linear-gradient(135deg,#667eea,#764ba2)':'transparent',color:tab===k?'white':'#666'}}>
@@ -5504,6 +5512,22 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
               </p>
 
               <div style={{display:'grid',gridTemplateColumns:'1fr',gap:'12px'}}>
+                {moderationAccess && (
+                  <div style={{border:'1px solid #c7d2fe',borderRadius:'12px',padding:'12px',background:'#eef2ff'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap'}}>
+                      <div>
+                        <div style={{fontWeight:900,color:'#312e81',marginBottom:'6px'}}>🗂 Moderation Tools</div>
+                        <div style={{fontSize:'13px',color:'#4338ca',lineHeight:1.6}}>
+                          Departmental heads can open the QMS lesson observation form here and download a filled PDF.
+                        </div>
+                      </div>
+                      <button onClick={()=>{ setTab('moderation'); logTeacherAudit('open_tab:moderation', selClass); }} style={{...sbtn,background:'#4f46e5',fontSize:'13px'}}>
+                        Open moderation
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Folder: Chats */}
                 <div style={{border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',background:'#f8fafc'}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',marginBottom:'10px'}}>
