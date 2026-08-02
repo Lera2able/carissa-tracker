@@ -7646,6 +7646,69 @@ function TeacherClassListTab({selClass, teacherAuth, interventions, setIntervent
   const learners = selClass ? (CLASS_DATA[selClass] || []) : [];
   const teacherName = `${teacherAuth?.first_name || ''} ${teacherAuth?.surname || ''}`.trim();
   const teacherWhatsapp = teacherAuth?.whatsapp || '';
+  const learnerLoginRows = learners.map(learner=>({
+    number: learner.number,
+    surname: learner.surname,
+    firstname: learner.firstname,
+    username: learnerUsernameFor(selClass, learner),
+    pin: learnerPinFor(learner),
+  }));
+
+  const learnerLoginText = () => [
+    `${selClass} learner login list`,
+    '',
+    ...learnerLoginRows.map(row=>`${row.number}. ${row.surname}, ${row.firstname} | Username: ${row.username} | PIN: ${row.pin}`)
+  ].join('\n');
+
+  const copyLearnerCodes = async() => {
+    try{
+      await navigator.clipboard.writeText(learnerLoginText());
+      showMsg(`✓ Copied ${learnerLoginRows.length} learner login code(s).`);
+    }catch(e){
+      alert('Could not copy to clipboard on this browser. Please try the printable list instead.');
+    }
+  };
+
+  const printLearnerCodes = () => {
+    const w = window.open('', '_blank');
+    if(!w){ alert('Allow pop-ups to open the printable login list.'); return; }
+    const rows = learnerLoginRows.map(row=>`
+      <tr>
+        <td>${row.number}</td>
+        <td>${row.surname}, ${row.firstname}</td>
+        <td>${row.username}</td>
+        <td>${row.pin}</td>
+      </tr>
+    `).join('');
+    w.document.write(`
+      <html>
+      <head>
+        <title>${selClass} learner login list</title>
+        <style>
+          body{font-family:Arial,sans-serif;padding:24px;color:#111827}
+          h1{margin:0 0 6px;font-size:24px}
+          p{margin:0 0 18px;color:#475569;font-size:13px}
+          table{width:100%;border-collapse:collapse}
+          th,td{border:1px solid #cbd5e1;padding:10px 12px;text-align:left;font-size:13px}
+          th{background:#eef2ff}
+        </style>
+      </head>
+      <body>
+        <h1>${selClass} learner login list</h1>
+        <p>Use this sheet to help learners sign in to the learner portal.</p>
+        <table>
+          <thead>
+            <tr><th>No.</th><th>Learner</th><th>Username</th><th>PIN</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </body>
+      </html>
+    `);
+    w.document.close();
+    w.focus();
+    setTimeout(()=>w.print(), 250);
+  };
 
   const saveIntervention = async(barriers,comments) => {
     if(!modalFor) return;
@@ -7677,6 +7740,14 @@ function TeacherClassListTab({selClass, teacherAuth, interventions, setIntervent
           <p style={{fontSize:'13px',color:'#666'}}>
             This classlist is only for the teacher who is logged in. Adding a learner here sends that learner to the intervention list for admin review.
           </p>
+          <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginTop:'10px'}}>
+            <button style={{...sbtn,background:'#2563eb',fontSize:'12px',padding:'7px 12px'}} onClick={copyLearnerCodes}>
+              📋 Copy learner logins
+            </button>
+            <button style={{...sbtn,background:'#0f766e',fontSize:'12px',padding:'7px 12px'}} onClick={printLearnerCodes}>
+              🖨 Print login sheet
+            </button>
+          </div>
         </div>
         <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
           <span style={{background:'#eef2ff',color:'#4f46e5',padding:'7px 12px',borderRadius:'999px',fontSize:'12px',fontWeight:'700'}}>
