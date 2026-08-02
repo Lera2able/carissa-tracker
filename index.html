@@ -5513,7 +5513,7 @@ function LearnerPortalView(){
                 <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
                   <button style={{...sbtn,background:'#f97316',opacity:busyId===a.id?0.7:1}} disabled={busyId===a.id} onClick={()=>saveLearnerResult(a,false)}>{busyId===a.id?'Saving...':'💾 Save Progress'}</button>
                   <button style={{...sbtn,background:'#10b981',opacity:busyId===a.id?0.7:1}} disabled={busyId===a.id} onClick={()=>saveLearnerResult(a,true)}>{busyId===a.id?'Saving...':'✅ Submit to Teacher'}</button>
-                  {resType(a.resource_id)==='link' && <a href={resUrl(a.resource_id)} target=\"_blank\" rel=\"noreferrer\" style={{...sbtn,background:'#64748b',textDecoration:'none'}}>🔗 Open in new tab</a>}
+                  {resType(a.resource_id)==='link' && <a href={resUrl(a.resource_id)} target="_blank" rel="noreferrer" style={{...sbtn,background:'#64748b',textDecoration:'none'}}>🔗 Open in new tab</a>}
                 </div>
               </div>
             );
