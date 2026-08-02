@@ -640,10 +640,71 @@ function ResourcesTab({resources,setResources}){
   const [form,setForm]=useState({...blank});
   const [file,setFile]=useState(null);
   const [uploading,setUpl]=useState(false);
+  const [seeding,setSeeding]=useState(false);
   const [msg,setMsg]=useState('');
   const fileRef = useRef();
   const showMsg = m => {setMsg(m);setTimeout(()=>setMsg(''),5000);};
   const f = (k,v) => setForm(p=>({...p,[k]:v}));
+  const applyPreset = (preset) => {
+    if(preset==='splashlearn'){
+      setForm(p=>({
+        ...p,
+        type:'link',
+        url: p.url || 'https://www.splashlearn.com/',
+        title: p.title || 'SplashLearn Activity',
+        subject: p.subject || '',
+        grade_range: p.grade_range || ''
+      }));
+      return;
+    }
+    if(preset==='khan'){
+      setForm(p=>({
+        ...p,
+        type:'link',
+        url: p.url || 'https://www.khanacademy.org/',
+        title: p.title || 'Khan Academy Activity',
+        subject: p.subject || '',
+        grade_range: p.grade_range || ''
+      }));
+      return;
+    }
+  };
+  const seedSplashLearnGrades = async () => {
+    const splashRows = [
+      {title:'SplashLearn Grade 1 Activities', grade_range:'Grade 1', url:'https://www.splashlearn.com/1st-graders', description:'Official SplashLearn Grade 1 page.'},
+      {title:'SplashLearn Grade 2 Activities', grade_range:'Grade 2', url:'https://www.splashlearn.com/2nd-graders', description:'Official SplashLearn Grade 2 page.'},
+      {title:'SplashLearn Grade 3 Activities', grade_range:'Grade 3', url:'https://www.splashlearn.com/3rd-graders', description:'Official SplashLearn Grade 3 page.'},
+      {title:'SplashLearn Grade 4 Activities', grade_range:'Grade 4', url:'https://www.splashlearn.com/4th-graders', description:'Official SplashLearn Grade 4 page.'},
+      {title:'SplashLearn Grade 5 Activities', grade_range:'Grade 5', url:'https://www.splashlearn.com/5th-graders', description:'Official SplashLearn Grade 5 page.'},
+      {title:'SplashLearn Library (Grade 6 fallback)', grade_range:'Grade 6', url:'https://www.splashlearn.com/', description:'SplashLearn publicly advertises Pre-K to Grade 5. This Grade 6 entry uses the general SplashLearn library link as a fallback.'},
+      {title:'SplashLearn Library (Grade 7 fallback)', grade_range:'Grade 7', url:'https://www.splashlearn.com/', description:'SplashLearn publicly advertises Pre-K to Grade 5. This Grade 7 entry uses the general SplashLearn library link as a fallback.'},
+    ];
+    setSeeding(true);
+    try{
+      const existing = new Set(resources.map(r=>String(r.title||'').trim().toLowerCase()));
+      const created = [];
+      for(const row of splashRows){
+        if(existing.has(row.title.trim().toLowerCase())) continue;
+        const rows = await db.post('carissa_resources',{
+          title: row.title,
+          type: 'link',
+          url: row.url,
+          subject: 'Math & English',
+          grade_range: row.grade_range,
+          description: row.description,
+          uploaded_by: 'Admin'
+        });
+        if(rows && rows[0]) created.push(rows[0]);
+      }
+      if(created.length){
+        setResources(p=>[...created,...p]);
+        showMsg(`✓ Added ${created.length} SplashLearn resource links for Grades 1 - 7.`);
+      }else{
+        showMsg('✓ SplashLearn grade links already exist.');
+      }
+    }catch(e){alert('Error: '+e.message);}
+    setSeeding(false);
+  };
 
   const handleSubmit = async () => {
     if(!form.title.trim()){alert('Title is required');return;}
@@ -687,6 +748,20 @@ function ResourcesTab({resources,setResources}){
       {msg && <div style={succ}>{msg}</div>}
       <div style={card}>
         <h3 style={ctitle}>Add New Resource / Activity</h3>
+        <div style={{display:'flex',gap:'8px',flexWrap:'wrap',margin:'-2px 0 12px'}}>
+          <button type="button" style={{...sbtn,background:'#0ea5e9',fontSize:'12px',padding:'7px 12px'}} onClick={()=>applyPreset('splashlearn')}>
+            ➕ SplashLearn link
+          </button>
+          <button type="button" style={{...sbtn,background:'#2563eb',fontSize:'12px',padding:'7px 12px',opacity:seeding?0.7:1}} disabled={seeding} onClick={seedSplashLearnGrades}>
+            {seeding ? 'Adding Grades 1 - 7...' : '⚡ Seed SplashLearn Grades 1 - 7'}
+          </button>
+          <button type="button" style={{...sbtn,background:'#111827',fontSize:'12px',padding:'7px 12px'}} onClick={()=>applyPreset('khan')}>
+            ➕ Khan Academy link
+          </button>
+          <span style={{fontSize:'12px',color:'#64748b',alignSelf:'center'}}>
+            Tip: paste the exact activity URL (e.g. from SplashLearn) so it appears in the Assignments dropdown.
+          </span>
+        </div>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:'12px',marginBottom:'12px'}}>
           <div>
             <label style={lbl}>Title *</label>
@@ -776,42 +851,110 @@ function ResourcesTab({resources,setResources}){
    ADMIN DASHBOARD: ASSIGNMENTS TAB
    ════════════════════════════════════════════════════════════════ */
 function AssignmentsTab({interventions,resources,assignments,setAssignments}){
-  const blank = {resource_id:'',class_name:'',assign_type:'class',surname:'',firstname:'',due_date:'',notes:''};
+  const blank = {resource_id:'',class_name:'',assign_type:'interventions_class',surname:'',firstname:'',due_date:'',notes:''};
   const [form,setForm]=useState({...blank});
   const [msg,setMsg]=useState('');
   const [busy,setBusy]=useState(false);
+  const [resFilter,setResFilter]=useState('all'); // all | splashlearn | other
   const showMsg = m => {setMsg(m);setTimeout(()=>setMsg(''),5000);};
   const f = (k,v) => setForm(p=>({...p,[k]:v}));
 
-  const classLearners = form.class_name
-    ? interventions.filter(i=>i.class_name===form.class_name)
-    : [];
+  const classInterventions = form.class_name ? interventions.filter(i=>i.class_name===form.class_name) : [];
+  const rosterLearners = form.class_name ? (CLASS_DATA[form.class_name] || []) : [];
+  const isOnIntervention = (s,fname) => classInterventions.some(iv => (iv.surname||'')===s && (iv.firstname||'')===fname);
+  const allInterventionCount = interventions.length;
+  const allClasslistCount = CLASS_NAMES.reduce((sum, cls)=>sum + ((CLASS_DATA[cls]||[]).length), 0);
+  const classOptions = CLASS_NAMES.map(n=>({
+    name: n,
+    classlistCount: (CLASS_DATA[n] || []).length,
+    interventionCount: interventions.filter(i=>i.class_name===n).length
+  }));
+  const previewLearners = form.assign_type==='interventions_class' ? classInterventions : rosterLearners;
+  const filteredResources = resources.filter(r=>{
+    const url = (r.url || '').toLowerCase();
+    if(resFilter==='splashlearn') return url.includes('splashlearn.com');
+    if(resFilter==='other') return url && !url.includes('splashlearn.com');
+    return true;
+  });
 
   const handleAssign = async () => {
-    if(!form.resource_id||!form.class_name){alert('Please select a resource and a class');return;}
+    const isAllClasses = form.assign_type==='interventions_all' || form.assign_type==='classlist_all';
+    if(!form.resource_id || (!isAllClasses && !form.class_name)){
+      alert(isAllClasses ? 'Please select a resource' : 'Please select a resource and a class');
+      return;
+    }
     setBusy(true);
     try{
       const base = {
-        resource_id:form.resource_id, class_name:form.class_name,
-        assign_type:form.assign_type, assigned_by:'Admin',
+        resource_id:form.resource_id,
+        class_name:form.class_name,
+        assign_type:form.assign_type,
+        assigned_by:'Admin',
         due_date:form.due_date||null, notes:form.notes.trim()||null
       };
-      if(form.assign_type==='class'){
-        const targets = interventions.filter(i=>i.class_name===form.class_name);
-        if(!targets.length){alert('No learners on intervention list in this class');setBusy(false);return;}
+
+      const postRows = async (cls, targets) => {
         const rows = [];
         for(const t of targets){
-          const r = await db.post('carissa_resource_assignments',{...base,surname:t.surname,firstname:t.firstname});
+          const r = await db.post('carissa_resource_assignments',{...base,class_name:cls,surname:t.surname,firstname:t.firstname});
           rows.push(r[0]);
         }
-        setAssignments(p=>[...rows,...p]);
-        showMsg(`✓ Assigned to ${rows.length} learners in ${form.class_name}`);
-      } else {
+        return rows;
+      };
+
+      if(form.assign_type==='learner'){
         if(!form.surname||!form.firstname){alert('Select a learner');setBusy(false);return;}
         const r = await db.post('carissa_resource_assignments',{...base,surname:form.surname,firstname:form.firstname});
         setAssignments(p=>[r[0],...p]);
-        showMsg(`✓ Assigned to ${form.firstname} ${form.surname}`);
+        showMsg(`✓ Assigned to ${form.firstname} ${form.surname} (${form.class_name})`);
+        setForm({...blank});
+        setBusy(false);
+        return;
       }
+
+      let totalTargets = 0;
+      const rowsAll = [];
+
+      if(form.assign_type==='interventions_class'){
+        const targets = classInterventions.map(i=>({surname:i.surname,firstname:i.firstname}));
+        if(!targets.length){alert('No learners on the intervention list for this class.');setBusy(false);return;}
+        totalTargets = targets.length;
+        if(totalTargets>60 && !confirm(`This will assign to ${totalTargets} intervention learners. Continue?`)){setBusy(false);return;}
+        rowsAll.push(...await postRows(form.class_name, targets));
+      }
+
+      if(form.assign_type==='classlist_class'){
+        const targets = rosterLearners.map(l=>({surname:l.surname,firstname:l.firstname}));
+        if(!targets.length){alert('No learners found on the class list for this class.');setBusy(false);return;}
+        totalTargets = targets.length;
+        if(totalTargets>60 && !confirm(`This will assign to ${totalTargets} learners in the class list. Continue?`)){setBusy(false);return;}
+        rowsAll.push(...await postRows(form.class_name, targets));
+      }
+
+      if(form.assign_type==='interventions_all'){
+        const clsWithTargets = CLASS_NAMES.map(cls=>({
+          cls,
+          targets: interventions.filter(i=>i.class_name===cls).map(i=>({surname:i.surname,firstname:i.firstname}))
+        })).filter(x=>x.targets.length>0);
+        totalTargets = clsWithTargets.reduce((sum,x)=>sum+x.targets.length,0);
+        if(!clsWithTargets.length){alert('No intervention learners found across any classes.');setBusy(false);return;}
+        if(totalTargets>60 && !confirm(`This will assign to ${totalTargets} intervention learners across ${clsWithTargets.length} classes. Continue?`)){setBusy(false);return;}
+        for(const x of clsWithTargets) rowsAll.push(...await postRows(x.cls, x.targets));
+      }
+
+      if(form.assign_type==='classlist_all'){
+        const clsWithTargets = CLASS_NAMES.map(cls=>({
+          cls,
+          targets: (CLASS_DATA[cls]||[]).map(l=>({surname:l.surname,firstname:l.firstname}))
+        })).filter(x=>x.targets.length>0);
+        totalTargets = clsWithTargets.reduce((sum,x)=>sum+x.targets.length,0);
+        if(!clsWithTargets.length){alert('No class lists found across any classes.');setBusy(false);return;}
+        if(totalTargets>60 && !confirm(`This will assign to ${totalTargets} learners across ${clsWithTargets.length} classes. Continue?`)){setBusy(false);return;}
+        for(const x of clsWithTargets) rowsAll.push(...await postRows(x.cls, x.targets));
+      }
+
+      setAssignments(p=>[...rowsAll,...p]);
+      showMsg(`✓ Assigned to ${rowsAll.length} learner(s).`);
       setForm({...blank});
     }catch(e){alert('Error: '+e.message);}
     setBusy(false);
@@ -841,32 +984,58 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:'12px',marginBottom:'12px'}}>
           <div>
             <label style={lbl}>Resource / Activity *</label>
-            <select style={inp} value={form.resource_id} onChange={e=>f('resource_id',e.target.value)}>
-              <option value="">-- Select Resource --</option>
-              {resources.map(r=><option key={r.id} value={r.id}>{RESOURCE_TYPES.find(t=>t.v===r.type)?.icon} {r.title}{r.subject?` (${r.subject})`:''}</option>)}
-            </select>
+            <div style={{display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap'}}>
+              <select style={{...inp,flex:1,minWidth:'220px',margin:0}} value={form.resource_id} onChange={e=>f('resource_id',e.target.value)}>
+                <option value="">-- Select Resource --</option>
+                {filteredResources.map(r=><option key={r.id} value={r.id}>{RESOURCE_TYPES.find(t=>t.v===r.type)?.icon} {r.title}{r.subject?` (${r.subject})`:''}</option>)}
+              </select>
+              <select style={{...inp,width:'auto',margin:0}} value={resFilter} onChange={e=>setResFilter(e.target.value)}>
+                <option value="all">All</option>
+                <option value="splashlearn">SplashLearn</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            {resFilter==='splashlearn' && filteredResources.length===0 && (
+              <div style={{fontSize:'12px',color:'#64748b',marginTop:'6px'}}>
+                No SplashLearn links found yet. Add them under the <strong>Resources</strong> tab using “➕ SplashLearn link”.
+              </div>
+            )}
           </div>
           <div>
             <label style={lbl}>Class *</label>
-            <select style={inp} value={form.class_name} onChange={e=>f('class_name',e.target.value)}>
+            <select style={inp} value={form.class_name} onChange={e=>f('class_name',e.target.value)} disabled={form.assign_type==='interventions_all' || form.assign_type==='classlist_all'}>
               <option value="">-- Select Class --</option>
-              {CLASS_NAMES.map(n=><option key={n} value={n}>{n}</option>)}
+              {classOptions.map(n=><option key={n.name} value={n.name}>{n.name} • Classlist {n.classlistCount} • Intervention {n.interventionCount}</option>)}
             </select>
+            {(form.assign_type==='interventions_all' || form.assign_type==='classlist_all') && (
+              <div style={{fontSize:'12px',color:'#64748b',marginTop:'6px'}}>Class selection is disabled because you chose “All classes”.</div>
+            )}
+            {form.class_name && form.assign_type!=='interventions_all' && form.assign_type!=='classlist_all' && (
+              <div style={{fontSize:'12px',color:'#475569',marginTop:'6px'}}>
+                Linked to <strong>{rosterLearners.length}</strong> learner(s) on the class list and <strong>{classInterventions.length}</strong> learner(s) on the intervention list.
+              </div>
+            )}
           </div>
           <div>
             <label style={lbl}>Assign To</label>
             <select style={inp} value={form.assign_type} onChange={e=>f('assign_type',e.target.value)}>
-              <option value="class">All intervention learners in this class</option>
-              <option value="learner">Specific learner</option>
+              <option value="interventions_class">{`Intervention list (this class${form.class_name?` • ${classInterventions.length}`:''})`}</option>
+              <option value="classlist_class">{`Class list (this class${form.class_name?` • ${rosterLearners.length}`:''})`}</option>
+              <option value="learner">Specific learner (dropdown)</option>
+              <option value="interventions_all">{`Intervention list (all classes • ${allInterventionCount})`}</option>
+              <option value="classlist_all">{`Class lists (all classes • ${allClasslistCount})`}</option>
             </select>
           </div>
           {form.assign_type==='learner' && (
             <div>
               <label style={lbl}>Learner</label>
-              <select style={inp} value={`${form.surname}|${form.firstname}`} onChange={e=>{const [s,fn]=e.target.value.split('|');f('surname',s);f('firstname',fn);}}>
+              <select style={inp} value={`${form.surname}|${form.firstname}`} onChange={e=>{const [s,fn]=e.target.value.split('|');f('surname',s);f('firstname',fn);}} disabled={!form.class_name}>
                 <option value="|">-- Select Learner --</option>
-                {classLearners.map((l,i)=><option key={i} value={`${l.surname}|${l.firstname}`}>{l.surname}, {l.firstname}</option>)}
+                {rosterLearners.map((l,i)=><option key={i} value={`${l.surname}|${l.firstname}`}>{l.surname}, {l.firstname}{isOnIntervention(l.surname,l.firstname)?' (On intervention list)':''}</option>)}
               </select>
+              <div style={{fontSize:'12px',color:'#64748b',marginTop:'6px'}}>
+                {!form.class_name ? 'Choose a class first, then the learner dropdown will load that class list.' : <>Learners come from the <strong>class list</strong>. “On intervention list” is shown when that learner is also in the intervention list.</>}
+              </div>
             </div>
           )}
           <div>
@@ -877,6 +1046,43 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
         <div style={{marginBottom:'12px'}}>
           <label style={lbl}>Notes (optional)</label>
           <textarea style={{...inp,resize:'vertical'}} rows={2} value={form.notes} onChange={e=>f('notes',e.target.value)} placeholder="Any instructions or context..."/>
+        </div>
+        <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',marginBottom:'12px'}}>
+          <div style={{fontSize:'13px',fontWeight:800,color:'#334155',marginBottom:'8px'}}>Linked learners preview</div>
+          {(form.assign_type==='interventions_all' || form.assign_type==='classlist_all') ? (
+            <div style={{fontSize:'13px',color:'#475569'}}>
+              {form.assign_type==='interventions_all'
+                ? <>This will use the <strong>intervention list across all classes</strong>: <strong>{allInterventionCount}</strong> learner(s).</>
+                : <>This will use the <strong>class lists across all classes</strong>: <strong>{allClasslistCount}</strong> learner(s).</>}
+            </div>
+          ) : !form.class_name ? (
+            <div style={{fontSize:'13px',color:'#64748b'}}>Choose a class to see the linked class list and intervention learners.</div>
+          ) : (
+            <>
+              <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'8px'}}>
+                <span style={{background:'#eef2ff',color:'#4f46e5',padding:'6px 10px',borderRadius:'999px',fontSize:'12px',fontWeight:700}}>Classlist: {rosterLearners.length}</span>
+                <span style={{background:'#fff7ed',color:'#f97316',padding:'6px 10px',borderRadius:'999px',fontSize:'12px',fontWeight:700}}>Intervention: {classInterventions.length}</span>
+              </div>
+              <div style={{fontSize:'12px',color:'#475569',marginBottom:'8px'}}>
+                {form.assign_type==='interventions_class'
+                  ? 'These are the learners currently linked from the intervention list for this class.'
+                  : form.assign_type==='classlist_class'
+                    ? 'These are the learners currently linked from the class list for this class.'
+                    : 'These are the learners available in the class list for individual selection.'}
+              </div>
+              <div style={{display:'grid',gap:'6px',maxHeight:'130px',overflowY:'auto',paddingRight:'4px'}}>
+                {previewLearners.length===0 ? (
+                  <div style={{fontSize:'12px',color:'#94a3b8'}}>No linked learners found for this selection.</div>
+                ) : previewLearners.slice(0,12).map((l,i)=>(
+                  <div key={`${l.surname}|${l.firstname}|${i}`} style={{display:'flex',justifyContent:'space-between',gap:'10px',background:'white',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'7px 10px',fontSize:'12px',color:'#334155'}}>
+                    <span><strong>{l.surname}</strong>, {l.firstname}</span>
+                    {isOnIntervention(l.surname,l.firstname) && <span style={{color:'#f97316',fontWeight:700}}>Intervention</span>}
+                  </div>
+                ))}
+                {previewLearners.length>12 && <div style={{fontSize:'12px',color:'#64748b'}}>+ {previewLearners.length-12} more learner(s)</div>}
+              </div>
+            </>
+          )}
         </div>
         <button style={btn} onClick={handleAssign} disabled={busy||!resources.length}>
           {busy?'Assigning...':(resources.length?'📋 Assign Activity':'Add resources first')}
