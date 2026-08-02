@@ -5481,6 +5481,7 @@ function LearnerPortalView(){
           ) : myAssignments.map(a=>{
             const result = resultByAssignment.get(a.id);
             const draft = drafts[a.id] || {};
+            const savedScoreLabel = result ? `Saved score: ${result.score || 0}/${result.max_score || 100}` : '';
             return (
               <div key={a.id} style={{...card,marginBottom:'12px'}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'10px',flexWrap:'wrap',marginBottom:'10px'}}>
@@ -5494,7 +5495,7 @@ function LearnerPortalView(){
                 {a.due_date && <div style={{fontSize:'13px',color:'#888',marginBottom:'10px'}}>📅 Due: {new Date(a.due_date).toLocaleDateString('en-ZA')}</div>}
                 <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'12px'}}>
                   <button style={{...sbtn,background:'#2563eb'}} onClick={()=>startActivity(a)}>▶ Open Activity</button>
-                  {result && <span style={{background:'#dcfce7',color:'#166534',padding:'8px 12px',borderRadius:'999px',fontSize:'12px',fontWeight:700'}}>Saved score: {result.score ?? 0}/{result.max_score || 100}</span>}
+                  {result && <span style={{background:'#dcfce7',color:'#166534',padding:'8px 12px',borderRadius:'999px',fontSize:'12px',fontWeight:700}}>{savedScoreLabel}</span>}
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:'10px',marginBottom:'10px'}}>
                   <div>
@@ -6176,6 +6177,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
               ) : classAssignments.map(a=>{
                 const noteVal = notes[a.id]!==undefined ? notes[a.id] : (a.progress_notes||'');
                 const learnerResult = learnerResultByAssignment.get(a.id);
+                const teacherScoreLabel = learnerResult ? `Score: ${learnerResult.score || 0}/${learnerResult.max_score || 100}` : '';
                 return (
                   <div key={a.id} style={{...card,marginBottom:'12px',padding:'18px'}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:'10px',marginBottom:'10px'}}>
@@ -6183,9 +6185,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
                         <div style={{fontWeight:700,color:'#333',fontSize:'15px'}}>{a.surname}, {a.firstname}</div>
                         {learnerResult && (
                           <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginTop:'6px'}}>
-                            <span style={{background:'#dcfce7',color:'#166534',padding:'4px 9px',borderRadius:'999px',fontSize:'12px',fontWeight:700}}>
-                              Score: {learnerResult.score ?? 0}/{learnerResult.max_score || 100}
-                            </span>
+                            <span style={{background:'#dcfce7',color:'#166534',padding:'4px 9px',borderRadius:'999px',fontSize:'12px',fontWeight:700}}>{teacherScoreLabel}</span>
                             <span style={{background:'#eef2ff',color:'#4338ca',padding:'4px 9px',borderRadius:'999px',fontSize:'12px',fontWeight:700}}>
                               Learner: {String(learnerResult.result_status||'submitted').replace(/_/g,' ')}
                             </span>
