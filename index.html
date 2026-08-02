@@ -5311,6 +5311,7 @@ function LearnerPortalView(){
   const [learnerAuth,setLearnerAuth]=useState(LEARNER_SESSION);
   const [loginUser,setLoginUser]=useState(PREFILLED_LEARNER_USER);
   const [loginPin,setLoginPin]=useState(PREFILLED_LEARNER_PIN);
+  const [manualLoginMode,setManualLoginMode]=useState(false);
   const [assignments,setAssignments]=useState([]);
   const [resources,setResources]=useState([]);
   const [results,setResults]=useState([]);
@@ -5321,7 +5322,7 @@ function LearnerPortalView(){
   const [loginErr,setLoginErr]=useState('');
   const [msg,setMsg]=useState('');
   const showMsg = m => {setMsg(m);setTimeout(()=>setMsg(''),5000);};
-  const secureLinkMode = !!(loginUser || loginPin);
+  const secureLinkMode = !!(PREFILLED_LEARNER_USER && PREFILLED_LEARNER_PIN) && !manualLoginMode;
 
   useEffect(()=>{
     (async()=>{
@@ -5343,6 +5344,7 @@ function LearnerPortalView(){
     setLoginErr('');
     const found = findLearnerByCredentials(loginUser, loginPin);
     if(!found){
+      setManualLoginMode(true);
       setLoginErr('Login failed. Check the learner username and PIN.');
       return;
     }
@@ -5448,6 +5450,7 @@ function LearnerPortalView(){
               <div style={{fontSize:'34px',marginBottom:'10px'}}>{loginBusy ? '🔄' : '👦'}</div>
               <div style={{fontWeight:800,fontSize:'16px',marginBottom:'6px'}}>{loginBusy ? 'Signing you in...' : 'Learner secure login'}</div>
               {!loginBusy && <button style={{...btn,width:'100%',marginTop:'14px'}} onClick={learnerLogin}>Continue to My Activities →</button>}
+              {!loginBusy && <button style={{...sbtn,background:'#64748b',marginTop:'10px',width:'100%'}} onClick={()=>setManualLoginMode(true)}>Type username and PIN instead</button>}
             </div>
           ) : (
             <>
