@@ -885,10 +885,11 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
     }
     setBusy(true);
     try{
+      const legacyAssignType = form.assign_type==='learner' ? 'learner' : 'class';
       const base = {
         resource_id:form.resource_id,
         class_name:form.class_name,
-        assign_type:form.assign_type,
+        assign_type:legacyAssignType,
         assigned_by:'Admin',
         due_date:form.due_date||null, notes:form.notes.trim()||null
       };
