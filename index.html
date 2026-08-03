@@ -7748,9 +7748,72 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
 
 function TeacherClassListTab({selClass, teacherAuth, interventions, setInterventions, showMsg}){
   const [modalFor,setModalFor]=useState(null);
-  const learners = selClass ? (CLASS_DATA[selClass] || []) : [];
+  const CLASSLIST_EDITS_KEY = 'carissa_classlist_edits_v1';
+  const [classlistEdits,setClasslistEdits] = useState(()=>{
+    try{ return JSON.parse(localStorage.getItem(CLASSLIST_EDITS_KEY) || '{}') || {}; }catch(e){ return {}; }
+  });
+  const [editNumber,setEditNumber] = useState(null);
+  const [editSurname,setEditSurname] = useState('');
+  const [editFirstname,setEditFirstname] = useState('');
+
+  const learners = useMemo(()=>{
+    if(!selClass) return [];
+    const base = CLASS_DATA[selClass] || [];
+    const classEdits = (classlistEdits && classlistEdits[selClass]) ? classlistEdits[selClass] : {};
+    return base.map(l=>{
+      const e = classEdits ? classEdits[String(l.number)] : null;
+      return e ? {...l, ...e} : l;
+    });
+  },[selClass, classlistEdits]);
   const teacherName = `${teacherAuth?.first_name || ''} ${teacherAuth?.surname || ''}`.trim();
   const teacherWhatsapp = teacherAuth?.whatsapp || '';
+
+  const beginEdit = (learner)=>{
+    setEditNumber(learner.number);
+    setEditSurname(String(learner.surname||''));
+    setEditFirstname(String(learner.firstname||''));
+  };
+  const cancelEdit = ()=>{
+    setEditNumber(null);
+    setEditSurname('');
+    setEditFirstname('');
+  };
+  const saveEdit = ()=>{
+    if(!selClass || editNumber===null) return;
+    const s = String(editSurname||'').trim();
+    const f = String(editFirstname||'').trim();
+    if(!s || !f){
+      alert('Please enter both surname and first name.');
+      return;
+    }
+    try{
+      const next = {...(classlistEdits||{})};
+      const nextClass = {...(next[selClass]||{})};
+      nextClass[String(editNumber)] = {surname:s, firstname:f};
+      next[selClass] = nextClass;
+      localStorage.setItem(CLASSLIST_EDITS_KEY, JSON.stringify(next));
+      setClasslistEdits(next);
+      showMsg(`✓ Updated learner name: ${s}, ${f}`);
+      cancelEdit();
+    }catch(e){
+      alert('Could not save this change on this browser.');
+    }
+  };
+  const resetEdit = (learnerNumber)=>{
+    if(!selClass) return;
+    try{
+      const next = {...(classlistEdits||{})};
+      const nextClass = {...(next[selClass]||{})};
+      delete nextClass[String(learnerNumber)];
+      next[selClass] = nextClass;
+      localStorage.setItem(CLASSLIST_EDITS_KEY, JSON.stringify(next));
+      setClasslistEdits(next);
+      showMsg('✓ Reset learner name to original.');
+      if(editNumber===learnerNumber) cancelEdit();
+    }catch(e){
+      alert('Could not reset this change on this browser.');
+    }
+  };
   const learnerLoginRows = learners.map(learner=>({
     number: learner.number,
     surname: learner.surname,
@@ -7869,10 +7932,37 @@ function TeacherClassListTab({selClass, teacherAuth, interventions, setIntervent
           const onList = interventions.some(iv => learnerKey(iv)===learnerKey({...learner,class_name:selClass}));
           const learnerUser = learnerUsernameFor(selClass, learner);
           const learnerPin = learnerPinFor(learner);
+          const isEditing = editNumber!==null && String(editNumber)===String(learner.number);
           return (
             <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 14px',background:onList?'#fff7ed':'#f8f9fa',borderRadius:'10px',borderLeft:`4px solid ${onList?'#f97316':'#cbd5e1'}`,gap:'10px',flexWrap:'wrap'}}>
               <div style={{fontSize:'14px',color:'#333'}}>
-                <strong>{learner.number}.</strong> <strong>{learner.surname}</strong>, {learner.firstname}
+                <strong>{learner.number}.</strong>{' '}
+                {isEditing ? (
+                  <span style={{display:'inline-flex',gap:'8px',flexWrap:'wrap',alignItems:'center'}}>
+                    <input style={{...inp,width:'160px',padding:'7px 10px'}} value={editSurname} onChange={e=>setEditSurname(e.target.value)} placeholder="Surname"/>
+                    <input style={{...inp,width:'160px',padding:'7px 10px'}} value={editFirstname} onChange={e=>setEditFirstname(e.target.value)} placeholder="First name"/>
+                    <button style={{...sbtn,background:'#16a34a',fontSize:'12px',padding:'7px 10px'}} onClick={saveEdit}>Save</button>
+                    <button style={{...sbtn,background:'#64748b',fontSize:'12px',padding:'7px 10px'}} onClick={cancelEdit}>Cancel</button>
+                  </span>
+                ) : (
+                  <>
+                    <strong>{learner.surname}</strong>, {learner.firstname}
+                    <button
+                      style={{...sbtn,background:'#334155',fontSize:'12px',padding:'6px 10px',marginLeft:'10px'}}
+                      onClick={()=>beginEdit(learner)}
+                      title="Edit learner name"
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
+                      style={{...sbtn,background:'#94a3b8',fontSize:'12px',padding:'6px 10px',marginLeft:'6px'}}
+                      onClick={()=>resetEdit(learner.number)}
+                      title="Reset to original name"
+                    >
+                      ↩ Reset
+                    </button>
+                  </>
+                )}
                 {onList && <span style={{marginLeft:'10px',fontSize:'12px',color:'#f97316',fontWeight:'700'}}>On intervention list</span>}
                 <div style={{fontSize:'12px',color:'#64748b',marginTop:'6px'}}>
                   Learner login: <strong>{learnerUser}</strong> • PIN: <strong>{learnerPin}</strong>
