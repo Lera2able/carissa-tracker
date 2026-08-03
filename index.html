@@ -5400,12 +5400,6 @@ function LearnerPortalView(){
     return r.type || 'link';
   };
   const resUrl   = id => resources.find(r=>r.id===id)?.url || '#';
-    if(!r) return 'link';
-    const u = String(r.url||'');
-    if((r.type||'')==='link' && /typing-speed-quest\.html/i.test(u)) return 'typing';
-    return r.type || 'link';
-  };
-  const resUrl   = id => resources.find(r=>r.id===id)?.url || '#';
 
   const startActivity = async(assignment)=>{
     const resourceType = resType(assignment.resource_id);
