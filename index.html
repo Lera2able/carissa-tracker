@@ -6284,6 +6284,9 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
                 const noteVal = notes[a.id]!==undefined ? notes[a.id] : (a.progress_notes||'');
                 const learnerResult = learnerResultByAssignment.get(a.id);
                 const teacherScoreLabel = learnerResult ? `Score: ${learnerResult.score || 0}/${learnerResult.max_score || 100}` : '';
+                const submittedLabel = learnerResult?.submitted_at
+                  ? new Date(learnerResult.submitted_at).toLocaleString('en-ZA',{dateStyle:'medium',timeStyle:'short'})
+                  : '';
                 return (
                   <div key={a.id} style={{...card,marginBottom:'12px',padding:'18px'}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:'10px',marginBottom:'10px'}}>
@@ -6294,6 +6297,9 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
                             <span style={{background:'#dcfce7',color:'#166534',padding:'4px 9px',borderRadius:'999px',fontSize:'12px',fontWeight:700}}>{teacherScoreLabel}</span>
                             <span style={{background:'#eef2ff',color:'#4338ca',padding:'4px 9px',borderRadius:'999px',fontSize:'12px',fontWeight:700}}>
                               Learner: {String(learnerResult.result_status||'submitted').replace(/_/g,' ')}
+                            </span>
+                            <span style={{background:'#fef3c7',color:'#92400e',padding:'4px 9px',borderRadius:'999px',fontSize:'12px',fontWeight:700}}>
+                              Feedback received
                             </span>
                           </div>
                         )}
@@ -6307,7 +6313,13 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
                       </div>
                       <a href={resUrl(a.resource_id)} target="_blank" rel="noreferrer" style={{...sbtn,background:'#667eea',textDecoration:'none',fontSize:'13px'}}>Open Activity</a>
                     </div>
-                    {learnerResult?.learner_notes && <div style={{fontSize:'12px',color:'#475569',marginBottom:'10px',background:'#f8fafc',border:'1px solid #e2e8f0',padding:'10px',borderRadius:'10px'}}><strong>Learner note:</strong> {learnerResult.learner_notes}</div>}
+                    {learnerResult && (
+                      <div style={{fontSize:'12px',color:'#0f172a',marginBottom:'10px',background:'#f0fdf4',border:'1px solid #bbf7d0',padding:'10px',borderRadius:'10px'}}>
+                        <div style={{fontWeight:800,color:'#166534',marginBottom:'4px'}}>Activity feedback received</div>
+                        {submittedLabel && <div style={{color:'#475569',marginBottom:'6px'}}><strong>Submitted:</strong> {submittedLabel}</div>}
+                        {learnerResult.learner_notes && <div style={{color:'#475569'}}><strong>Summary:</strong> {learnerResult.learner_notes}</div>}
+                      </div>
+                    )}
                     {a.due_date && <div style={{fontSize:'13px',color:'#888',marginBottom:'10px'}}>📅 Due: {new Date(a.due_date).toLocaleDateString('en-ZA')}</div>}
                     <div style={{display:'flex',gap:'8px',alignItems:'flex-start',flexWrap:'wrap'}}>
                       <textarea style={{...inp,flex:1,resize:'vertical',fontSize:'13px',minWidth:'200px'}} rows={2}
