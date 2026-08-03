@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grade 1 Letter Hunt — Carissa LearnWorld</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --teal:#2FA9BC; --teal-dark:#157A8C; --navy:#1E4E5E; --cream:#FBF4E4;
+  --sun:#FFC93C; --coral:#FF6B6B; --green:#3BB273; --leaf:#7BC96F;
+  --purple:#9B7EDE; --ink:#23414d;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:'Nunito',sans-serif;color:var(--ink);min-height:100vh;overflow-x:hidden;
+  background:linear-gradient(180deg,#EAF7F5 0%,var(--cream) 60%,#FDF8EC 100%);
+}
+h1,h2,h3,.fk{font-family:'Fredoka',sans-serif}
+button{font-family:inherit;cursor:pointer;border:none}
+.deco{position:fixed;pointer-events:none;z-index:0;opacity:.5;font-size:44px;animation:float 9s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-26px) rotate(6deg)}}
+.wrap{position:relative;z-index:1;max-width:1000px;margin:0 auto;padding:18px 16px 60px}
+header{display:flex;align-items:center;gap:14px;justify-content:center;margin:10px 0 6px}
+.logo{width:76px;height:76px;border-radius:50%;object-fit:cover;border:4px solid #fff;box-shadow:0 6px 18px rgba(21,122,140,.28)}
+header h1{font-size:clamp(24px,4.5vw,36px);color:var(--navy);line-height:1.05;font-weight:700}
+header p{color:var(--teal-dark);font-weight:800;font-size:clamp(13px,2vw,16px)}
+.screen{display:none;animation:pop .35s ease}
+.screen.active{display:block}
+@keyframes pop{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+.section-title{text-align:center;font-size:clamp(20px,3vw,28px);color:var(--navy);margin:22px 0 4px;font-weight:700}
+.section-sub{text-align:center;color:#5b7c86;font-weight:700;margin-bottom:20px}
+.mode-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
+.mode-card{
+  background:#fff;border-radius:24px;padding:26px 20px;text-align:left;
+  box-shadow:0 6px 0 rgba(30,78,94,.12),0 14px 26px rgba(30,78,94,.10);
+  transition:transform .15s ease;border:3px solid transparent;width:100%;
+}
+.mode-card:hover{transform:translateY(-5px);border-color:var(--sun)}
+.mode-card .aicon{font-size:42px;display:block;margin-bottom:8px}
+.mode-card h3{color:var(--navy);font-size:21px;font-weight:700}
+.mode-card p{color:#66858e;font-weight:700;font-size:14px;margin:6px 0 10px}
+.mode-card .best{display:inline-block;background:var(--cream);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:900;color:var(--teal-dark)}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:12px 24px;
+  font-family:'Fredoka';font-weight:600;font-size:17px;color:#fff;background:var(--teal);
+  box-shadow:0 5px 0 var(--teal-dark);transition:transform .1s ease,box-shadow .1s ease;text-decoration:none;
+}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--teal-dark)}
+.btn.sun{background:var(--sun);color:#7a5b00;box-shadow:0 5px 0 #d9a520}
+.btn.sun:active{box-shadow:0 1px 0 #d9a520}
+.btn.coral{background:var(--coral);box-shadow:0 5px 0 #d94f4f}
+.btn.coral:active{box-shadow:0 1px 0 #d94f4f}
+.btn.ghost{background:#fff;color:var(--navy);box-shadow:0 5px 0 #d8e6ea}
+.btn.ghost:active{box-shadow:0 1px 0 #d8e6ea}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.backbar{display:flex;justify-content:space-between;align-items:center;margin:6px 0 10px;gap:10px;flex-wrap:wrap}
+.crumb{font-weight:900;color:var(--teal-dark);background:#fff;padding:8px 16px;border-radius:999px;box-shadow:0 3px 0 #d8e6ea}
+.stats{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
+.stat{background:#fff;border-radius:16px;padding:8px 18px;text-align:center;box-shadow:0 4px 0 rgba(30,78,94,.10);min-width:100px}
+.stat .sv{font-family:'Fredoka';font-size:24px;font-weight:700;color:var(--navy)}
+.stat .sl{font-size:11px;font-weight:900;letter-spacing:.5px;color:#7b98a0;text-transform:uppercase}
+.bloom{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.bbar{flex:1;height:22px;background:#fff;border-radius:999px;box-shadow:inset 0 3px 6px rgba(30,78,94,.15);overflow:hidden}
+.bfill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,var(--leaf),var(--teal));transition:width .35s ease}
+.bflower{font-size:42px;line-height:1;transition:transform .3s ease;filter:drop-shadow(0 4px 6px rgba(0,0,0,.15))}
+.bscore{font-family:'Fredoka';font-weight:700;color:var(--navy);min-width:74px;text-align:right;font-size:18px}
+.qcard{
+  background:#fff;border-radius:26px;padding:26px 26px 30px;
+  box-shadow:0 8px 0 rgba(30,78,94,.10),0 20px 40px rgba(30,78,94,.10);text-align:center;
+}
+.prompt{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.prompt h2{font-size:clamp(22px,3.4vw,30px);color:var(--navy);font-weight:700}
+.prompt h2 .target{color:var(--teal-dark);background:#DFF5F7;border-radius:12px;padding:0 14px;display:inline-block}
+.spk{
+  width:48px;height:48px;border-radius:50%;background:var(--sun);font-size:22px;
+  box-shadow:0 4px 0 #d9a520;transition:transform .1s;display:flex;align-items:center;justify-content:center;
+}
+.spk:active{transform:translateY(3px);box-shadow:0 1px 0 #d9a520}
+.alpha{display:flex;flex-direction:column;gap:10px;align-items:center;margin-bottom:20px}
+.arow{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.tile{
+  width:clamp(52px,9vw,74px);height:clamp(52px,9vw,74px);border-radius:18px;background:var(--cream);
+  font-family:'Fredoka';font-weight:600;font-size:clamp(26px,4.6vw,38px);color:var(--navy);
+  box-shadow:0 5px 0 #e3d9bf;transition:all .12s ease;display:flex;align-items:center;justify-content:center;
+}
+.tile:hover{transform:translateY(-3px);background:#fff}
+.tile.sel{background:var(--sun);box-shadow:0 5px 0 #d9a520;transform:translateY(-4px) scale(1.06)}
+.tile.right{background:var(--leaf);color:#fff;box-shadow:0 5px 0 #57a04c;animation:pulse .5s ease}
+.tile.wrong{background:var(--coral);color:#fff;box-shadow:0 5px 0 #d94f4f;animation:shake .3s ease}
+.tile.lock{pointer-events:none}
+@keyframes pulse{0%{transform:scale(1)}40%{transform:scale(1.18)}100%{transform:scale(1)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.seq{display:flex;gap:12px;justify-content:center;align-items:center;margin-bottom:22px;flex-wrap:wrap}
+.seq .tile{background:#fff}
+.seq .gap{background:#DFF5F7;color:var(--teal-dark);border:3px dashed var(--teal);box-shadow:none}
+.opts{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:20px}
+.feedback{
+  min-height:34px;font-family:'Fredoka';font-weight:600;font-size:20px;margin-bottom:14px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.feedback.good{color:var(--green)}
+.feedback.bad{color:var(--coral)}
+.result-card{
+  background:#fff;border-radius:30px;padding:36px 28px;text-align:center;max-width:560px;margin:14px auto;
+  box-shadow:0 10px 0 rgba(30,78,94,.10),0 24px 48px rgba(30,78,94,.14);
+}
+.stars{font-size:58px;letter-spacing:8px;margin:6px 0 2px;min-height:70px}
+.stars span{display:inline-block;opacity:0;transform:scale(0)}
+.stars span.on{animation:starpop .5s cubic-bezier(.2,2,.4,1) forwards}
+@keyframes starpop{to{opacity:1;transform:scale(1)}}
+.result-card h2{color:var(--navy);font-size:30px}
+.encourage{color:#66858e;font-weight:800;margin:8px 0 18px}
+.rstats{display:flex;gap:12px;justify-content:center;margin-bottom:22px;flex-wrap:wrap}
+.rstat{background:var(--cream);border-radius:18px;padding:12px 20px;min-width:96px}
+.rstat .sv{font-family:'Fredoka';font-size:30px;font-weight:700;color:var(--teal-dark)}
+.rstat .sl{font-size:11px;font-weight:900;color:#7b98a0;text-transform:uppercase}
+.rbtns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+footer{text-align:center;margin-top:34px;color:#8aa6ad;font-weight:700;font-size:13px}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:50}
+</style>
+</head>
+<body>
+<div class="deco" style="top:12%;left:4%">☁️</div>
+<div class="deco" style="top:20%;right:5%;animation-delay:-3s">🦋</div>
+<div class="deco" style="bottom:14%;left:6%;animation-delay:-5s">🌈</div>
+<div class="deco" style="bottom:24%;right:7%;animation-delay:-7s">🐝</div>
+<canvas id="confetti"></canvas>
+
+<div class="wrap">
+  <header>
+    <img src="typing-garden-logo.jpg" alt="Carissa School logo" class="logo">
+    <div class="title">
+      <h1>Grade 1 · Letter Hunt</h1>
+      <p>Find the letters hiding in the garden! 🔍</p>
+    </div>
+  </header>
+
+  <!-- MODE PICKER -->
+  <section id="screen-modes" class="screen active">
+    <h2 class="section-title">Choose Your Hunt</h2>
+    <p class="section-sub">Fill the Bloom Meter to 100 to finish each hunt and earn your stars!</p>
+    <div class="mode-grid" id="modeGrid"></div>
+    <div style="text-align:center;margin-top:26px">
+      <a class="btn ghost" href="index.html">⌂ Back to Typing Garden</a>
+    </div>
+  </section>
+
+  <!-- GAME -->
+  <section id="screen-game" class="screen">
+    <div class="backbar">
+      <button class="btn ghost" onclick="quitToModes()">← All Hunts</button>
+      <span class="crumb" id="crumbMode"></span>
+      <button class="btn ghost" id="soundBtn" onclick="toggleSound()" title="Sound on/off">🔊</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="sv" id="stQ">0</div><div class="sl">Questions</div></div>
+      <div class="stat"><div class="sv" id="stStreak">0🔥</div><div class="sl">Streak</div></div>
+      <div class="stat"><div class="sv" id="stTime">0:00</div><div class="sl">Time</div></div>
+    </div>
+    <div class="bloom">
+      <div class="bbar"><div class="bfill" id="bfill"></div></div>
+      <div class="bflower" id="bflower">🌱</div>
+      <div class="bscore" id="bscore">0/100</div>
+    </div>
+    <div class="qcard">
+      <div class="prompt">
+        <button class="spk" id="spkBtn" title="Hear the question">🔊</button>
+        <h2 id="promptText"></h2>
+      </div>
+      <div class="alpha" id="alphaGrid"></div>
+      <div class="seq" id="seqRow" style="display:none"></div>
+      <div class="opts" id="optRow" style="display:none"></div>
+      <div class="feedback" id="feedback">&nbsp;</div>
+      <button class="btn sun" id="submitBtn" style="font-size:20px;padding:14px 44px" disabled>Submit</button>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="screen-results" class="screen">
+    <div class="result-card">
+      <div class="stars" id="stars"><span>⭐</span><span>⭐</span><span>⭐</span></div>
+      <h2 id="rTitle">Hunt Complete!</h2>
+      <p class="encourage" id="rEncourage"></p>
+      <div class="rstats">
+        <div class="rstat"><div class="sv" id="rQ">0</div><div class="sl">Questions</div></div>
+        <div class="rstat"><div class="sv" id="rAcc">0%</div><div class="sl">Accuracy</div></div>
+        <div class="rstat"><div class="sv" id="rTime">0:00</div><div class="sl">Time</div></div>
+      </div>
+      <div class="rbtns">
+        <button class="btn sun" onclick="startMode(state.mode)">🔄 Hunt Again</button>
+        <button class="btn" onclick="quitToModes()">🔍 All Hunts</button>
+        <a class="btn coral" href="index.html">⌂ LearnWorld</a>
+      </div>
+      <div id="sendWrap" style="display:none;margin-top:16px">
+        <button class="btn" type="button" onclick="sendToTeacher()">📤 Send result to teacher</button>
+        <div id="sendStatus" style="margin-top:10px;color:#66858e;font-weight:800"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>Carissa LearnWorld · Growing great readers, one letter at a time 🌻</footer>
+</div>
+
+<script>
+/* ============ STATE & MODES ============ */
+const qs = new URLSearchParams(location.search);
+const ASSIGNMENT_ID = qs.get("assignment_id") || "";
+const OPENED_FROM_TRACKER = !!ASSIGNMENT_ID;
+const $ = s => document.querySelector(s);
+const UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+const LOWER = "abcdefghijklmnopqrstuvwxyz".split("");
+const MODES = {
+  "find-upper":{icon:"🔍", title:"Find the Letter",   desc:"Tap the uppercase letter hiding in the alphabet."},
+  "find-lower":{icon:"🐣", title:"Little Letters",    desc:"Same hunt, now with lowercase letters."},
+  "match":     {icon:"🤝", title:"Letter Buddies",    desc:"Match each BIG letter with its little partner."},
+  "next":      {icon:"🚂", title:"What Comes Next?",  desc:"The alphabet train lost a letter — find it!"}
+};
+const state = {mode:null, target:null, answer:null, selected:null, locked:false,
+               q:0, correct:0, streak:0, score:0, start:null, timer:null, sound:true, lastTarget:null, lastResult:null};
+
+/* ============ AUDIO ============ */
+let audioCtx=null;
+function ac(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); return audioCtx; }
+function beep(freq,dur,type,vol,when=0){
+  if(!state.sound) return;
+  try{
+    const c=ac(), o=c.createOscillator(), g=c.createGain(), t=c.currentTime+when;
+    o.type=type||"sine"; o.frequency.value=freq;
+    g.gain.setValueAtTime(vol||0.12,t); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+const sndPick = ()=>beep(520,0.06,"triangle",0.08);
+const sndGood = ()=>{beep(660,0.12,"triangle",0.12); beep(880,0.18,"triangle",0.12,0.1);};
+const sndBad  = ()=>beep(170,0.25,"sawtooth",0.07);
+const sndWin  = ()=>{[523,659,784,1047].forEach((f,i)=>beep(f,0.22,"triangle",0.12,i*0.13));};
+const sndStar = i=>beep(880+i*160,0.25,"triangle",0.12);
+function speak(text){
+  if(!state.sound || !("speechSynthesis" in window)) return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.rate=0.9; u.pitch=1.1; u.lang="en-US";
+  speechSynthesis.speak(u);
+}
+function toggleSound(){
+  state.sound=!state.sound;
+  if(!state.sound && "speechSynthesis" in window) speechSynthesis.cancel();
+  $("#soundBtn").textContent=state.sound?"🔊":"🔇";
+}
+
+/* ============ NAV ============ */
+function show(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  $(id).classList.add("active");
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+function renderModes(){
+  const g=$("#modeGrid"); g.innerHTML="";
+  Object.keys(MODES).forEach(k=>{
+    const m=MODES[k];
+    const best=JSON.parse(localStorage.getItem(`clh_${k}`)||"null");
+    const b=document.createElement("button");
+    b.className="mode-card";
+    b.innerHTML=`<span class="aicon">${m.icon}</span><h3>${m.title}</h3><p>${m.desc}</p>
+      <span class="best">${best?`🏅 Best: ${best.stars}⭐ · ${best.acc}%`:"✨ Not played yet"}</span>`;
+    b.onclick=()=>startMode(k);
+    g.appendChild(b);
+  });
+}
+function quitToModes(){ stopTimer(); renderModes(); show("#screen-modes"); }
+
+/* ============ QUESTIONS ============ */
+function randLetter(except){
+  let l; do{ l=UPPER[Math.floor(Math.random()*26)]; }while(l===except);
+  return l;
+}
+function makeQuestion(){
+  const mode=state.mode;
+  state.selected=null; state.locked=false;
+  $("#feedback").innerHTML="&nbsp;";
+  $("#feedback").className="feedback";
+  $("#submitBtn").disabled=true;
+  const grid=$("#alphaGrid"), seq=$("#seqRow"), opts=$("#optRow");
+  grid.innerHTML=""; seq.innerHTML=""; opts.innerHTML="";
+  grid.style.display="none"; seq.style.display="none"; opts.style.display="none";
+
+  if(mode==="find-upper" || mode==="find-lower"){
+    const lower = mode==="find-lower";
+    state.target=randLetter(state.lastTarget); state.lastTarget=state.target;
+    state.answer=lower? state.target.toLowerCase() : state.target;
+    setPrompt(`Find the letter <span class="target">${state.answer}</span>.`,
+              `Find the letter ${state.target}`);
+    grid.style.display="flex";
+    const letters = lower? LOWER : UPPER;
+    for(let r=0;r<26;r+=5){
+      const row=document.createElement("div"); row.className="arow";
+      letters.slice(r,r+5).forEach(ch=>row.appendChild(makeTile(ch)));
+      grid.appendChild(row);
+    }
+  }
+  else if(mode==="match"){
+    state.target=randLetter(state.lastTarget); state.lastTarget=state.target;
+    state.answer=state.target.toLowerCase();
+    setPrompt(`Find the little buddy for <span class="target">${state.target}</span>.`,
+              `Find the lowercase letter that matches big ${state.target}`);
+    grid.style.display="flex";
+    for(let r=0;r<26;r+=5){
+      const row=document.createElement("div"); row.className="arow";
+      LOWER.slice(r,r+5).forEach(ch=>row.appendChild(makeTile(ch)));
+      grid.appendChild(row);
+    }
+  }
+  else{ /* next */
+    const startIdx=Math.floor(Math.random()*22); // A..V so 3 letters + answer fits
+    const shown=[UPPER[startIdx],UPPER[startIdx+1],UPPER[startIdx+2]];
+    state.target=UPPER[startIdx+3]; state.answer=state.target;
+    setPrompt(`Which letter comes next?`, `Which letter comes next after ${shown.join(", ")}?`);
+    seq.style.display="flex";
+    shown.forEach(ch=>{
+      const t=document.createElement("div"); t.className="tile lock"; t.textContent=ch; seq.appendChild(t);
+    });
+    const gap=document.createElement("div"); gap.className="tile gap lock"; gap.textContent="?"; gap.id="gapTile";
+    seq.appendChild(gap);
+    // options: answer + 3 nearby distractors
+    const pool=new Set([state.answer]);
+    while(pool.size<4){
+      const d=UPPER[Math.max(0,Math.min(25,startIdx+3+(Math.floor(Math.random()*7)-3)))];
+      pool.add(d);
+    }
+    opts.style.display="flex";
+    [...pool].sort(()=>Math.random()-.5).forEach(ch=>opts.appendChild(makeTile(ch)));
+  }
+}
+function setPrompt(html, spoken){
+  $("#promptText").innerHTML=html;
+  state.spoken=spoken;
+}
+function makeTile(ch){
+  const t=document.createElement("button");
+  t.className="tile"; t.textContent=ch; t.dataset.ch=ch;
+  t.onclick=()=>{
+    if(state.locked) return;
+    document.querySelectorAll(".tile.sel").forEach(e=>e.classList.remove("sel"));
+    t.classList.add("sel"); state.selected=ch; sndPick();
+    $("#submitBtn").disabled=false;
+  };
+  return t;
+}
+
+/* ============ ANSWERING ============ */
+function submitAnswer(){
+  if(state.locked || state.selected===null) return;
+  state.locked=true; $("#submitBtn").disabled=true;
+  state.q++;
+  const good = state.selected===state.answer;
+  const fb=$("#feedback");
+  // reveal
+  document.querySelectorAll("#alphaGrid .tile, #optRow .tile").forEach(t=>{
+    t.classList.add("lock");
+    if(t.dataset.ch===state.answer) t.classList.add("right");
+    else if(t.dataset.ch===state.selected) t.classList.add("wrong");
+  });
+  if(state.mode==="next"){ const g=$("#gapTile"); if(g) g.textContent=state.answer; }
+
+  if(good){
+    state.correct++; state.streak++;
+    const gain=Math.min(8+state.streak*2,16);
+    state.score=Math.min(100,state.score+gain);
+    const cheers=["Yes! 🎉","You found it! 🌟","Perfect! 🌼","Super! 🐝","Amazing! 🦋"];
+    fb.innerHTML=`${cheers[Math.floor(Math.random()*cheers.length)]} That's the letter ${state.mode==="next"||state.mode==="find-upper"?state.target:state.answer}!`;
+    fb.classList.add("good"); sndGood();
+    speak(["Yes!","Well done!","Great job!"][Math.floor(Math.random()*3)]);
+  }else{
+    state.streak=0;
+    state.score=Math.max(0,state.score-6);
+    fb.innerHTML=`Oops! You picked ${state.selected}. The answer was ${state.answer}. 💪`;
+    fb.classList.add("bad"); sndBad();
+    speak(`Oops. The answer was ${state.answer}.`);
+  }
+  updateHud();
+  if(state.score>=100){ setTimeout(finish, 1400); }
+  else setTimeout(()=>{ makeQuestion(); speak(state.spoken); }, 1600);
+}
+
+/* ============ HUD / TIMER ============ */
+function stopTimer(){ if(state.timer){clearInterval(state.timer);state.timer=null;} }
+function elapsed(){ return state.start ? (Date.now()-state.start)/1000 : 0; }
+function fmtTime(s){ return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,"0")}`; }
+function updateHud(){
+  $("#stQ").textContent=state.q;
+  $("#stStreak").textContent=state.streak+"🔥";
+  $("#stTime").textContent=fmtTime(elapsed());
+  $("#bfill").style.width=state.score+"%";
+  $("#bscore").textContent=state.score+"/100";
+  const p=state.score/100, f=$("#bflower");
+  f.textContent = p<0.25?"🌱": p<0.5?"🌿": p<0.75?"🌷": p<1?"🌻":"🌼";
+  f.style.transform=`scale(${0.8+p*0.7})`;
+}
+
+/* ============ START / FINISH ============ */
+function startMode(mode){
+  state.mode=mode;
+  state.q=0; state.correct=0; state.streak=0; state.score=0; state.lastTarget=null;
+  state.lastResult=null;
+  state.start=Date.now(); stopTimer();
+  state.timer=setInterval(updateHud,400);
+  $("#crumbMode").textContent=`${MODES[mode].icon} ${MODES[mode].title} · Grade 1`;
+  $("#sendWrap").style.display="none";
+  $("#sendStatus").textContent="";
+  updateHud(); makeQuestion();
+  show("#screen-game");
+  setTimeout(()=>speak(state.spoken), 400);
+}
+function finish(){
+  stopTimer();
+  const acc=state.q? Math.round(state.correct/state.q*100):100;
+  let stars=1; if(acc>=80) stars++; if(acc>=95) stars++;
+  const prev=JSON.parse(localStorage.getItem(`clh_${state.mode}`)||"null");
+  if(!prev||stars>prev.stars||(stars===prev.stars&&acc>prev.acc))
+    localStorage.setItem(`clh_${state.mode}`,JSON.stringify({stars,acc}));
+  $("#rQ").textContent=state.q;
+  $("#rAcc").textContent=acc+"%";
+  $("#rTime").textContent=fmtTime(elapsed());
+  $("#rTitle").textContent = stars===3?"Master Letter Hunter!": stars===2?"Great Hunting!":"Hunt Complete!";
+  $("#rEncourage").textContent = stars===3
+    ? "You know your alphabet inside out! 🌟"
+    : stars===2 ? "So sharp! One more hunt for three stars? 🌷"
+    : "Every letter you find helps your garden grow! 🌱";
+  state.lastResult = {
+    assignment_id: ASSIGNMENT_ID,
+    activity_title: "Letter Hunt",
+    stars,
+    accuracy: acc,
+    typed_chars: state.q,
+    errors: Math.max(0, state.q - state.correct),
+    duration_sec: Math.round(elapsed()),
+    time_label: fmtTime(elapsed()),
+    result_summary: `Letter Hunt — Questions: ${state.q}, Accuracy: ${acc}%, Time: ${fmtTime(elapsed())}, Stars: ${stars}/3`
+  };
+  show("#screen-results");
+  sndWin(); launchConfetti();
+  speak(stars===3?"Amazing! You finished the hunt!":"Well done! You finished the hunt!");
+  const spans=document.querySelectorAll("#stars span");
+  spans.forEach(s=>s.classList.remove("on"));
+  for(let i=0;i<stars;i++) setTimeout(()=>{spans[i].classList.add("on"); sndStar(i);}, 400+i*450);
+  if(OPENED_FROM_TRACKER){
+    $("#sendWrap").style.display="block";
+    $("#sendStatus").textContent="Sending result back to the learner portal...";
+    setTimeout(()=>sendToTeacher(), 200);
+  }
+}
+
+function sendToTeacher(){
+  if(!OPENED_FROM_TRACKER){
+    $("#sendStatus").textContent = "This hunt was not opened from an assignment.";
+    return;
+  }
+  if(!state.lastResult){
+    $("#sendStatus").textContent = "Finish the hunt first, then send the result.";
+    return;
+  }
+  const payload = {
+    type: "typing_speed_result",
+    assignment_id: state.lastResult.assignment_id,
+    wpm: 0,
+    accuracy: state.lastResult.accuracy,
+    typed_chars: state.lastResult.typed_chars,
+    errors: state.lastResult.errors,
+    duration_sec: state.lastResult.duration_sec,
+    activity_title: state.lastResult.activity_title,
+    stars: state.lastResult.stars,
+    time_label: state.lastResult.time_label,
+    result_summary: state.lastResult.result_summary
+  };
+  try{
+    if(window.opener){
+      window.opener.postMessage(payload, window.location.origin);
+      $("#sendStatus").textContent = "Sent. Return to the learner portal to see it save.";
+      return;
+    }
+  }catch(e){}
+  try{
+    localStorage.setItem("typing_speed_result_pending", JSON.stringify(payload));
+    $("#sendStatus").textContent = "Sent. Return to the learner portal tab to finish saving.";
+  }catch(e){
+    $("#sendStatus").textContent = "Could not send automatically. Please try again.";
+  }
+}
+
+/* ============ CONFETTI ============ */
+function launchConfetti(){
+  const cv=$("#confetti"), ctx=cv.getContext("2d");
+  cv.width=innerWidth; cv.height=innerHeight;
+  const colors=["#2FA9BC","#FFC93C","#FF6B6B","#7BC96F","#9B7EDE","#FBF4E4"];
+  const ps=Array.from({length:160},()=>({
+    x:Math.random()*cv.width, y:-20-Math.random()*cv.height*0.5,
+    w:6+Math.random()*8, h:8+Math.random()*10, c:colors[Math.floor(Math.random()*colors.length)],
+    vy:2+Math.random()*3.5, vx:-1.5+Math.random()*3, rot:Math.random()*Math.PI, vr:-0.1+Math.random()*0.2
+  }));
+  const t0=performance.now();
+  (function frame(t){
+    ctx.clearRect(0,0,cv.width,cv.height);
+    ps.forEach(p=>{
+      p.y+=p.vy; p.x+=p.vx+Math.sin(p.y/40); p.rot+=p.vr;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot);
+      ctx.fillStyle=p.c; ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h); ctx.restore();
+    });
+    if(t-t0<3800) requestAnimationFrame(frame); else ctx.clearRect(0,0,cv.width,cv.height);
+  })(t0);
+}
+
+/* ============ EVENTS & INIT ============ */
+$("#submitBtn").onclick=submitAnswer;
+$("#spkBtn").onclick=()=>speak(state.spoken||"");
+document.addEventListener("keydown",e=>{
+  if(e.key==="Enter" && !$("#submitBtn").disabled) submitAnswer();
+});
+renderModes();
+</script>
+</body>
+</html>
