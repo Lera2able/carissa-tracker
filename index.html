@@ -5353,7 +5353,7 @@ function LearnerPortalView(){
         const d = ev.data || {};
         if(d.type !== 'typing_speed_result') return;
         if(!d.assignment_id) return;
-        submitTypingGameResult(d.assignment_id, d.wpm, d.accuracy, d.typed_chars, d.errors, d.duration_sec);
+        submitTypingGameResult(d.assignment_id, d.wpm, d.accuracy, d.typed_chars, d.errors, d.duration_sec, d.activity_title, d.stars, d.time_label);
       }catch(e){}
     };
     const storageHandler = (ev)=>{
@@ -5363,7 +5363,7 @@ function LearnerPortalView(){
         const d = JSON.parse(ev.newValue);
         if(!d || d.type !== 'typing_speed_result') return;
         localStorage.removeItem('typing_speed_result_pending');
-        submitTypingGameResult(d.assignment_id, d.wpm, d.accuracy, d.typed_chars, d.errors, d.duration_sec);
+        submitTypingGameResult(d.assignment_id, d.wpm, d.accuracy, d.typed_chars, d.errors, d.duration_sec, d.activity_title, d.stars, d.time_label);
       }catch(e){}
     };
     window.addEventListener('message', handler);
@@ -5440,7 +5440,7 @@ function LearnerPortalView(){
     }
   };
 
-  const submitTypingGameResult = async(assignmentId, wpm, accuracy, typedChars, errors, durationSec)=>{
+  const submitTypingGameResult = async(assignmentId, wpm, accuracy, typedChars, errors, durationSec, activityTitle, stars, timeLabel)=>{
     if(!learnerAuth) return;
     const assignment = assignments.find(a=>String(a.id)===String(assignmentId));
     if(!assignment) return;
@@ -5449,6 +5449,9 @@ function LearnerPortalView(){
       const existing = resultByAssignment.get(assignment.id);
       const acc = Math.max(0, Math.min(100, Number(accuracy||0)));
       const w = Math.max(0, Number(wpm||0));
+      const activityLabel = activityTitle || 'Typing Speed Quest';
+      const timeText = timeLabel || `${Number(durationSec||0)}s`;
+      const starText = Number(stars||0) > 0 ? `, Stars: ${Number(stars)}/3` : '';
       const payload = {
         assignment_id: assignment.id,
         learner_username: learnerAuth.username,
@@ -5459,7 +5462,7 @@ function LearnerPortalView(){
         result_status: 'completed',
         score: Math.round(acc),          // score = accuracy out of 100
         max_score: 100,
-        learner_notes: `Typing Speed Quest — WPM: ${Math.round(w)}, Accuracy: ${Math.round(acc)}%, Errors: ${Number(errors||0)}, Chars: ${Number(typedChars||0)}, Time: ${Number(durationSec||0)}s`,
+        learner_notes: `${activityLabel} — WPM: ${Math.round(w)}, Accuracy: ${Math.round(acc)}%, Errors: ${Number(errors||0)}, Chars: ${Number(typedChars||0)}, Time: ${timeText}${starText}`,
         submitted_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };

@@ -1,497 +1,643 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Typing Speed Quest</title>
-  <style>
-    :root{
-      --bg:#0b1220;
-      --panel:#0f1b33;
-      --text:#e9f1ff;
-      --muted:#9bb1d6;
-      --brand:#5aa7ff;
-      --brand2:#7c5cff;
-      --good:#22c55e;
-      --bad:#ef4444;
-      --warn:#f59e0b;
-      --stroke:rgba(120,160,255,0.22);
-      --shadow: 0 20px 60px rgba(0,0,0,0.35);
-      --radius: 18px;
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      --sans: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;
-      font-family: var(--sans);
-      background:
-        radial-gradient(1200px 900px at 10% 10%, rgba(90,167,255,0.22), transparent 55%),
-        radial-gradient(900px 700px at 90% 20%, rgba(124,92,255,0.18), transparent 50%),
-        radial-gradient(900px 700px at 50% 100%, rgba(34,197,94,0.08), transparent 55%),
-        var(--bg);
-      color:var(--text);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:18px;
-    }
-    .app{
-      width:min(980px, 100%);
-      background:linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
-      border:1px solid var(--stroke);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      overflow:hidden;
-    }
-    header{
-      padding:16px 16px 12px;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:10px;
-      background:rgba(10,18,36,0.65);
-      border-bottom:1px solid rgba(120,160,255,0.16);
-    }
-    .brand{display:flex;align-items:center;gap:10px}
-    .logo{
-      width:38px;height:38px;border-radius:12px;
-      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.35), transparent 55%),
-                  linear-gradient(135deg, var(--brand), var(--brand2));
-      box-shadow: 0 10px 25px rgba(90,167,255,0.25);
-    }
-    h1{margin:0;font-size:16px}
-    .subtitle{margin-top:2px;font-size:12px;color:var(--muted)}
-    main{padding:16px}
-    .grid{display:grid;grid-template-columns:1.1fr 0.9fr;gap:14px}
-    @media (max-width: 900px){.grid{grid-template-columns:1fr}}
-    .card{
-      background:rgba(15,27,51,0.66);
-      border:1px solid rgba(120,160,255,0.16);
-      border-radius: var(--radius);
-      padding:14px;
-    }
-    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .stat{
-      background:rgba(10,18,36,0.55);
-      border:1px solid rgba(255,255,255,0.12);
-      border-radius:14px;
-      padding:10px 12px;
-      min-width:120px;
-    }
-    .stat .k{font-size:11px;color:var(--muted)}
-    .stat .v{font-size:18px;font-weight:900;margin-top:2px}
-    .btn{
-      appearance:none;border:none;cursor:pointer;
-      border-radius:12px;
-      padding:10px 12px;
-      font-weight:900;
-      font-size:13px;
-      color:var(--text);
-      background:linear-gradient(135deg, rgba(90,167,255,0.95), rgba(124,92,255,0.95));
-      box-shadow: 0 12px 30px rgba(90,167,255,0.18);
-    }
-    .btn.secondary{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);box-shadow:none}
-    .btn:disabled{opacity:0.6;cursor:not-allowed}
-    label{font-size:12px;color:var(--muted)}
-    select,input{
-      font: inherit;
-      color: var(--text);
-      background:rgba(10,18,36,0.55);
-      border:1px solid rgba(255,255,255,0.16);
-      border-radius:12px;
-      padding:10px 12px;
-      outline:none;
-    }
-    input:focus,select:focus{
-      border-color: rgba(90,167,255,0.55);
-      box-shadow: 0 0 0 4px rgba(90,167,255,0.14);
-    }
-    .prompt{
-      font-family: var(--mono);
-      line-height: 1.7;
-      font-size: 16px;
-      padding:14px;
-      border-radius:16px;
-      background: rgba(10,18,36,0.60);
-      border:1px solid rgba(255,255,255,0.14);
-      min-height: 120px;
-      user-select:none;
-      word-break: break-word;
-    }
-    .prompt span.correct{color: rgba(34,197,94,0.95)}
-    .prompt span.incorrect{color: rgba(239,68,68,0.95); text-decoration: underline}
-    .prompt span.current{
-      background: rgba(245,158,11,0.18);
-      outline:1px solid rgba(245,158,11,0.45);
-      border-radius:6px;
-      padding:1px 2px;
-    }
-    .typebox{margin-top:10px;display:flex;gap:10px;flex-wrap:wrap}
-    .typebox input{
-      flex:1;min-width:240px;
-      font-family: var(--mono);
-      font-size: 16px;
-      padding:12px 12px;
-      border-radius: 14px;
-      border:1px solid rgba(255,255,255,0.16);
-      background: rgba(255,255,255,0.06);
-    }
-    .note{margin-top:8px;font-size:12px;color:var(--muted)}
-    .msg{
-      margin-top:12px;
-      padding:12px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,0.14);
-      background: rgba(10,18,36,0.55);
-    }
-    .badge{
-      display:inline-flex;align-items:center;gap:8px;
-      padding:8px 10px;border-radius:999px;
-      border:1px solid rgba(255,255,255,0.14);
-      background: rgba(255,255,255,0.06);
-      margin:6px 6px 0 0;
-      font-size:12px;font-weight:900;
-    }
-    .badge.good{border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.10)}
-    .badge.warn{border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.10)}
-    .badge.neutral{border-color: rgba(90,167,255,0.3); background: rgba(90,167,255,0.10)}
-    .kbd{
-      font-family: var(--mono);
-      font-size: 11px;
-      padding: 3px 6px;
-      border-radius: 8px;
-      border: 1px solid rgba(255,255,255,0.16);
-      background: rgba(255,255,255,0.06);
-      white-space:nowrap;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carissa Typing Garden — Grow Your Typing Skills!</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --teal:#2FA9BC; --teal-dark:#157A8C; --navy:#1E4E5E; --cream:#FBF4E4;
+  --sun:#FFC93C; --coral:#FF6B6B; --green:#3BB273; --leaf:#7BC96F;
+  --purple:#9B7EDE; --ink:#23414d;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:'Nunito',sans-serif;color:var(--ink);min-height:100vh;overflow-x:hidden;
+  background:linear-gradient(180deg,#EAF7F5 0%,var(--cream) 60%,#FDF8EC 100%);
+}
+h1,h2,h3,.fk{font-family:'Fredoka',sans-serif}
+button{font-family:inherit;cursor:pointer;border:none}
+
+/* floating background decorations */
+.deco{position:fixed;pointer-events:none;z-index:0;opacity:.5;font-size:44px;animation:float 9s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-26px) rotate(6deg)}}
+
+.wrap{position:relative;z-index:1;max-width:1000px;margin:0 auto;padding:18px 16px 60px}
+
+/* header */
+header{display:flex;align-items:center;gap:14px;justify-content:center;margin:10px 0 6px}
+.logo{width:76px;height:76px;border-radius:50%;object-fit:cover;border:4px solid #fff;box-shadow:0 6px 18px rgba(21,122,140,.28)}
+header .title{text-align:left}
+header h1{font-size:clamp(24px,4.5vw,38px);color:var(--navy);line-height:1.05;font-weight:700}
+header p{color:var(--teal-dark);font-weight:800;font-size:clamp(13px,2vw,16px)}
+
+.screen{display:none;animation:pop .35s ease}
+.screen.active{display:block}
+@keyframes pop{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+
+/* grade picker */
+.section-title{text-align:center;font-size:clamp(20px,3vw,28px);color:var(--navy);margin:22px 0 4px;font-weight:700}
+.section-sub{text-align:center;color:#5b7c86;font-weight:700;margin-bottom:20px}
+.grade-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:14px}
+.grade-card{
+  background:#fff;border-radius:22px;padding:20px 10px 16px;text-align:center;
+  box-shadow:0 6px 0 rgba(30,78,94,.12),0 14px 26px rgba(30,78,94,.10);
+  transition:transform .15s ease,box-shadow .15s ease;border:3px solid transparent;
+}
+.grade-card:hover{transform:translateY(-6px) rotate(-1deg);border-color:var(--teal)}
+.grade-card .gnum{
+  width:56px;height:56px;margin:0 auto 10px;border-radius:18px;display:flex;align-items:center;justify-content:center;
+  font-family:'Fredoka';font-size:28px;font-weight:700;color:#fff;
+}
+.grade-card .gname{font-weight:900;font-size:14px;color:var(--navy)}
+.grade-card .gacts{font-size:12px;color:#7b98a0;font-weight:700;margin-top:4px}
+
+/* activity picker */
+.act-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px;margin-top:6px}
+.act-card{
+  background:#fff;border-radius:24px;padding:26px 20px;text-align:left;position:relative;overflow:hidden;
+  box-shadow:0 6px 0 rgba(30,78,94,.12),0 14px 26px rgba(30,78,94,.10);
+  transition:transform .15s ease;border:3px solid transparent;width:100%;
+}
+.act-card:hover{transform:translateY(-5px);border-color:var(--sun)}
+.act-card .aicon{font-size:42px;display:block;margin-bottom:8px}
+.act-card h3{color:var(--navy);font-size:22px;font-weight:700}
+.act-card p{color:#66858e;font-weight:700;font-size:14px;margin:6px 0 10px}
+.act-card .best{display:inline-block;background:var(--cream);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:900;color:var(--teal-dark)}
+
+/* buttons */
+.btn{
+  display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:12px 24px;
+  font-family:'Fredoka';font-weight:600;font-size:17px;color:#fff;background:var(--teal);
+  box-shadow:0 5px 0 var(--teal-dark);transition:transform .1s ease,box-shadow .1s ease;
+}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--teal-dark)}
+.btn.sun{background:var(--sun);color:#7a5b00;box-shadow:0 5px 0 #d9a520}
+.btn.sun:active{box-shadow:0 1px 0 #d9a520}
+.btn.coral{background:var(--coral);box-shadow:0 5px 0 #d94f4f}
+.btn.coral:active{box-shadow:0 1px 0 #d94f4f}
+.btn.ghost{background:#fff;color:var(--navy);box-shadow:0 5px 0 #d8e6ea}
+.btn.ghost:active{box-shadow:0 1px 0 #d8e6ea}
+.backbar{display:flex;justify-content:space-between;align-items:center;margin:6px 0 10px;gap:10px;flex-wrap:wrap}
+.crumb{font-weight:900;color:var(--teal-dark);background:#fff;padding:8px 16px;border-radius:999px;box-shadow:0 3px 0 #d8e6ea}
+
+/* game */
+.stats{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:14px}
+.stat{background:#fff;border-radius:16px;padding:8px 18px;text-align:center;box-shadow:0 4px 0 rgba(30,78,94,.10);min-width:92px}
+.stat .sv{font-family:'Fredoka';font-size:24px;font-weight:700;color:var(--navy)}
+.stat .sl{font-size:11px;font-weight:900;letter-spacing:.5px;color:#7b98a0;text-transform:uppercase}
+
+.garden{display:flex;align-items:flex-end;gap:12px;margin-bottom:12px}
+.pbar{flex:1;height:20px;background:#fff;border-radius:999px;box-shadow:inset 0 3px 6px rgba(30,78,94,.15);overflow:hidden}
+.pfill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,var(--leaf),var(--teal));transition:width .25s ease}
+.flower{font-size:44px;line-height:1;transition:transform .3s ease;filter:drop-shadow(0 4px 6px rgba(0,0,0,.15))}
+
+.typecard{
+  background:#fff;border-radius:26px;padding:28px 30px;box-shadow:0 8px 0 rgba(30,78,94,.10),0 20px 40px rgba(30,78,94,.10);
+  font-size:clamp(22px,3.4vw,30px);font-weight:800;line-height:1.85;letter-spacing:.5px;
+  max-height:300px;overflow-y:auto;user-select:none;outline:none;
+}
+.typecard:focus{box-shadow:0 8px 0 rgba(47,169,188,.45),0 20px 40px rgba(30,78,94,.12)}
+.c{color:#a9c0c7;transition:color .1s;white-space:pre-wrap}
+.c.done{color:var(--green)}
+.c.current{background:#DFF5F7;border-radius:6px;box-shadow:0 3px 0 var(--teal);color:var(--navy)}
+.c.err{background:#ffd9d9;border-radius:6px;box-shadow:0 3px 0 var(--coral);color:#c0392b;animation:shake .25s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.hintline{text-align:center;color:#7b98a0;font-weight:800;margin-top:12px;font-size:14px}
+
+/* keyboard */
+.kbd{margin:18px auto 0;max-width:640px;display:flex;flex-direction:column;gap:8px;align-items:center}
+.krow{display:flex;gap:7px;justify-content:center;width:100%}
+.key{
+  flex:1;max-width:52px;height:48px;background:#fff;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  font-family:'Fredoka';font-weight:600;font-size:17px;color:var(--navy);
+  box-shadow:0 4px 0 #cfe3e8;transition:all .12s ease;user-select:none;
+}
+.key.wide{max-width:300px;flex:6}
+.key.next{background:var(--sun);color:#7a5b00;box-shadow:0 4px 0 #d9a520;transform:translateY(-4px) scale(1.08)}
+.key.hit{background:var(--leaf);color:#fff;box-shadow:0 4px 0 #57a04c}
+.key.shiftkey{max-width:80px;flex:2;font-size:13px}
+.kbd-toggle{text-align:center;margin-top:12px}
+.kbd-toggle button{background:none;color:var(--teal-dark);font-weight:900;font-size:13px;text-decoration:underline}
+
+/* results */
+.result-card{
+  background:#fff;border-radius:30px;padding:36px 28px;text-align:center;max-width:560px;margin:14px auto;
+  box-shadow:0 10px 0 rgba(30,78,94,.10),0 24px 48px rgba(30,78,94,.14);
+}
+.stars{font-size:58px;letter-spacing:8px;margin:6px 0 2px;min-height:70px}
+.stars span{display:inline-block;opacity:0;transform:scale(0)}
+.stars span.on{animation:starpop .5s cubic-bezier(.2,2,.4,1) forwards}
+@keyframes starpop{to{opacity:1;transform:scale(1)}}
+.result-card h2{color:var(--navy);font-size:30px}
+.encourage{color:#66858e;font-weight:800;margin:8px 0 18px}
+.rstats{display:flex;gap:12px;justify-content:center;margin-bottom:22px;flex-wrap:wrap}
+.rstat{background:var(--cream);border-radius:18px;padding:12px 20px;min-width:100px}
+.rstat .sv{font-family:'Fredoka';font-size:30px;font-weight:700;color:var(--teal-dark)}
+.rstat .sl{font-size:11px;font-weight:900;color:#7b98a0;text-transform:uppercase}
+.rbtns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+
+footer{text-align:center;margin-top:34px;color:#8aa6ad;font-weight:700;font-size:13px}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:50}
+@media(max-width:560px){.key{height:42px;font-size:14px}.flower{font-size:34px}}
+</style>
 </head>
 <body>
-  <div class="app">
-    <header>
-      <div class="brand">
-        <div class="logo" aria-hidden="true"></div>
-        <div>
-          <h1>Typing Speed Quest</h1>
-          <div class="subtitle">Copy the text accurately. Your speed (WPM) and accuracy are scored.</div>
-        </div>
+<div class="deco" style="top:12%;left:4%">☁️</div>
+<div class="deco" style="top:20%;right:5%;animation-delay:-3s">🦋</div>
+<div class="deco" style="bottom:14%;left:6%;animation-delay:-5s">🌈</div>
+<div class="deco" style="bottom:24%;right:7%;animation-delay:-7s">🐝</div>
+<canvas id="confetti"></canvas>
+
+<div class="wrap">
+  <header>
+    <img src="typing-garden-logo.jpg" alt="Carissa School logo" class="logo">
+    <div class="title">
+      <h1>Carissa Typing Garden</h1>
+      <p>Type it right, watch your flower grow! 🌼</p>
+    </div>
+  </header>
+
+  <!-- HOME: grade picker -->
+  <section id="screen-home" class="screen active">
+    <h2 class="section-title">Pick Your Grade</h2>
+    <p class="section-sub">Every grade has its own typing adventures — from letter sprouts to essay adventures!</p>
+    <div class="grade-grid" id="gradeGrid"></div>
+  </section>
+
+  <!-- ACTIVITIES -->
+  <section id="screen-activities" class="screen">
+    <div class="backbar">
+      <button class="btn ghost" onclick="goHome()">← All Grades</button>
+      <span class="crumb" id="crumbGrade"></span>
+    </div>
+    <h2 class="section-title">Choose an Activity</h2>
+    <p class="section-sub" id="actSub"></p>
+    <div class="act-grid" id="actGrid"></div>
+  </section>
+
+  <!-- GAME -->
+  <section id="screen-game" class="screen">
+    <div class="backbar">
+      <button class="btn ghost" onclick="quitGame()">← Activities</button>
+      <span class="crumb" id="crumbGame"></span>
+      <button class="btn ghost" id="soundBtn" onclick="toggleSound()" title="Sound on/off">🔊</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="sv" id="stWpm">0</div><div class="sl">WPM</div></div>
+      <div class="stat"><div class="sv" id="stAcc">100%</div><div class="sl">Accuracy</div></div>
+      <div class="stat"><div class="sv" id="stTime">0:00</div><div class="sl">Time</div></div>
+    </div>
+    <div class="garden">
+      <div class="pbar"><div class="pfill" id="pfill"></div></div>
+      <div class="flower" id="flower">🌱</div>
+    </div>
+    <div class="typecard" id="typecard" tabindex="0"></div>
+    <p class="hintline" id="hintline">Start typing — the highlighted letter is next!</p>
+    <div class="kbd" id="kbd"></div>
+    <div class="kbd-toggle"><button onclick="toggleKbd()" id="kbdToggleBtn">Hide keyboard</button></div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="screen-results" class="screen">
+    <div class="result-card">
+      <div class="stars" id="stars"><span>⭐</span><span>⭐</span><span>⭐</span></div>
+      <h2 id="rTitle">Great job!</h2>
+      <p class="encourage" id="rEncourage"></p>
+      <div class="rstats">
+        <div class="rstat"><div class="sv" id="rWpm">0</div><div class="sl">WPM</div></div>
+        <div class="rstat"><div class="sv" id="rAcc">0%</div><div class="sl">Accuracy</div></div>
+        <div class="rstat"><div class="sv" id="rTime">0:00</div><div class="sl">Time</div></div>
       </div>
-      <div class="row">
-        <button class="btn secondary" id="newBtn" type="button">New text</button>
-        <button class="btn secondary" id="stopBtn" type="button" disabled>Stop</button>
-        <button class="btn" id="startBtn" type="button">Start</button>
+      <div class="rbtns">
+        <button class="btn sun" onclick="startGame(true)">🔄 Try Again</button>
+        <button class="btn" onclick="newRound()">🌱 New Round</button>
+        <button class="btn coral" onclick="quitGame()">🏠 Activities</button>
       </div>
-    </header>
-    <main>
-      <div class="grid">
-        <section class="card">
-          <div class="row" style="justify-content:space-between;margin-bottom:10px">
-            <div class="row">
-              <div class="stat"><div class="k">Time</div><div class="v" id="timeVal">—</div></div>
-              <div class="stat"><div class="k">WPM</div><div class="v" id="wpmVal">0</div></div>
-              <div class="stat"><div class="k">Accuracy</div><div class="v" id="accVal">100%</div></div>
-            </div>
-            <div class="note" id="assignmentHint"></div>
-          </div>
-          <div class="prompt" id="prompt"></div>
-          <div class="typebox">
-            <input id="input" type="text" placeholder="Click Start, then type here..." autocomplete="off" autocapitalize="off" spellcheck="false" disabled />
-          </div>
-          <div class="note">
-            Press <span class="kbd">Enter</span> to finish. Press <span class="kbd">Esc</span> to stop.
-          </div>
-          <div class="msg" id="result" style="display:none"></div>
-        </section>
-
-        <aside class="card">
-          <div class="row" style="justify-content:space-between">
-            <div>
-              <div style="font-weight:900;margin-bottom:4px">Settings</div>
-              <div class="note">Grades 1–7 supported. If opened from an assignment, grade is set automatically.</div>
-            </div>
-          </div>
-          <div class="row" style="margin-top:10px">
-            <div style="flex:1;min-width:160px">
-              <label for="grade">Grade</label>
-              <select id="grade">
-                <option value="auto" selected>Auto (from assignment)</option>
-                <option value="1">Grade 1</option>
-                <option value="2">Grade 2</option>
-                <option value="3">Grade 3</option>
-                <option value="4">Grade 4</option>
-                <option value="5">Grade 5</option>
-                <option value="6">Grade 6</option>
-                <option value="7">Grade 7</option>
-              </select>
-            </div>
-            <div style="flex:1;min-width:160px">
-              <label for="duration">Timer (seconds)</label>
-              <input id="duration" type="number" min="20" step="10" value="60" />
-            </div>
-          </div>
-
-          <div style="margin-top:14px" class="note">
-            When you finish, click <strong>Send result to teacher</strong> (only appears when launched from the tracker).
-          </div>
-          <div id="sendWrap" style="margin-top:10px;display:none">
-            <button class="btn" id="sendBtn" type="button">Send result to teacher</button>
-            <div class="note" id="sendStatus"></div>
-          </div>
-        </aside>
+      <div id="sendWrap" style="display:none;margin-top:16px">
+        <button class="btn" type="button" onclick="sendToTeacher()">📤 Send result to teacher</button>
+        <div id="sendStatus" style="margin-top:10px;color:#66858e;font-weight:800"></div>
       </div>
-    </main>
-  </div>
+    </div>
+  </section>
 
-  <script>
-    const qs = new URLSearchParams(location.search);
-    const ASSIGNMENT_ID = qs.get("assignment_id") || "";
-    const AUTO_GRADE = qs.get("grade") || "";
-    const openedFromTracker = !!ASSIGNMENT_ID;
+  <footer>Carissa School · Growing great typists, one key at a time 🌻</footer>
+</div>
 
-    const el = (id)=>document.getElementById(id);
-    const promptEl = el("prompt");
-    const inputEl = el("input");
-    const timeValEl = el("timeVal");
-    const wpmValEl = el("wpmVal");
-    const accValEl = el("accVal");
-    const resultEl = el("result");
-    const startBtn = el("startBtn");
-    const stopBtn = el("stopBtn");
-    const newBtn = el("newBtn");
-    const gradeSel = el("grade");
-    const durationInp = el("duration");
-    const assignmentHint = el("assignmentHint");
-    const sendWrap = el("sendWrap");
-    const sendBtn = el("sendBtn");
-    const sendStatus = el("sendStatus");
+<script>
+/* ============ CONTENT ============ */
+const ACT_META = {
+  letters:   {icon:"🔤", title:"Letter Garden",   desc:"Practice single letters and home-row keys."},
+  words:     {icon:"🌱", title:"Word Sprouts",    desc:"Type fun words one after another."},
+  sentences: {icon:"✏️", title:"Sentence Seeds",  desc:"Full sentences with capitals and periods."},
+  paragraphs:{icon:"📖", title:"Paragraph Path",  desc:"Longer texts to build real stamina."},
+  essays:    {icon:"🏆", title:"Essay Adventure", desc:"Big challenges with tricky punctuation!"}
+};
+const GRADES = {
+  1:{name:"Little Sprouts",    color:"#7BC96F", acts:["letters","words"], targetWpm:6},
+  2:{name:"Seedlings",         color:"#3BB273", acts:["words","sentences"], targetWpm:9},
+  3:{name:"Young Shoots",      color:"#2FA9BC", acts:["words","sentences"], targetWpm:12},
+  4:{name:"Budding Writers",   color:"#157A8C", acts:["words","sentences"], targetWpm:16},
+  5:{name:"Blooming Typists",  color:"#9B7EDE", acts:["sentences","paragraphs"], targetWpm:20},
+  6:{name:"Flourishing Pros",  color:"#FF9F43", acts:["paragraphs","essays"], targetWpm:25},
+  7:{name:"Master Gardeners",  color:"#FF6B6B", acts:["paragraphs","essays"], targetWpm:30}
+};
+const CONTENT = {
+  1:{
+    letters:[
+      "s a t p i n","m d g o c k","e u r h b f","l j v w y z",
+      "aa ss dd ff","jj kk ll","as df jk l","a s d f j k l",
+      "q w e r u i o p","z x c v b n m","g g h h f f j j","e e i i o o u u"
+    ],
+    words:["cat","dog","pig","sun","run","hop","big","red","ten","bus","cup","hat","pen","map","sit","fun","bed","box","jam","ant","hen","mud","top","web","yes","zoo","fox","leg","mom","dad"]
+  },
+  2:{
+    words:["apple","happy","house","mouse","plant","water","smile","light","bread","cloud","green","kite","jump","star","tree","bird","fish","rain","snow","hand","cake","door","frog","girl","lion","milk","park","sing","book","play"],
+    sentences:[
+      "The cat sat on the mat.","I like to play in the park.","We go to school every day.",
+      "The dog runs very fast.","She has a red ball.","My mom bakes yummy cakes.",
+      "Birds can fly in the sky.","I read a book at night.","The sun is big and hot.",
+      "We plant seeds in the garden.","He can swim in the pool.","The frog hops on a log."
+    ]
+  },
+  3:{
+    words:["friend","school","garden","animal","window","yellow","purple","orange","basket","banana","rocket","pirate","castle","dragon","turtle","monkey","pencil","summer","winter","spring","flower","bridge","candle","farmer","jungle"],
+    sentences:[
+      "The quick red fox jumps over the fence.","My best friend and I ride bikes after school.",
+      "The library has thousands of books to read.","We saw a rainbow after the summer rain.",
+      "Our teacher reads us a story every Friday.","The baby turtle walked slowly to the sea.",
+      "I lost my tooth while eating an apple.","The soccer team practiced hard for the big game.",
+      "A spider spun a shiny web in the corner.","We picked fresh strawberries at the farm."
+    ]
+  },
+  4:{
+    words:["mountain","elephant","computer","dinosaur","adventure","treasure","mystery","journey","friendly","wonderful","beautiful","vegetable","hamburger","lightning","spaceship","champion","umbrella","keyboard","butterfly","playground"],
+    sentences:[
+      "The quick brown fox jumps over the lazy dog.","My family went camping by the lake last summer.",
+      "Reading books takes you on amazing adventures.","The scientist studied the stars through a telescope.",
+      "We baked chocolate chip cookies for the school fair.","A rainbow appeared in the sky after the rain.",
+      "The brave firefighter rescued the kitten from the tree.","Our class planted tomatoes and carrots in the garden.",
+      "Dolphins are clever animals that live in the ocean.","On Saturday morning, we ride our bikes to the park."
+    ]
+  },
+  5:{
+    sentences:[
+      "My birthday is on June 12, and I will be 11 years old.","The museum opens at 9:00 a.m. on weekdays.",
+      "There are 26 letters in the English alphabet.","Wow! That roller coaster was the fastest one yet.",
+      "Can you finish your homework before dinner?","The recipe needs 2 cups of flour, 3 eggs, and a pinch of salt.",
+      "Our class won first place in the spelling bee!","We learned that Earth is about 150 million km from the Sun."
+    ],
+    paragraphs:[
+      "Bees are small insects, but they do a big job in nature. They fly from flower to flower to collect nectar. As they move, they carry pollen, which helps new plants grow.",
+      "Space is full of amazing things to discover. Planets travel around stars, and moons travel around planets. Scientists use powerful telescopes to study objects that are very far away.",
+      "The library is my favorite place in town. It is quiet, warm, and full of stories waiting to be read. Every visit feels like the start of a new adventure.",
+      "Elephants are the largest land animals on Earth. They live in family groups and have excellent memories. An elephant's trunk can pick up something as small as a peanut.",
+      "Recycling helps keep our planet clean and healthy. Paper, glass, and plastic can be used again instead of going to waste. Even small actions can make a big difference."
+    ]
+  },
+  6:{
+    paragraphs:[
+      "Photosynthesis is the process plants use to make their own food. Using sunlight, water, and carbon dioxide, a plant produces sugar and oxygen. This remarkable process feeds the plant and makes the oxygen we breathe.",
+      "The Great Barrier Reef, located off the coast of Australia, is the largest coral reef system in the world. It stretches over 2,300 kilometers and is home to thousands of marine species, including fish, turtles, and sharks.",
+      "Learning to type quickly and accurately is a valuable skill. It helps with schoolwork, creative writing, and even future careers. With regular practice, your fingers will find the right keys without looking.",
+      "In 1969, astronauts landed on the Moon for the first time. Millions of people watched on television as Neil Armstrong took his famous first steps. His words, \"One small step for man,\" are remembered around the world."
+    ],
+    essays:[
+      "Exercise is important for people of all ages. It makes our hearts stronger, builds our muscles, and gives us more energy. Playing sports, riding a bike, or even walking the dog all count as exercise. Experts say children should be active for at least 60 minutes every day. When we move our bodies, we also improve our mood and sleep better at night.",
+      "Books have the power to change the way we see the world. A great story can take us to distant planets, deep oceans, or faraway kingdoms without leaving home. Reading also builds vocabulary and improves writing skills. People who read often tend to do better in school and understand others more easily. That is why teachers encourage students to read every single day.",
+      "Teamwork means working together toward a shared goal. On a soccer field, no player can win alone; passing, communicating, and trusting each other are essential. The same is true in the classroom and at home. When everyone contributes their strengths, the whole group succeeds. Great teammates celebrate each other's victories and help each other through mistakes."
+    ]
+  },
+  7:{
+    paragraphs:[
+      "Artificial intelligence is changing the way people work, learn, and communicate. These computer systems can recognize speech, translate languages, and even create art; however, they also raise important questions about privacy and fairness. As the technology grows, society must decide how to use it wisely.",
+      "The human brain contains about 86 billion neurons, each connected to thousands of others. Together, they form networks that control everything from breathing to complex thought. Remarkably, the brain uses roughly 20% of the body's energy, even though it makes up only about 2% of its weight.",
+      "Volcanoes are openings in the Earth's crust where molten rock, gas, and ash escape from below the surface. There are roughly 1,350 potentially active volcanoes worldwide, and about 500 of them have erupted in recorded history. Despite their danger, volcanic soil is among the most fertile on Earth."
+    ],
+    essays:[
+      "Climate change is one of the biggest challenges of our time. As temperatures rise, ice caps melt, sea levels climb, and weather patterns become less predictable. Scientists agree that human activity, especially the burning of fossil fuels, is the main cause. The good news is that solutions already exist: renewable energy, electric transport, and reforestation can all reduce emissions. Every country, company, and citizen has a role to play. The choices we make today will shape the world that future generations inherit.",
+      "Failure is often seen as something to avoid, but it can be one of life's greatest teachers. Thomas Edison tested thousands of materials before creating a working light bulb, and he famously said he had not failed but found many ways that did not work. Mistakes show us where to improve and build resilience for future challenges. People who embrace failure as part of learning often achieve more than those who fear it. The key is simple: reflect, adjust, and try again.",
+      "Social media connects billions of people, but it also changes how we spend our time. Studies suggest that teenagers spend an average of 4 to 5 hours per day on their phones; much of that time is spent scrolling through feeds. Used wisely, these platforms can spread ideas, build communities, and support learning. Used carelessly, they can harm sleep, focus, and self-esteem. The healthiest approach is balance: set limits, choose quality content, and remember that real life happens offline."
+    ]
+  }
+};
+/* ============ STATE ============ */
+const qs = new URLSearchParams(location.search);
+const ASSIGNMENT_ID = qs.get("assignment_id") || "";
+const AUTO_GRADE = Number(qs.get("grade") || 0) || null;
+const OPENED_FROM_TRACKER = !!ASSIGNMENT_ID;
+const $ = s => document.querySelector(s);
+const state = {grade:null, activity:null, text:"", spans:[], idx:0, correct:0, errors:0, start:null, timer:null, playing:false, lastText:"", sound:true, lastResult:null};
+const ENCOURAGE = {
+  3:["Outstanding! You're a typing superstar! 🌟","Amazing! Your flower is in full bloom! 🌻","Incredible work — Master Gardener level! 🏆"],
+  2:["Great job! Your garden is growing fast! 🌷","Wonderful typing! Keep it up! 💪","So close to three stars — one more round? 🌱"],
+  1:["Good effort! Every flower starts as a seed. 🌱","Nice try! Practice makes your garden grow! 🌿","You finished — that's what matters! Try again for more stars! ⭐"]
+};
 
-    if(AUTO_GRADE){
-      gradeSel.value = String(AUTO_GRADE);
-      gradeSel.disabled = true;
-    }
-    if(openedFromTracker){
-      assignmentHint.textContent = `Assignment: ${ASSIGNMENT_ID}`;
-    }
+/* ============ AUDIO ============ */
+let audioCtx=null;
+function ac(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); return audioCtx; }
+function beep(freq,dur,type,vol,when=0){
+  if(!state.sound) return;
+  try{
+    const c=ac(), o=c.createOscillator(), g=c.createGain(), t=c.currentTime+when;
+    o.type=type||"sine"; o.frequency.value=freq;
+    g.gain.setValueAtTime(vol||0.12,t); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+const sndKey  = ()=>beep(650,0.05,"square",0.05);
+const sndErr  = ()=>beep(160,0.18,"sawtooth",0.08);
+const sndWin  = ()=>{[523,659,784,1047].forEach((f,i)=>beep(f,0.22,"triangle",0.12,i*0.13));};
+const sndStar = i=>beep(880+i*160,0.25,"triangle",0.12);
 
-    const TEXTS_BY_GRADE = {
-      1: [
-        "cat dog sun hat",
-        "I can type.",
-        "We go to school.",
-        "The fish is big."
-      ],
-      2: [
-        "I can type words and short sentences.",
-        "Practice every day to get faster.",
-        "Look at the text and copy it carefully."
-      ],
-      3: [
-        "Typing carefully is better than typing quickly. Speed comes after accuracy.",
-        "Keep your fingers on the home row and press each key gently."
-      ],
-      4: [
-        "When you copy a paragraph, focus on spaces and punctuation. Neat typing helps the reader understand your ideas."
-      ],
-      5: [
-        "A good study plan includes short breaks. Work for a while, rest your eyes, and then continue. This helps your brain learn better."
-      ],
-      6: [
-        "Accuracy builds confidence, and confidence builds speed. Type smoothly, check your work, and correct mistakes without rushing."
-      ],
-      7: [
-        "Explain your answers clearly: show your method, check your work, and correct errors. Good typing is like good handwriting—neat, steady, and easy to understand."
-      ]
-    };
+/* ============ NAVIGATION ============ */
+function show(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  $(id).classList.add("active");
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+function goHome(){ stopTimer(); state.playing=false; renderGrades(); show("#screen-home"); }
+function quitGame(){ stopTimer(); state.playing=false; renderActivities(); show("#screen-activities"); }
 
-    let target = "";
-    let running = false;
-    let startTime = null;
-    let tickId = null;
-    let endReason = "";
-    let lastStats = null;
+/* ============ GRADE & ACTIVITY SCREENS ============ */
+function renderGrades(){
+  const g=$("#gradeGrid"); g.innerHTML="";
+  Object.keys(GRADES).forEach(k=>{
+    const gd=GRADES[k];
+    const acts=gd.acts.map(a=>ACT_META[a].icon+" "+ACT_META[a].title.split(" ")[0]).join(" · ");
+    const b=document.createElement("button");
+    b.className="grade-card";
+    b.innerHTML=`<div class="gnum" style="background:${gd.color}">${k}</div>
+      <div class="gname">Grade ${k}</div>
+      <div class="gname" style="color:${gd.color};font-size:12px">${gd.name}</div>
+      <div class="gacts">${acts}</div>`;
+    b.onclick=()=>pickGrade(+k);
+    g.appendChild(b);
+  });
+}
+function pickGrade(k){
+  state.grade=k; beep(500,0.08,"triangle",0.1);
+  renderActivities(); show("#screen-activities");
+}
+function renderActivities(){
+  const gd=GRADES[state.grade];
+  $("#crumbGrade").textContent=`Grade ${state.grade} · ${gd.name}`;
+  $("#actSub").textContent=`Target speed for Grade ${state.grade}: ${gd.targetWpm} WPM — beat it to earn 3 stars!`;
+  const g=$("#actGrid"); g.innerHTML="";
+  gd.acts.forEach(a=>{
+    const m=ACT_META[a];
+    const best=JSON.parse(localStorage.getItem(`ctg_${state.grade}_${a}`)||"null");
+    const b=document.createElement("button");
+    b.className="act-card";
+    b.innerHTML=`<span class="aicon">${m.icon}</span><h3>${m.title}</h3><p>${m.desc}</p>
+      <span class="best">${best?`🏅 Best: ${best.wpm} WPM · ${best.acc}%`:"✨ Not played yet"}</span>`;
+    b.onclick=()=>{ state.activity=a; startGame(true); };
+    g.appendChild(b);
+  });
+}
 
-    function pickText(){
-      const g = gradeSel.value === "auto" ? (AUTO_GRADE || "4") : gradeSel.value;
-      const grade = Math.min(7, Math.max(1, parseInt(g,10) || 4));
-      const list = TEXTS_BY_GRADE[grade] || TEXTS_BY_GRADE[4];
-      return list[Math.floor(Math.random()*list.length)];
-    }
+/* ============ GAME ============ */
+function sample(arr,n){
+  const c=[...arr];
+  for(let i=c.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[c[i],c[j]]=[c[j],c[i]];}
+  return c.slice(0,n);
+}
+function pickText(){
+  const pool=CONTENT[state.grade][state.activity];
+  if(state.activity==="words"){
+    const n = state.grade<=1?8: state.grade<=3?10:12;
+    let t;
+    do{ t=sample(pool,n).join(" "); }while(t===state.lastText);
+    return t;
+  }
+  let t;
+  do{ t=pool[Math.floor(Math.random()*pool.length)]; }while(pool.length>1 && t===state.lastText);
+  return t;
+}
+function startGame(fresh){
+  if(fresh||!state.text) state.text=pickText();
+  state.lastText=state.text;
+  state.idx=0; state.correct=0; state.errors=0; state.start=null; state.playing=true; state.lastResult=null;
+  stopTimer();
+  const gd=GRADES[state.grade], m=ACT_META[state.activity];
+  $("#crumbGame").textContent=`${m.icon} ${m.title} · Grade ${state.grade}`;
+  $("#hintline").textContent = state.grade<=2 ? "Type the highlighted letter. You can do it! 🌟" : "Type the text above — accuracy first, speed second!";
+  renderText(); renderKeyboard();
+  $("#kbd").style.display = (state.grade<=2)?"flex":$("#kbd").style.display;
+  $("#kbdToggleBtn").textContent = $("#kbd").style.display==="none"?"Show keyboard":"Hide keyboard";
+  $("#sendWrap").style.display = "none";
+  $("#sendStatus").textContent = "";
+  updateStats(); updateGarden();
+  show("#screen-game");
+  setTimeout(()=>$("#typecard").focus(),50);
+}
+function newRound(){ state.text=pickText(); startGame(false); }
+function renderText(){
+  const tc=$("#typecard"); tc.innerHTML="";
+  state.spans=[...state.text].map(ch=>{
+    const s=document.createElement("span");
+    s.className="c"; s.textContent=ch; tc.appendChild(s); return s;
+  });
+  if(state.spans[0]) state.spans[0].classList.add("current");
+}
+function stopTimer(){ if(state.timer){clearInterval(state.timer);state.timer=null;} }
+function fmtTime(sec){ return `${Math.floor(sec/60)}:${String(Math.floor(sec%60)).padStart(2,"0")}`; }
+function elapsed(){ return state.start ? (Date.now()-state.start)/1000 : 0; }
+function wpm(){ const m=elapsed()/60; return m>0 ? Math.round((state.correct/5)/m) : 0; }
+function acc(){ const t=state.correct+state.errors; return t? Math.round(state.correct/t*100) : 100; }
+function updateStats(){
+  $("#stWpm").textContent=wpm();
+  $("#stAcc").textContent=acc()+"%";
+  $("#stTime").textContent=fmtTime(elapsed());
+}
+function updateGarden(){
+  const p=state.text.length? state.idx/state.text.length : 0;
+  $("#pfill").style.width=(p*100)+"%";
+  const f=$("#flower");
+  f.textContent = p<0.25?"🌱": p<0.5?"🌿": p<0.75?"🌷": p<1?"🌻":"🌼";
+  f.style.transform=`scale(${0.8+p*0.7}) rotate(${p*10}deg)`;
+}
+function typeChar(ch){
+  if(!state.playing) return;
+  if(!state.start){ state.start=Date.now(); state.timer=setInterval(updateStats,400); }
+  const expected=state.text[state.idx];
+  if(ch===expected){
+    const s=state.spans[state.idx];
+    s.classList.remove("current"); s.classList.add("done");
+    state.idx++; state.correct++; sndKey();
+    if(state.idx>=state.text.length){ finish(); return; }
+    state.spans[state.idx].classList.add("current");
+    state.spans[state.idx].scrollIntoView({block:"nearest"});
+  }else{
+    state.errors++; sndErr();
+    const s=state.spans[state.idx];
+    s.classList.add("err"); setTimeout(()=>s.classList.remove("err"),280);
+  }
+  updateStats(); updateGarden(); highlightNext();
+}
+function finish(){
+  state.playing=false; stopTimer(); updateGarden();
+  const w=wpm(), a=acc(), t=fmtTime(elapsed());
+  let stars=1; if(a>=95) stars++; if(w>=GRADES[state.grade].targetWpm) stars++;
+  // save best
+  const key=`ctg_${state.grade}_${state.activity}`;
+  const prev=JSON.parse(localStorage.getItem(key)||"null");
+  if(!prev||w>prev.wpm||(w===prev.wpm&&a>prev.acc)) localStorage.setItem(key,JSON.stringify({wpm:w,acc:a}));
+  // fill results
+  $("#rWpm").textContent=w; $("#rAcc").textContent=a+"%"; $("#rTime").textContent=t;
+  const msgs=ENCOURAGE[stars];
+  $("#rEncourage").textContent=msgs[Math.floor(Math.random()*msgs.length)];
+  $("#rTitle").textContent = stars===3?"Three Stars — Wow!": stars===2?"Great Typing!":"Round Complete!";
+  state.lastResult = {
+    assignment_id: ASSIGNMENT_ID,
+    grade: state.grade,
+    activity: state.activity,
+    activity_title: ACT_META[state.activity]?.title || "Typing Activity",
+    stars,
+    wpm: w,
+    accuracy: a,
+    errors: state.errors,
+    duration_sec: Math.round(elapsed()),
+    time_label: t,
+    typed_chars: state.correct + state.errors
+  };
+  show("#screen-results");
+  sndWin(); launchConfetti();
+  const spans=document.querySelectorAll("#stars span");
+  spans.forEach(s=>s.classList.remove("on"));
+  for(let i=0;i<stars;i++) setTimeout(()=>{spans[i].classList.add("on"); sndStar(i);}, 400+i*450);
+  if(OPENED_FROM_TRACKER){
+    $("#sendWrap").style.display = "block";
+    $("#sendStatus").textContent = "Sending result back to the learner portal...";
+    setTimeout(()=>sendToTeacher(), 200);
+  }
+}
 
-    function renderPrompt(typed){
-      const t = typed || "";
-      const frag = document.createDocumentFragment();
-      for(let i=0;i<target.length;i++){
-        const span = document.createElement("span");
-        span.textContent = target[i];
-        if(i < t.length){
-          span.className = (t[i] === target[i]) ? "correct" : "incorrect";
-        }else if(i === t.length && running){
-          span.className = "current";
-        }
-        frag.appendChild(span);
-      }
-      promptEl.innerHTML = "";
-      promptEl.appendChild(frag);
-    }
-
-    function calcStats(){
-      const typed = inputEl.value || "";
-      const now = Date.now();
-      const elapsedSec = startTime ? Math.max(0.001, (now - startTime)/1000) : 0;
-      const minutes = elapsedSec / 60;
-      const typedChars = typed.length;
-      const grossWpm = minutes > 0 ? (typedChars / 5) / minutes : 0;
-      let correct = 0;
-      let wrong = 0;
-      const len = Math.min(typedChars, target.length);
-      for(let i=0;i<len;i++){
-        if(typed[i] === target[i]) correct++;
-        else wrong++;
-      }
-      if(typedChars > target.length) wrong += typedChars - target.length;
-      const accuracy = typedChars > 0 ? (correct / typedChars) : 1;
-      return { elapsedSec, grossWpm, accuracy, typedChars, wrong };
-    }
-
-    function updateHUD(){
-      const s = calcStats();
-      lastStats = s;
-      wpmValEl.textContent = String(Math.round(s.grossWpm));
-      accValEl.textContent = String(Math.round(s.accuracy*100)) + "%";
-      const dur = Math.max(20, Number(durationInp.value || 60));
-      const left = Math.max(0, dur - s.elapsedSec);
-      timeValEl.textContent = running ? (Math.ceil(left) + "s") : "—";
-    }
-
-    function reset(){
-      running = false;
-      startTime = null;
-      endReason = "";
-      clearInterval(tickId);
-      tickId = null;
-      inputEl.value = "";
-      inputEl.disabled = true;
-      stopBtn.disabled = true;
-      startBtn.disabled = false;
-      renderPrompt("");
-      updateHUD();
-      resultEl.style.display = "none";
-      sendWrap.style.display = "none";
-      sendStatus.textContent = "";
-    }
-
-    function newText(){
-      target = pickText();
-      renderPrompt("");
-      reset();
-    }
-
-    function start(){
-      if(running) return;
-      if(!target) target = pickText();
-      running = true;
-      startTime = Date.now();
-      inputEl.disabled = false;
-      inputEl.focus();
-      stopBtn.disabled = false;
-      startBtn.disabled = true;
-      resultEl.style.display = "none";
-      sendWrap.style.display = "none";
-      sendStatus.textContent = "";
-      renderPrompt("");
-      updateHUD();
-      tickId = setInterval(()=>{
-        updateHUD();
-        const dur = Math.max(20, Number(durationInp.value || 60));
-        const s = lastStats || calcStats();
-        if(s.elapsedSec >= dur){
-          end("Time's up!");
-        }
-      }, 120);
-    }
-
-    function end(reason){
-      if(!running) return;
-      running = false;
-      endReason = reason;
-      clearInterval(tickId);
-      tickId = null;
-      inputEl.disabled = true;
-      stopBtn.disabled = true;
-      startBtn.disabled = false;
-      updateHUD();
-      const s = lastStats || calcStats();
-      const wpm = Math.round(s.grossWpm);
-      const acc = Math.round(s.accuracy * 100);
-      resultEl.style.display = "block";
-      resultEl.innerHTML = `
-        <div style="font-weight:900;margin-bottom:6px">Result</div>
-        <div class="note">${escapeHtml(reason)}</div>
-        <div>
-          <span class="badge neutral">WPM: ${wpm}</span>
-          <span class="badge ${acc>=95?'good':acc>=85?'warn':'neutral'}">Accuracy: ${acc}%</span>
-          <span class="badge neutral">Errors: ${s.wrong}</span>
-        </div>
-      `;
-      if(openedFromTracker){
-        sendWrap.style.display = "block";
-      }
-    }
-
-    function escapeHtml(s){
-      return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
-    }
-
-    function sendToTeacher(){
-      const s = lastStats || calcStats();
-      const payload = {
-        type: "typing_speed_result",
-        assignment_id: ASSIGNMENT_ID,
-        wpm: Math.round(s.grossWpm),
-        accuracy: Math.round(s.accuracy*100),
-        typed_chars: s.typedChars,
-        errors: s.wrong,
-        duration_sec: Math.round(s.elapsedSec || 0),
-      };
-      try{
-        if(window.opener){
-          window.opener.postMessage(payload, window.location.origin);
-          sendStatus.textContent = "Sent. You can close this tab and return to the learner portal.";
-        }else{
-          // Fallback: write to localStorage so the learner portal tab can pick it up.
-          localStorage.setItem("typing_speed_result_pending", JSON.stringify(payload));
-          sendStatus.textContent = "Sent. Please return to the learner portal tab to finish saving.";
-        }
-      }catch(e){
-        try{
-          localStorage.setItem("typing_speed_result_pending", JSON.stringify(payload));
-          sendStatus.textContent = "Sent. Please return to the learner portal tab to finish saving.";
-        }catch(err){
-          sendStatus.textContent = "Send failed on this browser. Please return to the portal and try again.";
-        }
-      }
-    }
-
-    inputEl.addEventListener("input", ()=>{
-      if(!running) return;
-      renderPrompt(inputEl.value || "");
-      updateHUD();
+/* ============ KEYBOARD ============ */
+const KBD_ROWS=[["1","2","3","4","5","6","7","8","9","0"],
+                ["q","w","e","r","t","y","u","i","o","p"],
+                ["a","s","d","f","g","h","j","k","l",";","'"],
+                ["z","x","c","v","b","n","m",",",".","/"],
+                [" "]];
+let keyEls={};
+function renderKeyboard(){
+  const k=$("#kbd"); k.innerHTML=""; keyEls={};
+  KBD_ROWS.forEach(row=>{
+    const r=document.createElement("div"); r.className="krow";
+    row.forEach(ch=>{
+      const d=document.createElement("div");
+      d.className="key"+(ch===" "?" wide":"");
+      d.textContent=ch===" "?"space":ch;
+      d.onpointerdown=e=>{e.preventDefault(); typeChar(ch); d.classList.add("hit"); setTimeout(()=>d.classList.remove("hit"),150);};
+      r.appendChild(d); keyEls[ch]=d;
     });
-    inputEl.addEventListener("keydown", (e)=>{
-      if(e.key === "Escape"){ end("Stopped."); }
-      if(e.key === "Enter"){ end("Finished."); }
-    });
-    startBtn.addEventListener("click", start);
-    stopBtn.addEventListener("click", ()=>end("Stopped."));
-    newBtn.addEventListener("click", newText);
-    sendBtn.addEventListener("click", sendToTeacher);
+    k.appendChild(r);
+  });
+  const sh=document.createElement("div");
+  sh.className="key shiftkey"; sh.id="shiftKey"; sh.textContent="Shift ⇧";
+  k.querySelectorAll(".krow")[3].prepend(sh);
+  highlightNext();
+}
+function highlightNext(){
+  Object.values(keyEls).forEach(e=>e.classList.remove("next"));
+  const sh=$("#shiftKey"); if(sh) sh.classList.remove("next");
+  if(!state.playing||state.idx>=state.text.length) return;
+  const ch=state.text[state.idx];
+  const base=ch.toLowerCase();
+  if(keyEls[base]) keyEls[base].classList.add("next");
+  if(ch!==" " && ch===ch.toUpperCase() && ch!==base && sh) sh.classList.add("next");
+}
+function toggleKbd(){
+  const k=$("#kbd");
+  k.style.display = k.style.display==="none"?"flex":"none";
+  $("#kbdToggleBtn").textContent = k.style.display==="none"?"Show keyboard":"Hide keyboard";
+}
+function toggleSound(){
+  state.sound=!state.sound;
+  $("#soundBtn").textContent=state.sound?"🔊":"🔇";
+}
 
-    // init
-    target = pickText();
-    renderPrompt("");
-    reset();
-  </script>
+/* ============ RESULT HANDOFF ============ */
+function sendToTeacher(){
+  if(!OPENED_FROM_TRACKER){
+    $("#sendStatus").textContent = "This round was not opened from an assignment.";
+    return;
+  }
+  if(!state.lastResult){
+    $("#sendStatus").textContent = "Finish a round first, then send the result.";
+    return;
+  }
+  const payload = {
+    type: "typing_speed_result",
+    assignment_id: state.lastResult.assignment_id,
+    wpm: state.lastResult.wpm,
+    accuracy: state.lastResult.accuracy,
+    typed_chars: state.lastResult.typed_chars,
+    errors: state.lastResult.errors,
+    duration_sec: state.lastResult.duration_sec,
+    activity: state.lastResult.activity,
+    activity_title: state.lastResult.activity_title,
+    stars: state.lastResult.stars,
+    grade: state.lastResult.grade,
+    time_label: state.lastResult.time_label
+  };
+  try{
+    if(window.opener){
+      window.opener.postMessage(payload, window.location.origin);
+      $("#sendStatus").textContent = "Sent. Return to the learner portal to see it save.";
+      return;
+    }
+  }catch(e){}
+  try{
+    localStorage.setItem("typing_speed_result_pending", JSON.stringify(payload));
+    $("#sendStatus").textContent = "Sent. Return to the learner portal tab to finish saving.";
+  }catch(e){
+    $("#sendStatus").textContent = "Could not send automatically. Please try again.";
+  }
+}
+
+/* ============ CONFETTI ============ */
+function launchConfetti(){
+  const cv=$("#confetti"), ctx=cv.getContext("2d");
+  cv.width=innerWidth; cv.height=innerHeight;
+  const colors=["#2FA9BC","#FFC93C","#FF6B6B","#7BC96F","#9B7EDE","#FBF4E4"];
+  const ps=Array.from({length:160},()=>({
+    x:Math.random()*cv.width, y:-20-Math.random()*cv.height*0.5,
+    w:6+Math.random()*8, h:8+Math.random()*10, c:colors[Math.floor(Math.random()*colors.length)],
+    vy:2+Math.random()*3.5, vx:-1.5+Math.random()*3, rot:Math.random()*Math.PI, vr:-0.1+Math.random()*0.2
+  }));
+  const t0=performance.now();
+  (function frame(t){
+    ctx.clearRect(0,0,cv.width,cv.height);
+    ps.forEach(p=>{
+      p.y+=p.vy; p.x+=p.vx+Math.sin(p.y/40); p.rot+=p.vr;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot);
+      ctx.fillStyle=p.c; ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h); ctx.restore();
+    });
+    if(t-t0<3800) requestAnimationFrame(frame); else ctx.clearRect(0,0,cv.width,cv.height);
+  })(t0);
+}
+
+/* ============ INPUT ============ */
+document.addEventListener("keydown",e=>{
+  if(!state.playing) return;
+  if(e.key.length!==1) return;
+  e.preventDefault();
+  typeChar(e.key);
+});
+$("#typecard").addEventListener("click",()=>$("#typecard").focus());
+
+/* ============ INIT ============ */
+renderGrades();
+if(AUTO_GRADE && GRADES[AUTO_GRADE]){
+  state.grade = AUTO_GRADE;
+  renderActivities();
+  show("#screen-activities");
+}
+</script>
 </body>
 </html>
