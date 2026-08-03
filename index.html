@@ -1159,7 +1159,13 @@ function ProgressTab({assignments,setAssignments,resources}){
   });
 
   const resTitle = id => resources.find(r=>r.id===id)?.title || 'Unknown';
-  const resType = id => resources.find(r=>r.id===id)?.type || 'link';
+  const resType = id => {
+    const r = resources.find(x=>x.id===id);
+    if(!r) return 'link';
+    const u = String(r.url||'');
+    if((r.type||'')==='link' && /typing-speed-quest\.html/i.test(u)) return 'typing';
+    return r.type || 'link';
+  };
   const resUrl = id => resources.find(r=>r.id===id)?.url || '#';
 
   const saveProgress = async (id,status,note) => {
@@ -5386,7 +5392,19 @@ function LearnerPortalView(){
       .map(r=>[r.assignment_id, r])
   ),[results, learnerAuth]);
   const resTitle = id => resources.find(r=>r.id===id)?.title || 'Unknown';
-  const resType  = id => resources.find(r=>r.id===id)?.type || 'link';
+  const resType  = id => {
+    const r = resources.find(x=>x.id===id);
+    if(!r) return 'link';
+    const u = String(r.url||'');
+    if((r.type||'')==='link' && /typing-speed-quest\.html/i.test(u)) return 'typing';
+    return r.type || 'link';
+  };
+  const resUrl   = id => resources.find(r=>r.id===id)?.url || '#';
+    if(!r) return 'link';
+    const u = String(r.url||'');
+    if((r.type||'')==='link' && /typing-speed-quest\.html/i.test(u)) return 'typing';
+    return r.type || 'link';
+  };
   const resUrl   = id => resources.find(r=>r.id===id)?.url || '#';
 
   const startActivity = async(assignment)=>{
