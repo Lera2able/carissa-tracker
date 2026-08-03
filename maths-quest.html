@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grade 1 Maths Quest — Carissa LearnWorld</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --teal:#2FA9BC; --teal-dark:#157A8C; --navy:#1E4E5E; --cream:#FBF4E4;
+  --sun:#FFC93C; --coral:#FF6B6B; --green:#3BB273; --leaf:#7BC96F;
+  --purple:#9B7EDE; --ink:#23414d;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:'Nunito',sans-serif;color:var(--ink);min-height:100vh;overflow-x:hidden;
+  background:linear-gradient(180deg,#EAF7F5 0%,var(--cream) 60%,#FDF8EC 100%);
+}
+h1,h2,h3,.fk{font-family:'Fredoka',sans-serif}
+button{font-family:inherit;cursor:pointer;border:none}
+.deco{position:fixed;pointer-events:none;z-index:0;opacity:.5;font-size:44px;animation:float 9s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-26px) rotate(6deg)}}
+.wrap{position:relative;z-index:1;max-width:1000px;margin:0 auto;padding:18px 16px 60px}
+header{display:flex;align-items:center;gap:14px;justify-content:center;margin:10px 0 6px}
+.logo{width:76px;height:76px;border-radius:50%;object-fit:cover;border:4px solid #fff;box-shadow:0 6px 18px rgba(21,122,140,.28)}
+header h1{font-size:clamp(24px,4.5vw,36px);color:var(--navy);line-height:1.05;font-weight:700}
+header p{color:var(--teal-dark);font-weight:800;font-size:clamp(13px,2vw,16px)}
+.screen{display:none;animation:pop .35s ease}
+.screen.active{display:block}
+@keyframes pop{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+.section-title{text-align:center;font-size:clamp(20px,3vw,28px);color:var(--navy);margin:22px 0 4px;font-weight:700}
+.section-sub{text-align:center;color:#5b7c86;font-weight:700;margin-bottom:20px}
+.mode-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
+.mode-card{
+  background:#fff;border-radius:24px;padding:22px 18px;text-align:left;
+  box-shadow:0 6px 0 rgba(30,78,94,.12),0 14px 26px rgba(30,78,94,.10);
+  transition:transform .15s ease;border:3px solid transparent;width:100%;
+}
+.mode-card:hover{transform:translateY(-5px);border-color:var(--sun)}
+.mode-card .aicon{font-size:38px;display:block;margin-bottom:6px}
+.mode-card h3{color:var(--navy);font-size:19px;font-weight:700}
+.mode-card p{color:#66858e;font-weight:700;font-size:13px;margin:5px 0 9px}
+.mode-card .best{display:inline-block;background:var(--cream);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:900;color:var(--teal-dark)}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:12px 24px;
+  font-family:'Fredoka';font-weight:600;font-size:17px;color:#fff;background:var(--teal);
+  box-shadow:0 5px 0 var(--teal-dark);transition:transform .1s ease,box-shadow .1s ease;text-decoration:none;
+}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--teal-dark)}
+.btn.sun{background:var(--sun);color:#7a5b00;box-shadow:0 5px 0 #d9a520}
+.btn.sun:active{box-shadow:0 1px 0 #d9a520}
+.btn.coral{background:var(--coral);box-shadow:0 5px 0 #d94f4f}
+.btn.coral:active{box-shadow:0 1px 0 #d94f4f}
+.btn.ghost{background:#fff;color:var(--navy);box-shadow:0 5px 0 #d8e6ea}
+.btn.ghost:active{box-shadow:0 1px 0 #d8e6ea}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.backbar{display:flex;justify-content:space-between;align-items:center;margin:6px 0 10px;gap:10px;flex-wrap:wrap}
+.crumb{font-weight:900;color:var(--teal-dark);background:#fff;padding:8px 16px;border-radius:999px;box-shadow:0 3px 0 #d8e6ea}
+.stats{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
+.stat{background:#fff;border-radius:16px;padding:8px 18px;text-align:center;box-shadow:0 4px 0 rgba(30,78,94,.10);min-width:100px}
+.stat .sv{font-family:'Fredoka';font-size:24px;font-weight:700;color:var(--navy)}
+.stat .sl{font-size:11px;font-weight:900;letter-spacing:.5px;color:#7b98a0;text-transform:uppercase}
+.bloom{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.bbar{flex:1;height:22px;background:#fff;border-radius:999px;box-shadow:inset 0 3px 6px rgba(30,78,94,.15);overflow:hidden}
+.bfill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,var(--leaf),var(--teal));transition:width .35s ease}
+.bflower{font-size:42px;line-height:1;transition:transform .3s ease;filter:drop-shadow(0 4px 6px rgba(0,0,0,.15))}
+.bscore{font-family:'Fredoka';font-weight:700;color:var(--navy);min-width:64px;text-align:right;font-size:18px}
+.qcard{
+  background:#fff;border-radius:26px;padding:26px 26px 30px;
+  box-shadow:0 8px 0 rgba(30,78,94,.10),0 20px 40px rgba(30,78,94,.10);text-align:center;
+}
+.prompt{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.prompt h2{font-size:clamp(20px,3vw,26px);color:var(--navy);font-weight:700}
+.prompt h2 .bignum{color:var(--teal-dark);background:#DFF5F7;border-radius:12px;padding:0 14px;display:inline-block}
+.spk{
+  width:48px;height:48px;border-radius:50%;background:var(--sun);font-size:22px;flex:none;
+  box-shadow:0 4px 0 #d9a520;transition:transform .1s;display:flex;align-items:center;justify-content:center;
+}
+.spk:active{transform:translateY(3px);box-shadow:0 1px 0 #d9a520}
+.visual{margin:8px auto 18px;display:flex;justify-content:center;align-items:center;gap:18px;flex-wrap:wrap}
+.eq{font-family:'Fredoka';font-weight:700;font-size:clamp(34px,6vw,52px);color:var(--navy);margin:6px 0 18px}
+.eq .gap{color:var(--coral);background:#ffecec;border-radius:14px;padding:0 18px;display:inline-block}
+/* base ten blocks */
+.blocks{display:flex;gap:26px;align-items:flex-end;flex-wrap:wrap;justify-content:center;padding-bottom:30px}
+.tenbar{
+  width:30px;height:200px;border-radius:8px;background:linear-gradient(180deg,#2FA9BC,#157A8C);
+  box-shadow:0 4px 0 #0e5f6e;position:relative;
+}
+.tenbar::after{content:"10";position:absolute;bottom:-26px;left:50%;transform:translateX(-50%);
+  font-family:'Fredoka';font-weight:600;color:#7b98a0;font-size:14px}
+.unit{width:30px;height:30px;border-radius:8px;background:linear-gradient(180deg,#FFC93C,#e0a91e);
+  box-shadow:0 3px 0 #b98a12}
+.units{display:flex;flex-wrap:wrap;gap:8px;max-width:200px}
+/* option tiles */
+.opts{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:18px}
+.tile{
+  min-width:96px;padding:14px 24px;border-radius:18px;background:var(--cream);
+  font-family:'Fredoka';font-weight:600;font-size:30px;color:var(--navy);
+  box-shadow:0 5px 0 #e3d9bf;transition:all .12s ease;
+}
+.tile:hover{transform:translateY(-3px);background:#fff}
+.tile.sel{background:var(--sun);box-shadow:0 5px 0 #d9a520;transform:translateY(-4px) scale(1.05)}
+.tile.right{background:var(--leaf);color:#fff;box-shadow:0 5px 0 #57a04c;animation:pulse .5s ease}
+.tile.wrong{background:var(--coral);color:#fff;box-shadow:0 5px 0 #d94f4f;animation:shake .3s ease}
+.tile.lock{pointer-events:none}
+@keyframes pulse{0%{transform:scale(1)}40%{transform:scale(1.12)}100%{transform:scale(1)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+/* number answer pad */
+.ansrow{display:flex;gap:12px;justify-content:center;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.anstile{
+  min-width:88px;padding:12px 22px;border-radius:16px;background:var(--cream);
+  font-family:'Fredoka';font-weight:600;font-size:30px;color:var(--navy);
+  box-shadow:0 5px 0 #e3d9bf;transition:all .12s;
+}
+.anstile:hover{transform:translateY(-3px);background:#fff}
+.anstile.right{background:var(--leaf);color:#fff;box-shadow:0 5px 0 #57a04c}
+.anstile.wrong{background:var(--coral);color:#fff;box-shadow:0 5px 0 #d94f4f}
+.npad{display:flex;flex-direction:column;gap:8px;align-items:center;margin-bottom:14px}
+.nrow{display:flex;gap:8px}
+.nkey{
+  width:58px;height:52px;border-radius:14px;background:#fff;
+  font-family:'Fredoka';font-weight:600;font-size:24px;color:var(--navy);
+  box-shadow:0 4px 0 #d8e6ea;transition:all .1s;
+}
+.nkey:active{transform:translateY(3px);box-shadow:0 1px 0 #d8e6ea}
+.nkey.fn{background:#DFF5F7;color:var(--teal-dark);font-size:16px;width:auto;padding:0 18px}
+.ansbox{
+  min-width:150px;height:60px;border-radius:16px;background:#fff;border:3px solid var(--teal);
+  font-family:'Fredoka';font-weight:700;font-size:32px;color:var(--navy);
+  display:inline-flex;align-items:center;justify-content:center;padding:0 22px;
+}
+/* number line */
+.nlinewrap{width:100%;max-width:640px;margin:0 auto}
+.nlinewrap svg{width:100%;height:auto;display:block}
+/* coins */
+.coinrow{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;align-items:center}
+.coin{border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-family:'Fredoka';font-weight:700;color:#5c4a08;box-shadow:0 4px 0 rgba(0,0,0,.15), inset 0 0 0 4px rgba(255,255,255,.45)}
+.coin small{font-size:11px;font-weight:800;opacity:.7}
+/* table pattern */
+.ptable{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:8px 0 18px}
+.pcell{
+  min-width:64px;padding:12px 14px;border-radius:14px;background:var(--cream);
+  font-family:'Fredoka';font-weight:600;font-size:28px;color:var(--navy);box-shadow:0 4px 0 #e3d9bf;
+}
+.pcell.gap{background:#DFF5F7;color:var(--teal-dark);border:3px dashed var(--teal);box-shadow:none}
+.feedback{
+  min-height:40px;font-family:'Fredoka';font-weight:600;font-size:20px;margin-bottom:8px;
+  display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;
+}
+.feedback.good{color:var(--green)}
+.feedback.bad{color:var(--coral)}
+.nextwrap{text-align:center;min-height:60px}
+.result-card{
+  background:#fff;border-radius:30px;padding:36px 28px;text-align:center;max-width:560px;margin:14px auto;
+  box-shadow:0 10px 0 rgba(30,78,94,.10),0 24px 48px rgba(30,78,94,.14);
+}
+.stars{font-size:58px;letter-spacing:8px;margin:6px 0 2px;min-height:70px}
+.stars span{display:inline-block;opacity:0;transform:scale(0)}
+.stars span.on{animation:starpop .5s cubic-bezier(.2,2,.4,1) forwards}
+@keyframes starpop{to{opacity:1;transform:scale(1)}}
+.result-card h2{color:var(--navy);font-size:30px}
+.encourage{color:#66858e;font-weight:800;margin:8px 0 18px}
+.rstats{display:flex;gap:12px;justify-content:center;margin-bottom:22px;flex-wrap:wrap}
+.rstat{background:var(--cream);border-radius:18px;padding:12px 20px;min-width:96px}
+.rstat .sv{font-family:'Fredoka';font-size:30px;font-weight:700;color:var(--teal-dark)}
+.rstat .sl{font-size:11px;font-weight:900;color:#7b98a0;text-transform:uppercase}
+.rbtns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+footer{text-align:center;margin-top:34px;color:#8aa6ad;font-weight:700;font-size:13px}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:50}
+@media(max-width:560px){
+  .tile{min-width:80px;font-size:24px;padding:10px 16px}
+  .tenbar{height:130px}
+  .ansbox{min-width:110px;font-size:26px;height:52px}
+}
+</style>
+</head>
+<body>
+<div class="deco" style="top:12%;left:4%">☁️</div>
+<div class="deco" style="top:20%;right:5%;animation-delay:-3s">🦋</div>
+<div class="deco" style="bottom:14%;left:6%;animation-delay:-5s">🌈</div>
+<div class="deco" style="bottom:24%;right:7%;animation-delay:-7s">🐝</div>
+<canvas id="confetti"></canvas>
+
+<div class="wrap">
+  <header>
+    <img src="typing-garden-logo.jpg" alt="Carissa School logo" class="logo">
+    <div class="title">
+      <h1>Grade 1 · Maths Quest</h1>
+      <p>Ten number adventures — 10 sums each! 🔢</p>
+    </div>
+  </header>
+
+  <!-- TOPIC PICKER -->
+  <section id="screen-modes" class="screen active">
+    <h2 class="section-title">Choose Your Quest</h2>
+    <p class="section-sub">10 random sums in every quest. Reach 100 on the Bloom Meter to earn your stars!</p>
+    <div class="mode-grid" id="modeGrid"></div>
+    <div style="text-align:center;margin-top:26px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <a class="btn ghost" href="letter-hunt.html">🔍 Letter Hunt</a>
+      <a class="btn ghost" href="blend-detective.html">🕵️ Blend Detective</a>
+      <a class="btn ghost" href="word-maker.html">🚂 Word Maker</a>
+      <a class="btn ghost" href="sight-words.html">🦁 Sight Word Safari</a>
+      <a class="btn ghost" href="index.html">⌂ LearnWorld</a>
+    </div>
+  </section>
+
+  <!-- GAME -->
+  <section id="screen-game" class="screen">
+    <div class="backbar">
+      <button class="btn ghost" onclick="quitToModes()">← All Quests</button>
+      <span class="crumb" id="crumbMode"></span>
+      <button class="btn ghost" id="soundBtn" onclick="toggleSound()" title="Sound on/off">🔊</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="sv" id="stQ">0/10</div><div class="sl">Question</div></div>
+      <div class="stat"><div class="sv" id="stStreak">0🔥</div><div class="sl">Streak</div></div>
+      <div class="stat"><div class="sv" id="stTime">0:00</div><div class="sl">Time</div></div>
+    </div>
+    <div class="bloom">
+      <div class="bbar"><div class="bfill" id="bfill"></div></div>
+      <div class="bflower" id="bflower">🌱</div>
+      <div class="bscore" id="bscore">0/100</div>
+    </div>
+    <div class="qcard">
+      <div class="prompt">
+        <button class="spk" id="spkBtn" title="Hear the question">🔊</button>
+        <h2 id="promptText"></h2>
+      </div>
+      <div class="visual" id="visual"></div>
+      <div class="opts" id="optRow"></div>
+      <div class="ansrow" id="ansRow"></div>
+      <div class="npad" id="npad"></div>
+      <div class="feedback" id="feedback">&nbsp;</div>
+      <div class="nextwrap" id="nextWrap">
+        <button class="btn sun" id="submitBtn" style="font-size:20px;padding:14px 44px" disabled>Submit</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="screen-results" class="screen">
+    <div class="result-card">
+      <div class="stars" id="stars"><span>⭐</span><span>⭐</span><span>⭐</span></div>
+      <h2 id="rTitle">Quest Complete!</h2>
+      <p class="encourage" id="rEncourage"></p>
+      <div class="rstats">
+        <div class="rstat"><div class="sv" id="rQ">0</div><div class="sl">Correct</div></div>
+        <div class="rstat"><div class="sv" id="rAcc">0%</div><div class="sl">Accuracy</div></div>
+        <div class="rstat"><div class="sv" id="rTime">0:00</div><div class="sl">Time</div></div>
+      </div>
+      <div class="rbtns">
+        <button class="btn sun" onclick="startMode(state.mode)">🔄 New Sums</button>
+        <button class="btn" onclick="quitToModes()">🔢 All Quests</button>
+        <a class="btn coral" href="index.html">⌂ LearnWorld</a>
+      </div>
+      <div id="sendWrap" style="display:none;margin-top:16px">
+        <button class="btn" type="button" onclick="sendToTeacher()">📤 Send result to teacher</button>
+        <div id="sendStatus" style="margin-top:10px;color:#66858e;font-weight:800"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>Carissa LearnWorld · Growing great mathematicians, one sum at a time 🌻</footer>
+</div>
+
+<script>
+/* ============ HELPERS ============ */
+const qs = new URLSearchParams(location.search);
+const ASSIGNMENT_ID = qs.get("assignment_id") || "";
+const OPENED_FROM_TRACKER = !!ASSIGNMENT_ID;
+const $ = s => document.querySelector(s);
+const R = n => Math.floor(Math.random()*n);
+const R1 = n => 1+R(n);
+function sample(arr,n){
+  const c=[...arr];
+  for(let i=c.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[c[i],c[j]]=[c[j],c[i]];}
+  return c.slice(0,n);
+}
+const ONES=["zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen"];
+const TENS_W=["","","twenty","thirty","forty","fifty","sixty","seventy","eighty","ninety"];
+function numWord(n){
+  if(n<20) return ONES[n];
+  const t=Math.floor(n/10), o=n%10;
+  return o? `${TENS_W[t]}-${ONES[o]}` : TENS_W[t];
+}
+const ITEM_EMOJI=["🍎","🍬","🐚","⭐","🍪","🐤","🎈","🫐"];
+const NAMES=["Liam","Emma","Ava","Noah","Zoe","Ethan","Mia","Lucas","Ruby","Sam"];
+
+/* ============ VISUAL BUILDERS ============ */
+function vBlocks(tens,units){
+  let h=`<div class="blocks">`;
+  for(let i=0;i<tens;i++) h+=`<div class="tenbar"></div>`;
+  if(units){
+    h+=`<div class="units">`;
+    for(let i=0;i<units;i++) h+=`<div class="unit"></div>`;
+    h+=`</div>`;
+  }
+  return h+`</div>`;
+}
+function vEmojiRow(emoji,a,b){
+  let h=`<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:center">`;
+  h+=`<div style="display:flex;flex-wrap:wrap;gap:4px;max-width:200px">${emoji.repeat(a)}</div>`;
+  h+=`<span style="font-family:Fredoka;font-size:38px;font-weight:700;color:var(--teal-dark)">+</span>`;
+  h+=`<div style="display:flex;flex-wrap:wrap;gap:4px;max-width:200px">${emoji.repeat(b)}</div>`;
+  return h+`</div>`;
+}
+function vNumberLine(min,max,marks,hops){
+  // marks: array of {v:number,label:string}; hops: array of {from,to}
+  const W=620,pad=40,base=86,top=18;
+  const step=(W-2*pad)/(max-min);
+  const x=v=>pad+(v-min)*step;
+  let s=`<svg viewBox="0 0 ${W} 120">`;
+  s+=`<line x1="${pad-14}" y1="${base}" x2="${W-pad+18}" y2="${base}" stroke="#1E4E5E" stroke-width="4" stroke-linecap="round"/>`;
+  s+=`<path d="M ${W-pad+18} ${base} l -12 -7 v 14 z" fill="#1E4E5E"/>`;
+  for(let v=min;v<=max;v++){
+    s+=`<line x1="${x(v)}" y1="${base-9}" x2="${x(v)}" y2="${base+9}" stroke="#1E4E5E" stroke-width="3"/>`;
+    const mk=marks.find(m=>m.v===v);
+    const lbl = mk? mk.label : v;
+    const color = mk && mk.color ? mk.color : "#23414d";
+    const wgt = mk ? 700 : 600;
+    s+=`<text x="${x(v)}" y="${base+30}" text-anchor="middle" font-family="Fredoka" font-size="19" font-weight="${wgt}" fill="${color}">${lbl}</text>`;
+  }
+  (hops||[]).forEach((h,i)=>{
+    const y=base-16-i*22;
+    s+=`<path d="M ${x(h.from)} ${base-10} Q ${(x(h.from)+x(h.to))/2} ${y-26} ${x(h.to)} ${base-10}"
+      fill="none" stroke="#FF6B6B" stroke-width="4" stroke-linecap="round"/>`;
+    s+=`<path d="M ${x(h.to)} ${base-10} l -10 -2 l 5 8 z" fill="#FF6B6B"/>`;
+  });
+  return s+`</svg>`;
+}
+function vCoins(list){
+  // list: [{label,sub,r,color}]
+  let h=`<div class="coinrow">`;
+  list.forEach(c=>{
+    h+=`<div class="coin" style="width:${c.r*2}px;height:${c.r*2}px;background:${c.color};font-size:${c.r*0.62}px">${c.label}<small>${c.sub}</small></div>`;
+  });
+  return h+`</div>`;
+}
+function vTable(vals,gapIdx){
+  let h=`<div class="ptable">`;
+  vals.forEach((v,i)=>{ h+=`<div class="pcell ${i===gapIdx?"gap":""}">${i===gapIdx?"?":v}</div>`; });
+  return h+`</div>`;
+}
+
+/* ============ QUESTION GENERATORS ============
+   Each returns:
+   { prompt, spoken, visual, kind:'choice'|'num', options?, answer, correction }
+*/
+const GEN = {
+  /* 1 — Tens & units to 99 */
+  place(){
+    const n=10+R(90);
+    const t=Math.floor(n/10), u=n%10;
+    return {
+      prompt:`How many blocks are there?`,
+      spoken:`Count the ten bars and the units. How many blocks are there?`,
+      visual:vBlocks(t,u),
+      kind:"choice",
+      options:genNumOptions(n,4,1,99),
+      answer:n,
+      correction:`Count the tens first: ${t} ten${t>1?"s":""} = ${t*10}. Then the units: ${u}. So ${t*10} + ${u} = <b>${n}</b>.`
+    };
+  },
+  /* 2 — Even or odd */
+  evenodd(){
+    const n=1+R(20);
+    const ans=n%2===0?"Even":"Odd";
+    return {
+      prompt:`Is <span class="bignum">${n}</span> even or odd?`,
+      spoken:`Is ${n} even or odd?`,
+      visual:"",
+      kind:"choice",
+      options:["Even","Odd"],
+      answer:ans,
+      correction: n%2===0
+        ? `<b>${n}</b> ends in ${n%10}. Numbers ending in 0, 2, 4, 6 or 8 are <b>even</b> — they split into two equal groups.`
+        : `<b>${n}</b> ends in ${n%10}. Numbers ending in 1, 3, 5, 7 or 9 are <b>odd</b> — one is always left over.`
+    };
+  },
+  /* 3 — Skip-counting table */
+  skiptable(){
+    const step=[2,3,5,10][R(4)];
+    const start=step*[0,1,2][R(3)];
+    const vals=[0,1,2,3,4,5].map(i=>start+i*step);
+    const gi=1+R(5);
+    const ans=vals[gi];
+    return {
+      prompt:`Count by ${step}s. What number is missing?`,
+      spoken:`Count by ${step}s. What number is missing from the table?`,
+      visual:vTable(vals,gi),
+      kind:"choice",
+      options:genNumOptions(ans,4,0,100),
+      answer:ans,
+      correction:`The pattern counts by <b>${step}</b>. Before the gap is ${vals[gi-1]}, so ${vals[gi-1]} + ${step} = <b>${ans}</b>.`
+    };
+  },
+  /* 4 — Numbers in words */
+  numwords(){
+    const n=R(100);
+    const w=numWord(n);
+    const opts=new Set([w]);
+    let guard=0;
+    while(opts.size<4 && guard<80){
+      opts.add(numWord(R(100))); guard++;
+    }
+    return {
+      prompt:`Which is <span class="bignum">${n}</span> in words?`,
+      spoken:`Which is the number ${n}, written in words?`,
+      visual:"",
+      kind:"choice",
+      options:sample([...opts],4),
+      answer:w,
+      correction:`<b>${n}</b> in words is <b>${w}</b>. ${n>=20?`Say the tens (${TENS_W[Math.floor(n/10)]}) then the units (${ONES[n%10]}).`:"Say it slowly: "+w+"."}`
+    };
+  },
+  /* 5 — Sequences up/down */
+  sequence(){
+    const step=[1,2,3,5,10][R(5)];
+    const dir=step===1? (R(2)?1:-1) : (R(3)?1:-1);
+    let start;
+    if(dir===1) start=R(60-step*4);
+    else start=step*4+R(50);
+    const vals=[0,1,2,3].map(i=>start+dir*i*step);
+    if(vals.some(v=>v<0)) return GEN.sequence();
+    const gi=1+R(3);
+    const shown=vals.map((v,i)=>i===gi?"<span class='gap'>?</span>":v).join(", ");
+    return {
+      prompt:`What comes next? <span class="bignum" style="font-size:.85em">${shown}</span>`,
+      spoken:`Here is a number pattern: ${vals.join(", ")}. What number is missing?`,
+      visual:"",
+      kind:"choice",
+      options:genNumOptions(vals[gi],4,0,100),
+      answer:vals[gi],
+      correction:`The pattern counts ${dir===1?"up":"down"} by <b>${step}</b>. ${vals[gi-1]} ${dir===1?"+":"−"} ${step} = <b>${vals[gi]}</b>.`
+    };
+  },
+  /* 6 — Number lines */
+  numline(){
+    const min=R(8), max=min+10;
+    const v=min+1+R(9);
+    return {
+      prompt:`Where is the dot? Which number does it show?`,
+      spoken:`Look at the number line. Which number does the dot show?`,
+      visual:`<div class="nlinewrap">${vNumberLine(min,max,[{v,label:"?",color:"#FF6B6B"}])}</div>`,
+      kind:"choice",
+      options:genNumOptions(v,4,min,max),
+      answer:v,
+      correction:`Find ${min} on the line and count the marks one by one: ${Array.from({length:v-min},(_,i)=>min+i+1).join(", ")}. The dot is on <b>${v}</b>.`
+    };
+  },
+  /* 7 — Addition to 10 */
+  add10(){
+    const a=R(9);
+    const b=R(10-a);
+    const ans=a+b;
+    const em=ITEM_EMOJI[R(ITEM_EMOJI.length)];
+    return {
+      prompt:`Add. What is the sum?`,
+      spoken:`What is ${a} plus ${b}?`,
+      visual:vEmojiRow(em,a,b)+`<div class="eq">${a} + ${b} = <span class="gap">?</span></div>`,
+      kind:"choice",
+      options:genNumOptions(ans,4,0,10),
+      answer:ans,
+      correction:`Start at ${a} and count on ${b} more: ${Array.from({length:b},(_,i)=>a+i+1).join(", ")||"(adding 0 changes nothing)"}. So ${a} + ${b} = <b>${ans}</b>.`
+    };
+  },
+  /* 8 — Addition on a number line */
+  addline(){
+    const a=1+R(7);
+    const b=1+R(9-a);
+    const ans=a+b;
+    const hops=Array.from({length:b},(_,i)=>({from:a+i,to:a+i+1}));
+    return {
+      prompt:`Which sum matches the jumps on the number line?`,
+      spoken:`Look at the jumps on the number line. Which sum do they show?`,
+      visual:`<div class="nlinewrap">${vNumberLine(0,10,[{v:a,label:a,color:"#2FA9BC"},{v:ans,label:ans,color:"#FF6B6B"}],hops)}</div>`,
+      kind:"choice",
+      options:sample([`${a} + ${b} = ${ans}`, `${a} + ${b+1} = ${ans}`, `${a} + ${b} = ${ans-1}`, `${ans} + ${a} = ${b}`],4),
+      answer:`${a} + ${b} = ${ans}`,
+      correction:`The line starts at <b>${a}</b> and makes <b>${b}</b> jump${b>1?"s":""}, landing on <b>${ans}</b>. So the sum is ${a} + ${b} = <b>${ans}</b>.`
+    };
+  },
+  /* 9 — Money word problems (South African rand) */
+  moneywp(){
+    const name=NAMES[R(NAMES.length)];
+    const kind=R(3);
+    if(kind===0){ // buy two things
+      const a=[2,3,4,5,6][R(5)], b=[1,2,3,4][R(4)];
+      const ans=a+b;
+      return {
+        prompt:`${name} buys a sticker for <b>R${a}</b> and a sweet for <b>R${b}</b>. How much altogether?`,
+        spoken:`${name} buys a sticker for ${a} rand and a sweet for ${b} rand. How much money is that altogether?`,
+        visual:`<div style="font-size:52px">🏷️ + 🍬</div>`,
+        kind:"choice",
+        options:genNumOptions(ans,4,2,15).map(v=>"R"+v),
+        answer:"R"+ans,
+        correction:`Add the two prices: R${a} + R${b} = <b>R${ans}</b>.`
+      };
+    }
+    if(kind===1){ // change / left over
+      const start=[10,8,9,7][R(4)];
+      const spend=1+R(start-2);
+      const ans=start-spend;
+      return {
+        prompt:`${name} has <b>R${start}</b> and spends <b>R${spend}</b>. How much is left?`,
+        spoken:`${name} has ${start} rand and spends ${spend} rand. How much money is left?`,
+        visual:`<div style="font-size:52px">💰 ➖ 🛒</div>`,
+        kind:"choice",
+        options:genNumOptions(ans,4,0,12).map(v=>"R"+v),
+        answer:"R"+ans,
+        correction:`Take away what was spent: R${start} − R${spend} = <b>R${ans}</b> left.`
+      };
+    }
+    // more money needed
+    const price=[8,9,10,7][R(4)];
+    const has=1+R(price-2);
+    const ans=price-has;
+    return {
+      prompt:`A toy costs <b>R${price}</b>. ${name} has <b>R${has}</b>. How much more is needed?`,
+      spoken:`A toy costs ${price} rand. ${name} has ${has} rand. How much more money does ${name} need?`,
+      visual:`<div style="font-size:52px">🧸 ❓</div>`,
+      kind:"choice",
+      options:genNumOptions(ans,4,1,10).map(v=>"R"+v),
+      answer:"R"+ans,
+      correction:`Count up from R${has} to R${price}: that is <b>R${ans}</b> more (R${price} − R${has} = R${ans}).`
+    };
+  },
+  /* 10 — Count the coins */
+  countcoins(){
+    const types=[
+      {v:1,label:"R1",sub:"rand",r:26,color:"linear-gradient(160deg,#f6d97a,#d9a520)"},
+      {v:2,label:"R2",sub:"rand",r:29,color:"linear-gradient(160deg,#e8eef2,#aebbc4)"},
+      {v:5,label:"R5",sub:"rand",r:32,color:"linear-gradient(160deg,#f6d97a,#c8961a)"}
+    ];
+    const counts=[0,0,0].map(()=>R(3));
+    if(counts.every(c=>c===0)) counts[R(3)]=2;
+    const ans=counts[0]*1+counts[1]*2+counts[2]*5;
+    const coins=[];
+    counts.forEach((c,i)=>{ for(let j=0;j<c;j++) coins.push(types[i]); });
+    const parts=[];
+    counts.forEach((c,i)=>{ if(c) parts.push(`${c} × R${types[i].v} = R${c*types[i].v}`); });
+    return {
+      prompt:`How much money is there in total?`,
+      spoken:`Count all the coins. How much money is there in total?`,
+      visual:vCoins(sample(coins,coins.length)),
+      kind:"choice",
+      options:genNumOptions(ans,4,1,25).map(v=>"R"+v),
+      answer:"R"+ans,
+      correction:`Count each coin group: ${parts.join("; ")}. Add them up: <b>R${ans}</b> in total.`
+    };
+  }
+};
+function genNumOptions(ans,n,lo,hi){
+  const set=new Set([ans]);
+  let guard=0;
+  while(set.size<n && guard<100){
+    let d=ans+(R(11)-5);
+    if(d===ans) d=ans+n+set.size;
+    if(d>=lo&&d<=hi) set.add(d);
+    guard++;
+  }
+  while(set.size<n) set.add(Math.min(hi,ans+set.size+1));
+  return sample([...set],n);
+}
+/* ============ TOPICS ============ */
+const MODES = {
+  "place":     {icon:"🧱", title:"Tens & Units",        desc:"Count the blocks: how many tens and units up to 99?", gen:GEN.place},
+  "evenodd":   {icon:"⚖️", title:"Even or Odd?",        desc:"Is the number even or odd?", gen:GEN.evenodd},
+  "skiptable": {icon:"🪜", title:"Skip-Count Tables",   desc:"Count by 2s, 3s, 5s and 10s — find the missing number.", gen:GEN.skiptable},
+  "numwords":  {icon:"✍️", title:"Numbers in Words",    desc:"Match the number to how it is written in words.", gen:GEN.numwords},
+  "sequence":  {icon:"📈", title:"Number Patterns",     desc:"Count up and down by 1, 2, 3, 5 and 10.", gen:GEN.sequence},
+  "numline":   {icon:"📏", title:"Number Lines",        desc:"Read where the dot sits on the number line.", gen:GEN.numline},
+  "add10":     {icon:"➕", title:"Addition to 10",      desc:"Add two numbers with a sum up to 10.", gen:GEN.add10},
+  "addline":   {icon:"🐸", title:"Hop & Add",           desc:"Read the jumps on the number line to find the sum.", gen:GEN.addline},
+  "moneywp":   {icon:"🛍️", title:"Money Stories",       desc:"Word problems with rand — buying, spending, saving.", gen:GEN.moneywp},
+  "countcoins":{icon:"🪙", title:"Count the Coins",     desc:"Add up R1, R2 and R5 coins.", gen:GEN.countcoins}
+};
+const QUESTIONS_PER_ROUND=10;
+const state = {mode:null, q:null, selected:null, input:"", locked:false,
+               qi:0, asked:0, correct:0, streak:0, score:0, start:null, timer:null, sound:true, lastSig:"", lastResult:null};
+
+/* ============ AUDIO ============ */
+let audioCtx=null;
+function ac(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); return audioCtx; }
+function beep(freq,dur,type,vol,when=0){
+  if(!state.sound) return;
+  try{
+    const c=ac(), o=c.createOscillator(), g=c.createGain(), t=c.currentTime+when;
+    o.type=type||"sine"; o.frequency.value=freq;
+    g.gain.setValueAtTime(vol||0.12,t); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+const sndPick = ()=>beep(520,0.06,"triangle",0.08);
+const sndGood = ()=>{beep(660,0.12,"triangle",0.12); beep(880,0.18,"triangle",0.12,0.1);};
+const sndBad  = ()=>beep(170,0.25,"sawtooth",0.07);
+const sndWin  = ()=>{[523,659,784,1047].forEach((f,i)=>beep(f,0.22,"triangle",0.12,i*0.13));};
+const sndStar = i=>beep(880+i*160,0.25,"triangle",0.12);
+function speak(text){
+  if(!state.sound || !("speechSynthesis" in window)) return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.rate=0.95; u.pitch=1.05; u.lang="en-US";
+  speechSynthesis.speak(u);
+}
+function toggleSound(){
+  state.sound=!state.sound;
+  if(!state.sound && "speechSynthesis" in window) speechSynthesis.cancel();
+  $("#soundBtn").textContent=state.sound?"🔊":"🔇";
+}
+
+/* ============ NAV ============ */
+function show(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  $(id).classList.add("active");
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+function renderModes(){
+  const g=$("#modeGrid"); g.innerHTML="";
+  Object.keys(MODES).forEach(k=>{
+    const m=MODES[k];
+    const best=JSON.parse(localStorage.getItem(`cmq_${k}`)||"null");
+    const b=document.createElement("button");
+    b.className="mode-card";
+    b.innerHTML=`<span class="aicon">${m.icon}</span><h3>${m.title}</h3><p>${m.desc}</p>
+      <span class="best">${best?`🏅 Best: ${best.stars}⭐ · ${best.acc}%`:"✨ Not played yet"}</span>`;
+    b.onclick=()=>startMode(k);
+    g.appendChild(b);
+  });
+}
+function quitToModes(){ stopTimer(); renderModes(); show("#screen-modes"); }
+
+/* ============ QUESTION FLOW ============ */
+function makeQuestion(){
+  const m=MODES[state.mode];
+  let q, guard=0;
+  do{ q=m.gen(); guard++; }while(q.prompt===state.lastSig && guard<10);
+  state.lastSig=q.prompt;
+  state.q=q; state.selected=null; state.input=""; state.locked=false;
+  state.qi++;
+  $("#feedback").innerHTML="&nbsp;";
+  $("#feedback").className="feedback";
+  $("#promptText").innerHTML=q.prompt;
+  $("#visual").innerHTML=q.visual||"";
+  $("#visual").style.display=q.visual?"flex":"none";
+  const opts=$("#optRow"); opts.innerHTML="";
+  $("#ansRow").innerHTML=""; $("#npad").innerHTML="";
+  $("#nextWrap").innerHTML=`<button class="btn sun" id="submitBtn" style="font-size:20px;padding:14px 44px" disabled>Submit</button>`;
+  $("#submitBtn").onclick=submitAnswer;
+
+  if(q.kind==="choice"){
+    q.options.forEach(o=>{
+      const t=document.createElement("button");
+      t.className="tile"; t.textContent=o; t.dataset.val=o;
+      t.onclick=()=>{
+        if(state.locked) return;
+        document.querySelectorAll("#optRow .tile.sel").forEach(e=>e.classList.remove("sel"));
+        t.classList.add("sel"); state.selected=o; sndPick();
+        $("#submitBtn").disabled=false;
+      };
+      opts.appendChild(t);
+    });
+  }else{ /* numeric keypad */
+    renderNumPad();
+  }
+  updateHud();
+}
+function renderNumPad(){
+  const row=$("#ansRow");
+  row.innerHTML=`<div class="ansbox" id="ansbox">&nbsp;</div>`;
+  const pad=$("#npad");
+  pad.innerHTML=`<div class="nrow">${[1,2,3,4,5].map(n=>`<button class="nkey" data-n="${n}">${n}</button>`).join("")}</div>
+    <div class="nrow">${[6,7,8,9,0].map(n=>`<button class="nkey" data-n="${n}">${n}</button>`).join("")}
+    <button class="nkey fn" id="bkBtn">⌫</button></div>`;
+  pad.querySelectorAll(".nkey[data-n]").forEach(k=>{
+    k.onclick=()=>{
+      if(state.locked) return;
+      if(state.input.length>=3) return;
+      state.input+=k.dataset.n; sndPick();
+      $("#ansbox").textContent=state.input;
+      $("#submitBtn").disabled=state.input.length===0;
+    };
+  });
+  $("#bkBtn").onclick=()=>{
+    if(state.locked) return;
+    state.input=state.input.slice(0,-1);
+    $("#ansbox").innerHTML=state.input||"&nbsp;";
+    $("#submitBtn").disabled=state.input.length===0;
+  };
+}
+
+/* ============ ANSWERING ============ */
+function submitAnswer(){
+  if(state.locked) return;
+  const q=state.q;
+  const val = q.kind==="choice" ? state.selected : state.input;
+  if(val===null || val==="") return;
+  state.locked=true; state.asked++;
+  const good = String(val)===String(q.answer);
+  const fb=$("#feedback");
+
+  if(q.kind==="choice"){
+    document.querySelectorAll("#optRow .tile").forEach(t=>{
+      t.classList.add("lock");
+      if(String(t.dataset.val)===String(q.answer)) t.classList.add("right");
+      else if(String(t.dataset.val)===String(val)) t.classList.add("wrong");
+    });
+  }else{
+    const box=$("#ansbox");
+    box.style.borderColor = good? "var(--green)" : "var(--coral)";
+    box.style.background = good? "#e7f6ec" : "#ffecec";
+    document.querySelectorAll(".nkey").forEach(k=>k.style.pointerEvents="none");
+  }
+
+  if(good){
+    state.correct++; state.streak++;
+    state.score=Math.min(100,state.score+Math.min(9+state.streak,15));
+    const cheers=["Correct! 🎉","Yes! 🌟","Brilliant! 🧠","Super sum! ⭐","Nailed it! 🌼"];
+    fb.innerHTML=cheers[R(cheers.length)];
+    fb.classList.add("good"); sndGood();
+    speak(["Yes!","Correct!","Well done!"][R(3)]);
+  }else{
+    state.streak=0;
+    state.score=Math.max(0,state.score-5);
+    fb.innerHTML=`📖 <b>Let's fix it:</b> ${q.correction}`;
+    fb.classList.add("bad"); sndBad();
+    speak("Let's look at the answer. "+stripTags(q.correction));
+  }
+  updateHud();
+  const done = state.asked>=QUESTIONS_PER_ROUND || state.score>=100;
+  const delay = good? 1100 : 100;
+  setTimeout(()=>{
+    if(done && good){ finish(); return; }
+    if(done && !good){ showNextBtn("See Results 🏁", finish); return; }
+    if(good){ makeQuestion(); speak(state.q.spoken); }
+    else showNextBtn("Next Question →", ()=>{ makeQuestion(); speak(state.q.spoken); });
+  }, delay);
+}
+function showNextBtn(label, fn){
+  $("#nextWrap").innerHTML=`<button class="btn" id="nextBtn" style="font-size:19px;padding:12px 34px">${label}</button>`;
+  $("#nextBtn").onclick=fn;
+  $("#nextBtn").focus();
+}
+function stripTags(h){ const d=document.createElement("div"); d.innerHTML=h; return d.textContent; }
+
+/* ============ HUD / TIMER ============ */
+function stopTimer(){ if(state.timer){clearInterval(state.timer);state.timer=null;} }
+function elapsed(){ return state.start ? (Date.now()-state.start)/1000 : 0; }
+function fmtTime(s){ return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,"0")}`; }
+function updateHud(){
+  $("#stQ").textContent=Math.min(state.asked+1,QUESTIONS_PER_ROUND)+"/"+QUESTIONS_PER_ROUND;
+  $("#stStreak").textContent=state.streak+"🔥";
+  $("#stTime").textContent=fmtTime(elapsed());
+  $("#bfill").style.width=state.score+"%";
+  $("#bscore").textContent=state.score+"/100";
+  const p=state.score/100, f=$("#bflower");
+  f.textContent = p<0.25?"🌱": p<0.5?"🌿": p<0.75?"🌷": p<1?"🌻":"🌼";
+  f.style.transform=`scale(${0.8+p*0.7})`;
+}
+
+/* ============ START / FINISH ============ */
+function startMode(mode){
+  state.mode=mode;
+  state.qi=0; state.asked=0; state.correct=0; state.streak=0; state.score=0; state.lastSig=""; state.lastResult=null;
+  state.start=Date.now(); stopTimer();
+  state.timer=setInterval(updateHud,400);
+  $("#crumbMode").textContent=`${MODES[mode].icon} ${MODES[mode].title} · Grade 1`;
+  $("#sendWrap").style.display="none";
+  $("#sendStatus").textContent="";
+  updateHud(); makeQuestion();
+  show("#screen-game");
+  setTimeout(()=>speak(state.q.spoken), 450);
+}
+function finish(){
+  stopTimer();
+  const acc=state.asked? Math.round(state.correct/state.asked*100):100;
+  let stars=1; if(acc>=70) stars++; if(acc>=90) stars++;
+  const prev=JSON.parse(localStorage.getItem(`cmq_${state.mode}`)||"null");
+  if(!prev||stars>prev.stars||(stars===prev.stars&&acc>prev.acc))
+    localStorage.setItem(`cmq_${state.mode}`,JSON.stringify({stars,acc}));
+  $("#rQ").textContent=`${state.correct}/${state.asked}`;
+  $("#rAcc").textContent=acc+"%";
+  $("#rTime").textContent=fmtTime(elapsed());
+  $("#rTitle").textContent = stars===3?"Maths Master!": stars===2?"Great Quest!":"Quest Complete!";
+  $("#rEncourage").textContent = stars===3
+    ? "Numbers bow before you! 🌟"
+    : stars===2 ? "Sharp maths brain! One more quest for three stars? 🌷"
+    : "Every sum you solve helps your garden grow! 🌱";
+  state.lastResult = {
+    assignment_id: ASSIGNMENT_ID,
+    activity_title: `Maths Quest — ${MODES[state.mode]?.title || 'Grade 1'}`,
+    stars,
+    accuracy: acc,
+    typed_chars: state.asked,
+    errors: Math.max(0, state.asked - state.correct),
+    duration_sec: Math.round(elapsed()),
+    time_label: fmtTime(elapsed()),
+    result_summary: `Maths Quest (${MODES[state.mode]?.title || 'Grade 1'}) — Correct: ${state.correct}/${state.asked}, Accuracy: ${acc}%, Time: ${fmtTime(elapsed())}, Stars: ${stars}/3`
+  };
+  show("#screen-results");
+  sndWin(); launchConfetti();
+  speak(stars===3?"Amazing! Quest complete!":"Well done! Quest complete!");
+  const spans=document.querySelectorAll("#stars span");
+  spans.forEach(s=>s.classList.remove("on"));
+  for(let i=0;i<stars;i++) setTimeout(()=>{spans[i].classList.add("on"); sndStar(i);}, 400+i*450);
+  if(OPENED_FROM_TRACKER){
+    $("#sendWrap").style.display="block";
+    $("#sendStatus").textContent="Sending result back to the learner portal...";
+    setTimeout(()=>sendToTeacher(), 200);
+  }
+}
+
+function sendToTeacher(){
+  if(!OPENED_FROM_TRACKER){
+    $("#sendStatus").textContent = "This quest was not opened from an assignment.";
+    return;
+  }
+  if(!state.lastResult){
+    $("#sendStatus").textContent = "Finish the quest first, then send the result.";
+    return;
+  }
+  const payload = {
+    type: "typing_speed_result",
+    assignment_id: state.lastResult.assignment_id,
+    wpm: 0,
+    accuracy: state.lastResult.accuracy,
+    typed_chars: state.lastResult.typed_chars,
+    errors: state.lastResult.errors,
+    duration_sec: state.lastResult.duration_sec,
+    activity_title: state.lastResult.activity_title,
+    stars: state.lastResult.stars,
+    time_label: state.lastResult.time_label,
+    result_summary: state.lastResult.result_summary
+  };
+  try{
+    if(window.opener){
+      window.opener.postMessage(payload, window.location.origin);
+      $("#sendStatus").textContent = "Sent. Return to the learner portal to see it save.";
+      return;
+    }
+  }catch(e){}
+  try{
+    localStorage.setItem("typing_speed_result_pending", JSON.stringify(payload));
+    $("#sendStatus").textContent = "Sent. Return to the learner portal tab to finish saving.";
+  }catch(e){
+    $("#sendStatus").textContent = "Could not send automatically. Please try again.";
+  }
+}
+
+/* ============ CONFETTI ============ */
+function launchConfetti(){
+  const cv=$("#confetti"), ctx=cv.getContext("2d");
+  cv.width=innerWidth; cv.height=innerHeight;
+  const colors=["#2FA9BC","#FFC93C","#FF6B6B","#7BC96F","#9B7EDE","#FBF4E4"];
+  const ps=Array.from({length:160},()=>({
+    x:Math.random()*cv.width, y:-20-Math.random()*cv.height*0.5,
+    w:6+Math.random()*8, h:8+Math.random()*10, c:colors[Math.floor(Math.random()*colors.length)],
+    vy:2+Math.random()*3.5, vx:-1.5+Math.random()*3, rot:Math.random()*Math.PI, vr:-0.1+Math.random()*0.2
+  }));
+  const t0=performance.now();
+  (function frame(t){
+    ctx.clearRect(0,0,cv.width,cv.height);
+    ps.forEach(p=>{
+      p.y+=p.vy; p.x+=p.vx+Math.sin(p.y/40); p.rot+=p.vr;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot);
+      ctx.fillStyle=p.c; ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h); ctx.restore();
+    });
+    if(t-t0<3800) requestAnimationFrame(frame); else ctx.clearRect(0,0,cv.width,cv.height);
+  })(t0);
+}
+
+/* ============ EVENTS & INIT ============ */
+$("#spkBtn").onclick=()=>speak(state.q? state.q.spoken : "");
+document.addEventListener("keydown",e=>{
+  if(!$("#screen-game").classList.contains("active")) return;
+  const q=state.q;
+  if(q && q.kind==="num" && /^[0-9]$/.test(e.key) && !state.locked && state.input.length<3){
+    state.input+=e.key; sndPick();
+    $("#ansbox").textContent=state.input;
+    $("#submitBtn").disabled=false;
+  }
+  if(e.key==="Backspace" && q && q.kind==="num" && !state.locked){
+    state.input=state.input.slice(0,-1);
+    $("#ansbox").innerHTML=state.input||"&nbsp;";
+    $("#submitBtn").disabled=state.input.length===0;
+  }
+  if(e.key==="Enter"){
+    const nb=$("#nextBtn");
+    if(nb){ nb.click(); return; }
+    const sb=$("#submitBtn");
+    if(sb && !sb.disabled) submitAnswer();
+  }
+});
+renderModes();
+</script>
+</body>
+</html>

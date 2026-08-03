@@ -1163,7 +1163,7 @@ function ProgressTab({assignments,setAssignments,resources}){
     const r = resources.find(x=>x.id===id);
     if(!r) return 'link';
     const u = String(r.url||'');
-    if((r.type||'')==='link' && /(typing-speed-quest|letter-hunt|sight-words|word-maker|blend-detective)\.html/i.test(u)) return 'typing';
+    if((r.type||'')==='link' && /(typing-speed-quest|letter-hunt|sight-words|word-maker|blend-detective|maths-quest)\.html/i.test(u)) return 'typing';
     return r.type || 'link';
   };
   const resUrl = id => resources.find(r=>r.id===id)?.url || '#';
