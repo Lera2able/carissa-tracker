@@ -460,10 +460,17 @@
           window.opener.postMessage(payload, window.location.origin);
           sendStatus.textContent = "Sent. You can close this tab and return to the learner portal.";
         }else{
-          sendStatus.textContent = "Could not find the learner portal tab. Please return to the portal and try again.";
+          // Fallback: write to localStorage so the learner portal tab can pick it up.
+          localStorage.setItem("typing_speed_result_pending", JSON.stringify(payload));
+          sendStatus.textContent = "Sent. Please return to the learner portal tab to finish saving.";
         }
       }catch(e){
-        sendStatus.textContent = "Send failed on this browser. Please return to the learner portal and try again.";
+        try{
+          localStorage.setItem("typing_speed_result_pending", JSON.stringify(payload));
+          sendStatus.textContent = "Sent. Please return to the learner portal tab to finish saving.";
+        }catch(err){
+          sendStatus.textContent = "Send failed on this browser. Please return to the portal and try again.";
+        }
       }
     }
 
@@ -488,4 +495,3 @@
   </script>
 </body>
 </html>
-

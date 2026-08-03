@@ -5356,8 +5356,22 @@ function LearnerPortalView(){
         submitTypingGameResult(d.assignment_id, d.wpm, d.accuracy, d.typed_chars, d.errors, d.duration_sec);
       }catch(e){}
     };
+    const storageHandler = (ev)=>{
+      try{
+        if(ev.key !== 'typing_speed_result_pending') return;
+        if(!ev.newValue) return;
+        const d = JSON.parse(ev.newValue);
+        if(!d || d.type !== 'typing_speed_result') return;
+        localStorage.removeItem('typing_speed_result_pending');
+        submitTypingGameResult(d.assignment_id, d.wpm, d.accuracy, d.typed_chars, d.errors, d.duration_sec);
+      }catch(e){}
+    };
     window.addEventListener('message', handler);
-    return ()=>window.removeEventListener('message', handler);
+    window.addEventListener('storage', storageHandler);
+    return ()=>{
+      window.removeEventListener('message', handler);
+      window.removeEventListener('storage', storageHandler);
+    };
   },[assignments, learnerAuth, results]);
 
   const learnerLogin = ()=>{
@@ -5418,7 +5432,12 @@ function LearnerPortalView(){
       await db.patch('carissa_resource_assignments',`id=eq.${assignment.id}`,{status:'in_progress',updated_at:new Date().toISOString()});
       setAssignments(prev=>prev.map(a=>a.id===assignment.id?{...a,status:'in_progress'}:a));
     }catch(e){}
-    window.open(url,'_blank','noopener,noreferrer');
+    // IMPORTANT: typing game needs a window.opener to post results back.
+    if(resourceType === 'typing'){
+      window.open(url,'_blank');
+    }else{
+      window.open(url,'_blank','noopener,noreferrer');
+    }
   };
 
   const submitTypingGameResult = async(assignmentId, wpm, accuracy, typedChars, errors, durationSec)=>{
