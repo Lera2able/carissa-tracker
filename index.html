@@ -6730,6 +6730,7 @@ function TeacherDisciplineTab({ teacherAuth, defaultClass, showMsg, onAudit }){
 function TeacherToolsTab({ teacherAuth, className, learners, onAudit }){
   const [toolFolder,setToolFolder]=useState('english_hl');
   const [journalOpen,setJournalOpen]=useState(false);
+  const [monitoringOpen,setMonitoringOpen]=useState(false);
   const gradeFromClass = useMemo(()=>{
     const s = String(className||'');
     const m = s.match(/Grade\s*([Rr]|[1-9])/);
@@ -7784,6 +7785,45 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
           <button onClick={()=>setToolFolder('life_skills')} style={{...sbtn,background:toolFolder==='life_skills' ? '#f59e0b' : '#cbd5e1',color:toolFolder==='life_skills' ? '#fff' : '#111827',fontSize:'13px'}}>📁 Life Skills</button>
         </div>
       )}
+
+      {/* ── Monitoring tools (downloadable PDFs) ─────────────── */}
+      <div style={{marginBottom:'12px',border:'1px solid #bbf7d0',background:'#f0fdf4',borderRadius:'14px',padding:'12px'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap'}}>
+          <div>
+            <div style={{fontWeight:900,color:'#166534',fontSize:'15px'}}>📁 Monitoring tools</div>
+            <div style={{fontSize:'12px',color:'#64748b',marginTop:'4px'}}>Download monitoring and observation PDFs from this folder.</div>
+          </div>
+          <button
+            onClick={()=>setMonitoringOpen(v=>!v)}
+            style={{...sbtn,background:'#166534',fontSize:'12px',padding:'7px 12px'}}
+          >
+            {monitoringOpen ? '📂 Close folder' : '📁 Open folder'}
+          </button>
+        </div>
+        {monitoringOpen && (
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))',gap:'10px',marginTop:'12px'}}>
+            {[
+              {t:'Carissa Lesson Observation - QMS Data Sheet', f:'monitoring-tools/carissa_lesson_observation_qms_data_sheet.pdf'},
+              {t:'Carissa Pre-Assessment Tool', f:'monitoring-tools/carissa_pre_assessment_tool.pdf'},
+              {t:'Carissa Reporting Tool - Work Schedule & SBA Completion', f:'monitoring-tools/carissa_reporting_tool_work_schedule_sba_completion.pdf'},
+              {t:'Lesson Observation Form', f:'monitoring-tools/lesson_observation_form.pdf'},
+              {t:'Post Moderation Tool', f:'monitoring-tools/post_moderation_tool.pdf'},
+            ].map((x)=>(
+              <a
+                key={x.f}
+                href={x.f}
+                target="_blank"
+                rel="noreferrer"
+                download
+                onClick={()=>{ try{ onAudit && onAudit(`tools:monitoring:${x.t}`); }catch(e){} }}
+                style={{...sbtn,background:'#22c55e',textDecoration:'none',display:'inline-block',textAlign:'center'}}
+              >
+                ⬇ {x.t}
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
 
       {isFoundationClass && !journalOpen ? null : !cfg ? (
         <div style={{background:'#fff7ed',border:'1px solid #fed7aa',color:'#9a3412',padding:'10px 12px',borderRadius:'10px',fontSize:'13px',lineHeight:1.5}}>
