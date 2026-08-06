@@ -114,6 +114,7 @@ const isTrackableActivityUrl = (url) => {
     return false;
   }
 };
+const isLearnWorldGameResource = (r) => !!(r && isTrackableActivityUrl(r.url));
 const STATUS_OPTS = [{v:"assigned",l:"Assigned",c:"#667eea"},{v:"in_progress",l:"In Progress",c:"#f97316"},{v:"completed",l:"Completed",c:"#28a745"}];
 
 /* ── Signatures (base64 embedded) ─────────────────────────────── */
@@ -6073,10 +6074,12 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
         </div>
       ) : !selClass ? (
         <div style={card}>
-          <p style={{color:'#999',textAlign:'center',padding:'30px'}}>Pick a class above to view assessments and progress. The Resources tab works without a class too.</p>
-          <div style={{textAlign:'center'}}>
+          <p style={{color:'#999',textAlign:'center',padding:'30px'}}>Pick a class above to view assessments and progress. The LearnWorld and Resources tabs work without a class too.</p>
+          <div style={{textAlign:'center',display:'flex',gap:'10px',justifyContent:'center',flexWrap:'wrap'}}>
+            <button style={{...sbtn,background:'#0ea5e9'}} onClick={()=>{ setTab('learnworld_games'); logTeacherAudit('open_tab:learnworld_games', selClass); }}>🎮 Open LearnWorld Games</button>
             <button style={{...sbtn,background:'#667eea'}} onClick={()=>{ setTab('resources'); logTeacherAudit('open_tab:resources', selClass); }}>📁 Skip ahead to Resources Library</button>
           </div>
+          {tab==='learnworld_games' && <LearnWorldGamesLibrary resources={resources} onAudit={(type,r)=>logTeacherAudit(`${type}:${String(r?.title||'').slice(0,40)}`, selClass)}/>}
           {tab==='resources' && <ResourcesLibrary resources={resources} onAudit={(type,r)=>logTeacherAudit(`${type}:${String(r?.title||'').slice(0,40)}`, selClass)}/>}
         </div>
       ) : (
@@ -6092,6 +6095,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
               ...(moderationAccess ? [['moderation','🗂 Moderation Tools']] : []),
               ...(teacherAuth ? [['reading','📖 1-Minute Reading']] : []),
               ...(teacherAuth ? [['tools','🧰 Tools']] : []),
+              ['learnworld_games',`🎮 LearnWorld (${resources.filter(isLearnWorldGameResource).length})`],
               ['resources',`📁 Resources (${resources.length})`],
             ].map(([k,l])=>(
               <button key={k} onClick={()=>{ setTab(k); logTeacherAudit(`open_tab:${k}`, selClass); }} style={{padding:'10px 16px',borderRadius:'8px',border:'none',cursor:'pointer',fontSize:'14px',fontWeight:600,flex:'1 1 auto',minWidth:'130px',background:tab===k?'linear-gradient(135deg,#667eea,#764ba2)':'transparent',color:tab===k?'white':'#666'}}>
@@ -6368,6 +6372,9 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
               showMsg={showMsg}
             />
           )}
+
+          {/* ── LearnWorld games tab ───────────────── */}
+          {tab==='learnworld_games' && <LearnWorldGamesLibrary resources={resources} onAudit={(type,r)=>logTeacherAudit(`${type}:${String(r?.title||'').slice(0,40)}`, selClass)}/>}
 
           {/* ── Resources tab ─────────────────────── */}
           {tab==='resources' && <ResourcesLibrary resources={resources} onAudit={(type,r)=>logTeacherAudit(`${type}:${String(r?.title||'').slice(0,40)}`, selClass)}/>}
@@ -8008,6 +8015,85 @@ function TeacherClassListTab({selClass, teacherAuth, interventions, setIntervent
       </div>
 
       {modalFor && <RemedialModal learner={modalFor} onSave={saveIntervention} onClose={()=>setModalFor(null)}/>}
+    </div>
+  );
+}
+
+/* ── Resources Library (read-only, shared by LearnWorld) ──── */
+function LearnWorldGamesLibrary({resources, onAudit}){
+  const [search,setSearch]=useState('');
+  const games = resources.filter(isLearnWorldGameResource);
+  const filtered = games.filter(r=>
+    !search.trim() || (`${r.title} ${r.subject||''} ${r.grade_range||''} ${r.description||''}`).toLowerCase().includes(search.toLowerCase())
+  );
+  const grouped = filtered.reduce((acc,r)=>{
+    const folder = (r.grade_range || 'General').trim() || 'General';
+    if(!acc[folder]) acc[folder]=[];
+    acc[folder].push(r);
+    return acc;
+  },{});
+
+  return (
+    <div style={card}>
+      <h3 style={ctitle}>🎮 LearnWorld</h3>
+      <p style={{color:'#666',fontSize:'13px',marginBottom:'14px'}}>
+        Teachers can open and test all learner LearnWorld games here. Splash or landing pages are excluded automatically.
+      </p>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:'10px',marginBottom:'14px'}}>
+        <div>
+          <label style={lbl}>Search games</label>
+          <input style={inp} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Title, subject, grade..."/>
+        </div>
+        <div style={{display:'flex',alignItems:'end'}}>
+          <div style={{background:'#eef2ff',color:'#4338ca',padding:'11px 14px',borderRadius:'10px',fontSize:'13px',fontWeight:800,width:'100%',textAlign:'center'}}>
+            {filtered.length} game{filtered.length===1?'':'s'} available
+          </div>
+        </div>
+      </div>
+
+      {filtered.length===0 ? (
+        <p style={{color:'#999',textAlign:'center',padding:'30px'}}>
+          {games.length===0 ? 'No LearnWorld games have been added yet.' : 'No LearnWorld games match your search.'}
+        </p>
+      ) : (
+        <div style={{display:'grid',gap:'12px'}}>
+          {Object.entries(grouped).map(([folder,rows])=>(
+            <div key={folder} style={{border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',background:'#fff'}}>
+              <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'10px'}}>
+                <span style={{fontSize:'20px'}}>🎮</span>
+                <span style={{fontWeight:800,color:'#334155'}}>{folder}</span>
+                <span style={{background:'#dcfce7',color:'#166534',padding:'2px 8px',borderRadius:'999px',fontSize:'11px',fontWeight:700}}>{rows.length}</span>
+              </div>
+              <div style={{display:'grid',gap:'10px'}}>
+                {rows.map(r=>(
+                  <div key={r.id} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'14px',background:'#f8f9fa',borderRadius:'10px',borderLeft:'5px solid #0ea5e9',gap:'12px',flexWrap:'wrap'}}>
+                    <div style={{flex:1,minWidth:'220px'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px'}}>
+                        <span style={{fontSize:'20px'}}>🎮</span>
+                        <span style={{fontWeight:700,color:'#333',fontSize:'15px'}}>{r.title}</span>
+                      </div>
+                      <div style={{display:'flex',gap:'6px',flexWrap:'wrap',marginBottom:'4px'}}>
+                        {r.subject && <span style={{background:'#667eea22',color:'#667eea',padding:'2px 8px',borderRadius:'10px',fontSize:'11px'}}>{r.subject}</span>}
+                        {r.grade_range && <span style={{background:'#28a74522',color:'#28a745',padding:'2px 8px',borderRadius:'10px',fontSize:'11px'}}>{r.grade_range}</span>}
+                      </div>
+                      {r.description && <p style={{fontSize:'13px',color:'#666',marginTop:'4px'}}>{r.description}</p>}
+                    </div>
+                    <a
+                      href={r.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={()=>{ try{ onAudit && onAudit('learnworld_open', r); }catch(e){} }}
+                      style={{...sbtn,background:'#0ea5e9',textDecoration:'none',display:'inline-block',flexShrink:0}}
+                    >
+                      ▶ Open game
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
