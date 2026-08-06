@@ -6079,7 +6079,17 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
             <button style={{...sbtn,background:'#0ea5e9'}} onClick={()=>{ setTab('learnworld_games'); logTeacherAudit('open_tab:learnworld_games', selClass); }}>🎮 Open LearnWorld Games</button>
             <button style={{...sbtn,background:'#667eea'}} onClick={()=>{ setTab('resources'); logTeacherAudit('open_tab:resources', selClass); }}>📁 Skip ahead to Resources Library</button>
           </div>
-          {tab==='learnworld_games' && <LearnWorldGamesLibrary resources={resources} onAudit={(type,r)=>logTeacherAudit(`${type}:${String(r?.title||'').slice(0,40)}`, selClass)}/>}
+          {tab==='learnworld_games' && (
+            <LearnWorldGamesLibrary
+              resources={resources}
+              selClass={selClass}
+              teacherAuth={teacherAuth}
+              interventions={classInterventions}
+              setAssignments={setAssignments}
+              showMsg={showMsg}
+              onAudit={(type,r)=>logTeacherAudit(`${type}:${String(r?.title||'').slice(0,40)}`, selClass)}
+            />
+          )}
           {tab==='resources' && <ResourcesLibrary resources={resources} onAudit={(type,r)=>logTeacherAudit(`${type}:${String(r?.title||'').slice(0,40)}`, selClass)}/>}
         </div>
       ) : (
@@ -8020,18 +8030,91 @@ function TeacherClassListTab({selClass, teacherAuth, interventions, setIntervent
 }
 
 /* ── Resources Library (read-only, shared by LearnWorld) ──── */
-function LearnWorldGamesLibrary({resources, onAudit}){
+function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, interventions=[], setAssignments, showMsg, onAudit}){
   const [search,setSearch]=useState('');
+  const [assignFor,setAssignFor]=useState(null);
+  const [assignBusy,setAssignBusy]=useState(false);
+  const [assignForm,setAssignForm]=useState({assign_type:'classlist_class',surname:'',firstname:'',due_date:'',notes:''});
   const games = resources.filter(isLearnWorldGameResource);
   const filtered = games.filter(r=>
     !search.trim() || (`${r.title} ${r.subject||''} ${r.grade_range||''} ${r.description||''}`).toLowerCase().includes(search.toLowerCase())
   );
+  const rosterLearners = selClass ? (CLASS_DATA[selClass] || []) : [];
+  const classInterventions = selClass ? interventions : [];
   const grouped = filtered.reduce((acc,r)=>{
     const folder = (r.grade_range || 'General').trim() || 'General';
     if(!acc[folder]) acc[folder]=[];
     acc[folder].push(r);
     return acc;
   },{});
+  const af = (k,v)=>setAssignForm(p=>({...p,[k]:v}));
+  const resetAssign = ()=>{
+    setAssignFor(null);
+    setAssignBusy(false);
+    setAssignForm({assign_type:'classlist_class',surname:'',firstname:'',due_date:'',notes:''});
+  };
+  const handleAssign = async()=>{
+    if(!assignFor) return;
+    if(!selClass){
+      alert('Please choose a class first, then assign the game.');
+      return;
+    }
+    setAssignBusy(true);
+    try{
+      const teacherName = `${teacherAuth?.first_name||''} ${teacherAuth?.surname||''}`.trim() || teacherAuth?.email || 'Teacher';
+      const base = {
+        resource_id: assignFor.id,
+        class_name: selClass,
+        assign_type: assignForm.assign_type==='learner' ? 'learner' : 'class',
+        assigned_by: teacherName,
+        due_date: assignForm.due_date || null,
+        notes: String(assignForm.notes||'').trim() || null
+      };
+      const postRows = async(targets)=>{
+        const rows = [];
+        for(const t of targets){
+          const r = await db.post('carissa_resource_assignments',{...base,surname:t.surname,firstname:t.firstname});
+          rows.push(r[0]);
+        }
+        return rows;
+      };
+
+      let rowsAll = [];
+      if(assignForm.assign_type==='learner'){
+        if(!assignForm.surname || !assignForm.firstname){
+          alert('Please select a learner.');
+          setAssignBusy(false);
+          return;
+        }
+        const r = await db.post('carissa_resource_assignments',{...base,surname:assignForm.surname,firstname:assignForm.firstname});
+        rowsAll = [r[0]];
+      }else if(assignForm.assign_type==='interventions_class'){
+        const targets = classInterventions.map(i=>({surname:i.surname,firstname:i.firstname}));
+        if(!targets.length){
+          alert('No learners are on the intervention list for this class.');
+          setAssignBusy(false);
+          return;
+        }
+        rowsAll = await postRows(targets);
+      }else{
+        const targets = rosterLearners.map(l=>({surname:l.surname,firstname:l.firstname}));
+        if(!targets.length){
+          alert('No learners were found on the class list for this class.');
+          setAssignBusy(false);
+          return;
+        }
+        rowsAll = await postRows(targets);
+      }
+
+      setAssignments && setAssignments(p=>[...rowsAll,...p]);
+      showMsg && showMsg(`✓ Assigned ${assignFor.title} to ${rowsAll.length} learner(s) in ${selClass}.`);
+      try{ onAudit && onAudit('learnworld_assign', assignFor); }catch(e){}
+      resetAssign();
+    }catch(e){
+      alert('Error: ' + e.message);
+      setAssignBusy(false);
+    }
+  };
 
   return (
     <div style={card}>
@@ -8087,11 +8170,73 @@ function LearnWorldGamesLibrary({resources, onAudit}){
                     >
                       ▶ Open game
                     </a>
+                    <button
+                      style={{...sbtn,background:'#16a34a',flexShrink:0}}
+                      onClick={()=>setAssignFor(r)}
+                    >
+                      ➕ Assign this game
+                    </button>
                   </div>
                 ))}
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {assignFor && (
+        <div style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.48)',display:'flex',alignItems:'center',justifyContent:'center',padding:'20px',zIndex:1000}}>
+          <div style={{background:'#fff',borderRadius:'16px',padding:'18px',width:'min(680px,100%)',boxShadow:'0 20px 50px rgba(0,0,0,0.25)'}}>
+            <div style={{display:'flex',justifyContent:'space-between',gap:'12px',alignItems:'flex-start',marginBottom:'12px'}}>
+              <div>
+                <h3 style={{...ctitle,marginBottom:'4px'}}>Assign this game</h3>
+                <div style={{fontWeight:800,color:'#1f2937'}}>{assignFor.title}</div>
+                <div style={{fontSize:'13px',color:'#64748b',marginTop:'4px'}}>Class: <strong>{selClass || 'Choose a class first'}</strong></div>
+              </div>
+              <button style={{...sbtn,background:'#64748b'}} onClick={resetAssign}>Close</button>
+            </div>
+
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:'12px'}}>
+              <div>
+                <label style={lbl}>Assign to</label>
+                <select style={inp} value={assignForm.assign_type} onChange={e=>af('assign_type',e.target.value)}>
+                  <option value="classlist_class">{`Class list (${rosterLearners.length})`}</option>
+                  <option value="interventions_class">{`Intervention list (${classInterventions.length})`}</option>
+                  <option value="learner">Specific learner</option>
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>Due date</label>
+                <input style={inp} type="date" value={assignForm.due_date} onChange={e=>af('due_date',e.target.value)}/>
+              </div>
+              {assignForm.assign_type==='learner' && (
+                <div style={{gridColumn:'1 / -1'}}>
+                  <label style={lbl}>Learner</label>
+                  <select style={inp} value={`${assignForm.surname}|${assignForm.firstname}`} onChange={e=>{const [s,fn]=e.target.value.split('|');af('surname',s);af('firstname',fn);}}>
+                    <option value="|">-- Select Learner --</option>
+                    {rosterLearners.map((l,i)=><option key={i} value={`${l.surname}|${l.firstname}`}>{l.surname}, {l.firstname}</option>)}
+                  </select>
+                </div>
+              )}
+              <div style={{gridColumn:'1 / -1'}}>
+                <label style={lbl}>Notes (optional)</label>
+                <textarea style={{...inp,minHeight:'88px',resize:'vertical'}} value={assignForm.notes} onChange={e=>af('notes',e.target.value)} placeholder="Add a short note for the learners or teacher record..."/>
+              </div>
+            </div>
+
+            {!selClass && (
+              <div style={{marginTop:'12px',background:'#fff7ed',border:'1px solid #fdba74',color:'#9a3412',padding:'10px 12px',borderRadius:'10px',fontSize:'13px',fontWeight:700}}>
+                Choose a class at the top of the teacher dashboard before assigning this game.
+              </div>
+            )}
+
+            <div style={{display:'flex',justifyContent:'flex-end',gap:'10px',marginTop:'16px',flexWrap:'wrap'}}>
+              <button style={{...sbtn,background:'#64748b'}} onClick={resetAssign}>Cancel</button>
+              <button style={{...sbtn,background:'#16a34a',opacity:assignBusy?0.7:1}} disabled={assignBusy} onClick={handleAssign}>
+                {assignBusy ? 'Assigning...' : 'Assign now'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
