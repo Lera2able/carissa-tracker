@@ -5767,6 +5767,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
   const [teacherAuth,setTeacherAuth]=useState(TEACHER_SESSION); // logged-in teacher (portal session or in-page login)
   const [loginEmail,setLoginEmail]=useState(PREFILLED_TEACHER_EMAIL);
   const [loginPin,setLoginPin]=useState(PREFILLED_TEACHER_PIN);
+  const [manualLoginMode,setManualLoginMode]=useState(false);
   const [rememberDevice,setRememberDevice]=useState(true);
   const [assessmentTermView,setAssessmentTermView]=useState('');
   const [loginErr,setLoginErr]=useState('');
@@ -5819,6 +5820,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
         }catch(e){}
       }else{
         setLoginErr('Login failed. Please check your email and password/PIN, or contact the coordinator if you have not received your login details yet.');
+        setManualLoginMode(true);
       }
     }catch(e){ setLoginErr('Could not reach the server. Please check your connection and try again.'); }
     setLoginBusy(false);
@@ -5829,6 +5831,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
     if(TEACHER_SESSION){ TEACHER_SESSION=null; window.location.href=`${window.location.pathname}?portal=teacher`; return; }
     setTeacherAuth(null); setSelClass(''); setLoginEmail(''); setLoginPin(''); setLoginErr('');
     autoLoginRef.current = false;
+    setManualLoginMode(false);
   };
 
   const [tab,setTab]=useState('dashboard');
@@ -5846,7 +5849,9 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
   const [msg,setMsg]=useState('');
   const [notes,setNotes]=useState({});
   const showMsg = m => {setMsg(m);setTimeout(()=>setMsg(''),5000);};
-  const secureLinkMode = !!(loginEmail || loginPin);
+  // Only show the "secure login" card when BOTH email + PIN came from a secure link,
+  // otherwise show the normal form so teachers can type their details.
+  const secureLinkMode = !!(PREFILLED_TEACHER_EMAIL && PREFILLED_TEACHER_PIN) && !manualLoginMode;
   const teacherClasses = !adminAccess && teacherAuth
     ? (teacherAuth.class_names && teacherAuth.class_names.length ? teacherAuth.class_names : [teacherAuth.class_name]).filter(Boolean)
     : [];
@@ -6045,6 +6050,11 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
               </div>
               {!loginBusy && (
                 <button style={{...btn,width:'100%',marginTop:'14px'}} onClick={teacherLogin}>Continue to Dashboard →</button>
+              )}
+              {!loginBusy && (
+                <button style={{...sbtn,background:'#64748b',marginTop:'10px',width:'100%'}} onClick={()=>setManualLoginMode(true)}>
+                  Type email and PIN instead
+                </button>
               )}
             </div>
           ) : (
