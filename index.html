@@ -8141,24 +8141,25 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
   const [assignForm,setAssignForm]=useState({assign_type:'classlist_class',surname:'',firstname:'',due_date:'',notes:''});
   const [openFolders,setOpenFolders]=useState({});
   const [eduOpen,setEduOpen]=useState(false);
+  const [eduCatsOpen,setEduCatsOpen]=useState({});
 
   const EDU_WEBSITES = useMemo(()=>[
-    { title:'Toy Theater', url:'https://toytheater.com/', summary:'Simple educational games and classroom activities for young learners.' },
-    { title:'Math Monks', url:'https://mathmonks.com/', summary:'Math lessons, practice questions, and printable resources.' },
-    { title:'Educaplay', url:'https://www.educaplay.com/', summary:'Create and play interactive learning activities (quizzes, matching, crosswords, etc.).' },
-    { title:'Wayground', url:'https://wayground.com/?lng=en', summary:'Interactive learning activities and quizzes for classroom practice.' },
-    { title:'Google Read Along', url:'https://readalong.google.com/', summary:'Guided reading practice to build confidence and fluency.' },
-    { title:'Kiddo Worksheets', url:'https://www.kiddoworksheets.com/', summary:'Printable worksheets and classroom-ready activities.' },
-    { title:'Twinkl South Africa', url:'https://www.twinkl.co.za/', summary:'Teacher-made resources, worksheets, and classroom materials.' },
-    { title:'The Teacher’s Corner', url:'https://www.theteacherscorner.net/', summary:'Printable worksheets, lesson resources, and classroom tools.' },
-    { title:'ANTON', url:'https://anton.app/en_gb/', summary:'Learning app with curriculum practice for different grades and subjects.' },
-    { title:'All Kids Network', url:'https://www.allkidsnetwork.com/', summary:'Worksheets, crafts, and printable activities for kids.' },
-    { title:'StudyPapers (ATPs)', url:'https://studypapers.co.za/annual-teaching-plans-atps/grade-2-atps/afrikaans-eat-grade-2-atp-annual-teaching-plan-curriculum-breakdown/', summary:'South African curriculum documents and annual teaching plans (ATPs).' },
-    { title:'Red Cat Reading', url:'https://www.redcatreading.com/phonics-magic-e-course/', summary:'Phonics-focused resources and reading support materials.' },
-    { title:'IXL South Africa', url:'https://za.ixl.com/', summary:'Skills practice in maths and language with guided progression.' },
-    { title:'123 Homeschool 4 Me', url:'https://www.123homeschool4me.com/', summary:'Free worksheets and activities by grade and topic.' },
-    { title:'KiddoEduSheets (Multiplication)', url:'https://kiddoedusheets.com/worksheets/amazing-multiplication-tables/', summary:'Printable multiplication tables and practice worksheets.' },
-    { title:'FamilyNES (Nespray Grade 7)', url:'https://www.familynes.co.za/nespray/grade-7', summary:'Grade-linked learning content and resources.' },
+    { cat:'Games & interactive', title:'Toy Theater', url:'https://toytheater.com/', summary:'Simple educational games and classroom activities for young learners.' },
+    { cat:'Maths practice', title:'Math Monks', url:'https://mathmonks.com/', summary:'Math lessons, practice questions, and printable resources.' },
+    { cat:'Games & interactive', title:'Educaplay', url:'https://www.educaplay.com/', summary:'Create and play interactive learning activities (quizzes, matching, crosswords, etc.).' },
+    { cat:'Games & interactive', title:'Wayground', url:'https://wayground.com/?lng=en', summary:'Interactive learning activities and quizzes for classroom practice.' },
+    { cat:'Reading & phonics', title:'Google Read Along', url:'https://readalong.google.com/', summary:'Guided reading practice to build confidence and fluency.' },
+    { cat:'Worksheets & printables', title:'Kiddo Worksheets', url:'https://www.kiddoworksheets.com/', summary:'Printable worksheets and classroom-ready activities.' },
+    { cat:'Worksheets & printables', title:'Twinkl South Africa', url:'https://www.twinkl.co.za/', summary:'Teacher-made resources, worksheets, and classroom materials.' },
+    { cat:'Worksheets & printables', title:'The Teacher’s Corner', url:'https://www.theteacherscorner.net/', summary:'Printable worksheets, lesson resources, and classroom tools.' },
+    { cat:'Learning apps', title:'ANTON', url:'https://anton.app/en_gb/', summary:'Learning app with curriculum practice for different grades and subjects.' },
+    { cat:'Worksheets & printables', title:'All Kids Network', url:'https://www.allkidsnetwork.com/', summary:'Worksheets, crafts, and printable activities for kids.' },
+    { cat:'Curriculum & planning (SA)', title:'StudyPapers (ATPs)', url:'https://studypapers.co.za/annual-teaching-plans-atps/grade-2-atps/afrikaans-eat-grade-2-atp-annual-teaching-plan-curriculum-breakdown/', summary:'South African curriculum documents and annual teaching plans (ATPs).' },
+    { cat:'Reading & phonics', title:'Red Cat Reading', url:'https://www.redcatreading.com/phonics-magic-e-course/', summary:'Phonics-focused resources and reading support materials.' },
+    { cat:'Maths practice', title:'IXL South Africa', url:'https://za.ixl.com/', summary:'Skills practice in maths and language with guided progression.' },
+    { cat:'Worksheets & printables', title:'123 Homeschool 4 Me', url:'https://www.123homeschool4me.com/', summary:'Free worksheets and activities by grade and topic.' },
+    { cat:'Maths practice', title:'KiddoEduSheets (Multiplication)', url:'https://kiddoedusheets.com/worksheets/amazing-multiplication-tables/', summary:'Printable multiplication tables and practice worksheets.' },
+    { cat:'Curriculum & planning (SA)', title:'FamilyNES (Nespray Grade 7)', url:'https://www.familynes.co.za/nespray/grade-7', summary:'Grade-linked learning content and resources.' },
   ],[]);
   const games = resources.filter(isLearnWorldGameResource);
   const filtered = games.filter(r=>
@@ -8199,6 +8200,37 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
     if(!s) return EDU_WEBSITES;
     return EDU_WEBSITES.filter(x => (`${x.title} ${x.summary} ${x.url}`).toLowerCase().includes(s));
   },[EDU_WEBSITES, search]);
+
+  const eduCatOrder = useMemo(()=>[
+    'Games & interactive',
+    'Reading & phonics',
+    'Maths practice',
+    'Worksheets & printables',
+    'Learning apps',
+    'Curriculum & planning (SA)',
+    'Other'
+  ],[]);
+  const eduGrouped = useMemo(()=>{
+    return (eduFiltered||[]).reduce((acc,x)=>{
+      const c = (x.cat || 'Other').trim() || 'Other';
+      if(!acc[c]) acc[c]=[];
+      acc[c].push(x);
+      return acc;
+    },{});
+  },[eduFiltered]);
+  const isEduCatOpen = (cat)=> Object.prototype.hasOwnProperty.call(eduCatsOpen, cat)
+    ? !!eduCatsOpen[cat]
+    : true;
+  const toggleEduCat = (cat)=> setEduCatsOpen(p=>({...(p||{}), [cat]: !isEduCatOpen(cat)}));
+  const catStyle = (cat)=>{
+    const c = String(cat||'').toLowerCase();
+    if(c.includes('math')) return {bg:'#fee2e2', fg:'#b91c1c'};
+    if(c.includes('reading') || c.includes('phonics')) return {bg:'#e0f2fe', fg:'#0369a1'};
+    if(c.includes('worksheet') || c.includes('print')) return {bg:'#dcfce7', fg:'#166534'};
+    if(c.includes('app')) return {bg:'#ede9fe', fg:'#5b21b6'};
+    if(c.includes('curriculum') || c.includes('planning') || c.includes('sa')) return {bg:'#fff7ed', fg:'#9a3412'};
+    return {bg:'#eef2ff', fg:'#4338ca'};
+  };
   const resetAssign = ()=>{
     setAssignFor(null);
     setAssignBusy(false);
@@ -8369,24 +8401,54 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
 
             {eduOpen && (
               <div style={{display:'grid',gap:'10px',marginTop:'10px'}}>
-                {eduFiltered.map(x=>(
-                  <div key={x.url} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'14px',background:'#f8f9fa',borderRadius:'10px',borderLeft:'5px solid #22c55e',gap:'12px',flexWrap:'wrap'}}>
-                    <div style={{flex:1,minWidth:'220px'}}>
-                      <div style={{fontWeight:800,color:'#111827',fontSize:'15px',marginBottom:'4px'}}>{x.title}</div>
-                      <div style={{fontSize:'12px',color:'#64748b',marginBottom:'6px'}}>{x.url}</div>
-                      <div style={{fontSize:'13px',color:'#475569'}}>{x.summary}</div>
+                {eduCatOrder.filter(cat=>eduGrouped[cat] && eduGrouped[cat].length>0).map(cat=>{
+                  const rows = (eduGrouped[cat]||[]).slice().sort((a,b)=>String(a.title||'').localeCompare(String(b.title||'')));
+                  const open = isEduCatOpen(cat);
+                  const caret = open ? '▾' : '▸';
+                  const cs = catStyle(cat);
+                  return (
+                    <div key={cat} style={{border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',background:'#fff'}}>
+                      <button
+                        onClick={()=>toggleEduCat(cat)}
+                        style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'10px',border:'none',background:'transparent',cursor:'pointer',padding:0}}
+                        title={open ? 'Collapse' : 'Expand'}
+                      >
+                        <div style={{display:'flex',alignItems:'center',gap:'10px',flexWrap:'wrap'}}>
+                          <span style={{fontSize:'18px',color:'#0ea5e9',fontWeight:900}}>{caret}</span>
+                          <span style={{fontWeight:900,color:'#334155'}}>{cat}</span>
+                          <span style={{background:cs.bg,color:cs.fg,padding:'2px 8px',borderRadius:'999px',fontSize:'11px',fontWeight:800}}>{rows.length}</span>
+                        </div>
+                        <span style={{fontSize:'12px',color:'#64748b',fontWeight:800}}>{open ? 'Hide' : 'Show'}</span>
+                      </button>
+
+                      {open && (
+                        <div style={{display:'grid',gap:'10px',marginTop:'10px'}}>
+                          {rows.map(x=>(
+                            <div key={x.url} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'14px',background:'#f8f9fa',borderRadius:'10px',borderLeft:'5px solid #22c55e',gap:'12px',flexWrap:'wrap'}}>
+                              <div style={{flex:1,minWidth:'220px'}}>
+                                <div style={{display:'flex',alignItems:'center',gap:'8px',flexWrap:'wrap',marginBottom:'6px'}}>
+                                  <div style={{fontWeight:900,color:'#111827',fontSize:'15px'}}>{x.title}</div>
+                                  <span style={{background:cs.bg,color:cs.fg,padding:'2px 8px',borderRadius:'999px',fontSize:'11px',fontWeight:800}}>{cat}</span>
+                                </div>
+                                <div style={{fontSize:'12px',color:'#64748b',marginBottom:'6px'}}>{x.url}</div>
+                                <div style={{fontSize:'13px',color:'#475569'}}>{x.summary}</div>
+                              </div>
+                              <a
+                                href={x.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={()=>{ try{ onAudit && onAudit(`learnworld_edu_open:${x.title}`); }catch(e){} }}
+                                style={{...sbtn,background:'#22c55e',textDecoration:'none',display:'inline-block',flexShrink:0}}
+                              >
+                                🔗 Open (new tab)
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <a
-                      href={x.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={()=>{ try{ onAudit && onAudit(`learnworld_edu_open:${x.title}`); }catch(e){} }}
-                      style={{...sbtn,background:'#22c55e',textDecoration:'none',display:'inline-block',flexShrink:0}}
-                    >
-                      🔗 Open (new tab)
-                    </a>
-                  </div>
-                ))}
+                  );
+                })}
                 {eduFiltered.length===0 && (
                   <div style={{textAlign:'center',color:'#999',padding:'18px 0'}}>No websites match your search.</div>
                 )}
