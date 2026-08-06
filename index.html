@@ -5913,10 +5913,10 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
 
   useEffect(()=>{
     if(adminAccess || teacherAuth || loginBusy || autoLoginRef.current) return;
-    if(!loginEmail.trim() || !loginPin.trim()) return;
+    if(!secureLinkMode) return;
     autoLoginRef.current = true;
     teacherLogin();
-  },[adminAccess,teacherAuth,loginBusy,loginEmail,loginPin]);
+  },[adminAccess,teacherAuth,loginBusy,secureLinkMode]);
 
   const sendTeacherChat = async()=>{
     const text = chatText.trim();
@@ -6080,7 +6080,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
             </>
           )}
           {loginErr && <div style={{background:'#fdecec',color:'#c0392b',border:'1px solid #f5c6c6',borderRadius:'10px',padding:'11px 13px',fontSize:'13px',margin:'10px 0',lineHeight:1.45}}>{loginErr}</div>}
-          <p style={{color:'#999',fontSize:'12px',textAlign:'center',marginTop:'14px'}}>No login yet? <a href="teacher-register.html" style={{color:'#667eea',fontWeight:600}}>Register here</a>, then the coordinator will send your PIN. Forgotten your PIN? Contact Ma'am Mogajane.</p>
+          <p style={{color:'#999',fontSize:'12px',textAlign:'center',marginTop:'14px'}}>No login yet? <a href="teacher-register.html" style={{color:'#667eea',fontWeight:600}}>Register here</a>, then the coordinator will send your PIN. </p>
         </div>
       ) : !selClass ? (
         <div style={card}>
