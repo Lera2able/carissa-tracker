@@ -4066,7 +4066,7 @@ function DisciplineAdminTab({adminUser}){
   const [events,setEvents]=useState([]);
   const [loading,setLoading]=useState(true);
   const [search,setSearch]=useState('');
-  const [onlyFlagged,setOnlyFlagged]=useState(true);
+  const [onlyFlagged,setOnlyFlagged]=useState(false);
   const [historyActionFilter,setHistoryActionFilter]=useState('all');
   const [historyFrom,setHistoryFrom]=useState('');
   const [historyTo,setHistoryTo]=useState('');
@@ -4524,7 +4524,11 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
       </div>
 
       {filtered.length===0 ? (
-        <div style={{textAlign:'center',color:'#999',padding:'30px 0'}}>No discipline totals found yet.</div>
+        <div style={{textAlign:'center',color:'#999',padding:'30px 0'}}>
+          {totalsArr.length===0
+            ? 'No discipline totals found yet.'
+            : 'No learners match the current search/filter. Turn off “Show flagged only (≤ -5)” to see all discipline records.'}
+        </div>
       ) : (
         <div style={{display:'grid',gridTemplateColumns:'1fr',gap:'10px'}}>
           <div style={{overflowX:'auto',border:'1px solid #e2e8f0',borderRadius:'12px',background:'#fff'}}>
