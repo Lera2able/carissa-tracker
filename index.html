@@ -6731,6 +6731,7 @@ function TeacherToolsTab({ teacherAuth, className, learners, onAudit }){
   const [toolFolder,setToolFolder]=useState('english_hl');
   const [journalOpen,setJournalOpen]=useState(false);
   const [monitoringOpen,setMonitoringOpen]=useState(false);
+  const [previewPdf,setPreviewPdf]=useState(null);
   const gradeFromClass = useMemo(()=>{
     const s = String(className||'');
     const m = s.match(/Grade\s*([Rr]|[1-9])/);
@@ -7789,7 +7790,7 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap'}}>
           <div>
             <div style={{fontWeight:900,color:'#166534',fontSize:'15px'}}>📁 Monitoring tools</div>
-            <div style={{fontSize:'12px',color:'#64748b',marginTop:'4px'}}>Download monitoring and observation PDFs from this folder.</div>
+            <div style={{fontSize:'12px',color:'#64748b',marginTop:'4px'}}>Preview monitoring and observation PDFs first, then download if needed.</div>
           </div>
           <button
             onClick={()=>setMonitoringOpen(v=>!v)}
@@ -7807,21 +7808,53 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
               {t:'Lesson Observation Form', f:'monitoring-tools/lesson_observation_form.pdf'},
               {t:'Post Moderation Tool', f:'monitoring-tools/post_moderation_tool.pdf'},
             ].map((x)=>(
-              <a
+              <button
                 key={x.f}
-                href={x.f}
-                target="_blank"
-                rel="noreferrer"
-                download
-                onClick={()=>{ try{ onAudit && onAudit(`tools:monitoring:${x.t}`); }catch(e){} }}
-                style={{...sbtn,background:'#22c55e',textDecoration:'none',display:'inline-block',textAlign:'center'}}
+                onClick={()=>{
+                  setPreviewPdf(x);
+                  try{ onAudit && onAudit(`tools:monitoring_preview:${x.t}`); }catch(e){}
+                }}
+                style={{...sbtn,background:'#22c55e',display:'inline-block',textAlign:'center'}}
               >
-                ⬇ {x.t}
-              </a>
+                👁 Preview {x.t}
+              </button>
             ))}
           </div>
         )}
       </div>
+
+      {previewPdf && (
+        <div style={{position:'fixed',inset:0,background:'rgba(15,23,42,0.58)',display:'flex',alignItems:'center',justifyContent:'center',padding:'20px',zIndex:1000}}>
+          <div style={{background:'#fff',borderRadius:'16px',padding:'16px',width:'min(1100px,100%)',height:'min(90vh,900px)',boxShadow:'0 20px 50px rgba(0,0,0,0.25)',display:'flex',flexDirection:'column',gap:'12px'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap'}}>
+              <div>
+                <div style={{fontWeight:900,color:'#111827',fontSize:'16px'}}>{previewPdf.t}</div>
+                <div style={{fontSize:'12px',color:'#64748b'}}>Preview the PDF below, then download if needed.</div>
+              </div>
+              <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+                <a
+                  href={previewPdf.f}
+                  target="_blank"
+                  rel="noreferrer"
+                  download
+                  onClick={()=>{ try{ onAudit && onAudit(`tools:monitoring_download:${previewPdf.t}`); }catch(e){} }}
+                  style={{...sbtn,background:'#16a34a',textDecoration:'none',display:'inline-block'}}
+                >
+                  ⬇ Download PDF
+                </a>
+                <button style={{...sbtn,background:'#64748b'}} onClick={()=>setPreviewPdf(null)}>Close</button>
+              </div>
+            </div>
+            <div style={{flex:1,minHeight:0,border:'1px solid #dbe2f0',borderRadius:'12px',overflow:'hidden',background:'#f8fafc'}}>
+              <iframe
+                src={previewPdf.f}
+                title={previewPdf.t}
+                style={{width:'100%',height:'100%',border:'none',background:'#fff'}}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {!journalOpen ? null : !cfg ? (
         <div style={{background:'#fff7ed',border:'1px solid #fed7aa',color:'#9a3412',padding:'10px 12px',borderRadius:'10px',fontSize:'13px',lineHeight:1.5}}>
