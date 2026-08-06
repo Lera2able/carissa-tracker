@@ -4066,7 +4066,7 @@ function DisciplineAdminTab({adminUser}){
   const [events,setEvents]=useState([]);
   const [loading,setLoading]=useState(true);
   const [search,setSearch]=useState('');
-  const [onlyFlagged,setOnlyFlagged]=useState(false);
+  const [onlyFlagged,setOnlyFlagged]=useState(true);
   const [historyActionFilter,setHistoryActionFilter]=useState('all');
   const [historyFrom,setHistoryFrom]=useState('');
   const [historyTo,setHistoryTo]=useState('');
@@ -4524,11 +4524,7 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
       </div>
 
       {filtered.length===0 ? (
-        <div style={{textAlign:'center',color:'#999',padding:'30px 0'}}>
-          {totalsArr.length===0
-            ? 'No discipline totals found yet.'
-            : 'No learners match the current search/filter. Turn off “Show flagged only (≤ -5)” to see all discipline records.'}
-        </div>
+        <div style={{textAlign:'center',color:'#999',padding:'30px 0'}}>No discipline totals found yet.</div>
       ) : (
         <div style={{display:'grid',gridTemplateColumns:'1fr',gap:'10px'}}>
           <div style={{overflowX:'auto',border:'1px solid #e2e8f0',borderRadius:'12px',background:'#fff'}}>
@@ -6733,6 +6729,7 @@ function TeacherDisciplineTab({ teacherAuth, defaultClass, showMsg, onAudit }){
    ════════════════════════════════════════════════════════════════ */
 function TeacherToolsTab({ teacherAuth, className, learners, onAudit }){
   const [toolFolder,setToolFolder]=useState('english_hl');
+  const [journalOpen,setJournalOpen]=useState(false);
   const gradeFromClass = useMemo(()=>{
     const s = String(className||'');
     const m = s.match(/Grade\s*([Rr]|[1-9])/);
@@ -7758,14 +7755,26 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
               <div style={{fontWeight:900,color:'#1d4ed8',fontSize:'15px'}}>📁 Journal Recording</div>
               <div style={{fontSize:'12px',color:'#64748b',marginTop:'4px'}}>Open a subject folder below to print or save the journal recording tools for this class.</div>
             </div>
-            <span style={{background:'#dbeafe',color:'#1d4ed8',padding:'6px 10px',borderRadius:'999px',fontSize:'11px',fontWeight:800}}>Foundation Phase</span>
+            <div style={{display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap'}}>
+              <span style={{background:'#dbeafe',color:'#1d4ed8',padding:'6px 10px',borderRadius:'999px',fontSize:'11px',fontWeight:800}}>Foundation Phase</span>
+              <button
+                onClick={()=>setJournalOpen(v=>!v)}
+                style={{...sbtn,background:'#1d4ed8',fontSize:'12px',padding:'7px 12px'}}
+              >
+                {journalOpen ? '📂 Close folder' : '📁 Open folder'}
+              </button>
+            </div>
           </div>
-          <div style={{display:'flex',gap:'10px',flexWrap:'wrap'}}>
-            <button onClick={()=>setToolFolder('english_hl')} style={{...sbtn,background:toolFolder==='english_hl' ? '#4f46e5' : '#cbd5e1',color:toolFolder==='english_hl' ? '#fff' : '#111827',fontSize:'13px'}}>📁 English HL</button>
-            <button onClick={()=>setToolFolder('afrikaans_fal')} style={{...sbtn,background:toolFolder==='afrikaans_fal' ? '#0f766e' : '#cbd5e1',color:toolFolder==='afrikaans_fal' ? '#fff' : '#111827',fontSize:'13px'}}>📁 Afrikaans FAL</button>
-            <button onClick={()=>setToolFolder('mathematics')} style={{...sbtn,background:toolFolder==='mathematics' ? '#dc2626' : '#cbd5e1',color:toolFolder==='mathematics' ? '#fff' : '#111827',fontSize:'13px'}}>📁 Mathematics</button>
-            <button onClick={()=>setToolFolder('life_skills')} style={{...sbtn,background:toolFolder==='life_skills' ? '#f59e0b' : '#cbd5e1',color:toolFolder==='life_skills' ? '#fff' : '#111827',fontSize:'13px'}}>📁 Life Skills</button>
-          </div>
+          {journalOpen ? (
+            <div style={{display:'flex',gap:'10px',flexWrap:'wrap'}}>
+              <button onClick={()=>setToolFolder('english_hl')} style={{...sbtn,background:toolFolder==='english_hl' ? '#4f46e5' : '#cbd5e1',color:toolFolder==='english_hl' ? '#fff' : '#111827',fontSize:'13px'}}>📁 English HL</button>
+              <button onClick={()=>setToolFolder('afrikaans_fal')} style={{...sbtn,background:toolFolder==='afrikaans_fal' ? '#0f766e' : '#cbd5e1',color:toolFolder==='afrikaans_fal' ? '#fff' : '#111827',fontSize:'13px'}}>📁 Afrikaans FAL</button>
+              <button onClick={()=>setToolFolder('mathematics')} style={{...sbtn,background:toolFolder==='mathematics' ? '#dc2626' : '#cbd5e1',color:toolFolder==='mathematics' ? '#fff' : '#111827',fontSize:'13px'}}>📁 Mathematics</button>
+              <button onClick={()=>setToolFolder('life_skills')} style={{...sbtn,background:toolFolder==='life_skills' ? '#f59e0b' : '#cbd5e1',color:toolFolder==='life_skills' ? '#fff' : '#111827',fontSize:'13px'}}>📁 Life Skills</button>
+            </div>
+          ) : (
+            <div style={{fontSize:'13px',color:'#64748b'}}>The subject folders are hidden until you open `Journal Recording`.</div>
+          )}
         </div>
       ) : (
         <div style={{display:'flex',gap:'10px',flexWrap:'wrap',marginBottom:'12px'}}>
@@ -7776,7 +7785,7 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
         </div>
       )}
 
-      {!cfg ? (
+      {isFoundationClass && !journalOpen ? null : !cfg ? (
         <div style={{background:'#fff7ed',border:'1px solid #fed7aa',color:'#9a3412',padding:'10px 12px',borderRadius:'10px',fontSize:'13px',lineHeight:1.5}}>
           {ui.noCfg}
         </div>
