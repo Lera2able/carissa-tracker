@@ -8139,6 +8139,7 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
   const [assignFor,setAssignFor]=useState(null);
   const [assignBusy,setAssignBusy]=useState(false);
   const [assignForm,setAssignForm]=useState({assign_type:'classlist_class',surname:'',firstname:'',due_date:'',notes:''});
+  const [openFolders,setOpenFolders]=useState({});
   const games = resources.filter(isLearnWorldGameResource);
   const filtered = games.filter(r=>
     !search.trim() || (`${r.title} ${r.subject||''} ${r.grade_range||''} ${r.description||''}`).toLowerCase().includes(search.toLowerCase())
@@ -8151,6 +8152,26 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
     acc[folder].push(r);
     return acc;
   },{});
+  const folderOrder = useMemo(()=>{
+    const parseGrade = (label)=>{
+      const m = String(label||'').match(/grade\s*(\d+)/i);
+      return m ? parseInt(m[1],10) : null;
+    };
+    return Object.keys(grouped).sort((a,b)=>{
+      const ga = parseGrade(a); const gb = parseGrade(b);
+      if(ga!=null && gb!=null) return ga-gb;
+      if(ga!=null) return -1;
+      if(gb!=null) return 1;
+      if(String(a).toLowerCase()==='general') return 1;
+      if(String(b).toLowerCase()==='general') return -1;
+      return String(a).localeCompare(String(b));
+    });
+  },[grouped]);
+  const isDefaultOpenFolder = (folder)=>/grade\s*1(\b|\.)/i.test(String(folder||''));
+  const isFolderOpen = (folder)=> Object.prototype.hasOwnProperty.call(openFolders, folder)
+    ? !!openFolders[folder]
+    : isDefaultOpenFolder(folder);
+  const toggleFolder = (folder)=> setOpenFolders(p=>({...(p||{}), [folder]: !isFolderOpen(folder)}));
   const af = (k,v)=>setAssignForm(p=>({...p,[k]:v}));
   const resetAssign = ()=>{
     setAssignFor(null);
@@ -8244,47 +8265,65 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
         </p>
       ) : (
         <div style={{display:'grid',gap:'12px'}}>
-          {Object.entries(grouped).map(([folder,rows])=>(
+          {folderOrder.map(folder=>{
+            const rows = grouped[folder] || [];
+            const open = isFolderOpen(folder);
+            const caret = open ? '▾' : '▸';
+            return (
             <div key={folder} style={{border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',background:'#fff'}}>
-              <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'10px'}}>
-                <span style={{fontSize:'20px'}}>🎮</span>
-                <span style={{fontWeight:800,color:'#334155'}}>{folder}</span>
-                <span style={{background:'#dcfce7',color:'#166534',padding:'2px 8px',borderRadius:'999px',fontSize:'11px',fontWeight:700}}>{rows.length}</span>
-              </div>
-              <div style={{display:'grid',gap:'10px'}}>
-                {rows.map(r=>(
-                  <div key={r.id} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'14px',background:'#f8f9fa',borderRadius:'10px',borderLeft:'5px solid #0ea5e9',gap:'12px',flexWrap:'wrap'}}>
-                    <div style={{flex:1,minWidth:'220px'}}>
-                      <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px'}}>
-                        <span style={{fontSize:'20px'}}>🎮</span>
-                        <span style={{fontWeight:700,color:'#333',fontSize:'15px'}}>{r.title}</span>
+              <button
+                onClick={()=>toggleFolder(folder)}
+                style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'10px',border:'none',background:'transparent',cursor:'pointer',padding:0}}
+                title={open ? 'Collapse' : 'Expand'}
+              >
+                <div style={{display:'flex',alignItems:'center',gap:'10px',flexWrap:'wrap'}}>
+                  <span style={{fontSize:'18px',color:'#0ea5e9',fontWeight:900}}>{caret}</span>
+                  <span style={{fontSize:'20px'}}>🎮</span>
+                  <span style={{fontWeight:900,color:'#334155'}}>{folder}</span>
+                  <span style={{background:'#dcfce7',color:'#166534',padding:'2px 8px',borderRadius:'999px',fontSize:'11px',fontWeight:700}}>{rows.length}</span>
+                  {/grade\s*1(\b|\.)/i.test(String(folder||'')) && (
+                    <span style={{background:'#eef2ff',color:'#4338ca',padding:'2px 8px',borderRadius:'999px',fontSize:'11px',fontWeight:800}}>Grade 1</span>
+                  )}
+                </div>
+                <span style={{fontSize:'12px',color:'#64748b',fontWeight:800}}>{open ? 'Hide' : 'Show'}</span>
+              </button>
+
+              {open && (
+                <div style={{display:'grid',gap:'10px',marginTop:'10px'}}>
+                  {rows.map(r=>(
+                    <div key={r.id} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'14px',background:'#f8f9fa',borderRadius:'10px',borderLeft:'5px solid #0ea5e9',gap:'12px',flexWrap:'wrap'}}>
+                      <div style={{flex:1,minWidth:'220px'}}>
+                        <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px'}}>
+                          <span style={{fontSize:'20px'}}>🎮</span>
+                          <span style={{fontWeight:700,color:'#333',fontSize:'15px'}}>{r.title}</span>
+                        </div>
+                        <div style={{display:'flex',gap:'6px',flexWrap:'wrap',marginBottom:'4px'}}>
+                          {r.subject && <span style={{background:'#667eea22',color:'#667eea',padding:'2px 8px',borderRadius:'10px',fontSize:'11px'}}>{r.subject}</span>}
+                          {r.grade_range && <span style={{background:'#28a74522',color:'#28a745',padding:'2px 8px',borderRadius:'10px',fontSize:'11px'}}>{r.grade_range}</span>}
+                        </div>
+                        {r.description && <p style={{fontSize:'13px',color:'#666',marginTop:'4px'}}>{r.description}</p>}
                       </div>
-                      <div style={{display:'flex',gap:'6px',flexWrap:'wrap',marginBottom:'4px'}}>
-                        {r.subject && <span style={{background:'#667eea22',color:'#667eea',padding:'2px 8px',borderRadius:'10px',fontSize:'11px'}}>{r.subject}</span>}
-                        {r.grade_range && <span style={{background:'#28a74522',color:'#28a745',padding:'2px 8px',borderRadius:'10px',fontSize:'11px'}}>{r.grade_range}</span>}
-                      </div>
-                      {r.description && <p style={{fontSize:'13px',color:'#666',marginTop:'4px'}}>{r.description}</p>}
+                      <a
+                        href={r.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={()=>{ try{ onAudit && onAudit('learnworld_open', r); }catch(e){} }}
+                        style={{...sbtn,background:'#0ea5e9',textDecoration:'none',display:'inline-block',flexShrink:0}}
+                      >
+                        ▶ Open game
+                      </a>
+                      <button
+                        style={{...sbtn,background:'#16a34a',flexShrink:0}}
+                        onClick={()=>setAssignFor(r)}
+                      >
+                        ➕ Assign this game
+                      </button>
                     </div>
-                    <a
-                      href={r.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={()=>{ try{ onAudit && onAudit('learnworld_open', r); }catch(e){} }}
-                      style={{...sbtn,background:'#0ea5e9',textDecoration:'none',display:'inline-block',flexShrink:0}}
-                    >
-                      ▶ Open game
-                    </a>
-                    <button
-                      style={{...sbtn,background:'#16a34a',flexShrink:0}}
-                      onClick={()=>setAssignFor(r)}
-                    >
-                      ➕ Assign this game
-                    </button>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
-          ))}
+          );})}
         </div>
       )}
 
