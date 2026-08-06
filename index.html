@@ -6735,6 +6735,7 @@ function TeacherToolsTab({ teacherAuth, className, learners, onAudit }){
     if(!m) return null;
     return m[1].toUpperCase()==='R' ? 'R' : String(parseInt(m[1],10));
   },[className]);
+  const isFoundationClass = useMemo(()=>phaseForClass(className)==='foundation',[className]);
 
   const sortedLearners = useMemo(()=>{
     return [...(learners||[])].sort((a,b)=>
@@ -7740,18 +7741,36 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
         <div>
           <h3 style={{...ctitle,marginBottom:'6px'}}>🧰 Tools — {className}</h3>
           <div style={{color:'#666',fontSize:'13px',lineHeight:1.5}}>
-            {ui.description}
+            {isFoundationClass ? 'Foundation Phase tools are grouped under Journal Recording.' : ui.description}
           </div>
         </div>
         <span style={{background:'#eef2ff',color:'#4f46e5',padding:'8px 12px',borderRadius:'999px',fontSize:'12px',fontWeight:800}}>{isFAL ? 'Termyn 3 fokus' : 'Term 3 focus'}</span>
       </div>
 
-      <div style={{display:'flex',gap:'10px',flexWrap:'wrap',marginBottom:'12px'}}>
-        <button onClick={()=>setToolFolder('english_hl')} style={{...sbtn,background:toolFolder==='english_hl' ? '#4f46e5' : '#cbd5e1',color:toolFolder==='english_hl' ? '#fff' : '#111827',fontSize:'13px'}}>📁 English HL</button>
-        <button onClick={()=>setToolFolder('afrikaans_fal')} style={{...sbtn,background:toolFolder==='afrikaans_fal' ? '#0f766e' : '#cbd5e1',color:toolFolder==='afrikaans_fal' ? '#fff' : '#111827',fontSize:'13px'}}>📁 Afrikaans FAL</button>
-        <button onClick={()=>setToolFolder('mathematics')} style={{...sbtn,background:toolFolder==='mathematics' ? '#dc2626' : '#cbd5e1',color:toolFolder==='mathematics' ? '#fff' : '#111827',fontSize:'13px'}}>📁 Mathematics</button>
-        <button onClick={()=>setToolFolder('life_skills')} style={{...sbtn,background:toolFolder==='life_skills' ? '#f59e0b' : '#cbd5e1',color:toolFolder==='life_skills' ? '#fff' : '#111827',fontSize:'13px'}}>📁 Life Skills</button>
-      </div>
+      {isFoundationClass ? (
+        <div style={{marginBottom:'12px',border:'1px solid #dbeafe',background:'#f8fbff',borderRadius:'14px',padding:'12px'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',marginBottom:'10px'}}>
+            <div>
+              <div style={{fontWeight:900,color:'#1d4ed8',fontSize:'15px'}}>📁 Journal Recording</div>
+              <div style={{fontSize:'12px',color:'#64748b',marginTop:'4px'}}>Open a subject folder below to print or save the journal recording tools for this class.</div>
+            </div>
+            <span style={{background:'#dbeafe',color:'#1d4ed8',padding:'6px 10px',borderRadius:'999px',fontSize:'11px',fontWeight:800}}>Foundation Phase</span>
+          </div>
+          <div style={{display:'flex',gap:'10px',flexWrap:'wrap'}}>
+            <button onClick={()=>setToolFolder('english_hl')} style={{...sbtn,background:toolFolder==='english_hl' ? '#4f46e5' : '#cbd5e1',color:toolFolder==='english_hl' ? '#fff' : '#111827',fontSize:'13px'}}>📁 English HL</button>
+            <button onClick={()=>setToolFolder('afrikaans_fal')} style={{...sbtn,background:toolFolder==='afrikaans_fal' ? '#0f766e' : '#cbd5e1',color:toolFolder==='afrikaans_fal' ? '#fff' : '#111827',fontSize:'13px'}}>📁 Afrikaans FAL</button>
+            <button onClick={()=>setToolFolder('mathematics')} style={{...sbtn,background:toolFolder==='mathematics' ? '#dc2626' : '#cbd5e1',color:toolFolder==='mathematics' ? '#fff' : '#111827',fontSize:'13px'}}>📁 Mathematics</button>
+            <button onClick={()=>setToolFolder('life_skills')} style={{...sbtn,background:toolFolder==='life_skills' ? '#f59e0b' : '#cbd5e1',color:toolFolder==='life_skills' ? '#fff' : '#111827',fontSize:'13px'}}>📁 Life Skills</button>
+          </div>
+        </div>
+      ) : (
+        <div style={{display:'flex',gap:'10px',flexWrap:'wrap',marginBottom:'12px'}}>
+          <button onClick={()=>setToolFolder('english_hl')} style={{...sbtn,background:toolFolder==='english_hl' ? '#4f46e5' : '#cbd5e1',color:toolFolder==='english_hl' ? '#fff' : '#111827',fontSize:'13px'}}>📁 English HL</button>
+          <button onClick={()=>setToolFolder('afrikaans_fal')} style={{...sbtn,background:toolFolder==='afrikaans_fal' ? '#0f766e' : '#cbd5e1',color:toolFolder==='afrikaans_fal' ? '#fff' : '#111827',fontSize:'13px'}}>📁 Afrikaans FAL</button>
+          <button onClick={()=>setToolFolder('mathematics')} style={{...sbtn,background:toolFolder==='mathematics' ? '#dc2626' : '#cbd5e1',color:toolFolder==='mathematics' ? '#fff' : '#111827',fontSize:'13px'}}>📁 Mathematics</button>
+          <button onClick={()=>setToolFolder('life_skills')} style={{...sbtn,background:toolFolder==='life_skills' ? '#f59e0b' : '#cbd5e1',color:toolFolder==='life_skills' ? '#fff' : '#111827',fontSize:'13px'}}>📁 Life Skills</button>
+        </div>
+      )}
 
       {!cfg ? (
         <div style={{background:'#fff7ed',border:'1px solid #fed7aa',color:'#9a3412',padding:'10px 12px',borderRadius:'10px',fontSize:'13px',lineHeight:1.5}}>
