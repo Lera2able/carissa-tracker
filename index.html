@@ -6064,7 +6064,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
                 <input style={inp} type="email" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} autoComplete="email"/>
               </div>
               <div style={{marginBottom:'6px'}}>
-                <label style={lbl}>Password / PIN</label>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px'}}>                  <label style={{...lbl,margin:0}}>Password / PIN</label>                  <a                    href="https://tracker.carissaprimary.co.za/pins"                    target="_blank"                    rel="noreferrer"                    style={{fontSize:'12px',fontWeight:700,color:'#667eea',textDecoration:'none',padding:'6px 10px',border:'1px solid #c7d2fe',borderRadius:'999px',background:'#eef2ff',whiteSpace:'nowrap'}}                    aria-label="Forgot PIN? Open the PIN page"                  >                    Forgot PIN?                  </a>                </div>
                 <input style={inp} type="password" value={loginPin} onChange={e=>setLoginPin(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')teacherLogin();}} autoComplete="current-password"/>
               </div>
               <label style={{display:'flex',alignItems:'center',gap:'10px',margin:'10px 0 4px',cursor:'pointer',fontSize:'13px',color:'#555',fontWeight:500}}>
