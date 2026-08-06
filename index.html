@@ -8140,6 +8140,26 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
   const [assignBusy,setAssignBusy]=useState(false);
   const [assignForm,setAssignForm]=useState({assign_type:'classlist_class',surname:'',firstname:'',due_date:'',notes:''});
   const [openFolders,setOpenFolders]=useState({});
+  const [eduOpen,setEduOpen]=useState(false);
+
+  const EDU_WEBSITES = useMemo(()=>[
+    { title:'Toy Theater', url:'https://toytheater.com/', summary:'Simple educational games and classroom activities for young learners.' },
+    { title:'Math Monks', url:'https://mathmonks.com/', summary:'Math lessons, practice questions, and printable resources.' },
+    { title:'Educaplay', url:'https://www.educaplay.com/', summary:'Create and play interactive learning activities (quizzes, matching, crosswords, etc.).' },
+    { title:'Wayground', url:'https://wayground.com/?lng=en', summary:'Interactive learning activities and quizzes for classroom practice.' },
+    { title:'Google Read Along', url:'https://readalong.google.com/', summary:'Guided reading practice to build confidence and fluency.' },
+    { title:'Kiddo Worksheets', url:'https://www.kiddoworksheets.com/', summary:'Printable worksheets and classroom-ready activities.' },
+    { title:'Twinkl South Africa', url:'https://www.twinkl.co.za/', summary:'Teacher-made resources, worksheets, and classroom materials.' },
+    { title:'The Teacher’s Corner', url:'https://www.theteacherscorner.net/', summary:'Printable worksheets, lesson resources, and classroom tools.' },
+    { title:'ANTON', url:'https://anton.app/en_gb/', summary:'Learning app with curriculum practice for different grades and subjects.' },
+    { title:'All Kids Network', url:'https://www.allkidsnetwork.com/', summary:'Worksheets, crafts, and printable activities for kids.' },
+    { title:'StudyPapers (ATPs)', url:'https://studypapers.co.za/annual-teaching-plans-atps/grade-2-atps/afrikaans-eat-grade-2-atp-annual-teaching-plan-curriculum-breakdown/', summary:'South African curriculum documents and annual teaching plans (ATPs).' },
+    { title:'Red Cat Reading', url:'https://www.redcatreading.com/phonics-magic-e-course/', summary:'Phonics-focused resources and reading support materials.' },
+    { title:'IXL South Africa', url:'https://za.ixl.com/', summary:'Skills practice in maths and language with guided progression.' },
+    { title:'123 Homeschool 4 Me', url:'https://www.123homeschool4me.com/', summary:'Free worksheets and activities by grade and topic.' },
+    { title:'KiddoEduSheets (Multiplication)', url:'https://kiddoedusheets.com/worksheets/amazing-multiplication-tables/', summary:'Printable multiplication tables and practice worksheets.' },
+    { title:'FamilyNES (Nespray Grade 7)', url:'https://www.familynes.co.za/nespray/grade-7', summary:'Grade-linked learning content and resources.' },
+  ],[]);
   const games = resources.filter(isLearnWorldGameResource);
   const filtered = games.filter(r=>
     !search.trim() || (`${r.title} ${r.subject||''} ${r.grade_range||''} ${r.description||''}`).toLowerCase().includes(search.toLowerCase())
@@ -8173,6 +8193,12 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
     : isDefaultOpenFolder(folder);
   const toggleFolder = (folder)=> setOpenFolders(p=>({...(p||{}), [folder]: !isFolderOpen(folder)}));
   const af = (k,v)=>setAssignForm(p=>({...p,[k]:v}));
+
+  const eduFiltered = useMemo(()=>{
+    const s = search.trim().toLowerCase();
+    if(!s) return EDU_WEBSITES;
+    return EDU_WEBSITES.filter(x => (`${x.title} ${x.summary} ${x.url}`).toLowerCase().includes(s));
+  },[EDU_WEBSITES, search]);
   const resetAssign = ()=>{
     setAssignFor(null);
     setAssignBusy(false);
@@ -8324,6 +8350,49 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
               )}
             </div>
           );})}
+
+          {/* ── Educational Websites folder ───────────────────── */}
+          <div style={{border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',background:'#fff'}}>
+            <button
+              onClick={()=>setEduOpen(v=>!v)}
+              style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'10px',border:'none',background:'transparent',cursor:'pointer',padding:0}}
+              title={eduOpen ? 'Collapse' : 'Expand'}
+            >
+              <div style={{display:'flex',alignItems:'center',gap:'10px',flexWrap:'wrap'}}>
+                <span style={{fontSize:'18px',color:'#0ea5e9',fontWeight:900}}>{eduOpen ? '▾' : '▸'}</span>
+                <span style={{fontSize:'20px'}}>🌐</span>
+                <span style={{fontWeight:900,color:'#334155'}}>Educational Websites</span>
+                <span style={{background:'#eef2ff',color:'#4338ca',padding:'2px 8px',borderRadius:'999px',fontSize:'11px',fontWeight:700}}>{eduFiltered.length}</span>
+              </div>
+              <span style={{fontSize:'12px',color:'#64748b',fontWeight:800}}>{eduOpen ? 'Hide' : 'Show'}</span>
+            </button>
+
+            {eduOpen && (
+              <div style={{display:'grid',gap:'10px',marginTop:'10px'}}>
+                {eduFiltered.map(x=>(
+                  <div key={x.url} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'14px',background:'#f8f9fa',borderRadius:'10px',borderLeft:'5px solid #22c55e',gap:'12px',flexWrap:'wrap'}}>
+                    <div style={{flex:1,minWidth:'220px'}}>
+                      <div style={{fontWeight:800,color:'#111827',fontSize:'15px',marginBottom:'4px'}}>{x.title}</div>
+                      <div style={{fontSize:'12px',color:'#64748b',marginBottom:'6px'}}>{x.url}</div>
+                      <div style={{fontSize:'13px',color:'#475569'}}>{x.summary}</div>
+                    </div>
+                    <a
+                      href={x.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={()=>{ try{ onAudit && onAudit(`learnworld_edu_open:${x.title}`); }catch(e){} }}
+                      style={{...sbtn,background:'#22c55e',textDecoration:'none',display:'inline-block',flexShrink:0}}
+                    >
+                      🔗 Open (new tab)
+                    </a>
+                  </div>
+                ))}
+                {eduFiltered.length===0 && (
+                  <div style={{textAlign:'center',color:'#999',padding:'18px 0'}}>No websites match your search.</div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
