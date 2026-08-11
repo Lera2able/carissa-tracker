@@ -230,6 +230,7 @@ footer{text-align:center;margin-top:34px;color:#8aa6ad;font-weight:700;font-size
 <script>
 /* ============ CONTENT ============ */
 const ACT_META = {
+  alphabet:  {icon:"🔡", title:"Alphabet Practice", desc:"Practice typing Aa Bb Cc all the way to Zz."},
   letters:   {icon:"🔤", title:"Letter Garden",   desc:"Practice single letters and home-row keys."},
   words:     {icon:"🌱", title:"Word Sprouts",    desc:"Type fun words one after another."},
   sentences: {icon:"✏️", title:"Sentence Seeds",  desc:"Full sentences with capitals and periods."},
@@ -237,8 +238,8 @@ const ACT_META = {
   essays:    {icon:"🏆", title:"Essay Adventure", desc:"Big challenges with tricky punctuation!"}
 };
 const GRADES = {
-  1:{name:"Little Sprouts",    color:"#7BC96F", acts:["letters","words"], targetWpm:6},
-  2:{name:"Seedlings",         color:"#3BB273", acts:["words","sentences"], targetWpm:9},
+  1:{name:"Little Sprouts",    color:"#7BC96F", acts:["alphabet","letters","words"], targetWpm:6},
+  2:{name:"Seedlings",         color:"#3BB273", acts:["alphabet","words","sentences"], targetWpm:9},
   3:{name:"Young Shoots",      color:"#2FA9BC", acts:["words","sentences"], targetWpm:12},
   4:{name:"Budding Writers",   color:"#157A8C", acts:["words","sentences"], targetWpm:16},
   5:{name:"Blooming Typists",  color:"#9B7EDE", acts:["sentences","paragraphs"], targetWpm:20},
@@ -247,6 +248,9 @@ const GRADES = {
 };
 const CONTENT = {
   1:{
+    alphabet:[
+      "Aa Bb Cc Dd Ee Ff Gg Hh Ii Jj Kk Ll Mm Nn Oo Pp Qq Rr Ss Tt Uu Vv Ww Xx Yy Zz"
+    ],
     letters:[
       "s a t p i n","m d g o c k","e u r h b f","l j v w y z",
       "aa ss dd ff","jj kk ll","as df jk l","a s d f j k l",
@@ -255,6 +259,9 @@ const CONTENT = {
     words:["cat","dog","pig","sun","run","hop","big","red","ten","bus","cup","hat","pen","map","sit","fun","bed","box","jam","ant","hen","mud","top","web","yes","zoo","fox","leg","mom","dad"]
   },
   2:{
+    alphabet:[
+      "Aa Bb Cc Dd Ee Ff Gg Hh Ii Jj Kk Ll Mm Nn Oo Pp Qq Rr Ss Tt Uu Vv Ww Xx Yy Zz"
+    ],
     words:["apple","happy","house","mouse","plant","water","smile","light","bread","cloud","green","kite","jump","star","tree","bird","fish","rain","snow","hand","cake","door","frog","girl","lion","milk","park","sing","book","play"],
     sentences:[
       "The cat sat on the mat.","I like to play in the park.","We go to school every day.",
