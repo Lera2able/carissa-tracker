@@ -4202,6 +4202,31 @@ function DisciplineAdminTab({adminUser}){
       return true;
     });
   }, [selectedAdminHistory, historyActionFilter, historyFrom, historyTo]);
+
+  const downloadHtml = (html, fileName) => {
+    try{
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName || 'discipline-report.html';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 1500);
+    }catch(e){
+      alert('Could not download the report on this device. Please use Print / Save as PDF instead.');
+    }
+  };
+
+  const disciplineReportFileName = (learner={}) => {
+    const safe = (s='') => String(s||'').trim().replace(/[^a-z0-9]+/gi,'_').replace(/^_+|_+$/g,'');
+    const date = new Date();
+    const y = String(date.getFullYear());
+    const m = String(date.getMonth()+1).padStart(2,'0');
+    const d = String(date.getDate()).padStart(2,'0');
+    return `discipline-report_${safe(learner.surname)}_${safe(learner.firstname)}_${safe(learner.class_name || '')}_${y}${m}${d}.html`;
+  };
   const startEdit = (row, discipline) => {
     setEditingId(row?.id || null);
     setEditForm({
@@ -4335,18 +4360,35 @@ function DisciplineAdminTab({adminUser}){
       alert('Could not restore discipline record: ' + e.message);
     }
   };
-  const exportLearnerDisciplineReport = ()=>{
-    if(!selectedHeaderRecord?.discipline?.learner){
+  const exportLearnerDisciplineReport = ({ key, mode } = {})=>{
+    const useKey = key || selectedKey || null;
+    const active = useKey ? (recordsByKey[useKey] || []) : [];
+    const archived = useKey ? (archivedRecordsByKey[useKey] || []) : [];
+    const history = useKey ? (adminHistoryByKey[useKey] || []) : [];
+    const header = active[0] || archived[0] || null;
+    const learner = header?.discipline?.learner || null;
+    if(!learner){
       alert('Please select a learner first.');
       return;
     }
     const esc = (s='') => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    const learner = selectedHeaderRecord.discipline.learner || {};
-    const summary = selectedLearnerSummary || { points:0, merits:0, demerits:0, activeRecords:0, archivedRecords:0, latestTeacher:'—', latestAdminAction:'No admin actions yet' };
+    const base = useKey ? (totalsArr.find(t=>t.key===useKey) || null) : null;
+    const latestAdmin = history[0] || null;
+    const summary = {
+      points: base?.points ?? 0,
+      merits: base?.merits ?? 0,
+      demerits: base?.demerits ?? 0,
+      activeRecords: active.length,
+      archivedRecords: archived.length,
+      latestTeacher: base?.lastTeacher || '—',
+      latestAdminAction: latestAdmin
+        ? `${latestAdmin.action==='delete' ? 'Moved to recycle bin' : latestAdmin.action==='restore' ? 'Restored report' : 'Edited report'} · ${latestAdmin.details?.edited_by?.by_name || latestAdmin.details?.deleted_by?.by_name || latestAdmin.details?.restored_by?.by_name || latestAdmin.row?.teacher_name || latestAdmin.row?.teacher_email || 'Admin'}`
+        : 'No admin actions yet',
+    };
     const statusLabel = summary.points <= -10 ? 'Action required' : summary.points <= -5 ? 'Flagged for review' : 'In good standing';
     const statusColor = summary.points <= -10 ? '#b91c1c' : summary.points <= -5 ? '#a16207' : '#166534';
     const generatedAt = new Date().toLocaleString('en-ZA',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
-    const activeRows = selectedRecords.map((x, idx)=>{
+    const activeRows = active.map((x, idx)=>{
       const d = x.discipline || {};
       const dt = x.row?.created_at ? new Date(x.row.created_at).toLocaleDateString('en-ZA',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
       return `<tr>
@@ -4360,7 +4402,7 @@ function DisciplineAdminTab({adminUser}){
         <td>${esc(x.row?.teacher_name || x.row?.teacher_email || '—')}</td>
       </tr>`;
     }).join('');
-    const archivedRows = selectedArchivedRecords.map((x, idx)=>{
+    const archivedRows = archived.map((x, idx)=>{
       const d = x.discipline || {};
       const archivedBy = x.meta?.archived_by || {};
       return `<tr>
@@ -4372,7 +4414,7 @@ function DisciplineAdminTab({adminUser}){
         <td>${esc(archivedBy.by_name || archivedBy.by_email || 'Admin')}</td>
       </tr>`;
     }).join('');
-    const historyRows = selectedAdminHistory.map((h, idx)=>{
+    const historyRows = history.map((h, idx)=>{
       const actor = h.details?.edited_by?.by_name || h.details?.deleted_by?.by_name || h.details?.restored_by?.by_name || h.row?.teacher_name || h.row?.teacher_email || 'Admin';
       const action = h.action==='delete' ? 'Moved to recycle bin' : h.action==='restore' ? 'Restored report' : 'Edited report';
       return `<tr>
@@ -4482,11 +4524,18 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
   </footer>
 </div>
 </body></html>`;
+    if(mode === 'download'){
+      downloadHtml(html, disciplineReportFileName(learner));
+      return;
+    }
     const w = window.open('', '_blank');
     if(!w){ alert('Please allow pop-ups to open the report.'); return; }
     w.document.open();
     w.document.write(html);
     w.document.close();
+    if(mode === 'print'){
+      setTimeout(()=>{ try{ w.print(); }catch(e){} }, 350);
+    }
   };
 
   return (
@@ -4570,7 +4619,7 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',marginBottom:'10px'}}>
                 <div style={{fontWeight:900,color:'#333'}}>Records for: {selectedHeaderRecord?.discipline?.learner?.surname}, {selectedHeaderRecord?.discipline?.learner?.firstname} ({selectedHeaderRecord?.discipline?.learner?.class_name})</div>
                 <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
-                  <button onClick={exportLearnerDisciplineReport} style={{...sbtn,background:'#4f46e5',fontSize:'12px',padding:'6px 10px'}}>🖨 Professional report</button>
+                  <button onClick={()=>exportLearnerDisciplineReport({mode:'print'})} style={{...sbtn,background:'#4f46e5',fontSize:'12px',padding:'6px 10px'}}>🖨 Professional report</button>
                   <button onClick={()=>setSelectedKey(null)} style={{...sbtn,background:'#6c757d',fontSize:'12px',padding:'6px 10px'}}>Close</button>
                 </div>
               </div>
