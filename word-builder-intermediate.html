@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Intermediate Word Builder — Carissa LearnWorld</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --teal:#2FA9BC; --teal-dark:#157A8C; --navy:#1E4E5E; --cream:#FBF4E4;
+  --sun:#FFC93C; --coral:#FF6B6B; --green:#3BB273; --leaf:#7BC96F;
+  --purple:#9B7EDE; --ink:#23414d; --blue:#3b82f6;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:'Nunito',sans-serif;color:var(--ink);min-height:100vh;overflow-x:hidden;
+  background:linear-gradient(180deg,#eef7ff 0%,var(--cream) 62%,#fdf8ec 100%);
+}
+h1,h2,h3,.fk{font-family:'Fredoka',sans-serif}
+button,input{font-family:inherit}
+a{text-decoration:none}
+.deco{position:fixed;pointer-events:none;z-index:0;opacity:.5;font-size:44px;animation:float 9s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-26px) rotate(6deg)}}
+.wrap{position:relative;z-index:1;max-width:1020px;margin:0 auto;padding:18px 16px 60px}
+header{display:flex;align-items:center;gap:14px;justify-content:center;margin:10px 0 6px}
+.logo{width:76px;height:76px;border-radius:50%;object-fit:cover;border:4px solid #fff;box-shadow:0 6px 18px rgba(21,122,140,.28)}
+header h1{font-size:clamp(24px,4.5vw,36px);color:var(--navy);line-height:1.05;font-weight:700}
+header p{color:var(--teal-dark);font-weight:800;font-size:clamp(13px,2vw,16px)}
+.screen{display:none;animation:pop .35s ease}
+.screen.active{display:block}
+@keyframes pop{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+.section-title{text-align:center;font-size:clamp(20px,3vw,28px);color:var(--navy);margin:22px 0 4px;font-weight:700}
+.section-sub{text-align:center;color:#5b7c86;font-weight:700;margin-bottom:20px}
+.mode-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+.mode-card{
+  background:#fff;border-radius:24px;padding:26px 20px;text-align:left;
+  box-shadow:0 6px 0 rgba(30,78,94,.12),0 14px 26px rgba(30,78,94,.10);
+  transition:transform .15s ease;border:3px solid transparent;width:100%;cursor:pointer;
+}
+.mode-card:hover{transform:translateY(-5px);border-color:var(--sun)}
+.mode-card .aicon{font-size:42px;display:block;margin-bottom:8px}
+.mode-card h3{color:var(--navy);font-size:21px;font-weight:700}
+.mode-card p{color:#66858e;font-weight:700;font-size:14px;margin:6px 0 10px}
+.mode-card .best{display:inline-block;background:var(--cream);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:900;color:var(--teal-dark)}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:12px 24px;
+  font-family:'Fredoka';font-weight:600;font-size:17px;color:#fff;background:var(--teal);
+  box-shadow:0 5px 0 var(--teal-dark);transition:transform .1s ease,box-shadow .1s ease;text-decoration:none;border:none;cursor:pointer;
+}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--teal-dark)}
+.btn.sun{background:var(--sun);color:#7a5b00;box-shadow:0 5px 0 #d9a520}
+.btn.sun:active{box-shadow:0 1px 0 #d9a520}
+.btn.coral{background:var(--coral);box-shadow:0 5px 0 #d94f4f}
+.btn.coral:active{box-shadow:0 1px 0 #d94f4f}
+.btn.ghost{background:#fff;color:var(--navy);box-shadow:0 5px 0 #d8e6ea}
+.btn.ghost:active{box-shadow:0 1px 0 #d8e6ea}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.backbar{display:flex;justify-content:space-between;align-items:center;margin:6px 0 10px;gap:10px;flex-wrap:wrap}
+.crumb{font-weight:900;color:var(--teal-dark);background:#fff;padding:8px 16px;border-radius:999px;box-shadow:0 3px 0 #d8e6ea}
+.stats{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
+.stat{background:#fff;border-radius:16px;padding:8px 18px;text-align:center;box-shadow:0 4px 0 rgba(30,78,94,.10);min-width:100px}
+.stat .sv{font-family:'Fredoka';font-size:24px;font-weight:700;color:var(--navy)}
+.stat .sl{font-size:11px;font-weight:900;letter-spacing:.5px;color:#7b98a0;text-transform:uppercase}
+.bloom{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.bbar{flex:1;height:22px;background:#fff;border-radius:999px;box-shadow:inset 0 3px 6px rgba(30,78,94,.15);overflow:hidden}
+.bfill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,var(--leaf),var(--teal));transition:width .35s ease}
+.bflower{font-size:42px;line-height:1;transition:transform .3s ease;filter:drop-shadow(0 4px 6px rgba(0,0,0,.15))}
+.bscore{font-family:'Fredoka';font-weight:700;color:var(--navy);min-width:86px;text-align:right;font-size:18px}
+.qcard{
+  background:#fff;border-radius:26px;padding:28px 26px 30px;
+  box-shadow:0 8px 0 rgba(30,78,94,.10),0 20px 40px rgba(30,78,94,.10);text-align:center;
+}
+.qhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.badge{display:inline-flex;align-items:center;gap:8px;background:#eef2ff;color:#4338ca;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:900}
+.scramble{
+  display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:16px 0 18px;
+}
+.tile{
+  min-width:62px;height:68px;padding:0 8px;border-radius:18px;background:linear-gradient(180deg,#ffffff,#eef9ff);
+  box-shadow:0 6px 0 rgba(47,169,188,.25);display:flex;align-items:center;justify-content:center;
+  font-family:'Fredoka';font-size:32px;font-weight:700;color:var(--navy);text-transform:uppercase;
+}
+.promptline{font-size:15px;color:#5b7c86;font-weight:800;margin-bottom:10px}
+.answerbox{display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap;margin:12px 0}
+.answerbox input{
+  width:min(320px,100%);padding:14px 16px;border-radius:16px;border:2px solid #d9e6ea;
+  font-size:20px;font-weight:800;text-align:center;text-transform:uppercase;letter-spacing:1px;
+}
+.answerbox input:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 4px rgba(47,169,188,.14)}
+.hintrow{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+.hintpill{background:var(--cream);color:#7c5e00;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:900}
+.feedback{
+  min-height:34px;font-family:'Fredoka';font-weight:600;font-size:20px;margin:14px 0 8px;
+  display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;
+}
+.feedback.good{color:var(--green)}
+.feedback.bad{color:var(--coral)}
+.result-card{
+  background:#fff;border-radius:30px;padding:36px 28px;text-align:center;max-width:620px;margin:14px auto;
+  box-shadow:0 10px 0 rgba(30,78,94,.10),0 24px 48px rgba(30,78,94,.14);
+}
+.stars{font-size:58px;letter-spacing:8px;margin:6px 0 2px;min-height:70px}
+.stars span{display:inline-block;opacity:0;transform:scale(0)}
+.stars span.on{animation:starpop .5s cubic-bezier(.2,2,.4,1) forwards}
+@keyframes starpop{to{opacity:1;transform:scale(1)}}
+.result-card h2{color:var(--navy);font-size:30px}
+.encourage{color:#66858e;font-weight:800;margin:8px 0 18px}
+.rstats{display:flex;gap:12px;justify-content:center;margin-bottom:22px;flex-wrap:wrap}
+.rstat{background:var(--cream);border-radius:18px;padding:12px 20px;min-width:100px}
+.rstat .sv{font-family:'Fredoka';font-size:30px;font-weight:700;color:var(--teal-dark)}
+.rstat .sl{font-size:11px;font-weight:900;color:#7b98a0;text-transform:uppercase}
+.rbtns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+footer{text-align:center;margin-top:34px;color:#8aa6ad;font-weight:700;font-size:13px}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:50}
+@media(max-width:560px){
+  .tile{min-width:50px;height:58px;font-size:26px}
+  .answerbox input{font-size:18px}
+}
+</style>
+</head>
+<body>
+<div class="deco" style="top:12%;left:4%">☁️</div>
+<div class="deco" style="top:20%;right:5%;animation-delay:-3s">🧠</div>
+<div class="deco" style="bottom:14%;left:6%;animation-delay:-5s">📚</div>
+<div class="deco" style="bottom:24%;right:7%;animation-delay:-7s">✨</div>
+<canvas id="confetti"></canvas>
+
+<div class="wrap">
+  <header>
+    <img src="typing-garden-logo.jpg" alt="Carissa School logo" class="logo">
+    <div class="title">
+      <h1>Intermediate Word Builder</h1>
+      <p>Unscramble the letters, build the word, and send your score to your teacher. 🧩</p>
+    </div>
+  </header>
+
+  <section id="screen-modes" class="screen active">
+    <h2 class="section-title">Choose Your Level</h2>
+    <p class="section-sub">Play easy, medium, or hard rounds. Score 100 or finish all 12 words to complete the activity.</p>
+    <div class="mode-grid" id="modeGrid"></div>
+    <div style="text-align:center;margin-top:26px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <a class="btn ghost" href="typing-speed-quest.html">⌨️ Typing Garden</a>
+      <a class="btn ghost" href="maths-quest.html">➕ Maths Quest</a>
+      <a class="btn ghost" href="index.html">⌂ LearnWorld</a>
+    </div>
+  </section>
+
+  <section id="screen-game" class="screen">
+    <div class="backbar">
+      <button class="btn ghost" onclick="quitToModes()">← All Levels</button>
+      <span class="crumb" id="crumbMode"></span>
+      <button class="btn ghost" id="soundBtn" onclick="toggleSound()">🔊</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="sv" id="stQ">0/12</div><div class="sl">Words</div></div>
+      <div class="stat"><div class="sv" id="stLives">3</div><div class="sl">Lives</div></div>
+      <div class="stat"><div class="sv" id="stTime">0:00</div><div class="sl">Time</div></div>
+      <div class="stat"><div class="sv" id="stLevel">1</div><div class="sl">Level</div></div>
+    </div>
+    <div class="bloom">
+      <div class="bbar"><div class="bfill" id="bfill"></div></div>
+      <div class="bflower" id="bflower">🌱</div>
+      <div class="bscore" id="bscore">0/100</div>
+    </div>
+    <div class="qcard">
+      <div class="qhead">
+        <div class="badge" id="catBadge">📘 Vocabulary</div>
+        <div class="badge" id="hintBadge">💡 Hint ready</div>
+      </div>
+      <div class="promptline">Unscramble the letters to form the correct word.</div>
+      <div class="scramble" id="scrambleRow"></div>
+      <div class="answerbox">
+        <input id="answerInput" type="text" maxlength="20" autocomplete="off" spellcheck="false" placeholder="Type the word">
+        <button class="btn sun" id="submitBtn">Submit</button>
+      </div>
+      <div class="hintrow">
+        <div class="hintpill" id="firstLetterHint">First letter: -</div>
+        <div class="hintpill" id="wordLengthHint">Length: -</div>
+      </div>
+      <div class="feedback" id="feedback">&nbsp;</div>
+    </div>
+  </section>
+
+  <section id="screen-results" class="screen">
+    <div class="result-card">
+      <div class="stars" id="stars"><span>⭐</span><span>⭐</span><span>⭐</span></div>
+      <h2 id="rTitle">Round complete!</h2>
+      <p class="encourage" id="rEncourage"></p>
+      <div class="rstats">
+        <div class="rstat"><div class="sv" id="rScore">0</div><div class="sl">Score</div></div>
+        <div class="rstat"><div class="sv" id="rAcc">0%</div><div class="sl">Accuracy</div></div>
+        <div class="rstat"><div class="sv" id="rTime">0:00</div><div class="sl">Time</div></div>
+        <div class="rstat"><div class="sv" id="rLevel">1</div><div class="sl">Level</div></div>
+      </div>
+      <div class="rbtns">
+        <button class="btn sun" onclick="startMode(state.mode)">🔄 Play Again</button>
+        <button class="btn" onclick="quitToModes()">🧩 All Levels</button>
+        <a class="btn coral" href="index.html">⌂ LearnWorld</a>
+      </div>
+      <div id="sendWrap" style="display:none;margin-top:16px">
+        <button class="btn" type="button" onclick="sendToTeacher()">📤 Send result to teacher</button>
+        <div id="sendStatus" style="margin-top:10px;color:#66858e;font-weight:800"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>Carissa LearnWorld · Growing confident readers and spellers 🌻</footer>
+</div>
+
+<script>
+const qs = new URLSearchParams(location.search);
+const ASSIGNMENT_ID = qs.get("assignment_id") || "";
+const OPENED_FROM_TRACKER = !!ASSIGNMENT_ID;
+const $ = s => document.querySelector(s);
+
+const WORD_SETS = {
+  easy: [
+    {word:"planet", category:"Science"},
+    {word:"market", category:"Everyday life"},
+    {word:"friend", category:"People"},
+    {word:"puzzle", category:"Thinking"},
+    {word:"school", category:"School"},
+    {word:"garden", category:"Nature"},
+    {word:"winter", category:"Seasons"},
+    {word:"rabbit", category:"Animals"},
+    {word:"silver", category:"Colour"},
+    {word:"bridge", category:"Places"},
+    {word:"pencil", category:"School"},
+    {word:"stream", category:"Nature"},
+    {word:"secret", category:"Stories"},
+    {word:"soccer", category:"Sport"},
+    {word:"yellow", category:"Colour"},
+    {word:"doctor", category:"Jobs"},
+  ],
+  medium: [
+    {word:"library", category:"Places"},
+    {word:"journey", category:"Adventure"},
+    {word:"crystal", category:"Describing"},
+    {word:"harvest", category:"Nature"},
+    {word:"kingdom", category:"Stories"},
+    {word:"lantern", category:"Objects"},
+    {word:"musical", category:"Arts"},
+    {word:"captain", category:"People"},
+    {word:"thunder", category:"Weather"},
+    {word:"whisper", category:"Communication"},
+    {word:"chimney", category:"Places"},
+    {word:"dolphin", category:"Animals"},
+    {word:"blanket", category:"Home"},
+    {word:"starlit", category:"Describing"},
+    {word:"orchard", category:"Nature"},
+    {word:"victory", category:"Achievement"},
+  ],
+  hard: [
+    {word:"adventure", category:"Stories"},
+    {word:"knowledge", category:"Learning"},
+    {word:"microscope", category:"Science"},
+    {word:"treasure", category:"Adventure"},
+    {word:"classroom", category:"School"},
+    {word:"volcanoes", category:"Geography"},
+    {word:"important", category:"Writing"},
+    {word:"chocolate", category:"Food"},
+    {word:"electric", category:"Science"},
+    {word:"beautiful", category:"Describing"},
+    {word:"strongest", category:"Grammar"},
+    {word:"mountains", category:"Geography"},
+    {word:"discovery", category:"Learning"},
+    {word:"astronomy", category:"Science"},
+    {word:"creatures", category:"Animals"},
+    {word:"champions", category:"Sport"},
+  ]
+};
+
+const MODES = {
+  easy:{icon:"🟢", title:"Easy", desc:"Shorter everyday words for Grade 4 and gentle warm-up rounds."},
+  medium:{icon:"🔵", title:"Medium", desc:"Longer words with trickier letter patterns and vocabulary."},
+  hard:{icon:"🟣", title:"Hard", desc:"Big challenge words for strong intermediate-phase learners."}
+};
+
+const ENCOURAGE = {
+  1:["Nice try. You kept going and finished the round.","Good effort. Keep building those words!"],
+  2:["Strong work. Your word power is growing!","Well done. You are becoming a sharp word builder."],
+  3:["Excellent! That was championship spelling.","Brilliant round! You built every word with real confidence."]
+};
+
+const state = {
+  mode:"easy", items:[], current:null, asked:0, correct:0, wrong:0, lives:3, level:1,
+  score:0, start:null, timer:null, sound:true, locked:false, lastResult:null
+};
+
+let audioCtx = null;
+function ac(){ if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); return audioCtx; }
+function beep(freq,dur,type,vol,when=0){
+  if(!state.sound) return;
+  try{
+    const ctx = ac(), t = ctx.currentTime + when;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(t); o.stop(t + dur);
+  }catch(e){}
+}
+function sndGood(){ beep(620,.10,"triangle",.09); beep(830,.12,"triangle",.08,.08); }
+function sndBad(){ beep(220,.12,"sawtooth",.08); beep(180,.16,"sawtooth",.07,.08); }
+function sndWin(){ beep(523,.12,"triangle",.1); beep(659,.12,"triangle",.09,.10); beep(784,.18,"triangle",.08,.20); }
+
+function shuffle(arr){
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+function formatTime(sec){ return `${Math.floor(sec/60)}:${String(Math.floor(sec%60)).padStart(2,"0")}`; }
+function elapsed(){ return state.start ? (Date.now()-state.start)/1000 : 0; }
+function accuracy(){
+  const total = state.asked || 0;
+  return total ? Math.round((state.correct/total)*100) : 100;
+}
+function levelFromCorrect(correct){ return 1 + Math.floor(correct / 3); }
+function scrambleWord(word){
+  const letters = word.toUpperCase().split('');
+  let mixed = shuffle(letters);
+  let attempts = 0;
+  while(mixed.join('') === word.toUpperCase() && attempts < 8){
+    mixed = shuffle(letters);
+    attempts++;
+  }
+  return mixed;
+}
+function show(sel){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  $(sel).classList.add('active');
+}
+
+function renderModes(){
+  const bestKey = mode => `carissa_word_builder_intermediate_${mode}`;
+  $('#modeGrid').innerHTML = Object.entries(MODES).map(([key,m])=>{
+    const best = JSON.parse(localStorage.getItem(bestKey(key)) || 'null');
+    const bestText = best ? `Best: ${best.score}/100 · ${best.acc}%` : 'No score yet';
+    return `<button class="mode-card" onclick="startMode('${key}')">
+      <span class="aicon">${m.icon}</span>
+      <h3>${m.title}</h3>
+      <p>${m.desc}</p>
+      <span class="best">${bestText}</span>
+    </button>`;
+  }).join('');
+}
+
+function updateStats(){
+  $('#stQ').textContent = `${state.asked}/12`;
+  $('#stLives').textContent = state.lives;
+  $('#stTime').textContent = formatTime(elapsed());
+  $('#stLevel').textContent = state.level;
+  $('#bfill').style.width = `${state.score}%`;
+  $('#bscore').textContent = `${state.score}/100`;
+  const p = state.score / 100;
+  $('#bflower').textContent = p<0.25 ? '🌱' : p<0.5 ? '🌿' : p<0.75 ? '🌼' : p<1 ? '🌺' : '🏆';
+  $('#bflower').style.transform = `scale(${0.9 + p*0.5}) rotate(${p*8}deg)`;
+}
+
+function stopTimer(){ if(state.timer){ clearInterval(state.timer); state.timer=null; } }
+
+function nextWord(){
+  if(state.asked >= 12 || state.lives <= 0 || state.score >= 100){
+    finish();
+    return;
+  }
+  state.current = state.items[state.asked];
+  state.locked = false;
+  $('#catBadge').textContent = `📘 ${state.current.category}`;
+  $('#hintBadge').textContent = `💡 Hint ready`;
+  $('#firstLetterHint').textContent = `First letter: ${state.current.word[0].toUpperCase()}`;
+  $('#wordLengthHint').textContent = `Length: ${state.current.word.length}`;
+  $('#feedback').className = 'feedback';
+  $('#feedback').innerHTML = '&nbsp;';
+  $('#answerInput').value = '';
+  $('#answerInput').disabled = false;
+  $('#submitBtn').disabled = false;
+  $('#scrambleRow').innerHTML = scrambleWord(state.current.word).map(ch=>`<div class="tile">${ch}</div>`).join('');
+  $('#answerInput').focus();
+}
+
+function startMode(mode){
+  state.mode = mode;
+  state.items = shuffle(WORD_SETS[mode]).slice(0, 12);
+  state.current = null;
+  state.asked = 0;
+  state.correct = 0;
+  state.wrong = 0;
+  state.lives = 3;
+  state.level = 1;
+  state.score = 0;
+  state.locked = false;
+  state.lastResult = null;
+  state.start = Date.now();
+  stopTimer();
+  state.timer = setInterval(updateStats, 300);
+  $('#crumbMode').textContent = `${MODES[mode].icon} ${MODES[mode].title}`;
+  $('#sendWrap').style.display = 'none';
+  $('#sendStatus').textContent = '';
+  updateStats();
+  show('#screen-game');
+  nextWord();
+}
+
+function submitAnswer(){
+  if(state.locked || !state.current) return;
+  const guess = String($('#answerInput').value || '').trim().toLowerCase();
+  if(!guess) return;
+  state.locked = true;
+  $('#submitBtn').disabled = true;
+  $('#answerInput').disabled = true;
+  state.asked += 1;
+
+  if(guess === state.current.word.toLowerCase()){
+    state.correct += 1;
+    state.level = levelFromCorrect(state.correct);
+    const gain = Math.min(14, 8 + Math.max(0, state.current.word.length - 5));
+    state.score = Math.min(100, state.score + gain);
+    $('#feedback').className = 'feedback good';
+    $('#feedback').textContent = `✅ Correct! ${state.current.word.toUpperCase()}`;
+    sndGood();
+  }else{
+    state.wrong += 1;
+    state.lives = Math.max(0, state.lives - 1);
+    state.score = Math.max(0, state.score - 5);
+    $('#feedback').className = 'feedback bad';
+    $('#feedback').textContent = `❌ The word was ${state.current.word.toUpperCase()}`;
+    sndBad();
+  }
+
+  updateStats();
+  setTimeout(nextWord, 1300);
+}
+
+function finish(){
+  stopTimer();
+  const acc = accuracy();
+  const score = Math.round(state.score);
+  const timeLabel = formatTime(elapsed());
+  let stars = 1;
+  if(acc >= 75) stars++;
+  if(acc >= 90 && score >= 80) stars++;
+  $('#rScore').textContent = score;
+  $('#rAcc').textContent = `${acc}%`;
+  $('#rTime').textContent = timeLabel;
+  $('#rLevel').textContent = state.level;
+  $('#rTitle').textContent = stars===3 ? 'Outstanding word building!' : stars===2 ? 'Strong finish!' : 'Round complete!';
+  const msgList = ENCOURAGE[stars];
+  $('#rEncourage').textContent = msgList[Math.floor(Math.random()*msgList.length)];
+  const spans = document.querySelectorAll('#stars span');
+  spans.forEach(s=>s.classList.remove('on'));
+  for(let i=0;i<stars;i++) setTimeout(()=>spans[i].classList.add('on'), 250 + i*220);
+
+  state.lastResult = {
+    assignment_id: ASSIGNMENT_ID,
+    activity: 'word_builder_intermediate',
+    activity_title: 'Intermediate Word Builder',
+    stars,
+    score,
+    accuracy: acc,
+    correct: state.correct,
+    asked: state.asked,
+    wrong: state.wrong,
+    duration_sec: Math.round(elapsed()),
+    time_label: timeLabel,
+    level: state.level,
+    lives_left: state.lives,
+    result_summary: `Intermediate Word Builder — Score: ${score}/100, Accuracy: ${acc}%, Correct: ${state.correct}/${state.asked}, Level: ${state.level}, Lives left: ${state.lives}, Time: ${timeLabel}`
+  };
+
+  const bestKey = `carissa_word_builder_intermediate_${state.mode}`;
+  const prev = JSON.parse(localStorage.getItem(bestKey) || 'null');
+  if(!prev || score > prev.score || (score === prev.score && acc > prev.acc)){
+    localStorage.setItem(bestKey, JSON.stringify({score, acc}));
+  }
+
+  show('#screen-results');
+  sndWin();
+  launchConfetti();
+  if(OPENED_FROM_TRACKER){
+    $('#sendWrap').style.display = 'block';
+    $('#sendStatus').textContent = 'Sending result back to the learner portal...';
+    setTimeout(()=>sendToTeacher(), 200);
+  }
+}
+
+function quitToModes(){
+  stopTimer();
+  renderModes();
+  show('#screen-modes');
+}
+
+function toggleSound(){
+  state.sound = !state.sound;
+  $('#soundBtn').textContent = state.sound ? '🔊' : '🔇';
+}
+
+function sendToTeacher(){
+  if(!OPENED_FROM_TRACKER){
+    $('#sendStatus').textContent = 'This round was not opened from an assignment.';
+    return;
+  }
+  if(!state.lastResult){
+    $('#sendStatus').textContent = 'Finish a round first, then send the result.';
+    return;
+  }
+  const payload = {
+    type: 'typing_speed_result',
+    assignment_id: state.lastResult.assignment_id,
+    wpm: state.lastResult.score,
+    accuracy: state.lastResult.accuracy,
+    typed_chars: state.lastResult.correct,
+    errors: state.lastResult.wrong,
+    duration_sec: state.lastResult.duration_sec,
+    activity: state.lastResult.activity,
+    activity_title: state.lastResult.activity_title,
+    stars: state.lastResult.stars,
+    grade: 'Intermediate Phase',
+    time_label: state.lastResult.time_label,
+    result_summary: state.lastResult.result_summary
+  };
+  try{
+    if(window.opener){
+      window.opener.postMessage(payload, window.location.origin);
+      $('#sendStatus').textContent = 'Sent. Return to the learner portal to see it save.';
+      return;
+    }
+  }catch(e){}
+  try{
+    localStorage.setItem('typing_speed_result_pending', JSON.stringify(payload));
+    $('#sendStatus').textContent = 'Sent. Return to the learner portal tab to finish saving.';
+  }catch(e){
+    $('#sendStatus').textContent = 'Could not send automatically. Please try again.';
+  }
+}
+
+function launchConfetti(){
+  const canvas = $('#confetti');
+  const ctx = canvas.getContext('2d');
+  canvas.width = innerWidth; canvas.height = innerHeight;
+  const parts = Array.from({length:120},()=>({
+    x: Math.random()*canvas.width,
+    y: -20-Math.random()*canvas.height*0.4,
+    r: 4+Math.random()*6,
+    c: ['#FFC93C','#FF6B6B','#7BC96F','#2FA9BC','#9B7EDE'][Math.floor(Math.random()*5)],
+    vx: -2+Math.random()*4,
+    vy: 2+Math.random()*5,
+    a: Math.random()*Math.PI
+  }));
+  let frames = 0;
+  (function tick(){
+    frames++;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    parts.forEach(p=>{
+      p.x += p.vx; p.y += p.vy; p.a += 0.12;
+      ctx.save();
+      ctx.translate(p.x,p.y);
+      ctx.rotate(p.a);
+      ctx.fillStyle = p.c;
+      ctx.fillRect(-p.r/2,-p.r/2,p.r,p.r*1.4);
+      ctx.restore();
+    });
+    if(frames < 100) requestAnimationFrame(tick);
+    else ctx.clearRect(0,0,canvas.width,canvas.height);
+  })();
+}
+
+window.addEventListener('resize', ()=>{ const c = $('#confetti'); c.width = innerWidth; c.height = innerHeight; });
+$('#submitBtn').addEventListener('click', submitAnswer);
+$('#answerInput').addEventListener('keydown', e=>{ if(e.key === 'Enter') submitAnswer(); });
+renderModes();
+</script>
+</body>
+</html>
