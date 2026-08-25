@@ -7,7 +7,6 @@ insert into public.carissa_resources (
   type,
   subject,
   grade_range,
-  folder,
   description,
   uploaded_by
 )
@@ -17,7 +16,6 @@ values (
   'link',
   'English HL',
   'Grade 4-7',
-  'LearnWorld',
   'Trackable word-building and unscramble game for intermediate phase learners. Scores can be sent back to the learner portal and tracked by the teacher.',
   'TRAE'
 )
