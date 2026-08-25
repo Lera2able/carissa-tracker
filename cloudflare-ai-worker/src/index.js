@@ -1,13 +1,30 @@
 /**
- * Carissa Tracker AI proxy (Cloudflare Worker)
+ * Carissa Tracker API Worker
  *
- * Exposes POST /api/ai for the admin "TRAE Assistant" panel.
- * Keeps the OpenAI key on the server and can perform safe reading-score updates.
+ * Exposes:
+ * - POST /api/ai
+ * - POST /api/auth/teacher/login
+ * - GET  /api/auth/teacher/session
+ * - POST /api/auth/teacher/logout
+ * - POST /api/auth/learner/login
+ * - GET  /api/auth/learner/session
+ * - POST /api/auth/learner/logout
+ * - GET  /api/learner-results/teacher
+ * - GET  /api/learner-results/me
+ * - POST /api/learner-results/upsert
+ *
+ * Keeps privileged Supabase access on the server and removes browser-side
+ * direct access to `carissa_learner_activity_results`.
  */
 
-const SUPABASE_URL = "https://vousucfboetqtppjywlg.supabase.co";
-const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZvdXN1Y2Zib2V0cXRwcGp5d2xnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNjE1NTIsImV4cCI6MjA5MzkzNzU1Mn0.bdwEPpWrazC1KDVG58MnbBy6Lr4YhO8gUyEuK1VykU4";
+const DEFAULT_SUPABASE_URL = "https://vousucfboetqtppjywlg.supabase.co";
+const COOKIE_NAMES = {
+  teacher: "carissa_tracker_teacher_session",
+  learner: "carissa_tracker_learner_session",
+};
+const TEACHER_SESSION_MAX_AGE = 60 * 60 * 12;
+const TEACHER_PERSIST_MAX_AGE = 60 * 60 * 24 * 30;
+const LEARNER_SESSION_MAX_AGE = 60 * 60 * 8;
 const READING_AGE_KEY = [
   { w: 12, age: 6.0 },
   { w: 30, age: 7.0 },
@@ -20,16 +37,164 @@ const READING_AGE_KEY = [
   { w: 121, age: 13.75 },
 ];
 
-function jsonResponse(obj, status = 200, origin = "*") {
+function getSupabaseUrl(env) {
+  return env.SUPABASE_URL || DEFAULT_SUPABASE_URL;
+}
+
+function getServiceRoleKey(env) {
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set on the Worker.");
+  }
+  return env.SUPABASE_SERVICE_ROLE_KEY;
+}
+
+function getSessionSecret(env) {
+  if (!env.SESSION_SECRET) {
+    throw new Error("SESSION_SECRET is not set on the Worker.");
+  }
+  return env.SESSION_SECRET;
+}
+
+function jsonResponse(obj, status = 200, origin = "*", extraHeaders = {}) {
   return new Response(JSON.stringify(obj), {
     status,
     headers: {
       "content-type": "application/json; charset=utf-8",
       "access-control-allow-origin": origin,
-      "access-control-allow-methods": "POST,OPTIONS",
+      "access-control-allow-methods": "GET,POST,OPTIONS",
       "access-control-allow-headers": "content-type",
+      "access-control-allow-credentials": "true",
+      ...extraHeaders,
     },
   });
+}
+
+function normalizeOrigin(origin, allowedOrigin) {
+  return origin && origin === allowedOrigin ? origin : allowedOrigin;
+}
+
+function parseCookies(header = "") {
+  const out = {};
+  for (const part of String(header).split(";")) {
+    const [name, ...rest] = part.trim().split("=");
+    if (!name) continue;
+    out[name] = rest.join("=");
+  }
+  return out;
+}
+
+function bytesToBase64Url(bytes) {
+  let binary = "";
+  const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  for (const byte of arr) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function base64UrlToBytes(value) {
+  const base64 = String(value).replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64 + "===".slice((base64.length + 3) % 4);
+  const binary = atob(padded);
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+
+async function importHmacKey(secret) {
+  return crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign", "verify"]
+  );
+}
+
+async function signValue(secret, value) {
+  const key = await importHmacKey(secret);
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value));
+  return bytesToBase64Url(sig);
+}
+
+async function encodeSignedSession(env, payload) {
+  const body = bytesToBase64Url(new TextEncoder().encode(JSON.stringify(payload)));
+  const sig = await signValue(getSessionSecret(env), body);
+  return `${body}.${sig}`;
+}
+
+async function decodeSignedSession(env, rawToken) {
+  if (!rawToken || !String(rawToken).includes(".")) return null;
+  const [body, sig] = String(rawToken).split(".", 2);
+  const expected = await signValue(getSessionSecret(env), body);
+  if (expected !== sig) return null;
+  try {
+    const parsed = JSON.parse(new TextDecoder().decode(base64UrlToBytes(body)));
+    if (!parsed?.exp || Number(parsed.exp) < Math.floor(Date.now() / 1000)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+async function createSessionCookie(env, name, payload, maxAge) {
+  const token = await encodeSignedSession(env, payload);
+  return `${name}=${token}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`;
+}
+
+function clearCookie(name) {
+  return `${name}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`;
+}
+
+function classSlug(className) {
+  return String(className || "")
+    .toLowerCase()
+    .replace(/grade\s*/i, "g")
+    .replace(/[^a-z0-9]+/g, "")
+    .replace(/^g/, "g");
+}
+
+function deriveLearnerIdentity(username, pin, profile = {}) {
+  const cleanUser = String(username || "").trim().toLowerCase();
+  const cleanPin = String(pin || "").trim();
+  const match = cleanUser.match(/^(g[a-z0-9]+)-(\d{2})$/i);
+  if (!match) return null;
+  const learnerNumber = Number.parseInt(match[2], 10);
+  if (!learnerNumber || cleanPin !== String(learnerNumber).padStart(4, "0")) return null;
+  const className = String(profile.class_name || "").trim();
+  if (!className || classSlug(className) !== match[1].toLowerCase()) return null;
+  const surname = String(profile.surname || "").trim();
+  const firstname = String(profile.firstname || "").trim();
+  if (!surname || !firstname) return null;
+  return {
+    type: "learner",
+    username: cleanUser,
+    class_name: className,
+    surname,
+    firstname,
+    learner_number: learnerNumber,
+  };
+}
+
+function sanitizeTeacherSession(rows, email) {
+  const classNames = [...new Set(rows.map((row) => row.class_name).filter(Boolean))];
+  const merged = rows[0] || {};
+  const activeClass = classNames[0] || merged.class_name || null;
+  return {
+    type: "teacher",
+    email: String(email || merged.email || "").trim().toLowerCase(),
+    first_name: merged.first_name || null,
+    surname: merged.surname || null,
+    class_name: activeClass,
+    class_names: classNames,
+    active_class_name: activeClass,
+    login_enabled: true,
+  };
+}
+
+function buildSessionPayload(base, maxAge) {
+  const now = Math.floor(Date.now() / 1000);
+  return {
+    ...base,
+    issued_at: now,
+    exp: now + maxAge,
+  };
 }
 
 function normalizeReadingName(value) {
@@ -178,43 +343,225 @@ async function openAIChat(env, messages, options = {}) {
     : String(content || "").trim();
 }
 
-async function supabaseGet(path, params = {}) {
-  const url = new URL(`${SUPABASE_URL}/rest/v1/${path}`);
+async function supabaseRequest(env, method, path, { params = {}, body, prefer } = {}) {
+  const url = new URL(`${getSupabaseUrl(env)}/rest/v1/${path}`);
   Object.entries(params).forEach(([key, value]) => {
     if (value != null) url.searchParams.set(key, value);
   });
+  const headers = {
+    apikey: getServiceRoleKey(env),
+    Authorization: `Bearer ${getServiceRoleKey(env)}`,
+  };
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (prefer) headers.Prefer = prefer;
   const resp = await fetch(url.toString(), {
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    },
+    method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
+  const text = await resp.text().catch(() => "");
   if (!resp.ok) {
-    throw new Error(`Supabase GET failed: ${await resp.text()}`);
+    throw new Error(`Supabase ${method} failed: ${text || resp.status}`);
   }
-  return resp.json();
+  return text ? JSON.parse(text) : null;
 }
 
-async function supabasePatch(path, query, payload) {
-  const resp = await fetch(`${SUPABASE_URL}/rest/v1/${path}?${query}`, {
-    method: "PATCH",
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      "Content-Type": "application/json",
-      Prefer: "return=representation",
-    },
-    body: JSON.stringify(payload),
-  });
-  if (!resp.ok) {
-    throw new Error(`Supabase PATCH failed: ${await resp.text()}`);
-  }
-  const text = await resp.text();
-  return text ? JSON.parse(text) : [];
+async function supabaseGet(env, path, params = {}) {
+  return supabaseRequest(env, "GET", path, { params });
 }
 
-async function fetchReadingRecords(className, term) {
-  const rows = await supabaseGet("carissa_reading_assessments", {
+async function supabasePost(env, path, payload, prefer = "return=representation") {
+  return supabaseRequest(env, "POST", path, { body: payload, prefer });
+}
+
+async function supabasePatch(env, path, params, payload) {
+  const parsedParams = typeof params === "string"
+    ? Object.fromEntries(new URLSearchParams(params).entries())
+    : params;
+  return supabaseRequest(env, "PATCH", path, {
+    params: parsedParams,
+    body: payload,
+    prefer: "return=representation",
+  });
+}
+
+async function getTeacherSession(request, env) {
+  const cookies = parseCookies(request.headers.get("Cookie") || "");
+  return decodeSignedSession(env, cookies[COOKIE_NAMES.teacher]);
+}
+
+async function getLearnerSession(request, env) {
+  const cookies = parseCookies(request.headers.get("Cookie") || "");
+  return decodeSignedSession(env, cookies[COOKIE_NAMES.learner]);
+}
+
+async function readJsonBody(request) {
+  try {
+    return await request.json();
+  } catch {
+    return null;
+  }
+}
+
+async function handleTeacherLogin(request, env, corsOrigin) {
+  const body = await readJsonBody(request);
+  const email = String(body?.email || "").trim().toLowerCase();
+  const pin = String(body?.pin || "").trim();
+  const persist = !!body?.persist;
+  if (!email || !pin) {
+    return jsonResponse({ error: "Missing teacher email or PIN." }, 400, corsOrigin);
+  }
+  const rows = await supabaseGet(env, "carissa_teacher_registrations", {
+    email: `ilike.${email}`,
+    pin: `eq.${pin}`,
+    login_enabled: "eq.true",
+    order: "created_at.desc",
+  });
+  if (!Array.isArray(rows) || !rows.length) {
+    return jsonResponse({ error: "Invalid teacher login." }, 401, corsOrigin);
+  }
+  const maxAge = persist ? TEACHER_PERSIST_MAX_AGE : TEACHER_SESSION_MAX_AGE;
+  const session = buildSessionPayload(sanitizeTeacherSession(rows, email), maxAge);
+  const cookie = await createSessionCookie(env, COOKIE_NAMES.teacher, session, maxAge);
+  return jsonResponse({ session }, 200, corsOrigin, { "Set-Cookie": cookie });
+}
+
+async function handleTeacherSession(request, env, corsOrigin) {
+  const session = await getTeacherSession(request, env);
+  return jsonResponse({ session: session || null }, session ? 200 : 401, corsOrigin);
+}
+
+async function handleTeacherLogout(_request, _env, corsOrigin) {
+  return jsonResponse({ ok: true }, 200, corsOrigin, {
+    "Set-Cookie": clearCookie(COOKIE_NAMES.teacher),
+  });
+}
+
+async function handleLearnerLogin(request, env, corsOrigin) {
+  const body = await readJsonBody(request);
+  const learner = deriveLearnerIdentity(body?.username, body?.pin, body?.profile);
+  if (!learner) {
+    return jsonResponse({ error: "Invalid learner login." }, 401, corsOrigin);
+  }
+  const session = buildSessionPayload(learner, LEARNER_SESSION_MAX_AGE);
+  const cookie = await createSessionCookie(env, COOKIE_NAMES.learner, session, LEARNER_SESSION_MAX_AGE);
+  return jsonResponse({ session }, 200, corsOrigin, { "Set-Cookie": cookie });
+}
+
+async function handleLearnerSession(request, env, corsOrigin) {
+  const session = await getLearnerSession(request, env);
+  return jsonResponse({ session: session || null }, session ? 200 : 401, corsOrigin);
+}
+
+async function handleLearnerLogout(_request, _env, corsOrigin) {
+  return jsonResponse({ ok: true }, 200, corsOrigin, {
+    "Set-Cookie": clearCookie(COOKIE_NAMES.learner),
+  });
+}
+
+async function fetchAllLearnerResults(env) {
+  const rows = await supabaseGet(env, "carissa_learner_activity_results", {
+    select: "*",
+    order: "updated_at.desc",
+  });
+  return Array.isArray(rows) ? rows : [];
+}
+
+async function handleTeacherResults(request, env, corsOrigin) {
+  const session = await getTeacherSession(request, env);
+  if (!session) return jsonResponse({ error: "Teacher session required." }, 401, corsOrigin);
+  const url = new URL(request.url);
+  const requestedClass = String(url.searchParams.get("class_name") || "").trim();
+  if (requestedClass && !session.class_names.includes(requestedClass)) {
+    return jsonResponse({ error: "You do not have access to that class." }, 403, corsOrigin);
+  }
+  const rows = await fetchAllLearnerResults(env);
+  const allowed = rows.filter((row) =>
+    session.class_names.includes(String(row.class_name || "").trim())
+  );
+  const filtered = requestedClass
+    ? allowed.filter((row) => String(row.class_name || "").trim() === requestedClass)
+    : allowed;
+  return jsonResponse({ results: filtered }, 200, corsOrigin);
+}
+
+async function handleLearnerResults(request, env, corsOrigin) {
+  const session = await getLearnerSession(request, env);
+  if (!session) return jsonResponse({ error: "Learner session required." }, 401, corsOrigin);
+  const rows = await fetchAllLearnerResults(env);
+  const filtered = rows.filter((row) =>
+    String(row.learner_username || "").trim().toLowerCase() === session.username &&
+    String(row.class_name || "").trim() === session.class_name &&
+    String(row.surname || "").trim().toLowerCase() === String(session.surname || "").trim().toLowerCase() &&
+    String(row.firstname || "").trim().toLowerCase() === String(session.firstname || "").trim().toLowerCase()
+  );
+  return jsonResponse({ results: filtered }, 200, corsOrigin);
+}
+
+async function handleLearnerResultUpsert(request, env, corsOrigin) {
+  const session = await getLearnerSession(request, env);
+  if (!session) return jsonResponse({ error: "Learner session required." }, 401, corsOrigin);
+  const body = await readJsonBody(request);
+  const assignmentId = String(body?.assignment_id || "").trim();
+  if (!assignmentId) {
+    return jsonResponse({ error: "Missing assignment_id." }, 400, corsOrigin);
+  }
+  const assignmentRows = await supabaseGet(env, "carissa_resource_assignments", {
+    id: `eq.${assignmentId}`,
+    select: "*",
+    limit: "1",
+  });
+  const assignment = Array.isArray(assignmentRows) ? assignmentRows[0] : null;
+  if (!assignment) {
+    return jsonResponse({ error: "Assignment not found." }, 404, corsOrigin);
+  }
+  const sameLearner =
+    String(assignment.class_name || "").trim() === session.class_name &&
+    String(assignment.surname || "").trim().toLowerCase() === String(session.surname || "").trim().toLowerCase() &&
+    String(assignment.firstname || "").trim().toLowerCase() === String(session.firstname || "").trim().toLowerCase();
+  if (!sameLearner) {
+    return jsonResponse({ error: "This assignment does not belong to the current learner." }, 403, corsOrigin);
+  }
+  const score = Math.max(0, Number.parseInt(body?.score ?? 0, 10) || 0);
+  const maxScore = Math.max(1, Number.parseInt(body?.max_score ?? 100, 10) || 100);
+  const resultStatus = String(body?.result_status || "in_progress").trim() === "completed"
+    ? "completed"
+    : "in_progress";
+  const payload = {
+    assignment_id: assignment.id,
+    learner_username: session.username,
+    class_name: session.class_name,
+    surname: session.surname,
+    firstname: session.firstname,
+    resource_id: assignment.resource_id || body?.resource_id || null,
+    result_status: resultStatus,
+    score,
+    max_score: maxScore,
+    learner_notes: body?.learner_notes ? String(body.learner_notes).slice(0, 5000) : null,
+    submitted_at: body?.submitted_at || new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  const existingRows = await supabaseGet(env, "carissa_learner_activity_results", {
+    assignment_id: `eq.${assignment.id}`,
+    learner_username: `eq.${session.username}`,
+    limit: "1",
+  });
+  const existing = Array.isArray(existingRows) ? existingRows[0] : null;
+  let savedRows;
+  if (existing?.id) {
+    savedRows = await supabasePatch(env, "carissa_learner_activity_results", { id: `eq.${existing.id}` }, payload);
+  } else {
+    savedRows = await supabasePost(env, "carissa_learner_activity_results", {
+      ...payload,
+      created_at: new Date().toISOString(),
+    });
+  }
+  const result = Array.isArray(savedRows) ? savedRows[0] || payload : payload;
+  return jsonResponse({ result }, 200, corsOrigin);
+}
+
+async function fetchReadingRecords(env, className, term) {
+  const rows = await supabaseGet(env, "carissa_reading_assessments", {
     class_name: `eq.${className}`,
     term: `eq.${term}`,
     select:
@@ -379,7 +726,7 @@ async function buildReadingUpdateProposal(env, message, attachments) {
     };
   }
 
-  const records = await fetchReadingRecords(className, term);
+  const records = await fetchReadingRecords(env, className, term);
   if (!records.length) {
     return {
       answer: `I could not find any existing one-minute reading records for ${className} ${term}.`,
@@ -482,7 +829,7 @@ async function buildReadingUpdateProposal(env, message, attachments) {
   );
 }
 
-async function applyReadingUpdates(pendingAction) {
+async function applyReadingUpdates(env, pendingAction) {
   if (!pendingAction || pendingAction.type !== "reading_updates") {
     return { answer: "There is no pending reading update to apply." };
   }
@@ -495,7 +842,7 @@ async function applyReadingUpdates(pendingAction) {
     return { answer: "The pending reading update is incomplete, so I did not apply anything." };
   }
 
-  const records = await fetchReadingRecords(className, term);
+  const records = await fetchReadingRecords(env, className, term);
   const recordMap = new Map(records.map((row) => [String(row.id), row]));
 
   const updatedRows = [];
@@ -534,7 +881,7 @@ async function applyReadingUpdates(pendingAction) {
       continue;
     }
 
-    const patched = await supabasePatch("carissa_reading_assessments", `id=eq.${row.id}`, {
+    const patched = await supabasePatch(env, "carissa_reading_assessments", { id: `eq.${row.id}` }, {
       words_correct: afterWords,
       reading_age: readingAgeFromWords(afterWords),
       updated_at: new Date().toISOString(),
@@ -594,22 +941,90 @@ export default {
   async fetch(request, env) {
     const allowedOrigin = env.ALLOWED_ORIGIN || "https://tracker.carissaprimary.co.za";
     const origin = request.headers.get("Origin") || "";
-    const corsOrigin = origin === allowedOrigin ? origin : allowedOrigin;
+    const corsOrigin = normalizeOrigin(origin, allowedOrigin);
 
     if (request.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
         headers: {
           "access-control-allow-origin": corsOrigin,
-          "access-control-allow-methods": "POST,OPTIONS",
+          "access-control-allow-methods": "GET,POST,OPTIONS",
           "access-control-allow-headers": "content-type",
+          "access-control-allow-credentials": "true",
         },
       });
     }
 
     const url = new URL(request.url);
+    if (url.pathname === "/api/auth/teacher/login") {
+      if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handleTeacherLogin(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Teacher login failed" }, 500, corsOrigin);
+      }
+    }
+    if (url.pathname === "/api/auth/teacher/session") {
+      if (request.method !== "GET") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handleTeacherSession(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Teacher session failed" }, 500, corsOrigin);
+      }
+    }
+    if (url.pathname === "/api/auth/teacher/logout") {
+      if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      return handleTeacherLogout(request, env, corsOrigin);
+    }
+    if (url.pathname === "/api/auth/learner/login") {
+      if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handleLearnerLogin(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Learner login failed" }, 500, corsOrigin);
+      }
+    }
+    if (url.pathname === "/api/auth/learner/session") {
+      if (request.method !== "GET") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handleLearnerSession(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Learner session failed" }, 500, corsOrigin);
+      }
+    }
+    if (url.pathname === "/api/auth/learner/logout") {
+      if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      return handleLearnerLogout(request, env, corsOrigin);
+    }
+    if (url.pathname === "/api/learner-results/teacher") {
+      if (request.method !== "GET") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handleTeacherResults(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Teacher results failed" }, 500, corsOrigin);
+      }
+    }
+    if (url.pathname === "/api/learner-results/me") {
+      if (request.method !== "GET") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handleLearnerResults(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Learner results failed" }, 500, corsOrigin);
+      }
+    }
+    if (url.pathname === "/api/learner-results/upsert") {
+      if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handleLearnerResultUpsert(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Result upsert failed" }, 500, corsOrigin);
+      }
+    }
     if (url.pathname !== "/api/ai") {
-      return new Response("Not found", { status: 404 });
+      return new Response("Not found", {
+        status: 404,
+        headers: { "access-control-allow-origin": corsOrigin },
+      });
     }
 
     if (request.method !== "POST") {
@@ -642,7 +1057,7 @@ export default {
 
     try {
       const result = action === "apply_reading_updates"
-        ? await applyReadingUpdates(body?.pendingAction)
+        ? await applyReadingUpdates(env, body?.pendingAction)
         : wantsReadingSheetUpdate(message, attachments)
         ? await buildReadingUpdateProposal(env, message, attachments)
         : await handleGeneralAssistant(env, message, attachments);

@@ -46,6 +46,64 @@ const db = {
   upload: async(path,file)=>{const r=await fetch(`${SB}/storage/v1/object/carissa-resources/${path}`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,"Content-Type":file.type,"x-upsert":"true"},body:file});if(!r.ok)throw new Error(await r.text());return `${SB}/storage/v1/object/public/carissa-resources/${path}`;},
 };
 
+/* ── Secure API helpers ──────────────────────────────────────── */
+const API_BASE = '/api';
+async function apiRequest(path, options={}){
+  const {method='GET', body, headers={}, credentials='include'} = options;
+  const resp = await fetch(`${API_BASE}${path}`, {
+    method,
+    credentials,
+    headers: {
+      ...(body !== undefined ? {"Content-Type":"application/json"} : {}),
+      ...headers,
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  const raw = await resp.text();
+  let parsed = null;
+  try{ parsed = raw ? JSON.parse(raw) : null; }catch(e){}
+  if(!resp.ok){
+    const err = new Error(parsed?.error || raw || `Request failed (${resp.status})`);
+    err.status = resp.status;
+    err.details = parsed?.details || null;
+    throw err;
+  }
+  return parsed;
+}
+const secureApi = {
+  teacherLogin: async(email,pin,persist=false)=>{
+    const data = await apiRequest('/auth/teacher/login',{method:'POST',body:{email,pin,persist}});
+    return data?.session || null;
+  },
+  teacherSession: async()=>{
+    const data = await apiRequest('/auth/teacher/session');
+    return data?.session || null;
+  },
+  teacherLogout: async()=>apiRequest('/auth/teacher/logout',{method:'POST'}),
+  teacherResults: async(className='')=>{
+    const qs = className ? `?class_name=${encodeURIComponent(className)}` : '';
+    const data = await apiRequest(`/learner-results/teacher${qs}`);
+    return data?.results || [];
+  },
+  learnerLogin: async(username,pin,profile)=>{
+    const data = await apiRequest('/auth/learner/login',{method:'POST',body:{username,pin,profile}});
+    return data?.session || null;
+  },
+  learnerSession: async()=>{
+    const data = await apiRequest('/auth/learner/session');
+    return data?.session || null;
+  },
+  learnerLogout: async()=>apiRequest('/auth/learner/logout',{method:'POST'}),
+  learnerResults: async()=>{
+    const data = await apiRequest('/learner-results/me');
+    return data?.results || [];
+  },
+  upsertLearnerResult: async(payload)=>{
+    const data = await apiRequest('/learner-results/upsert',{method:'POST',body:payload});
+    return data?.result || null;
+  },
+};
+
 const ADMIN_DISCIPLINE_SEEN_KEY = 'carissa_admin_last_seen_discipline_at';
 const ADMIN_AUDIT_POLL_MS = 30000;
 const safeJsonParse = (s, fallback=null) => { try { return JSON.parse(s || '{}'); } catch { return fallback; } };
@@ -5393,18 +5451,40 @@ function LearnerPortalView(){
   useEffect(()=>{
     (async()=>{
       try{
-        const [asn, r, lres] = await Promise.all([
+        const [asn, r] = await Promise.all([
           db.get('carissa_resource_assignments','order=created_at.desc'),
           db.get('carissa_resources','order=created_at.desc'),
-          db.get('carissa_learner_activity_results','order=updated_at.desc').catch(()=>[]),
         ]);
         setAssignments(asn||[]);
         setResources(r||[]);
-        setResults(lres||[]);
       }catch(e){ console.error(e); }
       setLoading(false);
     })();
   },[]);
+
+  useEffect(()=>{
+    let cancelled = false;
+    (async()=>{
+      if(!learnerAuth){
+        if(!cancelled) setResults([]);
+        return;
+      }
+      try{
+        const rows = await secureApi.learnerResults();
+        if(!cancelled) setResults(rows||[]);
+      }catch(e){
+        if(!cancelled){
+          if(e.status===401){
+            saveLearnerSession(null);
+            LEARNER_SESSION = null;
+            setLearnerAuth(null);
+          }
+          setResults([]);
+        }
+      }
+    })();
+    return ()=>{ cancelled = true; };
+  },[learnerAuth]);
 
   useEffect(()=>{
     const handler = (ev)=>{
@@ -5443,12 +5523,21 @@ function LearnerPortalView(){
       return;
     }
     setLoginBusy(true);
-    saveLearnerSession(found);
-    LEARNER_SESSION = found;
-    setLearnerAuth(found);
-    setTimeout(()=>setLoginBusy(false), 250);
+    (async()=>{
+      try{
+        const session = await secureApi.learnerLogin(loginUser, loginPin, found);
+        saveLearnerSession(session);
+        LEARNER_SESSION = session;
+        setLearnerAuth(session);
+      }catch(e){
+        setManualLoginMode(true);
+        setLoginErr('Login failed. Check the learner username and PIN.');
+      }
+      setLoginBusy(false);
+    })();
   };
   const learnerLogout = ()=>{
+    secureApi.learnerLogout().catch(()=>{});
     saveLearnerSession(null);
     LEARNER_SESSION = null;
     setLearnerAuth(null);
@@ -5526,13 +5615,7 @@ function LearnerPortalView(){
         submitted_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-      let savedRows = [];
-      if(existing){
-        savedRows = await db.patch('carissa_learner_activity_results',`id=eq.${existing.id}`,payload);
-      }else{
-        savedRows = await db.post('carissa_learner_activity_results',{...payload,created_at:new Date().toISOString()});
-      }
-      const saved = Array.isArray(savedRows) ? (savedRows[0] || {...payload,id:existing?.id || `temp-${Date.now()}`}) : payload;
+      const saved = await secureApi.upsertLearnerResult(payload) || {...payload,id:existing?.id || `temp-${Date.now()}`};
       setResults(prev=>{
         const next = prev.filter(r=>r.assignment_id!==assignment.id);
         return [saved, ...next];
@@ -5572,13 +5655,7 @@ function LearnerPortalView(){
         submitted_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-      let savedRows = [];
-      if(existing){
-        savedRows = await db.patch('carissa_learner_activity_results',`id=eq.${existing.id}`,payload);
-      }else{
-        savedRows = await db.post('carissa_learner_activity_results',{...payload,created_at:new Date().toISOString()});
-      }
-      const saved = Array.isArray(savedRows) ? (savedRows[0] || {...payload,id:existing?.id || `temp-${Date.now()}`}) : payload;
+      const saved = await secureApi.upsertLearnerResult(payload) || {...payload,id:existing?.id || `temp-${Date.now()}`};
       setResults(prev=>{
         const next = prev.filter(r=>r.assignment_id!==assignment.id);
         return [saved, ...next];
@@ -5840,18 +5917,17 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
     if(!email || !pin){ setLoginErr('Please enter both your email address and your password/PIN.'); return; }
     setLoginBusy(true);
     try{
-      const rows = await db.get('carissa_teacher_registrations',
-        `email=ilike.${encodeURIComponent(email)}&pin=eq.${encodeURIComponent(pin)}&login_enabled=eq.true&order=created_at.desc`);
-      if(rows.length){
-        const classNames = [...new Set(rows.map(r=>r.class_name).filter(Boolean))];
+      const session = await secureApi.teacherLogin(email, pin, rememberDevice);
+      if(session){
+        const classNames = Array.isArray(session.class_names) ? session.class_names.filter(Boolean) : [];
         const preferred = DEFAULT_CLASS_BY_EMAIL[email] && classNames.includes(DEFAULT_CLASS_BY_EMAIL[email])
           ? DEFAULT_CLASS_BY_EMAIL[email]
-          : (classNames[0] || rows[0].class_name);
+          : (session.active_class_name || classNames[0] || session.class_name);
         const merged = {
-          ...rows[0],
+          ...session,
           class_name: preferred,
           class_names: classNames,
-          active_class_name: preferred
+          active_class_name: preferred,
         };
         saveTeacherSession(merged, rememberDevice);
         TEACHER_SESSION = merged;
@@ -5876,6 +5952,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
   };
   const teacherLogout = ()=>{
     logTeacherAudit('logout', selClass);
+    secureApi.teacherLogout().catch(()=>{});
     saveTeacherSession(null, false);
     if(TEACHER_SESSION){ TEACHER_SESSION=null; window.location.href=`${window.location.pathname}?portal=teacher`; return; }
     setTeacherAuth(null); setSelClass(''); setLoginEmail(''); setLoginPin(''); setLoginErr('');
@@ -5925,22 +6002,47 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
   useEffect(()=>{
     (async()=>{
       try{
-        const [a, asn, lres, r, rdg, ints, adminCfg] = await Promise.all([
+        const [a, asn, r, rdg, ints, adminCfg] = await Promise.all([
           db.get('carissa_elearning_assessments','order=created_at.desc'),
           db.get('carissa_resource_assignments','order=created_at.desc'),
-          db.get('carissa_learner_activity_results','order=updated_at.desc').catch(()=>[]),
           db.get('carissa_resources','order=created_at.desc'),
           db.get('carissa_reading_assessments','order=created_at.desc').catch(()=>[]),
           db.get('carissa_interventions','order=created_at.desc').catch(()=>[]),
           db.get('carissa_config','key=eq.admin_pin').catch(()=>[]),
         ]);
-        setAssessments(a); setAssignments(asn); setLearnerResults(lres); setResources(r); setReading(rdg); setInterventions(ints);
+        setAssessments(a); setAssignments(asn); setResources(r); setReading(rdg); setInterventions(ints);
         const parsedCfg = parseAdminConfigValue(adminCfg?.[0]?.value || '{}');
         setSharedAdminEmails([...new Set(parsedCfg.shared_admin_teachers || [])]);
       }catch(e){console.error(e);}
       setLoading(false);
     })();
   },[]);
+
+  useEffect(()=>{
+    let cancelled = false;
+    (async()=>{
+      if(!teacherAuth?.email){
+        if(!cancelled) setLearnerResults([]);
+        return;
+      }
+      try{
+        const className = selClass || teacherAuth.active_class_name || teacherAuth.class_name || '';
+        const rows = await secureApi.teacherResults(className);
+        if(!cancelled) setLearnerResults(rows||[]);
+      }catch(e){
+        if(!cancelled){
+          if(e.status===401){
+            saveTeacherSession(null, false);
+            TEACHER_SESSION = null;
+            setTeacherAuth(null);
+            setSelClass('');
+          }
+          setLearnerResults([]);
+        }
+      }
+    })();
+    return ()=>{ cancelled = true; };
+  },[teacherAuth, selClass]);
 
   const loadTeacherChats = useCallback(async()=>{
     if(!teacherAuth?.email) return;
