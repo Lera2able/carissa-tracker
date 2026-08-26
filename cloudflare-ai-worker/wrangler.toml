@@ -2,6 +2,11 @@ name = "carissa-tracker-ai"
 main = "src/index.js"
 compatibility_date = "2026-07-15"
 
+# Ensure the API is reachable under the tracker domain.
+routes = [
+  { pattern = "tracker.carissaprimary.co.za/api/*", zone_name = "carissaprimary.co.za" }
+]
+
 # Deploy this Worker and then add a route in Cloudflare:
 #   tracker.carissaprimary.co.za/api/*
 #
