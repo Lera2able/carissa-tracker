@@ -918,17 +918,28 @@ async function handlePaymentsReportPdf(request, env, corsOrigin) {
   const PAGE_W = 595.28; // A4 points
   const PAGE_H = 841.89;
   const M = 48;
+  const HEADER_H = 68;
+  const LOGO_MAX_W = 76;
+  const LOGO_MAX_H = 44;
 
   const drawHeader = (page, title) => {
     const yTop = PAGE_H - M;
+    const headerBottom = yTop - HEADER_H;
+
+    // Logo
+    let titleX = M;
     if (logo) {
-      const w = 92;
-      const h = (logo.height / logo.width) * w;
-      page.drawImage(logo, { x: M, y: yTop - h + 6, width: w, height: h });
+      const scale = Math.min(LOGO_MAX_W / logo.width, LOGO_MAX_H / logo.height, 1);
+      const w = logo.width * scale;
+      const h = logo.height * scale;
+      page.drawImage(logo, { x: M, y: yTop - h, width: w, height: h });
+      titleX = M + w + 12;
     }
+
+    // Title (kept safely below the logo area)
     page.drawText(title, {
-      x: M,
-      y: yTop - 40,
+      x: titleX,
+      y: yTop - 28,
       size: 18,
       font: fontBold,
       color: rgb(0.11, 0.2, 0.36),
@@ -936,25 +947,26 @@ async function handlePaymentsReportPdf(request, env, corsOrigin) {
     const dateStr = new Date().toISOString().slice(0, 10);
     page.drawText(`Generated: ${dateStr}`, {
       x: PAGE_W - M - 140,
-      y: yTop - 18,
+      y: yTop - 14,
       size: 10,
       font,
       color: rgb(0.35, 0.42, 0.5),
     });
     page.drawLine({
-      start: { x: M, y: yTop - 50 },
-      end: { x: PAGE_W - M, y: yTop - 50 },
+      start: { x: M, y: headerBottom },
+      end: { x: PAGE_W - M, y: headerBottom },
       thickness: 1,
       color: rgb(0.88, 0.9, 0.93),
     });
+    return headerBottom;
   };
 
   // Cover / summary page
   {
-    const page = pdfDoc.addPage([PAGE_W, PAGE_H]);
-    drawHeader(page, "eLearning Donations Report (R50)");
+    let page = pdfDoc.addPage([PAGE_W, PAGE_H]);
+    let headerBottom = drawHeader(page, "eLearning Donations Report (R50)");
 
-    let y = PAGE_H - M - 90;
+    let y = headerBottom - 36;
     const summary = [
       ["Total paid learners", String(payments.length)],
       ["Total collected", money(totalAll)],
@@ -984,11 +996,22 @@ async function handlePaymentsReportPdf(request, env, corsOrigin) {
 
     for (const g of grades) {
       const row = byGrade[g];
+      if (y < M + 80) {
+        // Continue grade totals on a new page if needed
+        page = pdfDoc.addPage([PAGE_W, PAGE_H]);
+        headerBottom = drawHeader(page, "Collected per grade (continued)");
+        y = headerBottom - 28;
+        page.drawText("Grade", { x: colX[0], y, size: 10, font: fontBold, color: rgb(0.2, 0.25, 0.32) });
+        page.drawText("Paid learners", { x: colX[1], y, size: 10, font: fontBold, color: rgb(0.2, 0.25, 0.32) });
+        page.drawText("Total", { x: colX[2], y, size: 10, font: fontBold, color: rgb(0.2, 0.25, 0.32) });
+        y -= 12;
+        page.drawLine({ start: { x: M, y }, end: { x: PAGE_W - M, y }, thickness: 1, color: rgb(0.88, 0.9, 0.93) });
+        y -= 12;
+      }
       page.drawText(g, { x: colX[0], y, size: 10.5, font, color: rgb(0.18, 0.22, 0.27) });
       page.drawText(String(row.count), { x: colX[1], y, size: 10.5, font, color: rgb(0.18, 0.22, 0.27) });
       page.drawText(money(row.total), { x: colX[2], y, size: 10.5, font: fontBold, color: rgb(0.09, 0.48, 0.24) });
       y -= 14;
-      if (y < M + 120) break; // Keep summary tidy; details per grade follow on next pages.
     }
   }
 
@@ -1003,8 +1026,8 @@ async function handlePaymentsReportPdf(request, env, corsOrigin) {
     const chunks = chunkArray(sorted, 28);
     for (let ci = 0; ci < chunks.length; ci++) {
       const page = pdfDoc.addPage([PAGE_W, PAGE_H]);
-      drawHeader(page, `${g} — Paid learners (${group.count})`);
-      let y = PAGE_H - M - 90;
+      const headerBottom = drawHeader(page, `${g} — Paid learners (${group.count})`);
+      let y = headerBottom - 36;
 
       page.drawText(`Total collected for ${g}: ${money(group.total)}`, {
         x: M,
@@ -1033,15 +1056,21 @@ async function handlePaymentsReportPdf(request, env, corsOrigin) {
         page.drawText(money(p.amount || 50), { x: colX[4], y, size: 10, font: fontBold, color: rgb(0.09, 0.48, 0.24) });
         y -= 14;
       }
-
-      page.drawText(`Page ${pdfDoc.getPageCount()}`, {
-        x: PAGE_W - M - 60,
-        y: M - 18,
-        size: 9,
-        font,
-        color: rgb(0.45, 0.5, 0.56),
-      });
     }
+  }
+
+  // Footer page numbers (added last so they are correct)
+  const pages = pdfDoc.getPages();
+  const pageCount = pages.length;
+  for (let i = 0; i < pageCount; i++) {
+    const page = pages[i];
+    page.drawText(`Page ${i + 1} of ${pageCount}`, {
+      x: PAGE_W - M - 90,
+      y: M - 18,
+      size: 9,
+      font,
+      color: rgb(0.45, 0.5, 0.56),
+    });
   }
 
   const pdfBytes = await pdfDoc.save();
