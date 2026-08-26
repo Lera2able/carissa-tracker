@@ -69,6 +69,14 @@ function jsonResponse(obj, status = 200, origin = "*", extraHeaders = {}) {
   });
 }
 
+function safeJsonParse(value, fallback) {
+  try {
+    return JSON.parse(value);
+  } catch (_e) {
+    return fallback;
+  }
+}
+
 function normalizeOrigin(origin, allowedOrigin) {
   return origin && origin === allowedOrigin ? origin : allowedOrigin;
 }
@@ -724,6 +732,120 @@ async function handleTeacherResultReset(request, env, corsOrigin) {
   return jsonResponse({ ok: true }, 200, corsOrigin);
 }
 
+let _adminAllowCache = { at: 0, emails: [] };
+async function getAdminAllowedEmails(env) {
+  const now = Date.now();
+  if (_adminAllowCache.emails.length && now - _adminAllowCache.at < 5 * 60 * 1000) {
+    return _adminAllowCache.emails;
+  }
+  try {
+    const cfg = await supabaseGet(env, "carissa_config", { key: "eq.admin_pin", select: "*", limit: "1" });
+    const row = Array.isArray(cfg) ? cfg[0] : null;
+    const parsed = safeJsonParse(String(row?.value || "{}"), {});
+    const emails = Array.isArray(parsed?.shared_admin_teachers)
+      ? parsed.shared_admin_teachers.map((e) => String(e || "").trim().toLowerCase()).filter(Boolean)
+      : [];
+    _adminAllowCache = { at: now, emails };
+    return emails;
+  } catch (_e) {
+    _adminAllowCache = { at: now, emails: [] };
+    return [];
+  }
+}
+
+async function requireAdminTeacher(request, env, corsOrigin) {
+  const session = await getTeacherSession(request, env);
+  if (!session) return { ok: false, res: jsonResponse({ error: "Teacher session required." }, 401, corsOrigin) };
+  const allowed = await getAdminAllowedEmails(env);
+  if (!allowed.includes(String(session.email || "").trim().toLowerCase())) {
+    return { ok: false, res: jsonResponse({ error: "Admin access required." }, 403, corsOrigin) };
+  }
+  return { ok: true, session };
+}
+
+function learnerUsernameFor(className, learnerNumber) {
+  const slug = classSlug(String(className || ""));
+  const num = String(Number(learnerNumber) || 0).padStart(2, "0");
+  return `${slug}-${num}`.toLowerCase();
+}
+
+async function handlePaymentsList(request, env, corsOrigin) {
+  const auth = await requireAdminTeacher(request, env, corsOrigin);
+  if (!auth.ok) return auth.res;
+  const url = new URL(request.url);
+  const requestedClass = String(url.searchParams.get("class_name") || "").trim();
+  const params = requestedClass ? { class_name: `eq.${requestedClass}` } : {};
+  const rows = await supabaseGet(env, "carissa_learner_payments", {
+    ...params,
+    order: "paid_at.desc",
+  });
+  return jsonResponse({ payments: rows || [] }, 200, corsOrigin);
+}
+
+async function handlePaymentsSet(request, env, corsOrigin) {
+  const auth = await requireAdminTeacher(request, env, corsOrigin);
+  if (!auth.ok) return auth.res;
+  const body = await readJsonBody(request);
+  const className = String(body?.class_name || "").trim();
+  const learnerNumber = Number(body?.learner_number);
+  const surname = String(body?.surname || "").trim();
+  const firstname = String(body?.firstname || "").trim();
+  const amount = Number(body?.amount || 50) || 50;
+  const paidToRaw = String(body?.paid_to || "").trim().toLowerCase();
+  const paidTo = paidToRaw === "lerato" ? "lerato" : (paidToRaw === "office" ? "office" : "");
+  const paid = body?.paid === false ? false : true;
+
+  if (!className || !learnerNumber || !surname || !firstname) {
+    return jsonResponse({ error: "Missing class_name, learner_number, surname, or firstname." }, 400, corsOrigin);
+  }
+  if (paid && !paidTo) {
+    return jsonResponse({ error: "Choose where the payment was made (office or lerato)." }, 400, corsOrigin);
+  }
+
+  const username = learnerUsernameFor(className, learnerNumber);
+
+  // Fetch existing row
+  const existingRows = await supabaseGet(env, "carissa_learner_payments", {
+    class_name: `eq.${className}`,
+    learner_number: `eq.${learnerNumber}`,
+    limit: "1",
+  });
+  const existing = Array.isArray(existingRows) ? existingRows[0] : null;
+
+  if (!paid) {
+    if (existing?.id) {
+      await supabaseDelete(env, "carissa_learner_payments", { id: `eq.${existing.id}` }, "return=minimal");
+    }
+    return jsonResponse({ ok: true, removed: true }, 200, corsOrigin);
+  }
+
+  const payload = {
+    class_name: className,
+    learner_number: learnerNumber,
+    learner_username: username,
+    surname,
+    firstname,
+    amount,
+    paid_to: paidTo,
+    paid_at: existing?.paid_at || new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  let saved;
+  if (existing?.id) {
+    const rows = await supabasePatch(env, "carissa_learner_payments", { id: `eq.${existing.id}` }, payload);
+    saved = Array.isArray(rows) ? rows[0] : null;
+  } else {
+    const rows = await supabasePost(env, "carissa_learner_payments", {
+      ...payload,
+      created_at: new Date().toISOString(),
+    });
+    saved = Array.isArray(rows) ? rows[0] : null;
+  }
+
+  return jsonResponse({ ok: true, payment: saved || payload }, 200, corsOrigin);
+}
+
 async function fetchReadingRecords(env, className, term) {
   const rows = await supabaseGet(env, "carissa_reading_assessments", {
     class_name: `eq.${className}`,
@@ -1190,6 +1312,22 @@ export default {
         return await handleLearnerProfileUpdate(request, env, corsOrigin);
       } catch (error) {
         return jsonResponse({ error: error?.message || "Profile update failed" }, 500, corsOrigin);
+      }
+    }
+    if (url.pathname === "/api/payments/list") {
+      if (request.method !== "GET") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handlePaymentsList(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Payments list failed" }, 500, corsOrigin);
+      }
+    }
+    if (url.pathname === "/api/payments/set") {
+      if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handlePaymentsSet(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Payments update failed" }, 500, corsOrigin);
       }
     }
     if (url.pathname === "/api/learner-results/reset") {

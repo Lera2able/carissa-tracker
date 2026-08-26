@@ -526,7 +526,13 @@ function AdminLoginModal({onSuccess,onClose,prefillEmail}){
       const adminCfg = parseAdminConfigValue(cfgRows?.[0]?.value || '{}');
       const allowed = (adminCfg.shared_admin_teachers || []).includes(cleanEmail);
       if(!allowed){ setErr('This email does not have admin access.'); setBusy(false); return; }
-      if(regRows.length>0) onSuccess({email:cleanEmail, first_name: regRows[0].first_name || '', surname: regRows[0].surname || ''});
+      if(regRows.length>0){
+        // Also establish a secure Worker session cookie so admin-only actions can go through /api.
+        try{
+          await apiRequest('/auth/teacher/login', {method:'POST', body:{ email: cleanEmail, pin: cleanPin, persist: true }});
+        }catch(_e){}
+        onSuccess({email:cleanEmail, first_name: regRows[0].first_name || '', surname: regRows[0].surname || ''});
+      }
       else setErr('Incorrect admin password. Please try again.');
     }catch{setErr('Could not verify. Check connection.');}
     setBusy(false);
@@ -1612,8 +1618,103 @@ function LearnersAdminTab({overrides,setOverrides,setAssessments}){
   const [editing,setEditing] = useState(null); // {orig:{surname,firstname}, surname, firstname}
   const [saving,setSaving] = useState(false);
   const [savedMsg,setSavedMsg] = useState('');
+  const [allPayments,setAllPayments] = useState([]);
+  const [payMsg,setPayMsg] = useState('');
+  const [payBusyKey,setPayBusyKey] = useState(null);
 
   const learners = selClass ? (CLASS_DATA[selClass]||[]) : [];
+
+  const paymentsForClass = useMemo(()=> (allPayments||[]).filter(p=>p.class_name===selClass),[allPayments,selClass]);
+  const paymentsByKey = useMemo(()=>{
+    const m = new Map();
+    (paymentsForClass||[]).forEach(p=>{
+      const key = `${p.class_name}||${Number(p.learner_number)||0}`;
+      m.set(key, p);
+    });
+    return m;
+  },[paymentsForClass]);
+
+  const totalsAll = useMemo(()=>{
+    const list = allPayments || [];
+    const total = list.reduce((s,p)=>s + (Number(p.amount)||50), 0);
+    const office = list.filter(p=>String(p.paid_to||'').toLowerCase()==='office').reduce((s,p)=>s+(Number(p.amount)||50),0);
+    const lerato = list.filter(p=>String(p.paid_to||'').toLowerCase()==='lerato').reduce((s,p)=>s+(Number(p.amount)||50),0);
+    return {count:list.length,total,office,lerato};
+  },[allPayments]);
+
+  async function refreshPayments(){
+    try{
+      const data = await apiRequest('/payments/list');
+      setAllPayments(data?.payments || []);
+    }catch(e){
+      setAllPayments([]);
+      setPayMsg(`Could not load payments: ${e?.message || 'Please log out and log in again.'}`);
+    }
+  }
+
+  useEffect(()=>{
+    refreshPayments();
+  },[]);
+
+  async function setPayment(L, paid, paidToOverride){
+    const key = `${selClass}||${Number(L.number)||0}`;
+    setPayBusyKey(key);
+    setPayMsg('');
+    try{
+      const existing = paymentsByKey.get(key);
+      const paid_to = paidToOverride || existing?.paid_to || 'office';
+      const amount = existing?.amount || 50;
+      await apiRequest('/payments/set', {
+        method:'POST',
+        body:{
+          class_name: selClass,
+          learner_number: L.number,
+          surname: L.surname,
+          firstname: L.firstname,
+          amount,
+          paid_to,
+          paid,
+        }
+      });
+      await refreshPayments();
+      setPayMsg(paid ? '✓ Marked as paid.' : '✓ Mark removed.');
+    }catch(e){
+      setPayMsg(`Could not update payment: ${e?.message || 'Unknown error'}`);
+    }
+    setPayBusyKey(null);
+  }
+
+  function downloadPaidCsv(){
+    const rows = (allPayments||[]).slice().sort((a,b)=>{
+      const ca = String(a.class_name||''); const cb = String(b.class_name||'');
+      if(ca!==cb) return ca.localeCompare(cb);
+      return (Number(a.learner_number)||0) - (Number(b.learner_number)||0);
+    });
+    const header = ['Grade','Learner #','Surname','First name','Amount','Paid to','Paid at'];
+    const lines = [header.join(',')];
+    rows.forEach(p=>{
+      const line = [
+        String(p.class_name||'').replace(/"/g,'""'),
+        String(p.learner_number||'').replace(/"/g,'""'),
+        String(p.surname||'').replace(/"/g,'""'),
+        String(p.firstname||'').replace(/"/g,'""'),
+        String(p.amount||50).replace(/"/g,'""'),
+        String(p.paid_to||'').replace(/"/g,'""'),
+        String(p.paid_at||'').replace(/"/g,'""'),
+      ].map(v=>`"${v}"`).join(',');
+      lines.push(line);
+    });
+    const csv = lines.join('\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `paid_learners_all.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  }
 
   function openEdit(L){
     setEditing({
@@ -1769,6 +1870,39 @@ function LearnersAdminTab({overrides,setOverrides,setAssessments}){
         {savedMsg && <span style={{fontSize:'13px',color:'#16a34a',fontWeight:600}}>✓ {savedMsg}</span>}
       </div>
 
+      {/* Donations (R50) */}
+      <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'14px',marginBottom:'14px'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'10px',flexWrap:'wrap'}}>
+          <div>
+            <div style={{fontWeight:800,color:'#0f172a'}}>Donations collected (R50)</div>
+            <div style={{fontSize:'12px',color:'#64748b',marginTop:'2px'}}>Mark a learner as paid, select where it was paid (Office or Lerato), then download the list of paid learners.</div>
+          </div>
+          <button style={{padding:'10px 16px',borderRadius:'10px',border:'none',background:'#0ea5e9',color:'white',cursor:'pointer',fontWeight:800}}
+            onClick={downloadPaidCsv} disabled={!allPayments?.length}>
+            ⬇ Download paid learners (CSV)
+          </button>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:'10px',marginTop:'12px'}}>
+          <div style={{background:'white',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px'}}>
+            <div style={{fontSize:'12px',color:'#64748b'}}>Paid learners</div>
+            <div style={{fontSize:'18px',fontWeight:900,color:'#0f172a'}}>{totalsAll.count}</div>
+          </div>
+          <div style={{background:'white',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px'}}>
+            <div style={{fontSize:'12px',color:'#64748b'}}>Total collected</div>
+            <div style={{fontSize:'18px',fontWeight:900,color:'#16a34a'}}>R{totalsAll.total}</div>
+          </div>
+          <div style={{background:'white',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px'}}>
+            <div style={{fontSize:'12px',color:'#64748b'}}>Office</div>
+            <div style={{fontSize:'18px',fontWeight:900,color:'#0f172a'}}>R{totalsAll.office}</div>
+          </div>
+          <div style={{background:'white',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px'}}>
+            <div style={{fontSize:'12px',color:'#64748b'}}>Lerato</div>
+            <div style={{fontSize:'18px',fontWeight:900,color:'#0f172a'}}>R{totalsAll.lerato}</div>
+          </div>
+        </div>
+        {payMsg && <div style={{marginTop:'10px',fontSize:'13px',color:payMsg.startsWith('✓')?'#166534':'#b91c1c'}}>{payMsg}</div>}
+      </div>
+
       <div style={{overflowX:'auto'}}>
         <table style={{width:'100%',borderCollapse:'collapse',fontSize:'14px'}}>
           <thead>
@@ -1776,6 +1910,7 @@ function LearnersAdminTab({overrides,setOverrides,setAssessments}){
               <th style={{padding:'10px 8px',width:'40px'}}>#</th>
               <th style={{padding:'10px 8px'}}>Surname</th>
               <th style={{padding:'10px 8px'}}>First name</th>
+              <th style={{padding:'10px 8px',width:'260px'}}>Donation (R50)</th>
               <th style={{padding:'10px 8px',width:'180px'}}>Original (register)</th>
               <th style={{padding:'10px 8px',width:'180px',textAlign:'right'}}>Actions</th>
             </tr>
@@ -1783,11 +1918,41 @@ function LearnersAdminTab({overrides,setOverrides,setAssessments}){
           <tbody>
             {learners.map((L,i)=>{
               const isEdited = L.surname!==L._origSurname || L.firstname!==L._origFirstname;
+              const payKey = `${selClass}||${Number(L.number)||0}`;
+              const p = paymentsByKey.get(payKey);
+              const isPaid = !!p?.paid_to;
+              const paidTo = String(p?.paid_to || '');
+              const busy = payBusyKey===payKey;
               return (
                 <tr key={`${L._origSurname}|${L._origFirstname}`} style={{borderBottom:'1px solid #eee',background:isEdited?'#fffbe6':'transparent'}}>
                   <td style={{padding:'10px 8px',color:'#999'}}>{L.number||i+1}</td>
                   <td style={{padding:'10px 8px',fontWeight:600,color:'#222'}}>{L.surname}</td>
                   <td style={{padding:'10px 8px',color:'#222'}}>{L.firstname}</td>
+                  <td style={{padding:'10px 8px'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:'10px',flexWrap:'wrap'}}>
+                      <label style={{display:'flex',alignItems:'center',gap:'8px',fontSize:'13px',fontWeight:700,color:isPaid?'#166534':'#64748b',cursor:busy?'not-allowed':'pointer'}}>
+                        <input type="checkbox" checked={isPaid} disabled={busy}
+                          onChange={e=>setPayment(L, e.target.checked, paidTo || 'office')}
+                          style={{width:18,height:18}}/>
+                        Paid
+                      </label>
+                      <span style={{fontSize:'13px',fontWeight:800,color:'#0f172a'}}>R50</span>
+                      <div style={{display:'flex',alignItems:'center',gap:'10px',background:'#f1f5f9',padding:'6px 10px',borderRadius:'999px'}}>
+                        <label style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'12px',color:'#0f172a',cursor:(busy||!isPaid)?'not-allowed':'pointer'}}>
+                          <input type="checkbox" checked={paidTo==='office'} disabled={busy||!isPaid}
+                            onChange={()=>setPayment(L,true,'office')}
+                            style={{width:16,height:16}}/>
+                          Office
+                        </label>
+                        <label style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'12px',color:'#0f172a',cursor:(busy||!isPaid)?'not-allowed':'pointer'}}>
+                          <input type="checkbox" checked={paidTo==='lerato'} disabled={busy||!isPaid}
+                            onChange={()=>setPayment(L,true,'lerato')}
+                            style={{width:16,height:16}}/>
+                          Lerato
+                        </label>
+                      </div>
+                    </div>
+                  </td>
                   <td style={{padding:'10px 8px',color:'#999',fontSize:'12px'}}>
                     {isEdited ? `${L._origFirstname} ${L._origSurname}` : <span style={{color:'#ccc'}}>—</span>}
                   </td>
