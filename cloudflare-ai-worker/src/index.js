@@ -173,7 +173,13 @@ function deriveLearnerIdentity(username, pin, profile = {}) {
 }
 
 function sanitizeTeacherSession(rows, email) {
-  const classNames = [...new Set(rows.map((row) => row.class_name).filter(Boolean))];
+  const classNames = [
+    ...new Set(
+      rows
+        .map((row) => String(row?.class_name || "").trim())
+        .filter(Boolean)
+    ),
+  ];
   const merged = rows[0] || {};
   const activeClass = classNames[0] || merged.class_name || null;
   return {
@@ -181,9 +187,9 @@ function sanitizeTeacherSession(rows, email) {
     email: String(email || merged.email || "").trim().toLowerCase(),
     first_name: merged.first_name || null,
     surname: merged.surname || null,
-    class_name: activeClass,
+    class_name: activeClass ? String(activeClass).trim() : null,
     class_names: classNames,
-    active_class_name: activeClass,
+    active_class_name: activeClass ? String(activeClass).trim() : null,
     login_enabled: true,
   };
 }

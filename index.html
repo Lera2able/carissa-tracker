@@ -5560,15 +5560,23 @@ function LearnerPortalView(){
     return rows;
   },[myAssignments, resultByAssignment, resources]);
   const completedCount = completedItems.length;
+  const parseWpmFromNotes = useCallback((notes)=>{
+    const s = String(notes || '');
+    const m = s.match(/WPM:\s*(\d+)/i);
+    return m ? Number(m[1]) : null;
+  },[]);
   const typingSummary = useMemo(()=>{
-    const scores = completedItems
-      .filter(x=>x.type==='typing')
+    const typingRows = completedItems.filter(x=>x.type==='typing');
+    const accVals = typingRows
       .map(x=>Number(x.r?.score ?? NaN))
       .filter(n=>Number.isFinite(n));
-    if(!scores.length) return { avg: null, count: 0 };
-    const sum = scores.reduce((a,b)=>a+b,0);
-    return { avg: Math.round(sum / scores.length), count: scores.length };
-  },[completedItems]);
+    const wpmVals = typingRows
+      .map(x=>parseWpmFromNotes(x.r?.learner_notes))
+      .filter(n=>Number.isFinite(n) && n>0);
+    const avgAcc = accVals.length ? Math.round(accVals.reduce((a,b)=>a+b,0) / accVals.length) : null;
+    const avgWpm = wpmVals.length ? Math.round(wpmVals.reduce((a,b)=>a+b,0) / wpmVals.length) : null;
+    return { avgAcc, avgWpm, accCount: accVals.length, wpmCount: wpmVals.length };
+  },[completedItems, parseWpmFromNotes]);
 
   const startActivity = async(assignment)=>{
     const resourceType = resType(assignment.resource_id);
@@ -5686,7 +5694,10 @@ function LearnerPortalView(){
                 <strong>Completed:</strong> {completedCount}/{myAssignments.length}
               </div>
               <div style={{background:'white',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'10px 12px',fontSize:'13px'}}>
-                <strong>Typing average:</strong> {typingSummary.avg===null ? '—' : `${typingSummary.avg}/100`} {typingSummary.count ? `(${typingSummary.count} attempts)` : ''}
+                <strong>Typing averages:</strong>{' '}
+                {typingSummary.avgWpm===null ? 'WPM —' : `WPM ${typingSummary.avgWpm}`},{' '}
+                {typingSummary.avgAcc===null ? 'Accuracy —' : `Accuracy ${typingSummary.avgAcc}%`}{' '}
+                {(typingSummary.accCount||typingSummary.wpmCount) ? `(${Math.max(typingSummary.accCount, typingSummary.wpmCount)} attempts)` : ''}
               </div>
             </div>
             {completedCount>0 && (
@@ -5704,7 +5715,19 @@ function LearnerPortalView(){
                       <tr key={`p-${a.id}`}>
                         <td style={{padding:'10px',borderBottom:'1px solid #f1f5f9',fontWeight:700,color:'#0f172a'}}>{title}</td>
                         <td style={{padding:'10px',borderBottom:'1px solid #f1f5f9',color:'#0f172a'}}>
-                          {Number(r?.score||0)}/{Number(r?.max_score||100)}{type==='typing' ? ' (accuracy)' : ''}
+                          {type==='typing' ? (
+                            <>
+                              <span style={{fontWeight:800}}>WPM:</span>{' '}
+                              {(() => { const w = parseWpmFromNotes(r?.learner_notes); return (w && w>0) ? w : '—'; })()}
+                              {' '}•{' '}
+                              <span style={{fontWeight:800}}>Accuracy:</span>{' '}
+                              {Number(r?.score||0)}%
+                            </>
+                          ) : (
+                            <>
+                              {Number(r?.score||0)}/{Number(r?.max_score||100)}
+                            </>
+                          )}
                         </td>
                         <td style={{padding:'10px',borderBottom:'1px solid #f1f5f9',color:'#475569'}}>{formatDateTimeZA(r?.submitted_at) || '—'}</td>
                       </tr>
@@ -6000,11 +6023,29 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
     }
   };
 
+  // If we have a stored teacher session (local storage) but the Worker cookie session is missing/expired,
+  // the marks endpoint will return empty. Detect this and force a re-login.
+  useEffect(()=>{
+    (async()=>{
+      if(!teacherAuth || adminAccess) return;
+      try{
+        await apiRequest('/auth/teacher/session');
+      }catch(e){
+        saveTeacherSession(null, false);
+        if(TEACHER_SESSION) TEACHER_SESSION = null;
+        setTeacherAuth(null);
+        setSelClass('');
+        showMsg('Your session expired. Please log in again.');
+      }
+    })();
+  },[teacherAuth, adminAccess]);
+
   const loadLearnWorldData = useCallback(async({showLoader=false}={})=>{
     if(showLoader) setLoading(true);
     try{
       const lresPromise = teacherAuth
-        ? apiRequest(`/learner-results/teacher${selClass ? `?class_name=${encodeURIComponent(selClass)}` : ''}`).catch(()=>({results:[]}))
+        ? apiRequest(`/learner-results/teacher${selClass ? `?class_name=${encodeURIComponent(selClass)}` : ''}`)
+            .catch((e)=>{ showMsg(`Could not load learner marks: ${e?.message || 'Unknown error'}. Please log out and log in again.`); return {results:[]}; })
         : Promise.resolve({results:[]});
       const [a, asn, lresResp, r, rdg, ints, adminCfg] = await Promise.all([
         db.get('carissa_elearning_assessments','order=created_at.desc'),
