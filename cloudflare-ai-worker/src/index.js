@@ -391,6 +391,13 @@ async function supabasePatch(env, path, params, payload) {
   });
 }
 
+async function supabaseDelete(env, path, params, prefer = "return=representation") {
+  const parsedParams = typeof params === "string"
+    ? Object.fromEntries(new URLSearchParams(params).entries())
+    : params;
+  return supabaseRequest(env, "DELETE", path, { params: parsedParams, prefer });
+}
+
 async function getTeacherSession(request, env) {
   const cookies = parseCookies(request.headers.get("Cookie") || "");
   return decodeSignedSession(env, cookies[COOKIE_NAMES.teacher]);
@@ -572,6 +579,45 @@ async function handleLearnerResultUpsert(request, env, corsOrigin) {
     });
   } catch (_e) {}
   return jsonResponse({ result }, 200, corsOrigin);
+}
+
+async function handleTeacherResultReset(request, env, corsOrigin) {
+  const session = await getTeacherSession(request, env);
+  if (!session) return jsonResponse({ error: "Teacher session required." }, 401, corsOrigin);
+  const body = await readJsonBody(request);
+  const assignmentId = String(body?.assignment_id || "").trim();
+  if (!assignmentId) {
+    return jsonResponse({ error: "Missing assignment_id." }, 400, corsOrigin);
+  }
+
+  const assignmentRows = await supabaseGet(env, "carissa_resource_assignments", {
+    id: `eq.${assignmentId}`,
+    select: "*",
+    limit: "1",
+  });
+  const assignment = Array.isArray(assignmentRows) ? assignmentRows[0] : null;
+  if (!assignment) {
+    return jsonResponse({ error: "Assignment not found." }, 404, corsOrigin);
+  }
+  const assignmentClass = String(assignment.class_name || "").trim();
+  if (!assignmentClass || !session.class_names.includes(assignmentClass)) {
+    return jsonResponse({ error: "You do not have access to that assignment." }, 403, corsOrigin);
+  }
+
+  // Delete learner result(s) for this assignment. (Normally 1 row per assignment.)
+  await supabaseDelete(env, "carissa_learner_activity_results", {
+    assignment_id: `eq.${assignment.id}`,
+  }, "return=minimal");
+
+  // Reset assignment status back to assigned (so the teacher sees it as awaiting mark again).
+  try {
+    await supabasePatch(env, "carissa_resource_assignments", { id: `eq.${assignment.id}` }, {
+      status: "assigned",
+      updated_at: new Date().toISOString(),
+    });
+  } catch (_e) {}
+
+  return jsonResponse({ ok: true }, 200, corsOrigin);
 }
 
 async function fetchReadingRecords(env, className, term) {
@@ -1032,6 +1078,14 @@ export default {
         return await handleLearnerResultUpsert(request, env, corsOrigin);
       } catch (error) {
         return jsonResponse({ error: error?.message || "Result upsert failed" }, 500, corsOrigin);
+      }
+    }
+    if (url.pathname === "/api/learner-results/reset") {
+      if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handleTeacherResultReset(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Result reset failed" }, 500, corsOrigin);
       }
     }
     if (url.pathname !== "/api/ai") {

@@ -6066,6 +6066,18 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
     if(showLoader) setLoading(false);
   },[teacherAuth, selClass]);
 
+  const resetMark = async(assignmentId)=>{
+    if(!teacherAuth) return;
+    if(!window.confirm('Reset this learner mark? This will remove the saved score and set the activity back to waiting for the learner.')) return;
+    try{
+      await apiRequest('/learner-results/reset', {method:'POST', body:{ assignment_id: assignmentId }});
+      showMsg('✓ Mark reset.');
+      loadLearnWorldData();
+    }catch(e){
+      showMsg(`Could not reset mark: ${e?.message || 'Unknown error'}`);
+    }
+  };
+
   useEffect(()=>{
     loadLearnWorldData({showLoader:true});
   },[loadLearnWorldData]);
@@ -6521,6 +6533,13 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
                             <span style={{background:'#fef3c7',color:'#92400e',padding:'4px 9px',borderRadius:'999px',fontSize:'12px',fontWeight:700}}>
                               Feedback received
                             </span>
+                            <button
+                              style={{...sbtn,background:'#dc2626',fontSize:'12px',padding:'5px 11px'}}
+                              onClick={()=>resetMark(a.id)}
+                              title="Reset / clear the saved mark"
+                            >
+                              ♻ Reset mark
+                            </button>
                           </div>
                         )}
                       </div>
