@@ -5608,14 +5608,15 @@ function LearnerPortalView(){
             const autoTracked = resType(a.resource_id)==='typing';
             const savedScoreLabel = result ? `Saved score: ${result.score || 0}/${result.max_score || 100}` : '';
             const submittedLabel = formatDateTimeZA(result?.submitted_at);
+            const displayStatus = result ? 'completed' : (a.status==='in_progress' ? 'in_progress' : 'assigned');
             return (
               <div key={a.id} style={{...card,marginBottom:'12px'}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'10px',flexWrap:'wrap',marginBottom:'10px'}}>
                   <div>
                     <div style={{fontWeight:800,color:'#1f2937',fontSize:'16px'}}>{resTitle(a.resource_id)}</div>
-                    <div style={{fontSize:'12px',color:'#64748b',marginTop:'4px'}}>Status: <strong>{result ? 'completed' : formatStatusLabel(a.status)}</strong></div>
+                    <div style={{fontSize:'12px',color:'#64748b',marginTop:'4px'}}>Status: <strong>{formatStatusLabel(displayStatus)}</strong></div>
                   </div>
-                  <StatusBadge status={result ? 'completed' : a.status}/>
+                  <StatusBadge status={displayStatus}/>
                 </div>
                 {a.notes && <div style={{fontSize:'13px',color:'#475569',marginBottom:'10px',background:'#f8fafc',border:'1px solid #e2e8f0',padding:'10px',borderRadius:'10px'}}><strong>Teacher note:</strong> {a.notes}</div>}
                 {a.due_date && <div style={{fontSize:'13px',color:'#888',marginBottom:'10px'}}>📅 Due: {new Date(a.due_date).toLocaleDateString('en-ZA')}</div>}
@@ -6340,6 +6341,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
                 const learnerResult = learnerResultByAssignment.get(a.id);
                 const teacherScoreLabel = learnerResult ? `Score: ${learnerResult.score || 0}/${learnerResult.max_score || 100}` : '';
                 const submittedLabel = formatDateTimeZA(learnerResult?.submitted_at);
+                const displayStatus = learnerResult ? 'completed' : (a.status==='in_progress' ? 'in_progress' : 'assigned');
                 return (
                   <div key={a.id} style={{...card,marginBottom:'12px',padding:'18px'}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:'10px',marginBottom:'10px'}}>
@@ -6357,7 +6359,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
                           </div>
                         )}
                       </div>
-                      <StatusBadge status={learnerResult ? 'completed' : a.status}/>
+                      <StatusBadge status={displayStatus}/>
                     </div>
                     <div style={{background:'#f8f9fa',borderRadius:'8px',padding:'10px',marginBottom:'10px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap'}}>
                       <div>
