@@ -195,6 +195,8 @@ const findLearnerByCredentials = (username, pin) => {
           class_name: cls,
           surname: learner.surname,
           firstname: learner.firstname,
+          original_surname: learner._origSurname || learner.surname,
+          original_firstname: learner._origFirstname || learner.firstname,
           learner_number: learner.number,
           username: cleanUser,
           pin: cleanPin,
@@ -5414,6 +5416,7 @@ function LearnerPortalView(){
   const [assignments,setAssignments]=useState([]);
   const [resources,setResources]=useState([]);
   const [results,setResults]=useState([]);
+  const [editNameOpen,setEditNameOpen]=useState(false);
   const [loginBusy,setLoginBusy]=useState(false);
   const [busyId,setBusyId]=useState(null);
   const [loading,setLoading]=useState(true);
@@ -5450,6 +5453,8 @@ function LearnerPortalView(){
               class_name: learnerAuth.class_name,
               surname: learnerAuth.surname,
               firstname: learnerAuth.firstname,
+              original_surname: learnerAuth.original_surname || learnerAuth.surname,
+              original_firstname: learnerAuth.original_firstname || learnerAuth.firstname,
             }
           }
         });
@@ -5508,6 +5513,8 @@ function LearnerPortalView(){
             class_name: found.class_name,
             surname: found.surname,
             firstname: found.firstname,
+            original_surname: found.original_surname || found.surname,
+            original_firstname: found.original_firstname || found.firstname,
           }
         }
       });
@@ -5683,7 +5690,10 @@ function LearnerPortalView(){
                 <div style={{fontSize:'19px',fontWeight:800,color:'#3730a3'}}>Welcome, {learnerAuth.firstname} {learnerAuth.surname}</div>
                 <div style={{fontSize:'13px',color:'#475569',marginTop:'4px'}}>Class: <strong>{learnerAuth.class_name}</strong> • Username: <strong>{learnerAuth.username}</strong></div>
               </div>
-              <button onClick={learnerLogout} style={{...sbtn,background:'#64748b'}}>Sign out</button>
+              <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+                <button onClick={()=>setEditNameOpen(true)} style={{...sbtn,background:'#2563eb'}}>✏️ Edit my name</button>
+                <button onClick={learnerLogout} style={{...sbtn,background:'#64748b'}}>Sign out</button>
+              </div>
             </div>
           </div>
 
@@ -5781,6 +5791,14 @@ function LearnerPortalView(){
             );
           })}
         </>
+      )}
+      {editNameOpen && learnerAuth && (
+        <EditNameModal
+          surname={learnerAuth.surname}
+          firstname={learnerAuth.firstname}
+          onClose={()=>setEditNameOpen(false)}
+          onSave={saveMyName}
+        />
       )}
     </div>
   );
@@ -6075,6 +6093,39 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
       loadLearnWorldData();
     }catch(e){
       showMsg(`Could not reset mark: ${e?.message || 'Unknown error'}`);
+    }
+  };
+
+  const saveMyName = async(newSurname, newFirstname)=>{
+    if(!learnerAuth) return;
+    try{
+      const data = await apiRequest('/learner/profile/update', {
+        method:'POST',
+        body:{ surname:newSurname, firstname:newFirstname }
+      });
+      const next = data?.session ? {
+        ...learnerAuth,
+        surname: data.session.surname,
+        firstname: data.session.firstname,
+        original_surname: data.session.original_surname || learnerAuth.original_surname,
+        original_firstname: data.session.original_firstname || learnerAuth.original_firstname,
+      } : {...learnerAuth, surname:newSurname, firstname:newFirstname};
+      saveLearnerSession(next);
+      LEARNER_SESSION = next;
+      setLearnerAuth(next);
+      setEditNameOpen(false);
+      showMsg('✓ Name updated.');
+      // Refresh assignments/results because name-based matching is used in the UI.
+      try{
+        const [asn, res] = await Promise.all([
+          db.get('carissa_resource_assignments','order=created_at.desc').catch(()=>[]),
+          apiRequest('/learner-results/me').catch(()=>({results:[]}))
+        ]);
+        setAssignments(asn||[]);
+        setResults(res?.results||[]);
+      }catch(_e){}
+    }catch(e){
+      alert('Could not save name: ' + (e?.message || e));
     }
   };
 

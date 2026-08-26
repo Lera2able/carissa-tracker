@@ -162,12 +162,16 @@ function deriveLearnerIdentity(username, pin, profile = {}) {
   const surname = String(profile.surname || "").trim();
   const firstname = String(profile.firstname || "").trim();
   if (!surname || !firstname) return null;
+  const originalSurname = String(profile.original_surname || surname).trim();
+  const originalFirstname = String(profile.original_firstname || firstname).trim();
   return {
     type: "learner",
     username: cleanUser,
     class_name: className,
     surname,
     firstname,
+    original_surname: originalSurname,
+    original_firstname: originalFirstname,
     learner_number: learnerNumber,
   };
 }
@@ -579,6 +583,106 @@ async function handleLearnerResultUpsert(request, env, corsOrigin) {
     });
   } catch (_e) {}
   return jsonResponse({ result }, 200, corsOrigin);
+}
+
+async function handleLearnerProfileUpdate(request, env, corsOrigin) {
+  const session = await getLearnerSession(request, env);
+  if (!session) return jsonResponse({ error: "Learner session required." }, 401, corsOrigin);
+  const body = await readJsonBody(request);
+  const newSurname = String(body?.surname || "").trim();
+  const newFirstname = String(body?.firstname || "").trim();
+  if (!newSurname || !newFirstname) {
+    return jsonResponse({ error: "Missing surname or firstname." }, 400, corsOrigin);
+  }
+
+  const oldSurname = String(session.surname || "").trim();
+  const oldFirstname = String(session.firstname || "").trim();
+  if (newSurname === oldSurname && newFirstname === oldFirstname) {
+    return jsonResponse({ ok: true, session }, 200, corsOrigin);
+  }
+
+  const className = String(session.class_name || "").trim();
+  const username = String(session.username || "").trim().toLowerCase();
+  const originalSurname = String(session.original_surname || oldSurname).trim();
+  const originalFirstname = String(session.original_firstname || oldFirstname).trim();
+
+  // 1) Upsert override (stable key = original name from register)
+  try {
+    const existingRows = await supabaseGet(env, "carissa_learner_overrides", {
+      class_name: `eq.${className}`,
+      original_surname: `eq.${originalSurname}`,
+      original_firstname: `eq.${originalFirstname}`,
+      limit: "1",
+    });
+    const existing = Array.isArray(existingRows) ? existingRows[0] : null;
+    if (existing?.id) {
+      await supabasePatch(env, "carissa_learner_overrides", { id: `eq.${existing.id}` }, {
+        new_surname: newSurname,
+        new_firstname: newFirstname,
+        updated_at: new Date().toISOString(),
+      });
+    } else if (newSurname !== originalSurname || newFirstname !== originalFirstname) {
+      await supabasePost(env, "carissa_learner_overrides", {
+        class_name: className,
+        original_surname: originalSurname,
+        original_firstname: originalFirstname,
+        new_surname: newSurname,
+        new_firstname: newFirstname,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+    }
+  } catch (_e) {
+    // If overrides table isn't present, we still proceed with direct table updates below.
+  }
+
+  // 2) Cascade rename across the main tables used by the app.
+  const patchByOldName = async (table) => {
+    try {
+      await supabasePatch(
+        env,
+        table,
+        {
+          class_name: `eq.${className}`,
+          surname: `eq.${oldSurname}`,
+          firstname: `eq.${oldFirstname}`,
+        },
+        { surname: newSurname, firstname: newFirstname, updated_at: new Date().toISOString() }
+      );
+    } catch (_e) {}
+  };
+  const patchResults = async () => {
+    try {
+      await supabasePatch(
+        env,
+        "carissa_learner_activity_results",
+        { class_name: `eq.${className}`, learner_username: `eq.${username}` },
+        { surname: newSurname, firstname: newFirstname, updated_at: new Date().toISOString() }
+      );
+    } catch (_e) {}
+  };
+
+  await Promise.all([
+    patchByOldName("carissa_resource_assignments"),
+    patchByOldName("carissa_elearning_assessments"),
+    patchByOldName("carissa_reading_assessments"),
+    patchByOldName("carissa_interventions"),
+    patchResults(),
+  ]);
+
+  // 3) Issue a new learner session cookie with the updated name.
+  const nextSession = buildSessionPayload(
+    {
+      ...session,
+      surname: newSurname,
+      firstname: newFirstname,
+      original_surname: originalSurname,
+      original_firstname: originalFirstname,
+    },
+    LEARNER_SESSION_MAX_AGE
+  );
+  const cookie = await createSessionCookie(env, COOKIE_NAMES.learner, nextSession, LEARNER_SESSION_MAX_AGE);
+  return jsonResponse({ ok: true, session: nextSession }, 200, corsOrigin, { "Set-Cookie": cookie });
 }
 
 async function handleTeacherResultReset(request, env, corsOrigin) {
@@ -1078,6 +1182,14 @@ export default {
         return await handleLearnerResultUpsert(request, env, corsOrigin);
       } catch (error) {
         return jsonResponse({ error: error?.message || "Result upsert failed" }, 500, corsOrigin);
+      }
+    }
+    if (url.pathname === "/api/learner/profile/update") {
+      if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handleLearnerProfileUpdate(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Profile update failed" }, 500, corsOrigin);
       }
     }
     if (url.pathname === "/api/learner-results/reset") {
