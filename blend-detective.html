@@ -502,13 +502,13 @@ function sendToTeacher(){
   try{
     if(window.opener){
       window.opener.postMessage(payload, window.location.origin);
-      $("#sendStatus").textContent = "Sent. Return to the learner portal to see it save.";
+      $("#sendStatus").textContent = "✓ Mark sent to teacher. Return to the learner portal to see it save.";
       return;
     }
   }catch(e){}
   try{
     localStorage.setItem("typing_speed_result_pending", JSON.stringify(payload));
-    $("#sendStatus").textContent = "Sent. Return to the learner portal tab to finish saving.";
+    $("#sendStatus").textContent = "✓ Mark sent to teacher. Return to the learner portal tab to finish saving.";
   }catch(e){
     $("#sendStatus").textContent = "Could not send automatically. Please try again.";
   }
