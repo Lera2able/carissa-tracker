@@ -1618,11 +1618,20 @@ function LearnersAdminTab({overrides,setOverrides,setAssessments}){
   const [editing,setEditing] = useState(null); // {orig:{surname,firstname}, surname, firstname}
   const [saving,setSaving] = useState(false);
   const [savedMsg,setSavedMsg] = useState('');
+  const [search,setSearch] = useState('');
   const [allPayments,setAllPayments] = useState([]);
   const [payMsg,setPayMsg] = useState('');
   const [payBusyKey,setPayBusyKey] = useState(null);
 
   const learners = selClass ? (CLASS_DATA[selClass]||[]) : [];
+  const filteredLearners = useMemo(()=>{
+    const q = String(search||'').trim().toLowerCase();
+    if(!q) return learners;
+    return (learners||[]).filter(L=>{
+      const s = `${L.surname||''} ${L.firstname||''}`.toLowerCase();
+      return s.includes(q);
+    });
+  },[learners,search]);
 
   const paymentsForClass = useMemo(()=> (allPayments||[]).filter(p=>p.class_name===selClass),[allPayments,selClass]);
   const paymentsByKey = useMemo(()=>{
@@ -1867,6 +1876,12 @@ function LearnersAdminTab({overrides,setOverrides,setAssessments}){
             return <option key={n} value={n}>{n} ({(CLASS_DATA[n]||[]).length}){edited?` — ${edited} edited`:''}</option>;
           })}
         </select>
+        <input
+          value={search}
+          onChange={e=>setSearch(e.target.value)}
+          placeholder="Search surname / name…"
+          style={{padding:'8px 12px',borderRadius:'6px',border:'1px solid #ccc',fontSize:'14px',minWidth:'240px'}}
+        />
         {savedMsg && <span style={{fontSize:'13px',color:'#16a34a',fontWeight:600}}>✓ {savedMsg}</span>}
       </div>
 
@@ -1916,7 +1931,7 @@ function LearnersAdminTab({overrides,setOverrides,setAssessments}){
             </tr>
           </thead>
           <tbody>
-            {learners.map((L,i)=>{
+            {filteredLearners.map((L,i)=>{
               const isEdited = L.surname!==L._origSurname || L.firstname!==L._origFirstname;
               const payKey = `${selClass}||${Number(L.number)||0}`;
               const p = paymentsByKey.get(payKey);
