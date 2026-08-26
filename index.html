@@ -46,6 +46,31 @@ const db = {
   upload: async(path,file)=>{const r=await fetch(`${SB}/storage/v1/object/carissa-resources/${path}`,{method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,"Content-Type":file.type,"x-upsert":"true"},body:file});if(!r.ok)throw new Error(await r.text());return `${SB}/storage/v1/object/public/carissa-resources/${path}`;},
 };
 
+/* ── Secure API helpers (Cloudflare Worker) ───────────────────── */
+const API_BASE = '/api';
+const apiRequest = async(path, opts={})=>{
+  const method = (opts.method || 'GET').toUpperCase();
+  const body = opts.body === undefined ? null : opts.body;
+  const headers = {
+    ...(body ? {"Content-Type":"application/json"} : {}),
+    ...(opts.headers || {}),
+  };
+  const res = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers,
+    credentials: 'include',
+    body: body ? JSON.stringify(body) : null,
+  });
+  const text = await res.text().catch(()=> '');
+  let data = null;
+  try{ data = text ? JSON.parse(text) : null; }catch(e){ data = text || null; }
+  if(!res.ok){
+    const msg = (data && data.error) ? data.error : (typeof data === 'string' ? data : 'Request failed');
+    throw new Error(msg);
+  }
+  return data;
+};
+
 const ADMIN_DISCIPLINE_SEEN_KEY = 'carissa_admin_last_seen_discipline_at';
 const ADMIN_AUDIT_POLL_MS = 30000;
 const safeJsonParse = (s, fallback=null) => { try { return JSON.parse(s || '{}'); } catch { return fallback; } };
@@ -5400,18 +5425,41 @@ function LearnerPortalView(){
   useEffect(()=>{
     (async()=>{
       try{
-        const [asn, r, lres] = await Promise.all([
+        const [asn, r] = await Promise.all([
           db.get('carissa_resource_assignments','order=created_at.desc'),
           db.get('carissa_resources','order=created_at.desc'),
-          db.get('carissa_learner_activity_results','order=updated_at.desc').catch(()=>[]),
         ]);
         setAssignments(asn||[]);
         setResources(r||[]);
-        setResults(lres||[]);
+        setResults([]);
       }catch(e){ console.error(e); }
       setLoading(false);
     })();
   },[]);
+
+  useEffect(()=>{
+    (async()=>{
+      if(!learnerAuth) return;
+      try{
+        await apiRequest('/auth/learner/login', {
+          method:'POST',
+          body:{
+            username: learnerAuth.username,
+            pin: learnerAuth.pin || loginPin,
+            profile: {
+              class_name: learnerAuth.class_name,
+              surname: learnerAuth.surname,
+              firstname: learnerAuth.firstname,
+            }
+          }
+        });
+        const data = await apiRequest('/learner-results/me');
+        setResults(data?.results || []);
+      }catch(e){
+        console.warn(e);
+      }
+    })();
+  },[learnerAuth]);
 
   useEffect(()=>{
     const handler = (ev)=>{
@@ -5441,7 +5489,7 @@ function LearnerPortalView(){
     };
   },[assignments, learnerAuth, results]);
 
-  const learnerLogin = ()=>{
+  const learnerLogin = async()=>{
     setLoginErr('');
     const found = findLearnerByCredentials(loginUser, loginPin);
     if(!found){
@@ -5450,12 +5498,30 @@ function LearnerPortalView(){
       return;
     }
     setLoginBusy(true);
-    saveLearnerSession(found);
-    LEARNER_SESSION = found;
-    setLearnerAuth(found);
-    setTimeout(()=>setLoginBusy(false), 250);
+    try{
+      await apiRequest('/auth/learner/login', {
+        method:'POST',
+        body:{
+          username: found.username,
+          pin: found.pin,
+          profile: {
+            class_name: found.class_name,
+            surname: found.surname,
+            firstname: found.firstname,
+          }
+        }
+      });
+      saveLearnerSession(found);
+      LEARNER_SESSION = found;
+      setLearnerAuth(found);
+      setTimeout(()=>setLoginBusy(false), 200);
+    }catch(e){
+      setLoginErr(e?.message || 'Could not sign in right now. Please try again.');
+      setLoginBusy(false);
+    }
   };
-  const learnerLogout = ()=>{
+  const learnerLogout = async()=>{
+    try{ await apiRequest('/auth/learner/logout', {method:'POST'}); }catch(e){}
     saveLearnerSession(null);
     LEARNER_SESSION = null;
     setLearnerAuth(null);
@@ -5521,25 +5587,14 @@ function LearnerPortalView(){
       const summary = String(resultSummary || '').trim();
       const payload = {
         assignment_id: assignment.id,
-        learner_username: learnerAuth.username,
-        class_name: learnerAuth.class_name,
-        surname: learnerAuth.surname,
-        firstname: learnerAuth.firstname,
-        resource_id: assignment.resource_id,
-        result_status: 'completed',
-        score: Math.round(acc),          // score = accuracy out of 100
+        score: Math.round(acc),
         max_score: 100,
+        result_status: 'completed',
         learner_notes: summary || `${activityLabel} — WPM: ${Math.round(w)}, Accuracy: ${Math.round(acc)}%, Errors: ${Number(errors||0)}, Chars: ${Number(typedChars||0)}, Time: ${timeText}${starText}`,
         submitted_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       };
-      let savedRows = [];
-      if(existing){
-        savedRows = await db.patch('carissa_learner_activity_results',`id=eq.${existing.id}`,payload);
-      }else{
-        savedRows = await db.post('carissa_learner_activity_results',{...payload,created_at:new Date().toISOString()});
-      }
-      const saved = Array.isArray(savedRows) ? (savedRows[0] || {...payload,id:existing?.id || `temp-${Date.now()}`}) : payload;
+      const data = await apiRequest('/learner-results/upsert', {method:'POST', body: payload});
+      const saved = data?.result || {...payload, id: existing?.id || `temp-${Date.now()}`};
       setResults(prev=>{
         const next = prev.filter(r=>r.assignment_id!==assignment.id);
         return [saved, ...next];
@@ -5799,15 +5854,18 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
     if(!email || !pin){ setLoginErr('Please enter both your email address and your password/PIN.'); return; }
     setLoginBusy(true);
     try{
-      const rows = await db.get('carissa_teacher_registrations',
-        `email=ilike.${encodeURIComponent(email)}&pin=eq.${encodeURIComponent(pin)}&login_enabled=eq.true&order=created_at.desc`);
-      if(rows.length){
-        const classNames = [...new Set(rows.map(r=>r.class_name).filter(Boolean))];
+      const data = await apiRequest('/auth/teacher/login', {
+        method:'POST',
+        body:{ email, pin, persist: rememberDevice }
+      });
+      const session = data?.session;
+      if(session){
+        const classNames = Array.isArray(session.class_names) ? session.class_names.filter(Boolean) : [];
         const preferred = DEFAULT_CLASS_BY_EMAIL[email] && classNames.includes(DEFAULT_CLASS_BY_EMAIL[email])
           ? DEFAULT_CLASS_BY_EMAIL[email]
-          : (classNames[0] || rows[0].class_name);
+          : (classNames[0] || session.class_name || '');
         const merged = {
-          ...rows[0],
+          ...session,
           class_name: preferred,
           class_names: classNames,
           active_class_name: preferred
@@ -5815,7 +5873,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
         saveTeacherSession(merged, rememberDevice);
         TEACHER_SESSION = merged;
         setTeacherAuth(merged);
-        setSelClass(preferred);
+        setSelClass(preferred || '');
         try{
           await db.post('carissa_teacher_audit', {
             teacher_email: (merged.email||'').toLowerCase(),
@@ -5830,11 +5888,14 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
         setLoginErr('Login failed. Please check your email and password/PIN, or contact the coordinator if you have not received your login details yet.');
         setManualLoginMode(true);
       }
-    }catch(e){ setLoginErr('Could not reach the server. Please check your connection and try again.'); }
+    }catch(e){
+      setLoginErr(e?.message || 'Could not reach the server. Please check your connection and try again.');
+    }
     setLoginBusy(false);
   };
-  const teacherLogout = ()=>{
+  const teacherLogout = async()=>{
     logTeacherAudit('logout', selClass);
+    try{ await apiRequest('/auth/teacher/logout', {method:'POST'}); }catch(e){}
     saveTeacherSession(null, false);
     if(TEACHER_SESSION){ TEACHER_SESSION=null; window.location.href=`${window.location.pathname}?portal=teacher`; return; }
     setTeacherAuth(null); setSelClass(''); setLoginEmail(''); setLoginPin(''); setLoginErr('');
@@ -5883,15 +5944,19 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
   const loadLearnWorldData = useCallback(async({showLoader=false}={})=>{
     if(showLoader) setLoading(true);
     try{
-      const [a, asn, lres, r, rdg, ints, adminCfg] = await Promise.all([
+      const lresPromise = teacherAuth
+        ? apiRequest(`/learner-results/teacher${selClass ? `?class_name=${encodeURIComponent(selClass)}` : ''}`).catch(()=>({results:[]}))
+        : Promise.resolve({results:[]});
+      const [a, asn, lresResp, r, rdg, ints, adminCfg] = await Promise.all([
         db.get('carissa_elearning_assessments','order=created_at.desc'),
         db.get('carissa_resource_assignments','order=created_at.desc'),
-        db.get('carissa_learner_activity_results','order=updated_at.desc').catch(()=>[]),
+        lresPromise,
         db.get('carissa_resources','order=created_at.desc'),
         db.get('carissa_reading_assessments','order=created_at.desc').catch(()=>[]),
         db.get('carissa_interventions','order=created_at.desc').catch(()=>[]),
         db.get('carissa_config','key=eq.admin_pin').catch(()=>[]),
       ]);
+      const lres = lresResp?.results || [];
       setAssessments(a); setAssignments(asn); setLearnerResults(lres); setResources(r); setReading(rdg); setInterventions(ints);
       const parsedCfg = parseAdminConfigValue(adminCfg?.[0]?.value || '{}');
       setSharedAdminEmails([...new Set(parsedCfg.shared_admin_teachers || [])]);
@@ -5899,7 +5964,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
       console.error(e);
     }
     if(showLoader) setLoading(false);
-  },[]);
+  },[teacherAuth, selClass]);
 
   useEffect(()=>{
     loadLearnWorldData({showLoader:true});
