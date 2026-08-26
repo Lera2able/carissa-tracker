@@ -257,7 +257,7 @@ footer{text-align:center;margin-top:34px;color:#8aa6ad;font-weight:700;font-size
         <a class="btn coral" href="index.html">⌂ LearnWorld</a>
       </div>
       <div id="sendWrap" style="display:none;margin-top:16px">
-        <button class="btn" type="button" onclick="sendToTeacher()">📤 Send result to teacher</button>
+        <button class="btn" type="button" onclick="sendToTeacher(true)">📤 Send result to teacher</button>
         <div id="sendStatus" style="margin-top:10px;color:#66858e;font-weight:800"></div>
       </div>
     </div>
@@ -809,11 +809,33 @@ function finish(){
   if(OPENED_FROM_TRACKER){
     $("#sendWrap").style.display="block";
     $("#sendStatus").textContent="Sending result back to the learner portal...";
-    setTimeout(()=>sendToTeacher(), 200);
+    setTimeout(()=>sendToTeacher(false), 200);
   }
 }
 
-function sendToTeacher(){
+function showToast(message){
+  const el = document.createElement("div");
+  el.textContent = message;
+  el.style.position = "fixed";
+  el.style.left = "50%";
+  el.style.bottom = "22px";
+  el.style.transform = "translateX(-50%)";
+  el.style.zIndex = "99999";
+  el.style.background = "rgba(15, 23, 42, 0.95)";
+  el.style.color = "white";
+  el.style.padding = "12px 16px";
+  el.style.borderRadius = "999px";
+  el.style.fontWeight = "900";
+  el.style.fontSize = "14px";
+  el.style.boxShadow = "0 10px 30px rgba(0,0,0,0.25)";
+  el.style.maxWidth = "90vw";
+  el.style.textAlign = "center";
+  document.body.appendChild(el);
+  setTimeout(()=>{ el.style.opacity = "0"; el.style.transition = "opacity 400ms"; }, 2200);
+  setTimeout(()=>{ try{ el.remove(); }catch(e){} }, 2800);
+}
+function sendToTeacher(showPopup){
+  showPopup = !!showPopup;
   if(!OPENED_FROM_TRACKER){
     $("#sendStatus").textContent = "This quest was not opened from an assignment.";
     return;
@@ -839,12 +861,14 @@ function sendToTeacher(){
     if(window.opener){
       window.opener.postMessage(payload, window.location.origin);
       $("#sendStatus").textContent = "✓ Mark sent to teacher. Return to the learner portal to see it save.";
+      if(showPopup) showToast("✓ Mark sent to teacher");
       return;
     }
   }catch(e){}
   try{
     localStorage.setItem("typing_speed_result_pending", JSON.stringify(payload));
     $("#sendStatus").textContent = "✓ Mark sent to teacher. Return to the learner portal tab to finish saving.";
+    if(showPopup) showToast("✓ Mark sent to teacher");
   }catch(e){
     $("#sendStatus").textContent = "Could not send automatically. Please try again.";
   }
