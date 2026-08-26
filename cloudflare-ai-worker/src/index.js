@@ -17,6 +17,8 @@
  * direct access to `carissa_learner_activity_results`.
  */
 
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+
 const DEFAULT_SUPABASE_URL = "https://vousucfboetqtppjywlg.supabase.co";
 const COOKIE_NAMES = {
   teacher: "carissa_tracker_teacher_session",
@@ -75,6 +77,21 @@ function safeJsonParse(value, fallback) {
   } catch (_e) {
     return fallback;
   }
+}
+
+function pdfResponse(pdfBytes, filename, origin = "*", extraHeaders = {}) {
+  return new Response(pdfBytes, {
+    status: 200,
+    headers: {
+      "content-type": "application/pdf",
+      "content-disposition": `attachment; filename="${filename}"`,
+      "access-control-allow-origin": origin,
+      "access-control-allow-methods": "GET,POST,OPTIONS",
+      "access-control-allow-headers": "content-type",
+      "access-control-allow-credentials": "true",
+      ...extraHeaders,
+    },
+  });
 }
 
 function normalizeOrigin(origin, allowedOrigin) {
@@ -846,6 +863,191 @@ async function handlePaymentsSet(request, env, corsOrigin) {
   return jsonResponse({ ok: true, payment: saved || payload }, 200, corsOrigin);
 }
 
+function money(amount) {
+  const n = Number(amount) || 0;
+  return `R${n}`;
+}
+
+function chunkArray(items, size) {
+  const out = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+async function handlePaymentsReportPdf(request, env, corsOrigin) {
+  const auth = await requireAdminTeacher(request, env, corsOrigin);
+  if (!auth.ok) return auth.res;
+
+  const rows = (await supabaseGet(env, "carissa_learner_payments", { order: "class_name.asc,learner_number.asc" })) || [];
+  const payments = Array.isArray(rows) ? rows : [];
+
+  // Totals
+  const totalAll = payments.reduce((s, p) => s + (Number(p.amount) || 50), 0);
+  const totalOffice = payments
+    .filter((p) => String(p.paid_to || "").toLowerCase() === "office")
+    .reduce((s, p) => s + (Number(p.amount) || 50), 0);
+  const totalLerato = payments
+    .filter((p) => String(p.paid_to || "").toLowerCase() === "lerato")
+    .reduce((s, p) => s + (Number(p.amount) || 50), 0);
+
+  const byGrade = {};
+  for (const p of payments) {
+    const g = String(p.class_name || "Unknown").trim() || "Unknown";
+    byGrade[g] = byGrade[g] || { grade: g, total: 0, count: 0, rows: [] };
+    byGrade[g].total += Number(p.amount) || 50;
+    byGrade[g].count += 1;
+    byGrade[g].rows.push(p);
+  }
+  const grades = Object.keys(byGrade).sort((a, b) => a.localeCompare(b));
+
+  const pdfDoc = await PDFDocument.create();
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  // Try to embed logo (served by the tracker site, not the worker route)
+  let logo = null;
+  try {
+    const logoUrl = env.PDF_LOGO_URL || "https://tracker.carissaprimary.co.za/elearning-logo.jpg";
+    const res = await fetch(logoUrl);
+    if (res.ok) {
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      logo = await pdfDoc.embedJpg(bytes);
+    }
+  } catch (_e) {}
+
+  const PAGE_W = 595.28; // A4 points
+  const PAGE_H = 841.89;
+  const M = 48;
+
+  const drawHeader = (page, title) => {
+    const yTop = PAGE_H - M;
+    if (logo) {
+      const w = 92;
+      const h = (logo.height / logo.width) * w;
+      page.drawImage(logo, { x: M, y: yTop - h + 6, width: w, height: h });
+    }
+    page.drawText(title, {
+      x: M,
+      y: yTop - 40,
+      size: 18,
+      font: fontBold,
+      color: rgb(0.11, 0.2, 0.36),
+    });
+    const dateStr = new Date().toISOString().slice(0, 10);
+    page.drawText(`Generated: ${dateStr}`, {
+      x: PAGE_W - M - 140,
+      y: yTop - 18,
+      size: 10,
+      font,
+      color: rgb(0.35, 0.42, 0.5),
+    });
+    page.drawLine({
+      start: { x: M, y: yTop - 50 },
+      end: { x: PAGE_W - M, y: yTop - 50 },
+      thickness: 1,
+      color: rgb(0.88, 0.9, 0.93),
+    });
+  };
+
+  // Cover / summary page
+  {
+    const page = pdfDoc.addPage([PAGE_W, PAGE_H]);
+    drawHeader(page, "eLearning Donations Report (R50)");
+
+    let y = PAGE_H - M - 90;
+    const summary = [
+      ["Total paid learners", String(payments.length)],
+      ["Total collected", money(totalAll)],
+      ["Office collected", money(totalOffice)],
+      ["Lerato collected", money(totalLerato)],
+    ];
+    page.drawText("Summary", { x: M, y, size: 13, font: fontBold, color: rgb(0.17, 0.27, 0.41) });
+    y -= 18;
+    for (const [k, v] of summary) {
+      page.drawText(k, { x: M, y, size: 11, font, color: rgb(0.18, 0.22, 0.27) });
+      page.drawText(v, { x: PAGE_W - M - 160, y, size: 11, font: fontBold, color: rgb(0.09, 0.48, 0.24) });
+      y -= 16;
+    }
+
+    y -= 12;
+    page.drawText("Collected per grade", { x: M, y, size: 13, font: fontBold, color: rgb(0.17, 0.27, 0.41) });
+    y -= 18;
+
+    // Table headers
+    const colX = [M, M + 220, M + 340, PAGE_W - M - 110];
+    page.drawText("Grade", { x: colX[0], y, size: 10, font: fontBold, color: rgb(0.2, 0.25, 0.32) });
+    page.drawText("Paid learners", { x: colX[1], y, size: 10, font: fontBold, color: rgb(0.2, 0.25, 0.32) });
+    page.drawText("Total", { x: colX[2], y, size: 10, font: fontBold, color: rgb(0.2, 0.25, 0.32) });
+    y -= 12;
+    page.drawLine({ start: { x: M, y }, end: { x: PAGE_W - M, y }, thickness: 1, color: rgb(0.88, 0.9, 0.93) });
+    y -= 12;
+
+    for (const g of grades) {
+      const row = byGrade[g];
+      page.drawText(g, { x: colX[0], y, size: 10.5, font, color: rgb(0.18, 0.22, 0.27) });
+      page.drawText(String(row.count), { x: colX[1], y, size: 10.5, font, color: rgb(0.18, 0.22, 0.27) });
+      page.drawText(money(row.total), { x: colX[2], y, size: 10.5, font: fontBold, color: rgb(0.09, 0.48, 0.24) });
+      y -= 14;
+      if (y < M + 120) break; // Keep summary tidy; details per grade follow on next pages.
+    }
+  }
+
+  // Detail pages per grade
+  for (const g of grades) {
+    const group = byGrade[g];
+    const sorted = (group.rows || []).slice().sort((a, b) => {
+      const na = Number(a.learner_number) || 0;
+      const nb = Number(b.learner_number) || 0;
+      return na - nb;
+    });
+    const chunks = chunkArray(sorted, 28);
+    for (let ci = 0; ci < chunks.length; ci++) {
+      const page = pdfDoc.addPage([PAGE_W, PAGE_H]);
+      drawHeader(page, `${g} — Paid learners (${group.count})`);
+      let y = PAGE_H - M - 90;
+
+      page.drawText(`Total collected for ${g}: ${money(group.total)}`, {
+        x: M,
+        y,
+        size: 11,
+        font: fontBold,
+        color: rgb(0.09, 0.48, 0.24),
+      });
+      y -= 22;
+
+      const colX = [M, M + 70, M + 250, M + 380, PAGE_W - M - 80];
+      page.drawText("#", { x: colX[0], y, size: 10, font: fontBold, color: rgb(0.2, 0.25, 0.32) });
+      page.drawText("Surname", { x: colX[1], y, size: 10, font: fontBold, color: rgb(0.2, 0.25, 0.32) });
+      page.drawText("First name", { x: colX[2], y, size: 10, font: fontBold, color: rgb(0.2, 0.25, 0.32) });
+      page.drawText("Paid to", { x: colX[3], y, size: 10, font: fontBold, color: rgb(0.2, 0.25, 0.32) });
+      page.drawText("Amount", { x: colX[4], y, size: 10, font: fontBold, color: rgb(0.2, 0.25, 0.32) });
+      y -= 12;
+      page.drawLine({ start: { x: M, y }, end: { x: PAGE_W - M, y }, thickness: 1, color: rgb(0.88, 0.9, 0.93) });
+      y -= 12;
+
+      for (const p of chunks[ci]) {
+        page.drawText(String(p.learner_number || ""), { x: colX[0], y, size: 10, font, color: rgb(0.18, 0.22, 0.27) });
+        page.drawText(String(p.surname || ""), { x: colX[1], y, size: 10, font, color: rgb(0.18, 0.22, 0.27) });
+        page.drawText(String(p.firstname || ""), { x: colX[2], y, size: 10, font, color: rgb(0.18, 0.22, 0.27) });
+        page.drawText(String(p.paid_to || ""), { x: colX[3], y, size: 10, font, color: rgb(0.18, 0.22, 0.27) });
+        page.drawText(money(p.amount || 50), { x: colX[4], y, size: 10, font: fontBold, color: rgb(0.09, 0.48, 0.24) });
+        y -= 14;
+      }
+
+      page.drawText(`Page ${pdfDoc.getPageCount()}`, {
+        x: PAGE_W - M - 60,
+        y: M - 18,
+        size: 9,
+        font,
+        color: rgb(0.45, 0.5, 0.56),
+      });
+    }
+  }
+
+  const pdfBytes = await pdfDoc.save();
+  return pdfResponse(pdfBytes, "elearning_donations_report.pdf", corsOrigin);
+}
+
 async function fetchReadingRecords(env, className, term) {
   const rows = await supabaseGet(env, "carissa_reading_assessments", {
     class_name: `eq.${className}`,
@@ -1328,6 +1530,14 @@ export default {
         return await handlePaymentsSet(request, env, corsOrigin);
       } catch (error) {
         return jsonResponse({ error: error?.message || "Payments update failed" }, 500, corsOrigin);
+      }
+    }
+    if (url.pathname === "/api/payments/report.pdf") {
+      if (request.method !== "GET") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handlePaymentsReportPdf(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Payments PDF failed" }, 500, corsOrigin);
       }
     }
     if (url.pathname === "/api/learner-results/reset") {
