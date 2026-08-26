@@ -116,6 +116,14 @@ const isTrackableActivityUrl = (url) => {
 };
 const isLearnWorldGameResource = (r) => !!(r && isTrackableActivityUrl(r.url));
 const STATUS_OPTS = [{v:"assigned",l:"Assigned",c:"#667eea"},{v:"in_progress",l:"In Progress",c:"#f97316"},{v:"completed",l:"Completed",c:"#28a745"}];
+const formatStatusLabel = (status, fallback='assigned') => String(status || fallback).replace(/_/g,' ');
+const formatDateTimeZA = (value) => {
+  try{
+    return value ? new Date(value).toLocaleString('en-ZA',{dateStyle:'medium',timeStyle:'short'}) : '';
+  }catch(e){
+    return '';
+  }
+};
 
 /* ── Signatures (base64 embedded) ─────────────────────────────── */
 const SIG_PRINCIPAL = "data:image/png;base64,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";
@@ -5381,7 +5389,6 @@ function LearnerPortalView(){
   const [assignments,setAssignments]=useState([]);
   const [resources,setResources]=useState([]);
   const [results,setResults]=useState([]);
-  const [drafts,setDrafts]=useState({});
   const [loginBusy,setLoginBusy]=useState(false);
   const [busyId,setBusyId]=useState(null);
   const [loading,setLoading]=useState(true);
@@ -5546,53 +5553,6 @@ function LearnerPortalView(){
     setBusyId(null);
   };
 
-  const saveLearnerResult = async(assignment, markComplete=false)=>{
-    const draft = drafts[assignment.id] || {};
-    const score = Number(draft.score ?? resultByAssignment.get(assignment.id)?.score ?? 0);
-    const maxScore = Number(draft.max_score ?? resultByAssignment.get(assignment.id)?.max_score ?? 100);
-    const learnerNotes = String(draft.learner_notes ?? resultByAssignment.get(assignment.id)?.learner_notes ?? '').trim();
-    if(Number.isNaN(score) || Number.isNaN(maxScore) || maxScore <= 0){
-      alert('Please enter a valid score and max score.');
-      return;
-    }
-    setBusyId(assignment.id);
-    try{
-      const existing = resultByAssignment.get(assignment.id);
-      const payload = {
-        assignment_id: assignment.id,
-        learner_username: learnerAuth.username,
-        class_name: learnerAuth.class_name,
-        surname: learnerAuth.surname,
-        firstname: learnerAuth.firstname,
-        resource_id: assignment.resource_id,
-        result_status: markComplete ? 'completed' : 'in_progress',
-        score,
-        max_score: maxScore,
-        learner_notes: learnerNotes || null,
-        submitted_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      let savedRows = [];
-      if(existing){
-        savedRows = await db.patch('carissa_learner_activity_results',`id=eq.${existing.id}`,payload);
-      }else{
-        savedRows = await db.post('carissa_learner_activity_results',{...payload,created_at:new Date().toISOString()});
-      }
-      const saved = Array.isArray(savedRows) ? (savedRows[0] || {...payload,id:existing?.id || `temp-${Date.now()}`}) : payload;
-      setResults(prev=>{
-        const next = prev.filter(r=>r.assignment_id!==assignment.id);
-        return [saved, ...next];
-      });
-      const nextAssignmentStatus = markComplete ? 'completed' : 'in_progress';
-      await db.patch('carissa_resource_assignments',`id=eq.${assignment.id}`,{status:nextAssignmentStatus,updated_at:new Date().toISOString()});
-      setAssignments(prev=>prev.map(a=>a.id===assignment.id?{...a,status:nextAssignmentStatus}:a));
-      showMsg(markComplete ? '✓ Work submitted to the teacher.' : '✓ Progress saved.');
-    }catch(e){
-      alert('Error: '+e.message);
-    }
-    setBusyId(null);
-  };
-
   if(loading) return <div style={{textAlign:'center',padding:'80px',color:'#667eea',fontSize:'18px'}}>Loading learner dashboard...</div>;
 
   return (
@@ -5600,7 +5560,7 @@ function LearnerPortalView(){
       {msg && <div style={succ}>{msg}</div>}
       <div style={{...card,background:'linear-gradient(135deg,#2563eb,#7c3aed)',color:'white'}}>
         <h2 style={{fontSize:'22px',marginBottom:'4px'}}>👦 Learner Dashboard</h2>
-        <p style={{fontSize:'13px',opacity:0.92}}>Open your assigned activities, complete the work, and send your score or marks back to your teacher.</p>
+        <p style={{fontSize:'13px',opacity:0.92}}>Open your assigned activities, complete the work, and let the finished activity send your mark straight to Track Progress.</p>
       </div>
 
       {!learnerAuth ? (
@@ -5645,16 +5605,17 @@ function LearnerPortalView(){
             <div style={card}><p style={{color:'#999',textAlign:'center',padding:'30px'}}>No activities have been assigned to this learner yet.</p></div>
           ) : myAssignments.map(a=>{
             const result = resultByAssignment.get(a.id);
-            const draft = drafts[a.id] || {};
+            const autoTracked = resType(a.resource_id)==='typing';
             const savedScoreLabel = result ? `Saved score: ${result.score || 0}/${result.max_score || 100}` : '';
+            const submittedLabel = formatDateTimeZA(result?.submitted_at);
             return (
               <div key={a.id} style={{...card,marginBottom:'12px'}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'10px',flexWrap:'wrap',marginBottom:'10px'}}>
                   <div>
                     <div style={{fontWeight:800,color:'#1f2937',fontSize:'16px'}}>{resTitle(a.resource_id)}</div>
-                    <div style={{fontSize:'12px',color:'#64748b',marginTop:'4px'}}>Status: <strong>{String(a.status||'assigned').replace(/_/g,' ')}</strong></div>
+                    <div style={{fontSize:'12px',color:'#64748b',marginTop:'4px'}}>Status: <strong>{result ? 'completed' : formatStatusLabel(a.status)}</strong></div>
                   </div>
-                  <StatusBadge status={a.status}/>
+                  <StatusBadge status={result ? 'completed' : a.status}/>
                 </div>
                 {a.notes && <div style={{fontSize:'13px',color:'#475569',marginBottom:'10px',background:'#f8fafc',border:'1px solid #e2e8f0',padding:'10px',borderRadius:'10px'}}><strong>Teacher note:</strong> {a.notes}</div>}
                 {a.due_date && <div style={{fontSize:'13px',color:'#888',marginBottom:'10px'}}>📅 Due: {new Date(a.due_date).toLocaleDateString('en-ZA')}</div>}
@@ -5662,25 +5623,22 @@ function LearnerPortalView(){
                   <button style={{...sbtn,background:'#2563eb'}} onClick={()=>startActivity(a)}>▶ Open Activity</button>
                   {result && <span style={{background:'#dcfce7',color:'#166534',padding:'8px 12px',borderRadius:'999px',fontSize:'12px',fontWeight:700}}>{savedScoreLabel}</span>}
                 </div>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:'10px',marginBottom:'10px'}}>
-                  <div>
-                    <label style={lbl}>Score</label>
-                    <input style={inp} type="number" min="0" value={draft.score ?? result?.score ?? ''} onChange={e=>setDrafts(p=>({...p,[a.id]:{...p[a.id],score:e.target.value}}))}/>
+                {result ? (
+                  <div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:'12px',padding:'12px'}}>
+                    <div style={{fontWeight:800,color:'#166534',marginBottom:'4px'}}>✓ Mark sent to teacher</div>
+                    <div style={{fontSize:'13px',color:'#475569',display:'grid',gap:'4px'}}>
+                      <div><strong>Score:</strong> {result.score || 0}/{result.max_score || 100}</div>
+                      {submittedLabel && <div><strong>Submitted:</strong> {submittedLabel}</div>}
+                      {result.learner_notes && <div><strong>Summary:</strong> {result.learner_notes}</div>}
+                    </div>
                   </div>
-                  <div>
-                    <label style={lbl}>Out of</label>
-                    <input style={inp} type="number" min="1" value={draft.max_score ?? result?.max_score ?? 100} onChange={e=>setDrafts(p=>({...p,[a.id]:{...p[a.id],max_score:e.target.value}}))}/>
+                ) : (
+                  <div style={{background:autoTracked?'#eff6ff':'#fff7ed',border:`1px solid ${autoTracked?'#bfdbfe':'#fed7aa'}`,borderRadius:'12px',padding:'12px',fontSize:'13px',color:'#475569'}}>
+                    {autoTracked
+                      ? 'This activity is tracked automatically. Finish the game and the mark will be sent straight to your teacher dashboard.'
+                      : 'This resource opens normally, but it does not send an automatic mark yet.'}
                   </div>
-                </div>
-                <div style={{marginBottom:'10px'}}>
-                  <label style={lbl}>Learner note</label>
-                  <textarea style={{...inp,resize:'vertical'}} rows={2} value={draft.learner_notes ?? result?.learner_notes ?? ''} onChange={e=>setDrafts(p=>({...p,[a.id]:{...p[a.id],learner_notes:e.target.value}}))} placeholder="Write a short note for your teacher..."/>
-                </div>
-                <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
-                  <button style={{...sbtn,background:'#f97316',opacity:busyId===a.id?0.7:1}} disabled={busyId===a.id} onClick={()=>saveLearnerResult(a,false)}>{busyId===a.id?'Saving...':'💾 Save Progress'}</button>
-                  <button style={{...sbtn,background:'#10b981',opacity:busyId===a.id?0.7:1}} disabled={busyId===a.id} onClick={()=>saveLearnerResult(a,true)}>{busyId===a.id?'Saving...':'✅ Submit to Teacher'}</button>
-                  {resType(a.resource_id)==='link' && <a href={resUrl(a.resource_id)} target="_blank" rel="noreferrer" style={{...sbtn,background:'#64748b',textDecoration:'none'}}>🔗 Open in new tab</a>}
-                </div>
+                )}
               </div>
             );
           })}
@@ -5896,7 +5854,6 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
   const [chatErr,setChatErr]=useState('');
   const [loading,setLoading]=useState(true);
   const [msg,setMsg]=useState('');
-  const [notes,setNotes]=useState({});
   const showMsg = m => {setMsg(m);setTimeout(()=>setMsg(''),5000);};
   // Only show the "secure login" card when BOTH email + PIN came from a secure link,
   // otherwise show the normal form so teachers can type their details.
@@ -5922,25 +5879,49 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
     }
   };
 
-  useEffect(()=>{
-    (async()=>{
-      try{
-        const [a, asn, lres, r, rdg, ints, adminCfg] = await Promise.all([
-          db.get('carissa_elearning_assessments','order=created_at.desc'),
-          db.get('carissa_resource_assignments','order=created_at.desc'),
-          db.get('carissa_learner_activity_results','order=updated_at.desc').catch(()=>[]),
-          db.get('carissa_resources','order=created_at.desc'),
-          db.get('carissa_reading_assessments','order=created_at.desc').catch(()=>[]),
-          db.get('carissa_interventions','order=created_at.desc').catch(()=>[]),
-          db.get('carissa_config','key=eq.admin_pin').catch(()=>[]),
-        ]);
-        setAssessments(a); setAssignments(asn); setLearnerResults(lres); setResources(r); setReading(rdg); setInterventions(ints);
-        const parsedCfg = parseAdminConfigValue(adminCfg?.[0]?.value || '{}');
-        setSharedAdminEmails([...new Set(parsedCfg.shared_admin_teachers || [])]);
-      }catch(e){console.error(e);}
-      setLoading(false);
-    })();
+  const loadLearnWorldData = useCallback(async({showLoader=false}={})=>{
+    if(showLoader) setLoading(true);
+    try{
+      const [a, asn, lres, r, rdg, ints, adminCfg] = await Promise.all([
+        db.get('carissa_elearning_assessments','order=created_at.desc'),
+        db.get('carissa_resource_assignments','order=created_at.desc'),
+        db.get('carissa_learner_activity_results','order=updated_at.desc').catch(()=>[]),
+        db.get('carissa_resources','order=created_at.desc'),
+        db.get('carissa_reading_assessments','order=created_at.desc').catch(()=>[]),
+        db.get('carissa_interventions','order=created_at.desc').catch(()=>[]),
+        db.get('carissa_config','key=eq.admin_pin').catch(()=>[]),
+      ]);
+      setAssessments(a); setAssignments(asn); setLearnerResults(lres); setResources(r); setReading(rdg); setInterventions(ints);
+      const parsedCfg = parseAdminConfigValue(adminCfg?.[0]?.value || '{}');
+      setSharedAdminEmails([...new Set(parsedCfg.shared_admin_teachers || [])]);
+    }catch(e){
+      console.error(e);
+    }
+    if(showLoader) setLoading(false);
   },[]);
+
+  useEffect(()=>{
+    loadLearnWorldData({showLoader:true});
+  },[loadLearnWorldData]);
+
+  useEffect(()=>{
+    if(!teacherAuth && !adminAccess) return;
+    const refresh = ()=>{
+      if(typeof document==='undefined' || document.visibilityState==='visible'){
+        loadLearnWorldData();
+      }
+    };
+    const intervalId = setInterval(refresh, 10000);
+    if(typeof document!=='undefined'){
+      document.addEventListener('visibilitychange', refresh);
+    }
+    return ()=>{
+      clearInterval(intervalId);
+      if(typeof document!=='undefined'){
+        document.removeEventListener('visibilitychange', refresh);
+      }
+    };
+  },[teacherAuth, adminAccess, loadLearnWorldData]);
 
   const loadTeacherChats = useCallback(async()=>{
     if(!teacherAuth?.email) return;
@@ -6010,18 +5991,6 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
   };
   const resUrl   = id => resources.find(r=>r.id===id)?.url || '#';
 
-  const saveProgress = async (id,status,note) => {
-    try{
-      await db.patch('carissa_resource_assignments',`id=eq.${id}`,{status,progress_notes:note||null,updated_at:new Date().toISOString()});
-      setAssignments(p=>p.map(a=>a.id===id?{...a,status,progress_notes:note}:a));
-      showMsg('✓ Progress updated.');
-      try{
-        const title = resTitle(id);
-        await logTeacherAudit(`progress_update:${status}:${String(title||'').slice(0,40)}`, selClass);
-      }catch(e){}
-    }catch(e){alert('Error: '+e.message);}
-  };
-
   if(loading) return <div style={{textAlign:'center',padding:'80px',color:'#667eea',fontSize:'18px'}}>Loading LearnWorld...</div>;
 
   /* ── Top banner + class picker ────────────────────────────── */
@@ -6033,7 +6002,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'10px',marginBottom:'14px'}}>
           <div>
             <h2 style={{fontSize:'22px',marginBottom:'4px'}}>🌐 LearnWorld — Teacher Portal</h2>
-            <p style={{fontSize:'13px',opacity:0.9}}>See your class&apos;s assessments, track resource progress, work from your classlist, and grab any resource shared by the admin.</p>
+            <p style={{fontSize:'13px',opacity:0.9}}>See your class&apos;s assessments, assign activities, and view learner marks as soon as completed activities send them back.</p>
           </div>
         </div>
         {adminAccess && (<>
@@ -6368,12 +6337,9 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
               {classAssignments.length===0 ? (
                 <div style={card}><p style={{color:'#999',textAlign:'center',padding:'30px'}}>No resource assignments for this class yet. Once an admin assigns activities to your learners they'll appear here.</p></div>
               ) : classAssignments.map(a=>{
-                const noteVal = notes[a.id]!==undefined ? notes[a.id] : (a.progress_notes||'');
                 const learnerResult = learnerResultByAssignment.get(a.id);
                 const teacherScoreLabel = learnerResult ? `Score: ${learnerResult.score || 0}/${learnerResult.max_score || 100}` : '';
-                const submittedLabel = learnerResult?.submitted_at
-                  ? new Date(learnerResult.submitted_at).toLocaleString('en-ZA',{dateStyle:'medium',timeStyle:'short'})
-                  : '';
+                const submittedLabel = formatDateTimeZA(learnerResult?.submitted_at);
                 return (
                   <div key={a.id} style={{...card,marginBottom:'12px',padding:'18px'}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:'10px',marginBottom:'10px'}}>
@@ -6391,7 +6357,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
                           </div>
                         )}
                       </div>
-                      <StatusBadge status={a.status}/>
+                      <StatusBadge status={learnerResult ? 'completed' : a.status}/>
                     </div>
                     <div style={{background:'#f8f9fa',borderRadius:'8px',padding:'10px',marginBottom:'10px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap'}}>
                       <div>
@@ -6408,23 +6374,11 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
                       </div>
                     )}
                     {a.due_date && <div style={{fontSize:'13px',color:'#888',marginBottom:'10px'}}>📅 Due: {new Date(a.due_date).toLocaleDateString('en-ZA')}</div>}
-                    <div style={{display:'flex',gap:'8px',alignItems:'flex-start',flexWrap:'wrap'}}>
-                      <textarea style={{...inp,flex:1,resize:'vertical',fontSize:'13px',minWidth:'200px'}} rows={2}
-                        placeholder="Progress notes (what the learner did, how they're doing)..." value={noteVal}
-                        onChange={e=>setNotes(p=>({...p,[a.id]:e.target.value}))}/>
-                      <div style={{display:'flex',flexDirection:'column',gap:'6px',flexShrink:0}}>
-                        {STATUS_OPTS.filter(s=>s.v!==a.status).map(s=>(
-                          <button key={s.v} style={{...sbtn,background:s.c,fontSize:'12px',padding:'8px 12px',whiteSpace:'nowrap'}}
-                            onClick={()=>saveProgress(a.id,s.v,noteVal)}>
-                            Mark {s.l}
-                          </button>
-                        ))}
-                        <button style={{...sbtn,background:'#6c757d',fontSize:'12px',padding:'8px 12px'}}
-                          onClick={()=>saveProgress(a.id,a.status,noteVal)}>
-                          💾 Save Notes
-                        </button>
+                    {!learnerResult && (
+                      <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:'10px',padding:'11px 12px',fontSize:'13px',color:'#475569'}}>
+                        Waiting for the learner&apos;s mark. As soon as the learner finishes the activity and sends the result, the score will appear here automatically.
                       </div>
-                    </div>
+                    )}
                   </div>
                 );
               })}
