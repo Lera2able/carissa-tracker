@@ -904,50 +904,100 @@ async function handlePaymentsReportPdf(request, env, corsOrigin) {
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-  // Try to embed logo (served by the tracker site, not the worker route)
-  let logo = null;
+  // Try to embed crest from the public tracker site
+  let crest = null;
   try {
-    const logoUrl = env.PDF_LOGO_URL || "https://tracker.carissaprimary.co.za/elearning-logo.jpg";
-    const res = await fetch(logoUrl);
+    const crestUrl = env.PDF_CREST_URL || "https://tracker.carissaprimary.co.za/school-crest.png";
+    const res = await fetch(crestUrl);
     if (res.ok) {
       const bytes = new Uint8Array(await res.arrayBuffer());
-      logo = await pdfDoc.embedJpg(bytes);
+      crest = await pdfDoc.embedPng(bytes);
     }
   } catch (_e) {}
 
   const PAGE_W = 595.28; // A4 points
   const PAGE_H = 841.89;
   const M = 48;
-  const HEADER_H = 68;
-  const LOGO_MAX_W = 76;
-  const LOGO_MAX_H = 44;
+  const HEADER_H = 118;
+  const CREST_MAX_W = 58;
+  const CREST_MAX_H = 74;
 
   const drawHeader = (page, title) => {
     const yTop = PAGE_H - M;
     const headerBottom = yTop - HEADER_H;
 
-    // Logo
-    let titleX = M;
-    if (logo) {
-      const scale = Math.min(LOGO_MAX_W / logo.width, LOGO_MAX_H / logo.height, 1);
-      const w = logo.width * scale;
-      const h = logo.height * scale;
-      page.drawImage(logo, { x: M, y: yTop - h, width: w, height: h });
-      titleX = M + w + 12;
+    // Crest
+    let crestW = 0;
+    if (crest) {
+      const scale = Math.min(CREST_MAX_W / crest.width, CREST_MAX_H / crest.height, 1);
+      crestW = crest.width * scale;
+      const crestH = crest.height * scale;
+      page.drawImage(crest, { x: M, y: yTop - crestH + 2, width: crestW, height: crestH });
     }
 
-    // Title (kept safely below the logo area)
+    const textLeft = M + crestW + 14;
+    const textRight = PAGE_W - M;
+    const textWidth = textRight - textLeft;
+    const schoolName = "CARISSA PRIMARY SCHOOL";
+    const line1 = "23 Hofmeyer Street, Witbank, 1035  •  P.O. Box 430, Witbank, 1035";
+    const line2 = "Tel: (013) 656 1286  •  E-mail: info@carissaprimary.co.za  •  Web: www.carissaprimary.co.za";
+
+    const schoolNameSize = 17;
+    const schoolNameWidth = fontBold.widthOfTextAtSize(schoolName, schoolNameSize);
+    page.drawText(schoolName, {
+      x: textLeft + Math.max(0, (textWidth - schoolNameWidth) / 2),
+      y: yTop - 18,
+      size: schoolNameSize,
+      font: fontBold,
+      color: rgb(0.05, 0.36, 0.43),
+    });
+
+    page.drawLine({
+      start: { x: textLeft, y: yTop - 25 },
+      end: { x: textRight, y: yTop - 25 },
+      thickness: 1,
+      color: rgb(0.66, 0.83, 0.88),
+    });
+
+    const line1Size = 9.5;
+    const line1Width = font.widthOfTextAtSize(line1, line1Size);
+    page.drawText(line1, {
+      x: textLeft + Math.max(0, (textWidth - line1Width) / 2),
+      y: yTop - 40,
+      size: line1Size,
+      font,
+      color: rgb(0.28, 0.29, 0.29),
+    });
+
+    const line2Size = 9.2;
+    const line2Width = font.widthOfTextAtSize(line2, line2Size);
+    page.drawText(line2, {
+      x: textLeft + Math.max(0, (textWidth - line2Width) / 2),
+      y: yTop - 54,
+      size: line2Size,
+      font,
+      color: rgb(0.28, 0.29, 0.29),
+    });
+
+    page.drawLine({
+      start: { x: M, y: yTop - 63 },
+      end: { x: PAGE_W - M, y: yTop - 63 },
+      thickness: 2,
+      color: rgb(0.16, 0.54, 0.66),
+    });
+
     page.drawText(title, {
-      x: titleX,
-      y: yTop - 28,
-      size: 18,
+      x: M,
+      y: yTop - 87,
+      size: 17,
       font: fontBold,
       color: rgb(0.11, 0.2, 0.36),
     });
+
     const dateStr = new Date().toISOString().slice(0, 10);
     page.drawText(`Generated: ${dateStr}`, {
-      x: PAGE_W - M - 140,
-      y: yTop - 14,
+      x: PAGE_W - M - 142,
+      y: yTop - 87,
       size: 10,
       font,
       color: rgb(0.35, 0.42, 0.5),
