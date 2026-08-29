@@ -1,0 +1,54 @@
+name: Deploy Tracker Site
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '*.html'
+      - '*.js'
+      - '*.css'
+      - '*.png'
+      - '*.jpg'
+      - '*.jpeg'
+      - '*.gif'
+      - '*.webp'
+      - '*.svg'
+      - '*.ico'
+      - '*.txt'
+      - '*.json'
+      - '.github/scripts/prepare-pages-dist.mjs'
+      - '.github/workflows/deploy-site.yml'
+
+jobs:
+  deploy-site:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Prepare static site bundle
+        run: node .github/scripts/prepare-pages-dist.mjs
+
+      - name: Resolve Pages project name
+        shell: bash
+        run: |
+          PROJECT_NAME="${{ vars.CLOUDFLARE_PAGES_PROJECT_NAME }}"
+          if [ -z "$PROJECT_NAME" ]; then
+            PROJECT_NAME="carissa-tracker"
+          fi
+          echo "PROJECT_NAME=$PROJECT_NAME" >> "$GITHUB_ENV"
+
+      - name: Deploy site to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy site-dist --project-name ${{ env.PROJECT_NAME }}
+

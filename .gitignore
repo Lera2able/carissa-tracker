@@ -7,3 +7,6 @@
 
 # Worker dependencies
 cloudflare-ai-worker/node_modules/
+
+# Generated publish output
+site-dist/
