@@ -11180,6 +11180,22 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
   const [assignForm,setAssignForm]=useState({assign_type:'classlist_class',surname:'',firstname:'',due_date:'',notes:''});
   const [openFolders,setOpenFolders]=useState({});
   const games = resources.filter(isLearnWorldGameResource);
+  const isTypingGame = useCallback((r)=>{
+    const title = String(r?.title || '').toLowerCase();
+    const subject = String(r?.subject || '').toLowerCase();
+    const description = String(r?.description || '').toLowerCase();
+    const url = String(r?.url || '').toLowerCase();
+    return (
+      subject.includes('typing') ||
+      title.includes('typing') ||
+      title.includes('typerix') ||
+      title.includes('striker') ||
+      description.includes('wpm') ||
+      description.includes('accuracy') ||
+      url.includes('typerix') ||
+      url.includes('typing-striker')
+    );
+  },[]);
   const hiddenResourceCount = Math.max(0, (resources?.length || 0) - games.length);
   const filtered = games.filter(r=>
     !search.trim() || (`${r.title} ${r.subject||''} ${r.grade_range||''} ${r.description||''}`).toLowerCase().includes(search.toLowerCase())
@@ -11187,7 +11203,7 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
   const rosterLearners = selClass ? (CLASS_DATA[selClass] || []) : [];
   const classInterventions = selClass ? interventions : [];
   const grouped = filtered.reduce((acc,r)=>{
-    const folder = (r.grade_range || 'General').trim() || 'General';
+    const folder = isTypingGame(r) ? 'Typing Games' : ((r.grade_range || 'General').trim() || 'General');
     if(!acc[folder]) acc[folder]=[];
     acc[folder].push(r);
     return acc;
@@ -11198,6 +11214,8 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
       return m ? parseInt(m[1],10) : null;
     };
     return Object.keys(grouped).sort((a,b)=>{
+      if(String(a)==='Typing Games') return -1;
+      if(String(b)==='Typing Games') return 1;
       const ga = parseGrade(a); const gb = parseGrade(b);
       if(ga!=null && gb!=null) return ga-gb;
       if(ga!=null) return -1;
@@ -11207,7 +11225,8 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
       return String(a).localeCompare(String(b));
     });
   },[grouped]);
-  const isDefaultOpenFolder = (folder)=>/grade\s*1(\b|\.)/i.test(String(folder||''));
+  const typingGamesCount = filtered.filter(isTypingGame).length;
+  const isDefaultOpenFolder = (folder)=> String(folder||'')==='Typing Games' || /grade\s*1(\b|\.)/i.test(String(folder||''));
   const isFolderOpen = (folder)=> Object.prototype.hasOwnProperty.call(openFolders, folder)
     ? !!openFolders[folder]
     : isDefaultOpenFolder(folder);
@@ -11297,6 +11316,11 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
             {filtered.length} game{filtered.length===1?'':'s'} available
           </div>
         </div>
+        <div style={{display:'flex',alignItems:'end'}}>
+          <div style={{background:'#ecfeff',color:'#155e75',padding:'11px 14px',borderRadius:'10px',fontSize:'13px',fontWeight:800,width:'100%',textAlign:'center'}}>
+            ⌨️ {typingGamesCount} typing game{typingGamesCount===1?'':'s'}
+          </div>
+        </div>
       </div>
 
       {filtered.length===0 ? (
@@ -11318,9 +11342,12 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
               >
                 <div style={{display:'flex',alignItems:'center',gap:'10px',flexWrap:'wrap'}}>
                   <span style={{fontSize:'18px',color:'#0ea5e9',fontWeight:900}}>{caret}</span>
-                  <span style={{fontSize:'20px'}}>🎮</span>
+                  <span style={{fontSize:'20px'}}>{folder==='Typing Games' ? '⌨️' : '🎮'}</span>
                   <span style={{fontWeight:900,color:'#334155'}}>{folder}</span>
                   <span style={{background:'#dcfce7',color:'#166534',padding:'2px 8px',borderRadius:'999px',fontSize:'11px',fontWeight:700}}>{rows.length}</span>
+                  {folder==='Typing Games' && (
+                    <span style={{background:'#cffafe',color:'#155e75',padding:'2px 8px',borderRadius:'999px',fontSize:'11px',fontWeight:800}}>WPM + Accuracy</span>
+                  )}
                   {/grade\s*1(\b|\.)/i.test(String(folder||'')) && (
                     <span style={{background:'#eef2ff',color:'#4338ca',padding:'2px 8px',borderRadius:'999px',fontSize:'11px',fontWeight:800}}>Grade 1</span>
                   )}
@@ -11331,15 +11358,17 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
               {open && (
                 <div style={{display:'grid',gap:'10px',marginTop:'10px'}}>
                   {rows.map(r=>(
-                    <div key={r.id} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'14px',background:'#f8f9fa',borderRadius:'10px',borderLeft:'5px solid #0ea5e9',gap:'12px',flexWrap:'wrap'}}>
+                    <div key={r.id} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'14px',background:'#f8f9fa',borderRadius:'10px',borderLeft:`5px solid ${isTypingGame(r)?'#0891b2':'#0ea5e9'}`,gap:'12px',flexWrap:'wrap'}}>
                       <div style={{flex:1,minWidth:'220px'}}>
                         <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px'}}>
-                          <span style={{fontSize:'20px'}}>🎮</span>
+                          <span style={{fontSize:'20px'}}>{isTypingGame(r) ? '⌨️' : '🎮'}</span>
                           <span style={{fontWeight:700,color:'#333',fontSize:'15px'}}>{r.title}</span>
                         </div>
                         <div style={{display:'flex',gap:'6px',flexWrap:'wrap',marginBottom:'4px'}}>
+                          {isTypingGame(r) && <span style={{background:'#cffafe',color:'#155e75',padding:'2px 8px',borderRadius:'10px',fontSize:'11px',fontWeight:800}}>Typing Game</span>}
                           {r.subject && <span style={{background:'#667eea22',color:'#667eea',padding:'2px 8px',borderRadius:'10px',fontSize:'11px'}}>{r.subject}</span>}
                           {r.grade_range && <span style={{background:'#28a74522',color:'#28a745',padding:'2px 8px',borderRadius:'10px',fontSize:'11px'}}>{r.grade_range}</span>}
+                          {isTypingGame(r) && <span style={{background:'#ede9fe',color:'#5b21b6',padding:'2px 8px',borderRadius:'10px',fontSize:'11px',fontWeight:700}}>Marks return automatically</span>}
                         </div>
                         {r.description && <p style={{fontSize:'13px',color:'#666',marginTop:'4px'}}>{r.description}</p>}
                       </div>
