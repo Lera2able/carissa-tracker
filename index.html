@@ -7354,6 +7354,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
 }
 
 function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
+  const sasamsPatchVersion = '26.1.1';
   const academicYear = new Date().getFullYear();
   const teacherEmail = String(teacherAuth?.email || '').trim().toLowerCase();
   const teacherName = `${teacherAuth?.first_name || ''} ${teacherAuth?.surname || ''}`.trim() || teacherEmail || 'Teacher';
@@ -7737,7 +7738,7 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
       'Learner No',
       'Surname',
       'Firstname',
-      ...criteria.map(criterion=>`${criterion.short_label || criterion.description || `Criterion ${criterion.off_criterion_id}`} / ${criterion.criterion_score_max || 0}`),
+      ...criteria.map(criterion=>`${normalizeSasamsCriterionTitle(criterion)} / ${criterion.criterion_score_max || 0}`),
       'Task Total',
       'Total Weighted Mark',
       'Term %',
@@ -7768,10 +7769,13 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
       showMsg('Load the SASAMS grid first before printing or saving as PDF.');
       return;
     }
-    const tableHead = criteria.map(criterion=>`
+    const groupedHeadRow = sasamsCriterionGroups.map(group=>`
+      <th colspan="${group.criteria.length}" class="group-head">${htmlEscape(group.label)}</th>
+    `).join('') + `<th colspan="4" class="results-head">Results</th>`;
+    const detailHeadRow = criteria.map(criterion=>`
       <th>
-        <div class="crit-title">${htmlEscape(criterion.short_label || criterion.description || `Criterion ${criterion.off_criterion_id}`)}</div>
-        <div class="crit-sub">Max ${htmlEscape(criterion.criterion_score_max || 0)}</div>
+        <div class="crit-title">${htmlEscape(normalizeSasamsCriterionTitle(criterion))}</div>
+        <div class="crit-sub">Max ${htmlEscape(criterion.criterion_score_max || 0)}${criterion.sba_of_yearmark_pct!==null && criterion.sba_of_yearmark_pct!==undefined ? ` • ${htmlEscape(criterion.sba_of_yearmark_pct)}% of SBA` : ''}</div>
       </th>
     `).join('') + `
       <th><div class="crit-title">Task total</div><div class="crit-sub">Raw marks</div></th>
@@ -7818,6 +7822,8 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
     table { width:100%; border-collapse:collapse; font-size:11px; }
     th, td { border:1px solid #cbd5e1; padding:6px 7px; vertical-align:top; }
     th { background:#eef2ff; text-align:left; }
+    .group-head { background:#e0e7ff; text-align:center; color:#312e81; font-weight:800; }
+    .results-head { background:#dcfce7; text-align:center; color:#14532d; font-weight:800; }
     .crit-title { font-weight:700; color:#111827; margin-bottom:3px; }
     .crit-sub { font-size:10px; color:#64748b; }
     .learner-cell { min-width: 170px; }
@@ -7839,6 +7845,7 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
           <div><strong>Subject:</strong> ${htmlEscape(activeSubject?.name_english || '')}</div>
           <div><strong>Term:</strong> ${htmlEscape(`Term ${termNo}`)}</div>
           <div><strong>Teacher:</strong> ${htmlEscape(teacherName)}</div>
+          <div><strong>Patch:</strong> ${htmlEscape(sasamsPatchVersion)}</div>
         </div>
       </div>
       <div class="summary">
@@ -7851,8 +7858,11 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
     <table>
       <thead>
         <tr>
-          <th>Learner</th>
-          ${tableHead}
+          <th rowspan="2">Learner</th>
+          ${groupedHeadRow}
+        </tr>
+        <tr>
+          ${detailHeadRow}
         </tr>
       </thead>
       <tbody>
@@ -7928,6 +7938,7 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
           <div style={{fontSize:'12px',fontWeight:800,color:'#4338ca',marginBottom:'4px'}}>Teacher batch</div>
           <div style={{fontSize:'14px',fontWeight:700,color:'#312e81'}}>{teacherName}</div>
           <div style={{fontSize:'12px',color:'#6366f1',marginTop:'4px'}}>{selClass} • {activeSubject?.name_english || 'Choose a subject'}</div>
+          <div style={{fontSize:'11px',color:'#6366f1',marginTop:'4px'}}>SA-SAMS patch {sasamsPatchVersion}</div>
         </div>
       </div>
 
