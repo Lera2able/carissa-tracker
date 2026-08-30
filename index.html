@@ -7343,6 +7343,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
               ['dashboard',`🏠 Dashboard`],
               ['assessments',`📝 Assessments`],
               ...(teacherAuth ? [['sasams_marks','🧮 SASAMS Marks']] : []),
+              ...(teacherAuth ? [['sasams_reports','📘 Learner Reports']] : []),
               ['progress',`📈 Track Progress (${classAssignments.length})`],
               ...(teacherAuth ? [['classlist',`👥 Classlist (${(CLASS_DATA[selClass]||[]).length})`]] : []),
               ...(teacherAuth ? [['discipline','⚖️ Discipline']] : []),
@@ -7553,6 +7554,16 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
               teacherAuth={teacherAuth}
               selClass={selClass}
               showMsg={showMsg}
+              onOpenLearnerReports={()=>setTab('sasams_reports')}
+              onAudit={(evt)=>logTeacherAudit(evt, selClass)}
+            />
+          )}
+
+          {tab==='sasams_reports' && teacherAuth && (
+            <TeacherSasamsLearnerReportsTab
+              teacherAuth={teacherAuth}
+              selClass={selClass}
+              showMsg={showMsg}
               onAudit={(evt)=>logTeacherAudit(evt, selClass)}
             />
           )}
@@ -7641,7 +7652,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
   );
 }
 
-function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
+function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit, onOpenLearnerReports }){
   const sasamsPatchVersion = '26.1.1';
   const academicYear = new Date().getFullYear();
   const teacherEmail = String(teacherAuth?.email || '').trim().toLowerCase();
@@ -8702,8 +8713,8 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
               <button onClick={printSasamsPdf} disabled={!criteria.length} style={{...sbtn,background:'#334155',opacity:!criteria.length?0.7:1}}>
                 🖨 Print / Save as PDF
               </button>
-              <button onClick={()=>setShowLearnerReports(prev=>!prev)} disabled={!criteria.length} style={{...sbtn,background:'#7c3aed',opacity:!criteria.length?0.7:1}}>
-                {showLearnerReports ? 'Hide learner reports' : 'Open learner reports'}
+              <button onClick={()=>onOpenLearnerReports && onOpenLearnerReports()} style={{...sbtn,background:'#7c3aed'}}>
+                Open learner reports tab
               </button>
               <button
                 onClick={submitForHodReview}
@@ -8809,6 +8820,555 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
             </div>
           )}
         </>
+      )}
+    </div>
+  );
+}
+
+function TeacherSasamsLearnerReportsTab({ teacherAuth, selClass, showMsg, onAudit }){
+  const sasamsPatchVersion = '26.1.1';
+  const academicYear = new Date().getFullYear();
+  const teacherEmail = String(teacherAuth?.email || '').trim().toLowerCase();
+  const teacherName = `${teacherAuth?.first_name || ''} ${teacherAuth?.surname || ''}`.trim() || teacherEmail || 'Teacher';
+  const gradeNo = useMemo(()=>gradeNoFromClassName(selClass),[selClass]);
+  const learners = useMemo(()=>getTeacherPortalLearnersForClass(selClass),[selClass]);
+  const [termNo,setTermNo] = useState(sasamsDefaultTermNo());
+  const [subjects,setSubjects] = useState([]);
+  const [criteriaRows,setCriteriaRows] = useState([]);
+  const [batchRows,setBatchRows] = useState([]);
+  const [markRows,setMarkRows] = useState([]);
+  const [selectedLearnerNo,setSelectedLearnerNo] = useState('');
+  const [learnerComments,setLearnerComments] = useState({});
+  const [loading,setLoading] = useState(false);
+  const [status,setStatus] = useState('');
+  const [error,setError] = useState('');
+
+  useEffect(()=>{
+    let alive = true;
+    if(gradeNo===null){
+      setSubjects([]);
+      setCriteriaRows([]);
+      setBatchRows([]);
+      setMarkRows([]);
+      setError('The selected class does not match a SASAMS grade yet.');
+      return;
+    }
+    (async()=>{
+      setLoading(true);
+      setError('');
+      setStatus('');
+      try{
+        const classFilter = encodeURIComponent(selClass);
+        const emailFilter = encodeURIComponent(teacherEmail);
+        const [subjectRows, allCriteriaRows, allBatchRows, allMarkRows] = await Promise.all([
+          db.get('carissa_sasams_subjects', `grade_no=eq.${gradeNo}&order=name_english.asc`),
+          db.get('carissa_sasams_criteria', `academic_year=eq.${academicYear}&term_no=eq.${termNo}&grade_no=eq.${gradeNo}&order=official_subject_id.asc,sort_order.asc,off_criterion_id.asc`),
+          db.get('carissa_sasams_batches', `academic_year=eq.${academicYear}&term_no=eq.${termNo}&class_name=eq.${classFilter}&teacher_email=eq.${emailFilter}&order=updated_at.desc`),
+          db.get('carissa_sasams_marks', `academic_year=eq.${academicYear}&term_no=eq.${termNo}&class_name=eq.${classFilter}&teacher_email=eq.${emailFilter}&order=official_subject_id.asc,learner_no.asc,updated_at.desc`)
+        ]);
+        if(!alive) return;
+        const filteredSubjects = filterSasamsSubjectsForClass(subjectRows || [], gradeNo);
+        const allowedSubjectIds = new Set(filteredSubjects.map(row=>String(row.official_subject_id)));
+        setSubjects(filteredSubjects);
+        setCriteriaRows((allCriteriaRows || []).filter(row=>allowedSubjectIds.has(String(row.official_subject_id))));
+        setBatchRows((allBatchRows || []).filter(row=>allowedSubjectIds.has(String(row.official_subject_id))));
+        setMarkRows((allMarkRows || []).filter(row=>allowedSubjectIds.has(String(row.official_subject_id))));
+        if(!filteredSubjects.length){
+          setError(`No school subjects are available yet for ${selClass}. Check the SASAMS subject import and subject filters.`);
+        }else{
+          setStatus('Learner achievement reports loaded.');
+        }
+      }catch(err){
+        if(!alive) return;
+        setSubjects([]);
+        setCriteriaRows([]);
+        setBatchRows([]);
+        setMarkRows([]);
+        setError(sasamsFriendlyError(err, 'Could not load the learner achievement reports.'));
+      }finally{
+        if(alive) setLoading(false);
+      }
+    })();
+    return ()=>{ alive = false; };
+  },[academicYear, gradeNo, selClass, teacherEmail, termNo]);
+
+  const overallReportStorageKey = useMemo(
+    ()=>`carissa_sasams_overall_comments_v1|${academicYear}|${termNo}|${selClass}`,
+    [academicYear, termNo, selClass]
+  );
+  const subjectMap = useMemo(()=>{
+    const map = {};
+    (subjects||[]).forEach(row=>{ map[String(row.official_subject_id)] = row; });
+    return map;
+  },[subjects]);
+  const subjectWeightMap = useMemo(()=>{
+    const map = {};
+    (criteriaRows||[]).forEach(row=>{
+      const key = String(row.official_subject_id);
+      map[key] = (map[key] || 0) + (Number(row?.sba_of_yearmark_pct || 0) || 0);
+    });
+    Object.keys(map).forEach(key=>{
+      map[key] = Math.round(map[key] * 100) / 100;
+    });
+    return map;
+  },[criteriaRows]);
+  const batchBySubject = useMemo(()=>{
+    const map = {};
+    (batchRows||[]).forEach(row=>{
+      const key = String(row.official_subject_id);
+      if(!map[key]) map[key] = row;
+    });
+    return map;
+  },[batchRows]);
+  const learnerSubjectMarksMap = useMemo(()=>{
+    const map = {};
+    (markRows||[]).forEach(row=>{
+      const learnerNo = String(row.learner_no || '');
+      const subjectId = String(row.official_subject_id || '');
+      const key = `${learnerNo}|${subjectId}`;
+      if(!map[key]){
+        map[key] = {
+          learnerNo,
+          subjectId,
+          taskTotal: 0,
+          weightedTotal: 0,
+          captured: 0
+        };
+      }
+      const rawValue = row.raw_mark_entered;
+      const numeric = rawValue===null || rawValue===undefined || rawValue==='' ? null : Number(rawValue);
+      if(numeric===null || Number.isNaN(numeric)) return;
+      map[key].taskTotal += numeric;
+      map[key].weightedTotal += Number(row?.weighted_sba_pct || 0) || 0;
+      map[key].captured += 1;
+    });
+    Object.keys(map).forEach(key=>{
+      map[key].taskTotal = Math.round(map[key].taskTotal * 100) / 100;
+      map[key].weightedTotal = Math.round(map[key].weightedTotal * 100) / 100;
+    });
+    return map;
+  },[markRows]);
+  const sasamsLevelFromPercent = (pct)=>{
+    if(pct===null || pct===undefined || Number.isNaN(Number(pct))) return '';
+    const value = Number(pct);
+    if(value >= 80) return 7;
+    if(value >= 70) return 6;
+    if(value >= 60) return 5;
+    if(value >= 50) return 4;
+    if(value >= 40) return 3;
+    if(value >= 30) return 2;
+    return 1;
+  };
+  const formatSasamsNumber = (value)=>{
+    if(value===null || value===undefined || value==='') return '—';
+    const numeric = Number(value);
+    if(Number.isNaN(numeric)) return '—';
+    return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(2).replace(/\.00$/,'');
+  };
+  const overallLearnerReports = useMemo(()=>{
+    return learners.map((learner, index)=>{
+      const learnerNo = String(learner.__learner_no || learner.number || index + 1);
+      const subjectSummaries = subjects.map(subject=>{
+        const subjectId = String(subject.official_subject_id);
+        const aggregate = learnerSubjectMarksMap[`${learnerNo}|${subjectId}`] || { taskTotal:0, weightedTotal:0, captured:0 };
+        const totalPossibleWeighted = Number(subjectWeightMap[subjectId] || 0);
+        const termPercent = totalPossibleWeighted && aggregate.captured
+          ? Math.round(((Number(aggregate.weightedTotal || 0) / totalPossibleWeighted) * 100) * 100) / 100
+          : null;
+        return {
+          subjectId,
+          subjectName: subject.name_english || subject.report_label || subject.subj_key || `Subject ${subjectId}`,
+          taskTotal: aggregate.captured ? aggregate.taskTotal : null,
+          weightedTotal: aggregate.captured ? aggregate.weightedTotal : null,
+          termPercent,
+          level: sasamsLevelFromPercent(termPercent),
+          captured: aggregate.captured || 0,
+          status: batchBySubject[subjectId]?.status || (aggregate.captured ? 'DRAFT' : '')
+        };
+      });
+      const subjectsWithMarks = subjectSummaries.filter(row=>row.termPercent!==null && row.termPercent!==undefined && !Number.isNaN(Number(row.termPercent)));
+      const overallAverage = subjectsWithMarks.length
+        ? Math.round((subjectsWithMarks.reduce((sum, row)=>sum + Number(row.termPercent || 0), 0) / subjectsWithMarks.length) * 100) / 100
+        : null;
+      const totalPercentPoints = subjectsWithMarks.length
+        ? Math.round(subjectsWithMarks.reduce((sum, row)=>sum + Number(row.termPercent || 0), 0) * 100) / 100
+        : null;
+      const strongestSubject = [...subjectsWithMarks].sort((a,b)=>Number(b.termPercent) - Number(a.termPercent))[0] || null;
+      const weakestSubject = [...subjectsWithMarks].sort((a,b)=>Number(a.termPercent) - Number(b.termPercent))[0] || null;
+      return {
+        learner,
+        learnerNo,
+        subjectSummaries,
+        markedSubjectCount: subjectsWithMarks.length,
+        overallAverage,
+        totalPercentPoints,
+        overallLevel: sasamsLevelFromPercent(overallAverage),
+        strongestSubject,
+        weakestSubject
+      };
+    });
+  },[batchBySubject, learnerSubjectMarksMap, learners, subjectWeightMap, subjects]);
+  const classAverageOverall = useMemo(()=>{
+    const rows = overallLearnerReports.filter(row=>row.overallAverage!==null && row.overallAverage!==undefined && !Number.isNaN(Number(row.overallAverage)));
+    if(!rows.length) return { average:null, level:null };
+    const average = Math.round((rows.reduce((sum,row)=>sum + Number(row.overallAverage || 0), 0) / rows.length) * 100) / 100;
+    return { average, level:sasamsLevelFromPercent(average) };
+  },[overallLearnerReports]);
+  const buildOverallLearnerComment = useCallback((report)=>{
+    const learner = report?.learner || {};
+    const learnerNo = String(report?.learnerNo || '');
+    const name = String(learner?.firstname || learner?.surname || 'The learner').trim().split(/\s+/)[0] || 'The learner';
+    const overallAverage = Number(report?.overallAverage);
+    const hasAverage = !Number.isNaN(overallAverage);
+    const strongIntros = [
+      `${name} has worked hard across the term.`,
+      `${name} has shown good effort across the subjects.`,
+      `${name} has done well this term.`,
+      `${name} has kept working steadily this term.`
+    ];
+    const supportIntros = [
+      `${name} has kept trying this term.`,
+      `${name} is still learning and growing this term.`,
+      `${name} has shown effort across the subjects.`,
+      `${name} is trying and can still improve this term.`
+    ];
+    const strongOpeners = [
+      `${name} is doing well in`,
+      `${name} is strongest in`,
+      `${name} has done well in`,
+      `${name} shows good understanding in`
+    ];
+    const supportOpeners = [
+      `${name} needs to focus more on`,
+      `${name} can do better in`,
+      `${name} still needs support in`,
+      `${name} should keep practising`
+    ];
+    const closers = [
+      `Keep practising and ${name} will shine.`,
+      `${name} should keep working hard and will improve.`,
+      `With steady practice, ${name} will do even better.`,
+      `${name} can do very well with regular practice.`
+    ];
+    const introPool = hasAverage && overallAverage >= 50 ? strongIntros : supportIntros;
+    const seedBase = Number(String(learnerNo).replace(/\D/g,'')) || (name.length + (report?.markedSubjectCount || 0));
+    const intro = introPool[seedBase % introPool.length];
+    const strengthLine = report?.strongestSubject?.subjectName
+      ? `${strongOpeners[(seedBase + 1) % strongOpeners.length]} ${report.strongestSubject.subjectName}.`
+      : `${name} is still building marks across the subjects.`;
+    const supportLine = report?.weakestSubject?.subjectName
+      ? `${supportOpeners[(seedBase + 2) % supportOpeners.length]} ${report.weakestSubject.subjectName}.`
+      : `${name} should keep trying one subject at a time.`;
+    const closing = closers[(seedBase + 3) % closers.length];
+    return `${intro} ${strengthLine} ${supportLine} ${closing}`.replace(/\s+/g,' ').trim();
+  },[]);
+  useEffect(()=>{
+    const firstLearnerNo = overallLearnerReports[0]?.learnerNo || '';
+    setSelectedLearnerNo(prev=>{
+      if(prev && overallLearnerReports.some(row=>String(row.learnerNo)===String(prev))) return prev;
+      return firstLearnerNo;
+    });
+  },[overallLearnerReports]);
+  useEffect(()=>{
+    let stored = {};
+    try{
+      stored = JSON.parse(localStorage.getItem(overallReportStorageKey) || '{}') || {};
+    }catch(e){
+      stored = {};
+    }
+    const next = {};
+    overallLearnerReports.forEach(report=>{
+      const savedComment = String(stored?.[report.learnerNo] || '').trim();
+      next[report.learnerNo] = savedComment || buildOverallLearnerComment(report);
+    });
+    setLearnerComments(next);
+  },[buildOverallLearnerComment, overallLearnerReports, overallReportStorageKey]);
+  useEffect(()=>{
+    try{
+      localStorage.setItem(overallReportStorageKey, JSON.stringify(learnerComments || {}));
+    }catch(e){}
+  },[learnerComments, overallReportStorageKey]);
+
+  const selectedLearnerReport = useMemo(()=>{
+    return overallLearnerReports.find(row=>String(row.learnerNo)===String(selectedLearnerNo)) || overallLearnerReports[0] || null;
+  },[overallLearnerReports, selectedLearnerNo]);
+  const printOverallLearnerReports = (selectedOnly=false)=>{
+    const reportsToPrint = selectedOnly && selectedLearnerReport ? [selectedLearnerReport] : overallLearnerReports;
+    if(!reportsToPrint.length){
+      showMsg('There are no learner reports to print yet.');
+      return;
+    }
+    const generatedAt = new Date().toLocaleString('en-ZA');
+    const reportCards = reportsToPrint.map(report=>{
+      const learner = report.learner || {};
+      const comment = learnerComments[report.learnerNo] || buildOverallLearnerComment(report);
+      const rowsHtml = report.subjectSummaries.map(subject=>`
+        <tr>
+          <td>${String(subject.subjectName || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</td>
+          <td>${String(formatSasamsNumber(subject.taskTotal)).replace(/&/g,'&amp;')}</td>
+          <td>${String(formatSasamsNumber(subject.weightedTotal)).replace(/&/g,'&amp;')}</td>
+          <td>${String(formatSasamsNumber(subject.termPercent)).replace(/&/g,'&amp;')}</td>
+          <td>${String(subject.level || '—').replace(/&/g,'&amp;')}</td>
+        </tr>
+      `).join('');
+      const safeLearnerName = `${String(learner.surname || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}, ${String(learner.firstname || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}`;
+      return `
+        <section class="report-card">
+          <div class="report-head">
+            <div>
+              <div class="school">CARISSA PRIMARY SCHOOL</div>
+              <div class="title">Overall Learner Achievement Report</div>
+              <div class="subtitle">${String(selClass).replace(/&/g,'&amp;')} • ${String(`Term ${termNo}`).replace(/&/g,'&amp;')} • Patch ${String(sasamsPatchVersion).replace(/&/g,'&amp;')}</div>
+            </div>
+            <div class="generated">Generated: ${String(generatedAt).replace(/&/g,'&amp;')}</div>
+          </div>
+          <div class="meta-grid">
+            <div><strong>Learner:</strong> ${safeLearnerName}</div>
+            <div><strong>No:</strong> ${String(report.learnerNo).replace(/&/g,'&amp;')}</div>
+            <div><strong>Class:</strong> ${String(selClass).replace(/&/g,'&amp;')}</div>
+            <div><strong>Teacher:</strong> ${String(teacherName).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+          </div>
+          <div class="pill-row">
+            <div class="pill"><span>Subjects captured</span><strong>${String(report.markedSubjectCount).replace(/&/g,'&amp;')}</strong></div>
+            <div class="pill"><span>Total % points</span><strong>${String(formatSasamsNumber(report.totalPercentPoints)).replace(/&/g,'&amp;')}</strong></div>
+            <div class="pill"><span>Overall average</span><strong>${String(formatSasamsNumber(report.overallAverage)).replace(/&/g,'&amp;')}</strong></div>
+            <div class="pill"><span>Final level</span><strong>${String(report.overallLevel || '—').replace(/&/g,'&amp;')}</strong></div>
+            <div class="pill"><span>Class average</span><strong>${String(formatSasamsNumber(classAverageOverall.average)).replace(/&/g,'&amp;')}</strong></div>
+          </div>
+          <table>
+            <thead><tr><th>Subject</th><th>Task total</th><th>Weighted mark</th><th>Term %</th><th>Level</th></tr></thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+          <div class="comment-box">
+            <div class="comment-label">Teacher comment</div>
+            <div>${String(comment).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+          </div>
+        </section>
+      `;
+    }).join('');
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>${String(`${selClass} overall learner reports`).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</title>
+  <style>
+    @page { size: A4 portrait; margin: 12mm; }
+    body { font-family: Arial, sans-serif; color:#0f172a; margin:0; background:#f8fafc; }
+    .wrap { padding:10px; }
+    .toolbar { margin-bottom:10px; display:flex; gap:8px; flex-wrap:wrap; }
+    .btn-print { border:0; background:#4f46e5; color:#fff; padding:10px 14px; border-radius:8px; font-weight:700; cursor:pointer; }
+    .report-card { background:#fff; border:1px solid #cbd5e1; border-radius:14px; padding:16px; margin:0 auto 16px; max-width:900px; page-break-after:always; }
+    .report-card:last-child { page-break-after:auto; }
+    .report-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; border-bottom:2px solid #c7d2fe; padding-bottom:10px; margin-bottom:12px; }
+    .school { font-size:13px; font-weight:900; color:#475569; letter-spacing:.3px; }
+    .title { font-size:19px; font-weight:800; color:#312e81; margin-top:2px; }
+    .subtitle,.generated { font-size:11px; color:#64748b; margin-top:4px; }
+    .meta-grid { display:grid; grid-template-columns:repeat(2,minmax(160px,1fr)); gap:6px 14px; font-size:12px; margin-bottom:12px; }
+    .pill-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-bottom:12px; }
+    .pill { background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px; }
+    .pill span { display:block; font-size:10px; color:#64748b; text-transform:uppercase; margin-bottom:4px; }
+    .pill strong { font-size:18px; color:#111827; }
+    table { width:100%; border-collapse:collapse; font-size:11px; }
+    th,td { border:1px solid #cbd5e1; padding:7px 8px; text-align:left; vertical-align:top; }
+    th { background:#eef2ff; color:#312e81; }
+    .comment-box { margin-top:12px; background:#eff6ff; border-left:4px solid #3b82f6; border-radius:10px; padding:12px 14px; font-size:12px; line-height:1.6; color:#1e3a5f; }
+    .comment-label { font-size:10px; font-weight:800; color:#2563eb; text-transform:uppercase; letter-spacing:.4px; margin-bottom:4px; }
+    @media print { body { background:#fff; } .toolbar { display:none; } .wrap { padding:0; } .report-card { border:none; border-radius:0; max-width:none; margin:0 0 12px; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="toolbar"><button class="btn-print" onclick="window.print()">🖨 Print learner reports</button></div>
+    ${reportCards}
+  </div>
+</body>
+</html>`;
+    const w = window.open('', '_blank');
+    if(!w){
+      showMsg('Could not open the learner reports print view on this device.');
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    setTimeout(()=>{ try{ w.print(); }catch(e){} }, 350);
+    setStatus(selectedOnly ? 'Selected learner report opened for printing.' : 'All learner reports opened for printing.');
+    onAudit && onAudit(selectedOnly ? 'sasams_export_single_learner_report' : 'sasams_export_overall_learner_reports');
+  };
+
+  return (
+    <div style={card}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'12px',flexWrap:'wrap',marginBottom:'14px'}}>
+        <div>
+          <h3 style={{...ctitle,marginBottom:'6px'}}>📘 Learner Reports</h3>
+          <p style={{fontSize:'13px',color:'#64748b',lineHeight:1.6,maxWidth:'820px'}}>
+            Open the full class list, choose one learner, and view the overall achievement across all SASAMS subjects for the term. Each subject result is shown together with the learner&apos;s final average and final level.
+          </p>
+        </div>
+        <div style={{background:'#eef2ff',border:'1px solid #c7d2fe',borderRadius:'12px',padding:'10px 12px',minWidth:'240px'}}>
+          <div style={{fontSize:'12px',fontWeight:800,color:'#4338ca',marginBottom:'4px'}}>Class report</div>
+          <div style={{fontSize:'14px',fontWeight:700,color:'#312e81'}}>{selClass}</div>
+          <div style={{fontSize:'12px',color:'#6366f1',marginTop:'4px'}}>Teacher: {teacherName}</div>
+          <div style={{fontSize:'11px',color:'#6366f1',marginTop:'4px'}}>SA-SAMS patch {sasamsPatchVersion}</div>
+        </div>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:'12px',marginBottom:'12px'}}>
+        <div>
+          <label style={lbl}>Term</label>
+          <select style={inp} value={termNo} onChange={e=>setTermNo(Number(e.target.value))}>
+            {[1,2,3,4].map(n=><option key={n} value={n}>{`Term ${n}`}</option>)}
+          </select>
+        </div>
+        <div style={{display:'flex',flexDirection:'column',justifyContent:'flex-end'}}>
+          <div style={{fontSize:'12px',fontWeight:800,color:'#334155',marginBottom:'6px'}}>Class average</div>
+          <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+            <span style={{background:'#ede9fe',color:'#5b21b6',padding:'7px 10px',borderRadius:'999px',fontSize:'12px',fontWeight:800}}>
+              Overall average: {formatSasamsNumber(classAverageOverall.average)}
+            </span>
+            <span style={{background:'#ede9fe',color:'#5b21b6',padding:'7px 10px',borderRadius:'999px',fontSize:'12px',fontWeight:800}}>
+              Level: {classAverageOverall.level || '—'}
+            </span>
+          </div>
+        </div>
+        <div style={{display:'flex',flexDirection:'column',justifyContent:'flex-end'}}>
+          <div style={{fontSize:'12px',fontWeight:800,color:'#334155',marginBottom:'6px'}}>Subjects in report</div>
+          <div style={{fontSize:'13px',color:'#475569'}}>{subjects.length ? subjects.map(row=>row.name_english || row.subj_key).join(' • ') : 'No subjects loaded yet.'}</div>
+        </div>
+      </div>
+
+      {status && (
+        <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px 12px',fontSize:'13px',color:'#334155',marginBottom:'12px'}}>
+          {status}
+        </div>
+      )}
+
+      {error && (
+        <div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:'10px',padding:'11px 12px',fontSize:'13px',color:'#9a3412',marginBottom:'12px',lineHeight:1.55}}>
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'26px',textAlign:'center',color:'#64748b'}}>
+          Loading the learner achievement reports...
+        </div>
+      ) : !overallLearnerReports.length ? (
+        <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'22px 18px',color:'#64748b',lineHeight:1.6}}>
+          No learner reports are available for this class yet.
+        </div>
+      ) : (
+        <div style={{display:'grid',gridTemplateColumns:'minmax(260px,320px) minmax(0,1fr)',gap:'14px'}}>
+          <div style={{border:'1px solid #e2e8f0',borderRadius:'12px',background:'#fff',maxHeight:'780px',overflow:'auto'}}>
+            {overallLearnerReports.map(report=>{
+              const active = String(report.learnerNo)===String(selectedLearnerReport?.learnerNo || '');
+              return (
+                <button
+                  key={`overall_report_${report.learnerNo}`}
+                  onClick={()=>setSelectedLearnerNo(String(report.learnerNo))}
+                  style={{
+                    display:'block',
+                    width:'100%',
+                    textAlign:'left',
+                    border:'none',
+                    borderBottom:'1px solid #eef2f7',
+                    padding:'12px 14px',
+                    cursor:'pointer',
+                    background:active ? '#eef2ff' : '#fff'
+                  }}
+                >
+                  <div style={{display:'flex',justifyContent:'space-between',gap:'10px',alignItems:'center',marginBottom:'4px'}}>
+                    <strong style={{color:'#111827'}}>{report.learner.surname}, {report.learner.firstname}</strong>
+                    <span style={{fontSize:'11px',fontWeight:800,padding:'5px 8px',borderRadius:'999px',background:'#ede9fe',color:'#5b21b6'}}>
+                      Level {report.overallLevel || '—'}
+                    </span>
+                  </div>
+                  <div style={{fontSize:'12px',color:'#64748b',marginBottom:'3px'}}>Learner no. {report.learnerNo}</div>
+                  <div style={{display:'flex',gap:'8px',flexWrap:'wrap',fontSize:'12px',color:'#334155'}}>
+                    <span>Average: {formatSasamsNumber(report.overallAverage)}</span>
+                    <span>Subjects: {report.markedSubjectCount}/{subjects.length}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{border:'1px solid #e2e8f0',borderRadius:'12px',background:'#fff',padding:'14px'}}>
+            {!selectedLearnerReport ? (
+              <div style={{padding:'24px 10px',textAlign:'center',color:'#64748b'}}>Choose a learner from the class list to open the report.</div>
+            ) : (
+              <>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'12px',flexWrap:'wrap',marginBottom:'14px'}}>
+                  <div>
+                    <div style={{fontSize:'20px',fontWeight:900,color:'#111827',marginBottom:'4px'}}>
+                      {selectedLearnerReport.learner.surname}, {selectedLearnerReport.learner.firstname}
+                    </div>
+                    <div style={{fontSize:'13px',color:'#64748b',lineHeight:1.55}}>
+                      Learner no. <strong>{selectedLearnerReport.learnerNo}</strong><br/>
+                      {selClass} • Term {termNo} • Overall learner achievement
+                    </div>
+                  </div>
+                  <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+                    <button onClick={()=>printOverallLearnerReports(true)} style={{...sbtn,background:'#334155'}}>🖨 Print selected learner</button>
+                    <button onClick={()=>printOverallLearnerReports(false)} style={{...sbtn,background:'#5b21b6'}}>🖨 Print all learner reports</button>
+                  </div>
+                </div>
+
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:'10px',marginBottom:'12px'}}>
+                  <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px 12px'}}><div style={{fontSize:'11px',color:'#64748b',marginBottom:'3px'}}>Subjects captured</div><div style={{fontSize:'18px',fontWeight:800,color:'#111827'}}>{selectedLearnerReport.markedSubjectCount}</div></div>
+                  <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px 12px'}}><div style={{fontSize:'11px',color:'#64748b',marginBottom:'3px'}}>Total % points</div><div style={{fontSize:'18px',fontWeight:800,color:'#111827'}}>{formatSasamsNumber(selectedLearnerReport.totalPercentPoints)}</div></div>
+                  <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px 12px'}}><div style={{fontSize:'11px',color:'#64748b',marginBottom:'3px'}}>Overall average</div><div style={{fontSize:'18px',fontWeight:800,color:'#111827'}}>{formatSasamsNumber(selectedLearnerReport.overallAverage)}</div></div>
+                  <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px 12px'}}><div style={{fontSize:'11px',color:'#64748b',marginBottom:'3px'}}>Final level</div><div style={{fontSize:'18px',fontWeight:800,color:'#111827'}}>{selectedLearnerReport.overallLevel || '—'}</div></div>
+                  <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px 12px'}}><div style={{fontSize:'11px',color:'#64748b',marginBottom:'3px'}}>Class average</div><div style={{fontSize:'18px',fontWeight:800,color:'#111827'}}>{formatSasamsNumber(classAverageOverall.average)}</div></div>
+                </div>
+
+                <div style={{overflowX:'auto',border:'1px solid #e2e8f0',borderRadius:'10px',marginBottom:'12px',background:'#fff'}}>
+                  <table style={{width:'100%',borderCollapse:'collapse',fontSize:'12px'}}>
+                    <thead>
+                      <tr style={{background:'#f5f3ff'}}>
+                        <th style={{padding:'8px 10px',textAlign:'left'}}>Subject</th>
+                        <th style={{padding:'8px 10px',textAlign:'left'}}>Task total</th>
+                        <th style={{padding:'8px 10px',textAlign:'left'}}>Weighted mark</th>
+                        <th style={{padding:'8px 10px',textAlign:'left'}}>Term %</th>
+                        <th style={{padding:'8px 10px',textAlign:'left'}}>Level</th>
+                        <th style={{padding:'8px 10px',textAlign:'left'}}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedLearnerReport.subjectSummaries.map(subject=>(
+                        <tr key={`overall_subject_${selectedLearnerReport.learnerNo}_${subject.subjectId}`} style={{borderTop:'1px solid #f1f5f9'}}>
+                          <td style={{padding:'8px 10px'}}>{subject.subjectName}</td>
+                          <td style={{padding:'8px 10px'}}>{formatSasamsNumber(subject.taskTotal)}</td>
+                          <td style={{padding:'8px 10px'}}>{formatSasamsNumber(subject.weightedTotal)}</td>
+                          <td style={{padding:'8px 10px'}}>{formatSasamsNumber(subject.termPercent)}</td>
+                          <td style={{padding:'8px 10px'}}>{subject.level || '—'}</td>
+                          <td style={{padding:'8px 10px'}}>{subject.status || 'Not captured yet'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div>
+                  <label style={lbl}>Teacher comment</label>
+                  <textarea
+                    rows={3}
+                    value={learnerComments[selectedLearnerReport.learnerNo] || buildOverallLearnerComment(selectedLearnerReport)}
+                    onChange={e=>setLearnerComments(prev=>({...prev,[selectedLearnerReport.learnerNo]:e.target.value}))}
+                    placeholder="Write a short encouraging comment for this learner..."
+                    style={{...inp,resize:'vertical',minHeight:'88px'}}
+                  />
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',marginTop:'8px'}}>
+                    <div style={{fontSize:'12px',color:'#64748b'}}>This comment now reflects the learner&apos;s overall achievement across all subjects.</div>
+                    <button type="button" onClick={()=>setLearnerComments(prev=>({...prev,[selectedLearnerReport.learnerNo]:buildOverallLearnerComment(selectedLearnerReport)}))} style={{...sbtn,background:'#8b5cf6',padding:'8px 12px',fontSize:'12px'}}>
+                      Use suggested comment
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
