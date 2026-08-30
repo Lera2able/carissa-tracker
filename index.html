@@ -195,6 +195,34 @@ const gradeNoFromClassName = (className='')=>{
   if(!m) return null;
   return String(m[1]).toLowerCase() === 'r' ? 0 : Number(m[1]);
 };
+const SASAMS_ALLOWED_LANGUAGE_SUBJECTS_GR1_TO_7 = new Set([
+  'english home language',
+  'afrikaans first additional language'
+]);
+const sasamsNormalizedSubjectName = (row={})=>String(row?.name_english || row?.report_label || row?.subj_key || '').trim().toLowerCase();
+const sasamsIsReferenceOnlySubject = (row={})=>{
+  const name = sasamsNormalizedSubjectName(row);
+  return /^o:\s*/i.test(name) || /^to:\s*/i.test(name) || /\(pre gr r\)/i.test(name);
+};
+const sasamsIsLanguageSubject = (row={})=>{
+  const name = sasamsNormalizedSubjectName(row);
+  return /(home language|first additional language|second additional language|sign language)/i.test(name);
+};
+const filterSasamsSubjectsForClass = (rows=[], gradeNo=null)=>{
+  const nextRows = [];
+  const seen = new Set();
+  (rows||[]).forEach(row=>{
+    const name = sasamsNormalizedSubjectName(row);
+    if(!name || !row?.official_subject_id) return;
+    if(sasamsIsReferenceOnlySubject(row)) return;
+    if(name === 'coding and robotics') return;
+    if(gradeNo >= 1 && gradeNo <= 7 && sasamsIsLanguageSubject(row) && !SASAMS_ALLOWED_LANGUAGE_SUBJECTS_GR1_TO_7.has(name)) return;
+    if(seen.has(name)) return;
+    seen.add(name);
+    nextRows.push(row);
+  });
+  return nextRows.sort((a,b)=>String(a?.name_english || '').localeCompare(String(b?.name_english || ''), 'en', {sensitivity:'base'}));
+};
 const getTeacherPortalLearnersForClass = (className='')=>{
   const base = Array.isArray(CLASS_DATA[className]) ? CLASS_DATA[className] : [];
   let edits = {};
@@ -6946,16 +6974,17 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
           'carissa_sasams_subjects',
           `grade_no=eq.${gradeNo}&order=name_english.asc`
         );
+        const filteredRows = filterSasamsSubjectsForClass(rows || [], gradeNo);
         if(!alive) return;
-        setSubjects(rows || []);
-        if(!(rows||[]).length){
+        setSubjects(filteredRows);
+        if(!filteredRows.length){
           setSubjectId('');
-          setError(`No SASAMS subjects have been loaded yet for ${selClass}. Import the SASAMS subject data first.`);
+          setError(`No school subjects are available yet for ${selClass}. Check the SASAMS subject import and subject filters.`);
           return;
         }
         setSubjectId(prev=>{
-          if(prev && (rows||[]).some(r=>String(r.official_subject_id)===String(prev))) return prev;
-          return String(rows[0].official_subject_id);
+          if(prev && filteredRows.some(r=>String(r.official_subject_id)===String(prev))) return prev;
+          return String(filteredRows[0].official_subject_id);
         });
       }catch(err){
         if(!alive) return;
