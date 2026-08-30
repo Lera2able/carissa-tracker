@@ -7326,6 +7326,24 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
       avgAcc: accVals.length ? Math.round(accVals.reduce((a,b)=>a+b,0) / accVals.length) : null
     };
   },[typingAssignments, typingProgressRows, typingResults]);
+  const typingWpmStyle = (value)=>{
+    if(value===null || value===undefined || !Number.isFinite(Number(value))){
+      return {background:'#e5e7eb',color:'#4b5563'};
+    }
+    const num = Number(value);
+    if(num < 10) return {background:'#fee2e2',color:'#b91c1c'};
+    if(num < 16) return {background:'#fef3c7',color:'#b45309'};
+    return {background:'#dcfce7',color:'#166534'};
+  };
+  const typingAccuracyStyle = (value)=>{
+    if(value===null || value===undefined || !Number.isFinite(Number(value))){
+      return {background:'#e5e7eb',color:'#4b5563'};
+    }
+    const num = Number(value);
+    if(num < 75) return {background:'#fee2e2',color:'#b91c1c'};
+    if(num < 90) return {background:'#fef3c7',color:'#b45309'};
+    return {background:'#dcfce7',color:'#166534'};
+  };
 
   if(loading) return <div style={{textAlign:'center',padding:'80px',color:'#667eea',fontSize:'18px'}}>Loading LearnWorld...</div>;
 
@@ -7700,6 +7718,11 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
                       <p style={{fontSize:'13px',color:'#475569',lineHeight:1.55}}>
                         Quick view of all typing-game attempts in this class. This includes the LearnWorld games that send WPM and accuracy back automatically.
                       </p>
+                      <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginTop:'8px'}}>
+                        <span style={{background:'#fee2e2',color:'#b91c1c',padding:'4px 9px',borderRadius:'999px',fontSize:'11px',fontWeight:800}}>Needs support</span>
+                        <span style={{background:'#fef3c7',color:'#b45309',padding:'4px 9px',borderRadius:'999px',fontSize:'11px',fontWeight:800}}>Keep improving</span>
+                        <span style={{background:'#dcfce7',color:'#166534',padding:'4px 9px',borderRadius:'999px',fontSize:'11px',fontWeight:800}}>On track</span>
+                      </div>
                     </div>
                     <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
                       <span style={{background:'#cffafe',color:'#155e75',padding:'7px 10px',borderRadius:'999px',fontSize:'12px',fontWeight:800}}>Assigned: {typingClassSummary.assigned}</span>
@@ -7733,9 +7756,21 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
                             <tr key={`typing-summary-${row.learnerName}`} style={{borderBottom:'1px solid #ecfeff'}}>
                               <td style={{padding:'10px',fontWeight:700,color:'#0f172a'}}>{row.learnerName}</td>
                               <td style={{padding:'10px',color:'#334155'}}>{row.attempts}</td>
-                              <td style={{padding:'10px',color:'#334155'}}>{row.avgWpm===null ? '—' : row.avgWpm}</td>
-                              <td style={{padding:'10px',color:'#334155'}}>{row.bestWpm===null ? '—' : row.bestWpm}</td>
-                              <td style={{padding:'10px',color:'#334155'}}>{row.avgAcc===null ? '—' : `${row.avgAcc}%`}</td>
+                              <td style={{padding:'10px',color:'#334155'}}>
+                                <span style={{...typingWpmStyle(row.avgWpm),padding:'4px 9px',borderRadius:'999px',fontSize:'12px',fontWeight:800,display:'inline-block',minWidth:'56px',textAlign:'center'}}>
+                                  {row.avgWpm===null ? '—' : row.avgWpm}
+                                </span>
+                              </td>
+                              <td style={{padding:'10px',color:'#334155'}}>
+                                <span style={{...typingWpmStyle(row.bestWpm),padding:'4px 9px',borderRadius:'999px',fontSize:'12px',fontWeight:800,display:'inline-block',minWidth:'56px',textAlign:'center'}}>
+                                  {row.bestWpm===null ? '—' : row.bestWpm}
+                                </span>
+                              </td>
+                              <td style={{padding:'10px',color:'#334155'}}>
+                                <span style={{...typingAccuracyStyle(row.avgAcc),padding:'4px 9px',borderRadius:'999px',fontSize:'12px',fontWeight:800,display:'inline-block',minWidth:'70px',textAlign:'center'}}>
+                                  {row.avgAcc===null ? '—' : `${row.avgAcc}%`}
+                                </span>
+                              </td>
                               <td style={{padding:'10px',color:'#475569'}}>{formatDateTimeZA(row.latestAt) || '—'}</td>
                             </tr>
                           ))}
