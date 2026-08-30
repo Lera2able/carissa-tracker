@@ -3336,6 +3336,9 @@ function SasamsAdminSubmissionsTab({adminUser}){
   const [loading,setLoading] = useState(true);
   const [detailLoading,setDetailLoading] = useState(false);
   const [statusMsg,setStatusMsg] = useState('');
+  const adminTableScrollerRef = useRef(null);
+  const [adminCanScrollLeft,setAdminCanScrollLeft] = useState(false);
+  const [adminCanScrollRight,setAdminCanScrollRight] = useState(false);
 
   const loadBatches = useCallback(async(selectedId='')=>{
     setLoading(true);
@@ -3448,6 +3451,16 @@ function SasamsAdminSubmissionsTab({adminUser}){
   const completenessPct = expectedCells ? Math.round((capturedCells / expectedCells) * 100) : 0;
   const activeSubject = selectedBatch ? subjectMap[String(selectedBatch.official_subject_id)] : null;
   const sasamsPatchVersion = '26.1.1';
+  const updateAdminScrollButtons = useCallback(()=>{
+    const el = adminTableScrollerRef.current;
+    if(!el){
+      setAdminCanScrollLeft(false);
+      setAdminCanScrollRight(false);
+      return;
+    }
+    setAdminCanScrollLeft(el.scrollLeft > 8);
+    setAdminCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 8);
+  },[]);
 
   const adminHtmlEscape = (value)=>String(value ?? '')
     .replace(/&/g,'&amp;')
@@ -3523,6 +3536,29 @@ function SasamsAdminSubmissionsTab({adminUser}){
   const exportBaseName = selectedBatch
     ? `sasams-admin-${selectedBatch.academic_year}-term-${selectedBatch.term_no}-${String(selectedBatch.class_name || 'class').replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'').toLowerCase()}-${String(activeSubject?.name_english || 'subject').replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'').toLowerCase()}`
     : 'sasams-admin-export';
+  const scrollAdminTable = (direction)=>{
+    const el = adminTableScrollerRef.current;
+    if(!el) return;
+    const amount = Math.max(220, Math.round(el.clientWidth * 0.75));
+    el.scrollBy({left: direction * amount, behavior:'smooth'});
+  };
+
+  useEffect(()=>{
+    const el = adminTableScrollerRef.current;
+    if(!el){
+      setAdminCanScrollLeft(false);
+      setAdminCanScrollRight(false);
+      return;
+    }
+    const sync = ()=>updateAdminScrollButtons();
+    sync();
+    el.addEventListener('scroll', sync, {passive:true});
+    window.addEventListener('resize', sync);
+    return ()=>{
+      el.removeEventListener('scroll', sync);
+      window.removeEventListener('resize', sync);
+    };
+  },[criteria.length, detailLoading, groupedLearners.length, selectedBatchId, updateAdminScrollButtons]);
 
   const exportCsv = ()=>{
     if(!selectedBatch || !criteria.length){
@@ -3806,7 +3842,15 @@ function SasamsAdminSubmissionsTab({adminUser}){
                     No criteria were found for this submission yet.
                   </div>
                 ) : (
-                  <div style={{overflowX:'auto',border:'1px solid #e2e8f0',borderRadius:'12px',background:'#fff'}}>
+                  <>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',marginBottom:'10px'}}>
+                      <div style={{fontSize:'12px',color:'#64748b'}}>Swipe or use the arrows to move left and right across the marks grid.</div>
+                      <div style={{display:'flex',gap:'8px'}}>
+                        <button onClick={()=>scrollAdminTable(-1)} disabled={!adminCanScrollLeft} style={{...sbtn,background:adminCanScrollLeft?'#475569':'#cbd5e1',padding:'7px 12px',fontSize:'12px',opacity:adminCanScrollLeft?1:0.7}}>← Left</button>
+                        <button onClick={()=>scrollAdminTable(1)} disabled={!adminCanScrollRight} style={{...sbtn,background:adminCanScrollRight?'#475569':'#cbd5e1',padding:'7px 12px',fontSize:'12px',opacity:adminCanScrollRight?1:0.7}}>Right →</button>
+                      </div>
+                    </div>
+                  <div ref={adminTableScrollerRef} style={{overflowX:'auto',WebkitOverflowScrolling:'touch',scrollBehavior:'smooth',scrollbarWidth:'thin',border:'1px solid #e2e8f0',borderRadius:'12px',background:'#fff'}}>
                     <table style={{width:'100%',borderCollapse:'collapse',fontSize:'12px'}}>
                       <thead>
                         <tr style={{background:'#f8fafc',borderBottom:'1px solid #e2e8f0'}}>
@@ -3847,6 +3891,7 @@ function SasamsAdminSubmissionsTab({adminUser}){
                       </tbody>
                     </table>
                   </div>
+                  </>
                 )}
               </>
             )}
@@ -7484,6 +7529,9 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
   const [error,setError] = useState('');
   const [submitBusy,setSubmitBusy] = useState(false);
   const saveTimersRef = useRef({});
+  const teacherTableScrollerRef = useRef(null);
+  const [teacherCanScrollLeft,setTeacherCanScrollLeft] = useState(false);
+  const [teacherCanScrollRight,setTeacherCanScrollRight] = useState(false);
 
   const clearSaveTimer = (key)=>{
     if(saveTimersRef.current[key]){
@@ -7744,6 +7792,16 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
   },[criteria, draftValues, invalidCells, learners, marksMap]);
   const completenessPct = expectedCells ? Math.round((capturedCells / expectedCells) * 100) : 0;
   const activeSubject = subjects.find(row=>String(row.official_subject_id)===String(subjectId));
+  const updateTeacherScrollButtons = useCallback(()=>{
+    const el = teacherTableScrollerRef.current;
+    if(!el){
+      setTeacherCanScrollLeft(false);
+      setTeacherCanScrollRight(false);
+      return;
+    }
+    setTeacherCanScrollLeft(el.scrollLeft > 8);
+    setTeacherCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 8);
+  },[]);
 
   const getCellRawValue = (learnerNo, criterionId)=>{
     const key = sasamsCellKey(String(learnerNo), String(criterionId));
@@ -7839,6 +7897,29 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
     const safeSubject = String(activeSubject?.name_english || 'subject').trim().replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'').toLowerCase();
     return `sasams-${academicYear}-term-${termNo}-${safeClass}-${safeSubject}`;
   };
+  const scrollTeacherTable = (direction)=>{
+    const el = teacherTableScrollerRef.current;
+    if(!el) return;
+    const amount = Math.max(220, Math.round(el.clientWidth * 0.75));
+    el.scrollBy({left: direction * amount, behavior:'smooth'});
+  };
+
+  useEffect(()=>{
+    const el = teacherTableScrollerRef.current;
+    if(!el){
+      setTeacherCanScrollLeft(false);
+      setTeacherCanScrollRight(false);
+      return;
+    }
+    const sync = ()=>updateTeacherScrollButtons();
+    sync();
+    el.addEventListener('scroll', sync, {passive:true});
+    window.addEventListener('resize', sync);
+    return ()=>{
+      el.removeEventListener('scroll', sync);
+      window.removeEventListener('resize', sync);
+    };
+  },[criteria.length, learners.length, loading, subjectId, termNo, updateTeacherScrollButtons]);
 
   const downloadSasamsCsv = ()=>{
     if(!criteria.length){
@@ -8129,7 +8210,14 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
         </div>
       ) : (
         <>
-          <div style={{overflowX:'auto',border:'1px solid #e2e8f0',borderRadius:'12px',background:'#fff'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',marginBottom:'10px'}}>
+            <div style={{fontSize:'12px',color:'#64748b'}}>Swipe or use the arrows to move left and right across the marks grid.</div>
+            <div style={{display:'flex',gap:'8px'}}>
+              <button onClick={()=>scrollTeacherTable(-1)} disabled={!teacherCanScrollLeft} style={{...sbtn,background:teacherCanScrollLeft?'#475569':'#cbd5e1',padding:'7px 12px',fontSize:'12px',opacity:teacherCanScrollLeft?1:0.7}}>← Left</button>
+              <button onClick={()=>scrollTeacherTable(1)} disabled={!teacherCanScrollRight} style={{...sbtn,background:teacherCanScrollRight?'#475569':'#cbd5e1',padding:'7px 12px',fontSize:'12px',opacity:teacherCanScrollRight?1:0.7}}>Right →</button>
+            </div>
+          </div>
+          <div ref={teacherTableScrollerRef} style={{overflowX:'auto',WebkitOverflowScrolling:'touch',scrollBehavior:'smooth',scrollbarWidth:'thin',border:'1px solid #e2e8f0',borderRadius:'12px',background:'#fff'}}>
             <table style={{width:'100%',borderCollapse:'collapse',fontSize:'12px'}}>
               <thead>
                 <tr style={{background:'#eef2ff',borderBottom:'1px solid #c7d2fe'}}>
