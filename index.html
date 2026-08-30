@@ -3312,6 +3312,7 @@ const SUBTABS = [
   ['assignments','📋 Assignments'],
   ['progress','📈 Progress'],
   ['assessments','📝 Assessments'],
+  ['sasams_submits','🧮 SASAMS Submits'],
   ['reading','📖 Reading Results'],
   ['discipline','⚖️ Discipline'],
   ['learners','👥 Learners'],
@@ -3322,6 +3323,428 @@ const SUBTABS = [
   ['chats','💬 Chats'],
   ['audit','🛡 Audit & Recovery'],
 ];
+
+
+function SasamsAdminSubmissionsTab({adminUser}){
+  const [batches,setBatches] = useState([]);
+  const [subjects,setSubjects] = useState([]);
+  const [selectedBatchId,setSelectedBatchId] = useState('');
+  const [criteria,setCriteria] = useState([]);
+  const [marks,setMarks] = useState([]);
+  const [statusFilter,setStatusFilter] = useState('SUBMITTED');
+  const [search,setSearch] = useState('');
+  const [loading,setLoading] = useState(true);
+  const [detailLoading,setDetailLoading] = useState(false);
+  const [statusMsg,setStatusMsg] = useState('');
+
+  const loadBatches = useCallback(async(selectedId='')=>{
+    setLoading(true);
+    try{
+      const [batchRows, subjectRows] = await Promise.all([
+        db.get('carissa_sasams_batches','order=updated_at.desc,submitted_at.desc'),
+        db.get('carissa_sasams_subjects','order=name_english.asc').catch(()=>[])
+      ]);
+      const nextBatches = Array.isArray(batchRows) ? batchRows : [];
+      setBatches(nextBatches);
+      setSubjects(Array.isArray(subjectRows) ? subjectRows : []);
+      setSelectedBatchId(prev=>{
+        const preferred = selectedId || prev;
+        if(preferred && nextBatches.some(row=>String(row.id)===String(preferred))) return String(preferred);
+        return nextBatches[0]?.id ? String(nextBatches[0].id) : '';
+      });
+    }catch(err){
+      console.error(err);
+      setStatusMsg(`Could not load SASAMS submissions: ${err?.message || 'Unknown error'}`);
+    }
+    setLoading(false);
+  },[]);
+
+  useEffect(()=>{
+    loadBatches();
+  },[loadBatches]);
+
+  const subjectMap = useMemo(()=>{
+    const map = {};
+    (subjects||[]).forEach(row=>{ map[String(row.official_subject_id)] = row; });
+    return map;
+  },[subjects]);
+
+  const filteredBatches = useMemo(()=>{
+    const q = String(search || '').trim().toLowerCase();
+    return (batches||[]).filter(row=>{
+      const statusOk = statusFilter === 'ALL' ? true : String(row.status || '').toUpperCase() === statusFilter;
+      if(!statusOk) return false;
+      if(!q) return true;
+      const subjectName = subjectMap[String(row.official_subject_id)]?.name_english || '';
+      const hay = [
+        row.class_name,
+        row.teacher_name,
+        row.teacher_email,
+        subjectName,
+        row.status
+      ].join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+  },[batches, search, statusFilter, subjectMap]);
+
+  const selectedBatch = useMemo(()=>{
+    return (batches||[]).find(row=>String(row.id)===String(selectedBatchId)) || null;
+  },[batches, selectedBatchId]);
+
+  useEffect(()=>{
+    let alive = true;
+    if(!selectedBatch?.id){
+      setCriteria([]);
+      setMarks([]);
+      return;
+    }
+    (async()=>{
+      setDetailLoading(true);
+      try{
+        const [criteriaRows, markRows] = await Promise.all([
+          db.get(
+            'carissa_sasams_criteria',
+            `academic_year=eq.${selectedBatch.academic_year}&term_no=eq.${selectedBatch.term_no}&grade_no=eq.${selectedBatch.grade_no}&official_subject_id=eq.${selectedBatch.official_subject_id}&order=sort_order.asc,off_criterion_id.asc`
+          ),
+          db.get(
+            'carissa_sasams_marks',
+            `batch_id=eq.${selectedBatch.id}&order=learner_no.asc,off_criterion_id.asc`
+          )
+        ]);
+        if(!alive) return;
+        setCriteria(Array.isArray(criteriaRows) ? criteriaRows : []);
+        setMarks(Array.isArray(markRows) ? markRows : []);
+      }catch(err){
+        if(!alive) return;
+        console.error(err);
+        setStatusMsg(`Could not load the selected SASAMS batch: ${err?.message || 'Unknown error'}`);
+        setCriteria([]);
+        setMarks([]);
+      }
+      if(alive) setDetailLoading(false);
+    })();
+    return ()=>{ alive = false; };
+  },[selectedBatch]);
+
+  const groupedLearners = useMemo(()=>{
+    const map = {};
+    (marks||[]).forEach(row=>{
+      const learnerNo = String(row.learner_no || '');
+      if(!map[learnerNo]){
+        map[learnerNo] = {
+          learner_no: learnerNo,
+          surname: row.surname || '',
+          firstname: row.firstname || '',
+          cells: {}
+        };
+      }
+      map[learnerNo].cells[String(row.off_criterion_id)] = row;
+    });
+    return Object.values(map).sort((a,b)=>Number(a.learner_no || 0) - Number(b.learner_no || 0));
+  },[marks]);
+
+  const capturedCells = marks.filter(row=>row.raw_mark_entered!==null && row.raw_mark_entered!==undefined && String(row.raw_mark_entered)!=='').length;
+  const expectedCells = groupedLearners.length * criteria.length;
+  const completenessPct = expectedCells ? Math.round((capturedCells / expectedCells) * 100) : 0;
+  const activeSubject = selectedBatch ? subjectMap[String(selectedBatch.official_subject_id)] : null;
+
+  const adminHtmlEscape = (value)=>String(value ?? '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+  const adminCsvEscape = (value)=>`"${String(value ?? '').replace(/"/g,'""')}"`;
+  const exportBaseName = selectedBatch
+    ? `sasams-admin-${selectedBatch.academic_year}-term-${selectedBatch.term_no}-${String(selectedBatch.class_name || 'class').replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'').toLowerCase()}-${String(activeSubject?.name_english || 'subject').replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'').toLowerCase()}`
+    : 'sasams-admin-export';
+
+  const exportCsv = ()=>{
+    if(!selectedBatch || !criteria.length){
+      setStatusMsg('Open a SASAMS submission first before downloading the CSV.');
+      return;
+    }
+    const columns = ['Learner No','Surname','Firstname',...criteria.map(criterion=>`${criterion.short_label || criterion.description || `Criterion ${criterion.off_criterion_id}`} / ${criterion.criterion_score_max || 0}`)];
+    const rows = groupedLearners.map(learner=>[
+      learner.learner_no,
+      learner.surname,
+      learner.firstname,
+      ...criteria.map(criterion=>learner.cells[String(criterion.off_criterion_id)]?.raw_mark_entered ?? '')
+    ]);
+    const csv = [columns, ...rows].map(row=>row.map(adminCsvEscape).join(',')).join('\r\n');
+    downloadBlob(new Blob([csv], {type:'text/csv;charset=utf-8'}), `${exportBaseName}.csv`);
+    setStatusMsg('CSV downloaded.');
+  };
+
+  const exportPdf = ()=>{
+    if(!selectedBatch || !criteria.length){
+      setStatusMsg('Open a SASAMS submission first before printing or saving as PDF.');
+      return;
+    }
+    const headHtml = criteria.map(criterion=>`
+      <th>
+        <div class="crit-title">${adminHtmlEscape(criterion.short_label || criterion.description || `Criterion ${criterion.off_criterion_id}`)}</div>
+        <div class="crit-sub">Max ${adminHtmlEscape(criterion.criterion_score_max || 0)}</div>
+      </th>
+    `).join('');
+    const bodyHtml = groupedLearners.map(learner=>`
+      <tr>
+        <td class="learner-cell">
+          <div class="learner-name">${adminHtmlEscape(learner.surname)}, ${adminHtmlEscape(learner.firstname)}</div>
+          <div class="learner-no">No. ${adminHtmlEscape(learner.learner_no)}</div>
+        </td>
+        ${criteria.map(criterion=>`<td>${adminHtmlEscape(learner.cells[String(criterion.off_criterion_id)]?.raw_mark_entered ?? '—')}</td>`).join('')}
+      </tr>
+    `).join('');
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>${adminHtmlEscape(`${selectedBatch.class_name} ${activeSubject?.name_english || 'SASAMS'} submission`)}</title>
+  <style>
+    @page { size: A4 landscape; margin: 12mm; }
+    body { font-family: Arial, sans-serif; color: #0f172a; margin: 0; }
+    .wrap { padding: 8px 4px; }
+    .toolbar { margin-bottom: 10px; }
+    .btn-print { border:0; background:#4f46e5; color:#fff; padding:10px 14px; border-radius:8px; font-weight:700; cursor:pointer; }
+    .header { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom: 12px; }
+    .title { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+    .meta { font-size: 12px; color:#475569; line-height:1.55; }
+    .summary { border:1px solid #cbd5e1; border-radius: 10px; padding:10px 12px; font-size:12px; min-width: 220px; }
+    .summary strong { display:block; font-size:14px; color:#312e81; margin-bottom:4px; }
+    table { width:100%; border-collapse:collapse; font-size:11px; }
+    th, td { border:1px solid #cbd5e1; padding:6px 7px; vertical-align:top; }
+    th { background:#eef2ff; text-align:left; }
+    .crit-title { font-weight:700; color:#111827; margin-bottom:3px; }
+    .crit-sub { font-size:10px; color:#64748b; }
+    .learner-cell { min-width: 170px; }
+    .learner-name { font-weight:700; }
+    .learner-no { font-size:10px; color:#64748b; margin-top:2px; }
+    @media print { .toolbar { display:none; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="toolbar"><button class="btn-print" onclick="window.print()">🖨 Print / Save as PDF</button></div>
+    <div class="header">
+      <div>
+        <div class="title">SASAMS Admin Submission</div>
+        <div class="meta">
+          <div><strong>Class:</strong> ${adminHtmlEscape(selectedBatch.class_name)}</div>
+          <div><strong>Subject:</strong> ${adminHtmlEscape(activeSubject?.name_english || '')}</div>
+          <div><strong>Term:</strong> ${adminHtmlEscape(`Term ${selectedBatch.term_no}`)}</div>
+          <div><strong>Teacher:</strong> ${adminHtmlEscape(selectedBatch.teacher_name || selectedBatch.teacher_email || '')}</div>
+        </div>
+      </div>
+      <div class="summary">
+        <strong>${adminHtmlEscape(selectedBatch.status || 'DRAFT')}</strong>
+        <div>Academic year: ${adminHtmlEscape(selectedBatch.academic_year)}</div>
+        <div>Captured cells: ${adminHtmlEscape(capturedCells)} / ${adminHtmlEscape(expectedCells || 0)}</div>
+        <div>Completeness: ${adminHtmlEscape(`${completenessPct}%`)}</div>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>Learner</th>${headHtml}</tr></thead>
+      <tbody>${bodyHtml}</tbody>
+    </table>
+  </div>
+</body>
+</html>`;
+    const w = window.open('', '_blank');
+    if(!w){
+      setStatusMsg('Could not open the print view on this device.');
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    setTimeout(()=>{ try{ w.print(); }catch(e){} }, 350);
+    setStatusMsg('Print view opened.');
+  };
+
+  const updateBatchStatus = async(nextStatus)=>{
+    if(!selectedBatch?.id) return;
+    try{
+      const now = new Date().toISOString();
+      const patchPayload = {status:nextStatus, updated_at:now};
+      if(nextStatus === 'APPROVED') patchPayload.approved_at = now;
+      const rows = await db.patch('carissa_sasams_batches', `id=eq.${selectedBatch.id}`, patchPayload);
+      await db.patch('carissa_sasams_marks', `batch_id=eq.${selectedBatch.id}`, {status:nextStatus, updated_at:now});
+      const updated = Array.isArray(rows) ? rows[0] : rows;
+      setBatches(prev=>prev.map(row=>String(row.id)===String(selectedBatch.id) ? {...row, ...(updated || patchPayload)} : row));
+      setStatusMsg(`Batch marked as ${nextStatus}.`);
+    }catch(err){
+      console.error(err);
+      setStatusMsg(`Could not update this SASAMS batch: ${err?.message || 'Unknown error'}`);
+    }
+  };
+
+  return (
+    <div style={card}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'12px',flexWrap:'wrap',marginBottom:'14px'}}>
+        <div>
+          <h3 style={{...ctitle,marginBottom:'6px'}}>🧮 SASAMS Admin Submits</h3>
+          <p style={{fontSize:'13px',color:'#64748b',lineHeight:1.6,maxWidth:'820px'}}>
+            Review teacher-submitted SASAMS batches here. Everyone with admin dashboard access can open a submission, export it, and change its status.
+          </p>
+        </div>
+        <div style={{background:'#eef2ff',border:'1px solid #c7d2fe',borderRadius:'12px',padding:'10px 12px',minWidth:'240px'}}>
+          <div style={{fontSize:'12px',fontWeight:800,color:'#4338ca',marginBottom:'4px'}}>Admin reviewer</div>
+          <div style={{fontSize:'14px',fontWeight:700,color:'#312e81'}}>{`${adminUser?.first_name || ''} ${adminUser?.surname || ''}`.trim() || adminUser?.email || 'Admin'}</div>
+          <div style={{fontSize:'12px',color:'#6366f1',marginTop:'4px'}}>{filteredBatches.length} batches in view</div>
+        </div>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:'12px',marginBottom:'12px'}}>
+        <div>
+          <label style={lbl}>Status filter</label>
+          <select style={inp} value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
+            {['SUBMITTED','APPROVED','REJECTED','DRAFT','ALL'].map(status=><option key={status} value={status}>{status === 'ALL' ? 'All statuses' : status}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={lbl}>Search</label>
+          <input style={inp} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Class, subject, teacher..." />
+        </div>
+        <div style={{display:'flex',alignItems:'flex-end'}}>
+          <button onClick={()=>loadBatches(selectedBatchId)} style={{...sbtn,background:'#4f46e5'}}>↻ Refresh submissions</button>
+        </div>
+      </div>
+
+      {statusMsg && (
+        <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px 12px',fontSize:'13px',color:'#334155',marginBottom:'12px'}}>
+          {statusMsg}
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'26px',textAlign:'center',color:'#64748b'}}>
+          Loading SASAMS admin submissions...
+        </div>
+      ) : (
+        <div style={{display:'grid',gridTemplateColumns:'minmax(280px,340px) minmax(0,1fr)',gap:'14px'}}>
+          <div style={{border:'1px solid #e2e8f0',borderRadius:'12px',background:'#fff',maxHeight:'780px',overflow:'auto'}}>
+            {filteredBatches.length ? filteredBatches.map(row=>{
+              const subjectName = subjectMap[String(row.official_subject_id)]?.name_english || `Subject ${row.official_subject_id}`;
+              const active = String(row.id)===String(selectedBatchId);
+              return (
+                <button
+                  key={row.id}
+                  onClick={()=>setSelectedBatchId(String(row.id))}
+                  style={{
+                    display:'block',
+                    width:'100%',
+                    textAlign:'left',
+                    border:'none',
+                    borderBottom:'1px solid #eef2f7',
+                    padding:'12px 14px',
+                    cursor:'pointer',
+                    background:active ? '#eef2ff' : '#fff'
+                  }}
+                >
+                  <div style={{display:'flex',justifyContent:'space-between',gap:'10px',alignItems:'center',marginBottom:'4px'}}>
+                    <strong style={{color:'#111827'}}>{row.class_name}</strong>
+                    <span style={{fontSize:'11px',fontWeight:800,padding:'5px 8px',borderRadius:'999px',background:row.status==='APPROVED'?'#dcfce7':row.status==='REJECTED'?'#fee2e2':'#ede9fe',color:row.status==='APPROVED'?'#166534':row.status==='REJECTED'?'#b91c1c':'#5b21b6'}}>
+                      {row.status || 'DRAFT'}
+                    </span>
+                  </div>
+                  <div style={{fontSize:'13px',color:'#334155',marginBottom:'3px'}}>{subjectName}</div>
+                  <div style={{fontSize:'12px',color:'#64748b'}}>{row.teacher_name || row.teacher_email || 'Teacher'} • Term {row.term_no} • {row.academic_year}</div>
+                </button>
+              );
+            }) : (
+              <div style={{padding:'18px',color:'#64748b',lineHeight:1.6}}>
+                No SASAMS submissions match the selected filters.
+              </div>
+            )}
+          </div>
+
+          <div style={{border:'1px solid #e2e8f0',borderRadius:'12px',background:'#fff',padding:'14px'}}>
+            {!selectedBatch ? (
+              <div style={{padding:'24px 10px',textAlign:'center',color:'#64748b'}}>Choose a SASAMS batch from the left to review it.</div>
+            ) : detailLoading ? (
+              <div style={{padding:'24px 10px',textAlign:'center',color:'#64748b'}}>Loading selected SASAMS batch...</div>
+            ) : (
+              <>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'12px',flexWrap:'wrap',marginBottom:'14px'}}>
+                  <div>
+                    <div style={{fontSize:'20px',fontWeight:900,color:'#111827',marginBottom:'4px'}}>{selectedBatch.class_name} • {activeSubject?.name_english || `Subject ${selectedBatch.official_subject_id}`}</div>
+                    <div style={{fontSize:'13px',color:'#64748b',lineHeight:1.55}}>
+                      Teacher: <strong>{selectedBatch.teacher_name || selectedBatch.teacher_email || 'Teacher'}</strong><br/>
+                      Term {selectedBatch.term_no} • {selectedBatch.academic_year} • Submitted {selectedBatch.submitted_at ? new Date(selectedBatch.submitted_at).toLocaleString('en-ZA') : 'Not yet submitted'}
+                    </div>
+                  </div>
+                  <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'10px 12px',minWidth:'220px'}}>
+                    <div style={{fontSize:'12px',fontWeight:800,color:'#334155',marginBottom:'4px'}}>Batch summary</div>
+                    <div style={{fontSize:'13px',color:'#475569'}}>Status: <strong>{selectedBatch.status || 'DRAFT'}</strong></div>
+                    <div style={{fontSize:'13px',color:'#475569'}}>Captured cells: <strong>{capturedCells}</strong> / {expectedCells || 0}</div>
+                    <div style={{fontSize:'13px',color:'#475569'}}>Completeness: <strong>{completenessPct}%</strong></div>
+                  </div>
+                </div>
+
+                <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'12px'}}>
+                  <button onClick={exportCsv} disabled={!criteria.length} style={{...sbtn,background:'#0f766e',opacity:!criteria.length?0.7:1}}>⬇ Download CSV</button>
+                  <button onClick={exportPdf} disabled={!criteria.length} style={{...sbtn,background:'#334155',opacity:!criteria.length?0.7:1}}>🖨 Print / Save as PDF</button>
+                  <button onClick={()=>updateBatchStatus('APPROVED')} style={{...sbtn,background:'#15803d'}}>✓ Approve</button>
+                  <button onClick={()=>updateBatchStatus('REJECTED')} style={{...sbtn,background:'#b91c1c'}}>↩ Send back to teacher</button>
+                  <button onClick={()=>updateBatchStatus('DRAFT')} style={{...sbtn,background:'#6b7280'}}>Reset to draft</button>
+                </div>
+
+                {!criteria.length ? (
+                  <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'18px',color:'#64748b'}}>
+                    No criteria were found for this submission yet.
+                  </div>
+                ) : (
+                  <div style={{overflowX:'auto',border:'1px solid #e2e8f0',borderRadius:'12px',background:'#fff'}}>
+                    <table style={{width:'100%',borderCollapse:'collapse',fontSize:'12px'}}>
+                      <thead>
+                        <tr style={{background:'#f8fafc',borderBottom:'1px solid #e2e8f0'}}>
+                          <th style={{textAlign:'left',padding:'10px',minWidth:'210px',position:'sticky',left:0,background:'#f8fafc',zIndex:2}}>Learner</th>
+                          {criteria.map(criterion=>(
+                            <th key={criterion.off_criterion_id} style={{textAlign:'left',padding:'10px',minWidth:'180px',verticalAlign:'top'}}>
+                              <div style={{fontWeight:800,color:'#1f2937',marginBottom:'4px'}}>
+                                {criterion.short_label || criterion.description || `Criterion ${criterion.off_criterion_id}`}
+                              </div>
+                              <div style={{fontSize:'11px',color:'#64748b',lineHeight:1.45}}>
+                                Max {criterion.criterion_score_max || 0}
+                              </div>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {groupedLearners.map(learner=>(
+                          <tr key={learner.learner_no} style={{borderBottom:'1px solid #f1f5f9'}}>
+                            <td style={{padding:'10px',position:'sticky',left:0,background:'#fff',zIndex:1}}>
+                              <div style={{fontWeight:800,color:'#111827'}}>{learner.surname}, {learner.firstname}</div>
+                              <div style={{fontSize:'11px',color:'#64748b'}}>No. {learner.learner_no}</div>
+                            </td>
+                            {criteria.map(criterion=>{
+                              const row = learner.cells[String(criterion.off_criterion_id)];
+                              const raw = row?.raw_mark_entered;
+                              const maxScore = Number(criterion.criterion_score_max || 0);
+                              const pct = raw===null || raw===undefined || raw==='' || !maxScore ? null : Math.round((Number(raw) / maxScore) * 100);
+                              return (
+                                <td key={`${learner.learner_no}_${criterion.off_criterion_id}`} style={{padding:'10px',verticalAlign:'top'}}>
+                                  <div style={{fontWeight:800,color:'#111827'}}>{raw===null || raw===undefined || raw==='' ? '—' : raw}</div>
+                                  <div style={{fontSize:'11px',color:'#64748b'}}>{pct===null ? `Out of ${maxScore}` : `${pct}%`}</div>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 
 function ModerationToolsTab({teacherAuth=null, adminAccess=false, selClass=''}){
@@ -5352,6 +5775,7 @@ function AdminDashboard({onBack,adminUser}){
           onProjectTest={(phase)=>setProjectMode({phase})}
         />
       )}
+      {subTab==='sasams_submits' && <SasamsAdminSubmissionsTab adminUser={adminUser} />}
       {subTab==='reading' && <ReadingResultsTab reading={reading}/>}
       {subTab==='discipline' && <DisciplineAdminTab adminUser={adminUser} />}
       {subTab==='learners' && <LearnersAdminTab overrides={overrides} setOverrides={setOverrides} setAssessments={setAssessments}/>}
@@ -7357,7 +7781,7 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
 
   const submitForHodReview = async()=>{
     if(isLocked){
-      showMsg('This batch has already been submitted for HOD review.');
+      showMsg('This batch has already been submitted for admin review.');
       return;
     }
     if(!criteria.length){
@@ -7373,7 +7797,7 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
       await new Promise(resolve=>setTimeout(resolve, 650));
       const savedBatch = await ensureDraftBatch();
       const missing = expectedCells - capturedCells;
-      if(missing > 0 && !window.confirm(`There are still ${missing} blank mark cells. Submit this batch to HOD review anyway?`)){
+      if(missing > 0 && !window.confirm(`There are still ${missing} blank mark cells. Submit this batch for admin review anyway?`)){
         setSubmitBusy(false);
         return;
       }
@@ -7386,11 +7810,11 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
       await db.patch('carissa_sasams_marks', `batch_id=eq.${savedBatch.id}`, {status:'SUBMITTED', updated_at:now});
       const updated = Array.isArray(rows) ? rows[0] : rows;
       setBatch(updated || {...savedBatch,status:'SUBMITTED',submitted_at:now,updated_at:now});
-      setStatus('Submitted for HOD review.');
-      showMsg('✓ SASAMS marks submitted for HOD review.');
-      onAudit && onAudit('sasams_submit_hod');
+      setStatus('Submitted for admin review.');
+      showMsg('✓ SASAMS marks submitted for admin review.');
+      onAudit && onAudit('sasams_submit_admin');
     }catch(err){
-      setStatus(sasamsFriendlyError(err, 'Could not submit this batch for HOD review.'));
+      setStatus(sasamsFriendlyError(err, 'Could not submit this batch for admin review.'));
     }
     setSubmitBusy(false);
   };
@@ -7401,7 +7825,7 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
         <div>
           <h3 style={{...ctitle,marginBottom:'6px'}}>🧮 SASAMS Marks</h3>
           <p style={{fontSize:'13px',color:'#64748b',lineHeight:1.6,maxWidth:'820px'}}>
-            Capture marks for the selected class using SASAMS criteria, with autosave and a submit step for HOD review. SA-SAMS sync will be added later after the capture flow is stable.
+            Capture marks for the selected class using SASAMS criteria, with autosave and a submit step for admin review. SA-SAMS sync will be added later after the capture flow is stable.
           </p>
         </div>
         <div style={{background:'#eef2ff',border:'1px solid #c7d2fe',borderRadius:'12px',padding:'10px 12px',minWidth:'240px'}}>
@@ -7540,7 +7964,7 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
 
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',marginTop:'14px'}}>
             <div style={{fontSize:'12px',color:'#64748b',lineHeight:1.6}}>
-              Autosave runs while the teacher types. After checking completeness, submit the batch for HOD review to lock the marks.
+              Autosave runs while the teacher types. After checking completeness, submit the batch for admin review to lock the marks.
             </div>
             <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
               <button onClick={downloadSasamsCsv} disabled={!criteria.length} style={{...sbtn,background:'#0f766e',opacity:!criteria.length?0.7:1}}>
@@ -7554,7 +7978,7 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
                 disabled={submitBusy || isLocked || !criteria.length}
                 style={{...sbtn,background:isLocked?'#94a3b8':'#4f46e5',opacity:(submitBusy || !criteria.length)?0.7:1}}
               >
-                {submitBusy ? 'Submitting...' : 'Submit for HOD review'}
+                {submitBusy ? 'Submitting...' : 'Submit for Admin review'}
               </button>
             </div>
           </div>
