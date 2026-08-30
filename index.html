@@ -1044,6 +1044,7 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
   const [form,setForm]=useState({...blank});
   const [msg,setMsg]=useState('');
   const [busy,setBusy]=useState(false);
+  const [busyLabel,setBusyLabel]=useState('');
   const [resFilter,setResFilter]=useState('all'); // all | splashlearn | other
   const showMsg = m => {setMsg(m);setTimeout(()=>setMsg(''),5000);};
   const f = (k,v) => setForm(p=>({...p,[k]:v}));
@@ -1073,6 +1074,7 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
       return;
     }
     setBusy(true);
+    setBusyLabel('Preparing assignment...');
     try{
       const legacyAssignType = form.assign_type==='learner' ? 'learner' : 'class';
       const base = {
@@ -1084,21 +1086,26 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
       };
 
       const postRows = async (cls, targets) => {
-        const rows = [];
-        for(const t of targets){
-          const r = await db.post('carissa_resource_assignments',{...base,class_name:cls,surname:t.surname,firstname:t.firstname});
-          rows.push(r[0]);
-        }
-        return rows;
+        if(!targets.length) return [];
+        const payload = targets.map(t=>({
+          ...base,
+          class_name:cls,
+          surname:t.surname,
+          firstname:t.firstname
+        }));
+        const rows = await db.post('carissa_resource_assignments', payload);
+        return Array.isArray(rows) ? rows : (rows ? [rows] : []);
       };
 
       if(form.assign_type==='learner'){
         if(!form.surname||!form.firstname){alert('Select a learner');setBusy(false);return;}
+        setBusyLabel(`Assigning to ${form.firstname} ${form.surname}...`);
         const r = await db.post('carissa_resource_assignments',{...base,surname:form.surname,firstname:form.firstname});
         setAssignments(p=>[r[0],...p]);
         showMsg(`✓ Assigned to ${form.firstname} ${form.surname} (${form.class_name})`);
         setForm({...blank});
         setBusy(false);
+        setBusyLabel('');
         return;
       }
 
@@ -1110,6 +1117,7 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
         if(!targets.length){alert('No learners on the intervention list for this class.');setBusy(false);return;}
         totalTargets = targets.length;
         if(totalTargets>60 && !confirm(`This will assign to ${totalTargets} intervention learners. Continue?`)){setBusy(false);return;}
+        setBusyLabel(`Assigning to ${totalTargets} intervention learner(s)...`);
         rowsAll.push(...await postRows(form.class_name, targets));
       }
 
@@ -1118,6 +1126,7 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
         if(!targets.length){alert('No learners found on the class list for this class.');setBusy(false);return;}
         totalTargets = targets.length;
         if(totalTargets>60 && !confirm(`This will assign to ${totalTargets} learners in the class list. Continue?`)){setBusy(false);return;}
+        setBusyLabel(`Assigning to ${totalTargets} learner(s) in ${form.class_name}...`);
         rowsAll.push(...await postRows(form.class_name, targets));
       }
 
@@ -1129,6 +1138,7 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
         totalTargets = clsWithTargets.reduce((sum,x)=>sum+x.targets.length,0);
         if(!clsWithTargets.length){alert('No intervention learners found across any classes.');setBusy(false);return;}
         if(totalTargets>60 && !confirm(`This will assign to ${totalTargets} intervention learners across ${clsWithTargets.length} classes. Continue?`)){setBusy(false);return;}
+        setBusyLabel(`Assigning to ${totalTargets} intervention learner(s) across ${clsWithTargets.length} classes...`);
         for(const x of clsWithTargets) rowsAll.push(...await postRows(x.cls, x.targets));
       }
 
@@ -1140,6 +1150,7 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
         totalTargets = clsWithTargets.reduce((sum,x)=>sum+x.targets.length,0);
         if(!clsWithTargets.length){alert('No class lists found across any classes.');setBusy(false);return;}
         if(totalTargets>60 && !confirm(`This will assign to ${totalTargets} learners across ${clsWithTargets.length} classes. Continue?`)){setBusy(false);return;}
+        setBusyLabel(`Assigning to ${totalTargets} learner(s) across ${clsWithTargets.length} classes...`);
         for(const x of clsWithTargets) rowsAll.push(...await postRows(x.cls, x.targets));
       }
 
@@ -1148,6 +1159,7 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
       setForm({...blank});
     }catch(e){alert('Error: '+e.message);}
     setBusy(false);
+    setBusyLabel('');
   };
 
   const handleStatusChange = async (id,status) => {
@@ -1274,8 +1286,13 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
             </>
           )}
         </div>
-        <button style={btn} onClick={handleAssign} disabled={busy||!resources.length}>
-          {busy?'Assigning...':(resources.length?'📋 Assign Activity':'Add resources first')}
+        {busy && busyLabel && (
+          <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:'10px',padding:'10px 12px',fontSize:'13px',color:'#1d4ed8',fontWeight:700,marginBottom:'10px'}}>
+            {busyLabel}
+          </div>
+        )}
+        <button style={{...btn,opacity:busy||!resources.length?0.75:1}} onClick={handleAssign} disabled={busy||!resources.length}>
+          {busy?(busyLabel || 'Assigning...'):(resources.length?'📋 Assign Activity':'Add resources first')}
         </button>
       </div>
 
