@@ -3447,6 +3447,7 @@ function SasamsAdminSubmissionsTab({adminUser}){
   const expectedCells = groupedLearners.length * criteria.length;
   const completenessPct = expectedCells ? Math.round((capturedCells / expectedCells) * 100) : 0;
   const activeSubject = selectedBatch ? subjectMap[String(selectedBatch.official_subject_id)] : null;
+  const sasamsPatchVersion = '26.1.1';
 
   const adminHtmlEscape = (value)=>String(value ?? '')
     .replace(/&/g,'&amp;')
@@ -3455,6 +3456,70 @@ function SasamsAdminSubmissionsTab({adminUser}){
     .replace(/"/g,'&quot;')
     .replace(/'/g,'&#39;');
   const adminCsvEscape = (value)=>`"${String(value ?? '').replace(/"/g,'""')}"`;
+  const adminNormalizeCriterionTitle = (criterion)=>{
+    const raw = String(criterion?.short_label || criterion?.description || `Criterion ${criterion?.off_criterion_id || ''}`).trim();
+    return raw.replace(/^\d+\s*:\s*/,'').trim() || raw;
+  };
+  const adminLevelFromPercent = (pct)=>{
+    if(pct===null || pct===undefined || Number.isNaN(Number(pct))) return '';
+    const value = Number(pct);
+    if(value >= 80) return 7;
+    if(value >= 70) return 6;
+    if(value >= 60) return 5;
+    if(value >= 50) return 4;
+    if(value >= 40) return 3;
+    if(value >= 30) return 2;
+    return 1;
+  };
+  const adminTotalPossibleWeighted = useMemo(()=>{
+    return Math.round((criteria||[]).reduce((sum, criterion)=>sum + (Number(criterion?.sba_of_yearmark_pct || 0) || 0), 0) * 100) / 100;
+  },[criteria]);
+  const adminLearnerSummaryMap = useMemo(()=>{
+    const out = {};
+    groupedLearners.forEach(learner=>{
+      let taskTotal = 0;
+      let weightedTotal = 0;
+      let captured = 0;
+      criteria.forEach(criterion=>{
+        const rawValue = learner.cells[String(criterion.off_criterion_id)]?.raw_mark_entered;
+        if(rawValue==='' || rawValue===null || rawValue===undefined) return;
+        const numeric = Number(rawValue);
+        if(Number.isNaN(numeric)) return;
+        const maxScore = Number(criterion?.criterion_score_max || 0);
+        const percent = maxScore ? (numeric / maxScore) * 100 : null;
+        const weighting = Number(criterion?.sba_of_yearmark_pct || 0) || 0;
+        taskTotal += numeric;
+        captured += 1;
+        if(percent!==null) weightedTotal += (percent * weighting) / 100;
+      });
+      const roundedTaskTotal = Math.round(taskTotal * 100) / 100;
+      const roundedWeightedTotal = Math.round(weightedTotal * 100) / 100;
+      const termPercent = adminTotalPossibleWeighted ? Math.round(((roundedWeightedTotal / adminTotalPossibleWeighted) * 100) * 100) / 100 : null;
+      out[String(learner.learner_no)] = {
+        taskTotal: roundedTaskTotal,
+        weightedTotal: roundedWeightedTotal,
+        termPercent,
+        level: adminLevelFromPercent(termPercent),
+        captured
+      };
+    });
+    return out;
+  },[adminTotalPossibleWeighted, criteria, groupedLearners]);
+  const adminCriterionGroups = useMemo(()=>{
+    const groups = [];
+    const isFoundationLifeSkills = selectedBatch && Number(selectedBatch.grade_no) >= 0 && Number(selectedBatch.grade_no) <= 3 && /life skills/i.test(String(activeSubject?.name_english || ''));
+    criteria.forEach(criterion=>{
+      const title = adminNormalizeCriterionTitle(criterion);
+      const groupLabel = isFoundationLifeSkills ? title : 'Tasks';
+      const existing = groups.find(group=>group.label === groupLabel);
+      if(existing){
+        existing.criteria.push(criterion);
+      }else{
+        groups.push({ label: groupLabel, criteria: [criterion] });
+      }
+    });
+    return groups;
+  },[activeSubject, criteria, selectedBatch]);
   const exportBaseName = selectedBatch
     ? `sasams-admin-${selectedBatch.academic_year}-term-${selectedBatch.term_no}-${String(selectedBatch.class_name || 'class').replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'').toLowerCase()}-${String(activeSubject?.name_english || 'subject').replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'').toLowerCase()}`
     : 'sasams-admin-export';
@@ -3464,12 +3529,25 @@ function SasamsAdminSubmissionsTab({adminUser}){
       setStatusMsg('Open a SASAMS submission first before downloading the CSV.');
       return;
     }
-    const columns = ['Learner No','Surname','Firstname',...criteria.map(criterion=>`${criterion.short_label || criterion.description || `Criterion ${criterion.off_criterion_id}`} / ${criterion.criterion_score_max || 0}`)];
+    const columns = [
+      'Learner No',
+      'Surname',
+      'Firstname',
+      ...criteria.map(criterion=>`${adminNormalizeCriterionTitle(criterion)} / ${criterion.criterion_score_max || 0}`),
+      'Task Total',
+      'Total Weighted Mark',
+      'Term %',
+      'Level'
+    ];
     const rows = groupedLearners.map(learner=>[
       learner.learner_no,
       learner.surname,
       learner.firstname,
-      ...criteria.map(criterion=>learner.cells[String(criterion.off_criterion_id)]?.raw_mark_entered ?? '')
+      ...criteria.map(criterion=>learner.cells[String(criterion.off_criterion_id)]?.raw_mark_entered ?? ''),
+      adminLearnerSummaryMap[String(learner.learner_no)]?.taskTotal ?? '',
+      adminLearnerSummaryMap[String(learner.learner_no)]?.weightedTotal ?? '',
+      adminLearnerSummaryMap[String(learner.learner_no)]?.termPercent ?? '',
+      adminLearnerSummaryMap[String(learner.learner_no)]?.level ?? ''
     ]);
     const csv = [columns, ...rows].map(row=>row.map(adminCsvEscape).join(',')).join('\r\n');
     downloadBlob(new Blob([csv], {type:'text/csv;charset=utf-8'}), `${exportBaseName}.csv`);
@@ -3481,21 +3559,36 @@ function SasamsAdminSubmissionsTab({adminUser}){
       setStatusMsg('Open a SASAMS submission first before printing or saving as PDF.');
       return;
     }
-    const headHtml = criteria.map(criterion=>`
+    const generatedAt = new Date().toLocaleString('en-ZA');
+    const groupedHeadRow = adminCriterionGroups.map(group=>`
+      <th colspan="${group.criteria.length}" class="group-head">${adminHtmlEscape(group.label)}</th>
+    `).join('') + `<th colspan="4" class="results-head">Results</th>`;
+    const detailHeadRow = criteria.map(criterion=>`
       <th>
-        <div class="crit-title">${adminHtmlEscape(criterion.short_label || criterion.description || `Criterion ${criterion.off_criterion_id}`)}</div>
-        <div class="crit-sub">Max ${adminHtmlEscape(criterion.criterion_score_max || 0)}</div>
+        <div class="crit-title">${adminHtmlEscape(adminNormalizeCriterionTitle(criterion))}</div>
+        <div class="crit-sub">Max ${adminHtmlEscape(criterion.criterion_score_max || 0)}${criterion.sba_of_yearmark_pct!==null && criterion.sba_of_yearmark_pct!==undefined ? ` • ${adminHtmlEscape(criterion.sba_of_yearmark_pct)}% of SBA` : ''}</div>
       </th>
-    `).join('');
-    const bodyHtml = groupedLearners.map(learner=>`
+    `).join('') + `
+      <th><div class="crit-title">Task total</div><div class="crit-sub">Raw marks</div></th>
+      <th><div class="crit-title">Total weighted mark</div><div class="crit-sub">SBA weighted</div></th>
+      <th><div class="crit-title">Term %</div><div class="crit-sub">Out of 100</div></th>
+      <th><div class="crit-title">Level</div><div class="crit-sub">1 to 7</div></th>
+    `;
+    const bodyHtml = groupedLearners.map(learner=>{
+      const summary = adminLearnerSummaryMap[String(learner.learner_no)] || {};
+      return `
       <tr>
+        <td class="number-cell">${adminHtmlEscape(learner.learner_no)}</td>
         <td class="learner-cell">
           <div class="learner-name">${adminHtmlEscape(learner.surname)}, ${adminHtmlEscape(learner.firstname)}</div>
-          <div class="learner-no">No. ${adminHtmlEscape(learner.learner_no)}</div>
         </td>
         ${criteria.map(criterion=>`<td>${adminHtmlEscape(learner.cells[String(criterion.off_criterion_id)]?.raw_mark_entered ?? '—')}</td>`).join('')}
+        <td>${adminHtmlEscape(summary.taskTotal ?? '—')}</td>
+        <td>${adminHtmlEscape(summary.weightedTotal ?? '—')}</td>
+        <td>${adminHtmlEscape(summary.termPercent ?? '—')}</td>
+        <td>${adminHtmlEscape(summary.level ?? '—')}</td>
       </tr>
-    `).join('');
+    `}).join('');
     const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -3504,47 +3597,65 @@ function SasamsAdminSubmissionsTab({adminUser}){
   <style>
     @page { size: A4 landscape; margin: 12mm; }
     body { font-family: Arial, sans-serif; color: #0f172a; margin: 0; }
-    .wrap { padding: 8px 4px; }
+    .wrap { padding: 4px 2px; }
     .toolbar { margin-bottom: 10px; }
     .btn-print { border:0; background:#4f46e5; color:#fff; padding:10px 14px; border-radius:8px; font-weight:700; cursor:pointer; }
-    .header { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom: 12px; }
-    .title { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
-    .meta { font-size: 12px; color:#475569; line-height:1.55; }
-    .summary { border:1px solid #cbd5e1; border-radius: 10px; padding:10px 12px; font-size:12px; min-width: 220px; }
-    .summary strong { display:block; font-size:14px; color:#312e81; margin-bottom:4px; }
-    table { width:100%; border-collapse:collapse; font-size:11px; }
-    th, td { border:1px solid #cbd5e1; padding:6px 7px; vertical-align:top; }
+    .sheet-head { border:1px solid #94a3b8; margin-bottom:10px; }
+    .sheet-top { display:flex; justify-content:space-between; gap:18px; padding:10px 12px 6px; border-bottom:1px solid #cbd5e1; }
+    .title-block { flex:1; }
+    .school { font-size:18px; font-weight:900; letter-spacing:.2px; color:#111827; margin-bottom:4px; }
+    .title { font-size:15px; font-weight:800; color:#312e81; margin-bottom:2px; }
+    .subtitle { font-size:11px; color:#475569; }
+    .meta-grid { display:grid; grid-template-columns: repeat(2,minmax(160px,1fr)); gap:4px 18px; font-size:11px; color:#334155; min-width:360px; }
+    .meta-grid strong { color:#0f172a; }
+    .summary-bar { display:flex; gap:18px; flex-wrap:wrap; padding:6px 12px; background:#f8fafc; font-size:11px; color:#334155; }
+    .summary-pill strong { color:#0f172a; }
+    table { width:100%; border-collapse:collapse; font-size:10px; table-layout:auto; }
+    thead { display:table-header-group; }
+    tr { page-break-inside:avoid; }
+    th, td { border:1px solid #cbd5e1; padding:5px 6px; vertical-align:top; }
     th { background:#eef2ff; text-align:left; }
+    .group-head { background:#e0e7ff; text-align:center; color:#312e81; font-weight:800; }
+    .results-head { background:#dcfce7; text-align:center; color:#14532d; font-weight:800; }
     .crit-title { font-weight:700; color:#111827; margin-bottom:3px; }
     .crit-sub { font-size:10px; color:#64748b; }
+    .number-cell { width:36px; text-align:center; font-weight:700; }
     .learner-cell { min-width: 170px; }
     .learner-name { font-weight:700; }
-    .learner-no { font-size:10px; color:#64748b; margin-top:2px; }
     @media print { .toolbar { display:none; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="toolbar"><button class="btn-print" onclick="window.print()">🖨 Print / Save as PDF</button></div>
-    <div class="header">
-      <div>
-        <div class="title">SASAMS Admin Submission</div>
-        <div class="meta">
+    <div class="sheet-head">
+      <div class="sheet-top">
+        <div class="title-block">
+          <div class="school">CARISSA PRIMARY SCHOOL</div>
+          <div class="title">SA-SAMS Admin Review Sheet</div>
+          <div class="subtitle">Digital review layout aligned to patch ${adminHtmlEscape(sasamsPatchVersion)}</div>
+        </div>
+        <div class="meta-grid">
           <div><strong>Class:</strong> ${adminHtmlEscape(selectedBatch.class_name)}</div>
+          <div><strong>Academic year:</strong> ${adminHtmlEscape(selectedBatch.academic_year)}</div>
           <div><strong>Subject:</strong> ${adminHtmlEscape(activeSubject?.name_english || '')}</div>
           <div><strong>Term:</strong> ${adminHtmlEscape(`Term ${selectedBatch.term_no}`)}</div>
           <div><strong>Teacher:</strong> ${adminHtmlEscape(selectedBatch.teacher_name || selectedBatch.teacher_email || '')}</div>
+          <div><strong>Generated:</strong> ${adminHtmlEscape(generatedAt)}</div>
         </div>
       </div>
-      <div class="summary">
-        <strong>${adminHtmlEscape(selectedBatch.status || 'DRAFT')}</strong>
-        <div>Academic year: ${adminHtmlEscape(selectedBatch.academic_year)}</div>
-        <div>Captured cells: ${adminHtmlEscape(capturedCells)} / ${adminHtmlEscape(expectedCells || 0)}</div>
-        <div>Completeness: ${adminHtmlEscape(`${completenessPct}%`)}</div>
+      <div class="summary-bar">
+        <div class="summary-pill"><strong>Status:</strong> ${adminHtmlEscape(selectedBatch.status || 'DRAFT')}</div>
+        <div class="summary-pill"><strong>Learners:</strong> ${adminHtmlEscape(groupedLearners.length)}</div>
+        <div class="summary-pill"><strong>Captured cells:</strong> ${adminHtmlEscape(capturedCells)} / ${adminHtmlEscape(expectedCells || 0)}</div>
+        <div class="summary-pill"><strong>Completeness:</strong> ${adminHtmlEscape(`${completenessPct}%`)}</div>
       </div>
     </div>
     <table>
-      <thead><tr><th>Learner</th>${headHtml}</tr></thead>
+      <thead>
+        <tr><th rowspan="2">No</th><th rowspan="2">Learner</th>${groupedHeadRow}</tr>
+        <tr>${detailHeadRow}</tr>
+      </thead>
       <tbody>${bodyHtml}</tbody>
     </table>
   </div>
