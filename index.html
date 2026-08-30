@@ -7207,6 +7207,153 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
     return total;
   },[criteria, draftValues, invalidCells, learners, marksMap]);
   const completenessPct = expectedCells ? Math.round((capturedCells / expectedCells) * 100) : 0;
+  const activeSubject = subjects.find(row=>String(row.official_subject_id)===String(subjectId));
+
+  const getCellRawValue = (learnerNo, criterionId)=>{
+    const key = sasamsCellKey(String(learnerNo), String(criterionId));
+    return Object.prototype.hasOwnProperty.call(draftValues,key)
+      ? draftValues[key]
+      : (marksMap[key]?.raw_mark_entered===null || marksMap[key]?.raw_mark_entered===undefined ? '' : String(marksMap[key].raw_mark_entered));
+  };
+  const csvEscape = (value)=>`"${String(value ?? '').replace(/"/g,'""')}"`;
+  const htmlEscape = (value)=>String(value ?? '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+  const sasamsExportBaseName = ()=>{
+    const safeClass = String(selClass || 'class').trim().replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'').toLowerCase();
+    const safeSubject = String(activeSubject?.name_english || 'subject').trim().replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'').toLowerCase();
+    return `sasams-${academicYear}-term-${termNo}-${safeClass}-${safeSubject}`;
+  };
+
+  const downloadSasamsCsv = ()=>{
+    if(!criteria.length){
+      showMsg('Load the SASAMS grid first before downloading the CSV.');
+      return;
+    }
+    const columns = [
+      'Learner No',
+      'Surname',
+      'Firstname',
+      ...criteria.map(criterion=>`${criterion.short_label || criterion.description || `Criterion ${criterion.off_criterion_id}`} / ${criterion.criterion_score_max || 0}`)
+    ];
+    const rows = learners.map((learner, index)=>{
+      const learnerNo = String(learner.__learner_no || learner.number || index + 1);
+      return [
+        learnerNo,
+        learner.surname || '',
+        learner.firstname || '',
+        ...criteria.map(criterion=>getCellRawValue(learnerNo, criterion.off_criterion_id))
+      ];
+    });
+    const csv = [columns, ...rows].map(row=>row.map(csvEscape).join(',')).join('\r\n');
+    downloadBlob(new Blob([csv], {type:'text/csv;charset=utf-8'}), `${sasamsExportBaseName()}.csv`);
+    setStatus('CSV downloaded.');
+    onAudit && onAudit('sasams_export_csv');
+  };
+
+  const printSasamsPdf = ()=>{
+    if(!criteria.length){
+      showMsg('Load the SASAMS grid first before printing or saving as PDF.');
+      return;
+    }
+    const tableHead = criteria.map(criterion=>`
+      <th>
+        <div class="crit-title">${htmlEscape(criterion.short_label || criterion.description || `Criterion ${criterion.off_criterion_id}`)}</div>
+        <div class="crit-sub">Max ${htmlEscape(criterion.criterion_score_max || 0)}</div>
+      </th>
+    `).join('');
+    const tableBody = learners.map((learner, index)=>{
+      const learnerNo = String(learner.__learner_no || learner.number || index + 1);
+      const cellHtml = criteria.map(criterion=>{
+        const rawValue = getCellRawValue(learnerNo, criterion.off_criterion_id);
+        return `<td>${htmlEscape(rawValue || '—')}</td>`;
+      }).join('');
+      return `
+        <tr>
+          <td class="learner-cell">
+            <div class="learner-name">${htmlEscape(learner.surname)}, ${htmlEscape(learner.firstname)}</div>
+            <div class="learner-no">No. ${htmlEscape(learnerNo)}</div>
+          </td>
+          ${cellHtml}
+        </tr>
+      `;
+    }).join('');
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>${htmlEscape(`${selClass} ${activeSubject?.name_english || 'SASAMS'} marks`)}</title>
+  <style>
+    @page { size: A4 landscape; margin: 12mm; }
+    body { font-family: Arial, sans-serif; color: #0f172a; margin: 0; }
+    .wrap { padding: 8px 4px; }
+    .header { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom: 12px; }
+    .title { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+    .meta { font-size: 12px; color:#475569; line-height:1.55; }
+    .summary { border:1px solid #cbd5e1; border-radius: 10px; padding:10px 12px; font-size:12px; min-width: 220px; }
+    .summary strong { display:block; font-size:14px; color:#312e81; margin-bottom:4px; }
+    table { width:100%; border-collapse:collapse; font-size:11px; }
+    th, td { border:1px solid #cbd5e1; padding:6px 7px; vertical-align:top; }
+    th { background:#eef2ff; text-align:left; }
+    .crit-title { font-weight:700; color:#111827; margin-bottom:3px; }
+    .crit-sub { font-size:10px; color:#64748b; }
+    .learner-cell { min-width: 170px; }
+    .learner-name { font-weight:700; }
+    .learner-no { font-size:10px; color:#64748b; margin-top:2px; }
+    .toolbar { margin-bottom: 10px; }
+    .btn-print { border:0; background:#4f46e5; color:#fff; padding:10px 14px; border-radius:8px; font-weight:700; cursor:pointer; }
+    @media print { .toolbar { display:none; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="toolbar"><button class="btn-print" onclick="window.print()">🖨 Print / Save as PDF</button></div>
+    <div class="header">
+      <div>
+        <div class="title">SASAMS Marks Export</div>
+        <div class="meta">
+          <div><strong>Class:</strong> ${htmlEscape(selClass)}</div>
+          <div><strong>Subject:</strong> ${htmlEscape(activeSubject?.name_english || '')}</div>
+          <div><strong>Term:</strong> ${htmlEscape(`Term ${termNo}`)}</div>
+          <div><strong>Teacher:</strong> ${htmlEscape(teacherName)}</div>
+        </div>
+      </div>
+      <div class="summary">
+        <strong>${htmlEscape(batchStatus)}</strong>
+        <div>Academic year: ${htmlEscape(academicYear)}</div>
+        <div>Captured cells: ${htmlEscape(capturedCells)} / ${htmlEscape(expectedCells || 0)}</div>
+        <div>Completeness: ${htmlEscape(`${completenessPct}%`)}</div>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Learner</th>
+          ${tableHead}
+        </tr>
+      </thead>
+      <tbody>
+        ${tableBody}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>`;
+    const w = window.open('', '_blank');
+    if(!w){
+      showMsg('Could not open the print view on this device.');
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    setTimeout(()=>{ try{ w.print(); }catch(e){} }, 350);
+    setStatus('Print view opened.');
+    onAudit && onAudit('sasams_export_pdf');
+  };
 
   const submitForHodReview = async()=>{
     if(isLocked){
@@ -7247,8 +7394,6 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
     }
     setSubmitBusy(false);
   };
-
-  const activeSubject = subjects.find(row=>String(row.official_subject_id)===String(subjectId));
 
   return (
     <div style={card}>
@@ -7397,13 +7542,21 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
             <div style={{fontSize:'12px',color:'#64748b',lineHeight:1.6}}>
               Autosave runs while the teacher types. After checking completeness, submit the batch for HOD review to lock the marks.
             </div>
-            <button
-              onClick={submitForHodReview}
-              disabled={submitBusy || isLocked || !criteria.length}
-              style={{...sbtn,background:isLocked?'#94a3b8':'#4f46e5',opacity:(submitBusy || !criteria.length)?0.7:1}}
-            >
-              {submitBusy ? 'Submitting...' : 'Submit for HOD review'}
-            </button>
+            <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+              <button onClick={downloadSasamsCsv} disabled={!criteria.length} style={{...sbtn,background:'#0f766e',opacity:!criteria.length?0.7:1}}>
+                ⬇ Download CSV
+              </button>
+              <button onClick={printSasamsPdf} disabled={!criteria.length} style={{...sbtn,background:'#334155',opacity:!criteria.length?0.7:1}}>
+                🖨 Print / Save as PDF
+              </button>
+              <button
+                onClick={submitForHodReview}
+                disabled={submitBusy || isLocked || !criteria.length}
+                style={{...sbtn,background:isLocked?'#94a3b8':'#4f46e5',opacity:(submitBusy || !criteria.length)?0.7:1}}
+              >
+                {submitBusy ? 'Submitting...' : 'Submit for HOD review'}
+              </button>
+            </div>
           </div>
         </>
       )}
