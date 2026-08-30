@@ -7701,6 +7701,27 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
     if(Number.isNaN(numeric)) return '—';
     return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(2).replace(/\.00$/,'');
   };
+  const normalizeSasamsCriterionTitle = (criterion)=>{
+    const raw = String(criterion?.short_label || criterion?.description || `Criterion ${criterion?.off_criterion_id || ''}`).trim();
+    return raw.replace(/^\d+\s*:\s*/,'').trim() || raw;
+  };
+  const sasamsCriterionGroups = useMemo(()=>{
+    const groups = [];
+    const isFoundationLifeSkills = gradeNo!==null && Number(gradeNo) >= 0 && Number(gradeNo) <= 3 && /life skills/i.test(String(activeSubject?.name_english || ''));
+    criteria.forEach(criterion=>{
+      const title = normalizeSasamsCriterionTitle(criterion);
+      const groupLabel = isFoundationLifeSkills
+        ? title
+        : 'Tasks';
+      const existing = groups.find(group=>group.label === groupLabel);
+      if(existing){
+        existing.criteria.push(criterion);
+      }else{
+        groups.push({ label: groupLabel, criteria: [criterion] });
+      }
+    });
+    return groups;
+  },[activeSubject, criteria, gradeNo]);
   const sasamsExportBaseName = ()=>{
     const safeClass = String(selClass || 'class').trim().replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'').toLowerCase();
     const safeSubject = String(activeSubject?.name_english || 'subject').trim().replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'').toLowerCase();
@@ -7974,12 +7995,28 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
           <div style={{overflowX:'auto',border:'1px solid #e2e8f0',borderRadius:'12px',background:'#fff'}}>
             <table style={{width:'100%',borderCollapse:'collapse',fontSize:'12px'}}>
               <thead>
+                <tr style={{background:'#eef2ff',borderBottom:'1px solid #c7d2fe'}}>
+                  <th rowSpan="2" style={{textAlign:'left',padding:'10px',minWidth:'210px',position:'sticky',left:0,background:'#eef2ff',zIndex:3}}>
+                    Learner
+                  </th>
+                  {sasamsCriterionGroups.map((group, groupIndex)=>(
+                    <th
+                      key={`${group.label}_${groupIndex}`}
+                      colSpan={group.criteria.length}
+                      style={{textAlign:'center',padding:'10px',minWidth:Math.max(180, group.criteria.length * 160),verticalAlign:'middle',fontWeight:900,color:'#312e81',borderLeft:'1px solid #dbe2f0'}}
+                    >
+                      {group.label}
+                    </th>
+                  ))}
+                  <th colSpan="4" style={{textAlign:'center',padding:'10px',minWidth:'440px',verticalAlign:'middle',fontWeight:900,color:'#14532d',borderLeft:'1px solid #dbe2f0'}}>
+                    Results
+                  </th>
+                </tr>
                 <tr style={{background:'#f8fafc',borderBottom:'1px solid #e2e8f0'}}>
-                  <th style={{textAlign:'left',padding:'10px',minWidth:'210px',position:'sticky',left:0,background:'#f8fafc',zIndex:2}}>Learner</th>
                   {criteria.map(criterion=>(
                     <th key={criterion.off_criterion_id} style={{textAlign:'left',padding:'10px',minWidth:'180px',verticalAlign:'top'}}>
                       <div style={{fontWeight:800,color:'#1f2937',marginBottom:'4px'}}>
-                        {criterion.short_label || criterion.description || `Criterion ${criterion.off_criterion_id}`}
+                        {normalizeSasamsCriterionTitle(criterion)}
                       </div>
                       <div style={{fontSize:'11px',color:'#64748b',lineHeight:1.45}}>
                         Max {criterion.criterion_score_max || 0}
