@@ -3336,6 +3336,7 @@ function SasamsAdminSubmissionsTab({adminUser}){
   const [loading,setLoading] = useState(true);
   const [detailLoading,setDetailLoading] = useState(false);
   const [statusMsg,setStatusMsg] = useState('');
+  const [reviewNote,setReviewNote] = useState('');
   const adminTableScrollerRef = useRef(null);
   const [adminCanScrollLeft,setAdminCanScrollLeft] = useState(false);
   const [adminCanScrollRight,setAdminCanScrollRight] = useState(false);
@@ -3393,6 +3394,10 @@ function SasamsAdminSubmissionsTab({adminUser}){
   const selectedBatch = useMemo(()=>{
     return (batches||[]).find(row=>String(row.id)===String(selectedBatchId)) || null;
   },[batches, selectedBatchId]);
+
+  useEffect(()=>{
+    setReviewNote(String(selectedBatch?.hod_note || ''));
+  },[selectedBatch?.id, selectedBatch?.hod_note]);
 
   useEffect(()=>{
     let alive = true;
@@ -3518,6 +3523,37 @@ function SasamsAdminSubmissionsTab({adminUser}){
     });
     return out;
   },[adminTotalPossibleWeighted, criteria, groupedLearners]);
+  const adminClassSummary = useMemo(()=>{
+    const values = Object.values(adminLearnerSummaryMap || {});
+    if(!values.length){
+      return {
+        averageTaskTotal: null,
+        averageWeightedTotal: null,
+        averageTermPercent: null,
+        dominantLevel: ''
+      };
+    }
+    const numericAverage = (items)=>{
+      const clean = items.filter(value=>value!==null && value!==undefined && !Number.isNaN(Number(value))).map(Number);
+      if(!clean.length) return null;
+      return Math.round((clean.reduce((sum, value)=>sum + value, 0) / clean.length) * 100) / 100;
+    };
+    const levelCounts = {};
+    values.forEach(item=>{
+      const levelKey = String(item?.level || '').trim();
+      if(levelKey) levelCounts[levelKey] = (levelCounts[levelKey] || 0) + 1;
+    });
+    const dominantLevel = Object.entries(levelCounts).sort((a,b)=>{
+      if(b[1] !== a[1]) return b[1] - a[1];
+      return Number(b[0]) - Number(a[0]);
+    })[0]?.[0] || '';
+    return {
+      averageTaskTotal: numericAverage(values.map(item=>item?.taskTotal)),
+      averageWeightedTotal: numericAverage(values.map(item=>item?.weightedTotal)),
+      averageTermPercent: numericAverage(values.map(item=>item?.termPercent)),
+      dominantLevel
+    };
+  },[adminLearnerSummaryMap]);
   const adminCriterionGroups = useMemo(()=>{
     const groups = [];
     const isFoundationLifeSkills = selectedBatch && Number(selectedBatch.grade_no) >= 0 && Number(selectedBatch.grade_no) <= 3 && /life skills/i.test(String(activeSubject?.name_english || ''));
@@ -3596,6 +3632,7 @@ function SasamsAdminSubmissionsTab({adminUser}){
       return;
     }
     const generatedAt = new Date().toLocaleString('en-ZA');
+    const exportReviewNote = String(reviewNote || selectedBatch?.hod_note || '').trim();
     const groupedHeadRow = adminCriterionGroups.map(group=>`
       <th colspan="${group.criteria.length}" class="group-head">${adminHtmlEscape(group.label)}</th>
     `).join('') + `<th colspan="4" class="results-head">Results</th>`;
@@ -3690,6 +3727,8 @@ function SasamsAdminSubmissionsTab({adminUser}){
         <div class="summary-pill"><strong>Learners:</strong> ${adminHtmlEscape(groupedLearners.length)}</div>
         <div class="summary-pill"><strong>Captured cells:</strong> ${adminHtmlEscape(capturedCells)} / ${adminHtmlEscape(expectedCells || 0)}</div>
         <div class="summary-pill"><strong>Completeness:</strong> ${adminHtmlEscape(`${completenessPct}%`)}</div>
+        <div class="summary-pill"><strong>Class avg term %:</strong> ${adminHtmlEscape(adminClassSummary.averageTermPercent ?? '—')}</div>
+        <div class="summary-pill"><strong>Common level:</strong> ${adminHtmlEscape(adminClassSummary.dominantLevel || '—')}</div>
       </div>
     </div>
     <table>
@@ -3710,7 +3749,7 @@ function SasamsAdminSubmissionsTab({adminUser}){
       </div>
       <div class="signoff-card full">
         <div class="signoff-title">Remarks</div>
-        <div style="height:52px;"></div>
+        <div style="min-height:52px;font-size:12px;color:#334155;line-height:1.55;">${adminHtmlEscape(exportReviewNote || 'No review note captured yet.')}</div>
         <div class="sign-line">Comments / approval notes / next steps</div>
       </div>
     </div>
@@ -3733,13 +3772,38 @@ function SasamsAdminSubmissionsTab({adminUser}){
     if(!selectedBatch?.id) return;
     try{
       const now = new Date().toISOString();
-      const patchPayload = {status:nextStatus, updated_at:now};
-      if(nextStatus === 'APPROVED') patchPayload.approved_at = now;
+      const reviewerName = `${adminUser?.first_name || ''} ${adminUser?.surname || ''}`.trim() || adminUser?.email || 'Admin';
+      const trimmedReviewNote = String(reviewNote || '').trim();
+      const patchPayload = {
+        status:nextStatus,
+        updated_at:now,
+        hod_name: reviewerName,
+        hod_note: trimmedReviewNote
+      };
+      if(nextStatus === 'APPROVED'){
+        patchPayload.approved_at = now;
+        patchPayload.rejected_at = null;
+      }else if(nextStatus === 'REJECTED'){
+        patchPayload.rejected_at = now;
+        patchPayload.approved_at = null;
+      }else if(nextStatus === 'DRAFT'){
+        patchPayload.submitted_at = null;
+        patchPayload.approved_at = null;
+        patchPayload.rejected_at = null;
+      }
       const rows = await db.patch('carissa_sasams_batches', `id=eq.${selectedBatch.id}`, patchPayload);
-      await db.patch('carissa_sasams_marks', `batch_id=eq.${selectedBatch.id}`, {status:nextStatus, updated_at:now});
+      const markStatus = nextStatus === 'DRAFT' ? 'PENDING' : nextStatus;
+      await db.patch('carissa_sasams_marks', `batch_id=eq.${selectedBatch.id}`, {status:markStatus, updated_at:now});
       const updated = Array.isArray(rows) ? rows[0] : rows;
       setBatches(prev=>prev.map(row=>String(row.id)===String(selectedBatch.id) ? {...row, ...(updated || patchPayload)} : row));
-      setStatusMsg(`Batch marked as ${nextStatus}.`);
+      if(statusFilter !== 'ALL' && statusFilter !== nextStatus) setStatusFilter(nextStatus);
+      setStatusMsg(
+        nextStatus === 'DRAFT'
+          ? 'Batch reset to draft and opened again for teacher edits.'
+          : nextStatus === 'APPROVED'
+            ? 'Batch approved and review note saved.'
+            : 'Batch sent back to the teacher and review note saved.'
+      );
     }catch(err){
       console.error(err);
       setStatusMsg(`Could not update this SASAMS batch: ${err?.message || 'Unknown error'}`);
@@ -3846,6 +3910,22 @@ function SasamsAdminSubmissionsTab({adminUser}){
                     <div style={{fontSize:'13px',color:'#475569'}}>Status: <strong>{selectedBatch.status || 'DRAFT'}</strong></div>
                     <div style={{fontSize:'13px',color:'#475569'}}>Captured cells: <strong>{capturedCells}</strong> / {expectedCells || 0}</div>
                     <div style={{fontSize:'13px',color:'#475569'}}>Completeness: <strong>{completenessPct}%</strong></div>
+                    <div style={{fontSize:'13px',color:'#475569'}}>Class avg term %: <strong>{adminClassSummary.averageTermPercent ?? '—'}</strong></div>
+                    <div style={{fontSize:'13px',color:'#475569'}}>Common level: <strong>{adminClassSummary.dominantLevel || '—'}</strong></div>
+                  </div>
+                </div>
+
+                <div style={{marginBottom:'12px',border:'1px solid #e2e8f0',borderRadius:'12px',background:'#f8fafc',padding:'12px'}}>
+                  <label style={lbl}>Admin review note</label>
+                  <textarea
+                    rows={4}
+                    value={reviewNote}
+                    onChange={e=>setReviewNote(e.target.value)}
+                    placeholder="Explain why this batch was approved, sent back, or what changes the teacher should make..."
+                    style={{...inp,resize:'vertical',minHeight:'96px'}}
+                  />
+                  <div style={{fontSize:'12px',color:'#64748b',marginTop:'6px'}}>
+                    This note is saved with the submission so the HOD/Admin can record approval reasons or required changes.
                   </div>
                 </div>
 
@@ -3885,6 +3965,22 @@ function SasamsAdminSubmissionsTab({adminUser}){
                               </div>
                             </th>
                           ))}
+                          <th style={{textAlign:'left',padding:'10px',minWidth:'120px',verticalAlign:'top',background:'#ecfdf5'}}>
+                            <div style={{fontWeight:800,color:'#166534',marginBottom:'4px'}}>Task total</div>
+                            <div style={{fontSize:'11px',color:'#047857',lineHeight:1.45}}>Raw marks</div>
+                          </th>
+                          <th style={{textAlign:'left',padding:'10px',minWidth:'140px',verticalAlign:'top',background:'#ecfdf5'}}>
+                            <div style={{fontWeight:800,color:'#166534',marginBottom:'4px'}}>Weighted mark</div>
+                            <div style={{fontSize:'11px',color:'#047857',lineHeight:1.45}}>SBA weighted</div>
+                          </th>
+                          <th style={{textAlign:'left',padding:'10px',minWidth:'100px',verticalAlign:'top',background:'#ecfdf5'}}>
+                            <div style={{fontWeight:800,color:'#166534',marginBottom:'4px'}}>Term %</div>
+                            <div style={{fontSize:'11px',color:'#047857',lineHeight:1.45}}>Out of 100</div>
+                          </th>
+                          <th style={{textAlign:'left',padding:'10px',minWidth:'90px',verticalAlign:'top',background:'#ecfdf5'}}>
+                            <div style={{fontWeight:800,color:'#166534',marginBottom:'4px'}}>Level</div>
+                            <div style={{fontSize:'11px',color:'#047857',lineHeight:1.45}}>1 to 7</div>
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -3906,6 +4002,22 @@ function SasamsAdminSubmissionsTab({adminUser}){
                                 </td>
                               );
                             })}
+                            <td style={{padding:'10px',verticalAlign:'top',background:'#f0fdf4'}}>
+                              <div style={{fontWeight:800,color:'#166534'}}>{adminLearnerSummaryMap[String(learner.learner_no)]?.taskTotal ?? '—'}</div>
+                              <div style={{fontSize:'11px',color:'#047857'}}>Total raw score</div>
+                            </td>
+                            <td style={{padding:'10px',verticalAlign:'top',background:'#f0fdf4'}}>
+                              <div style={{fontWeight:800,color:'#166534'}}>{adminLearnerSummaryMap[String(learner.learner_no)]?.weightedTotal ?? '—'}</div>
+                              <div style={{fontSize:'11px',color:'#047857'}}>Weighted SBA mark</div>
+                            </td>
+                            <td style={{padding:'10px',verticalAlign:'top',background:'#f0fdf4'}}>
+                              <div style={{fontWeight:800,color:'#166534'}}>{adminLearnerSummaryMap[String(learner.learner_no)]?.termPercent ?? '—'}</div>
+                              <div style={{fontSize:'11px',color:'#047857'}}>Overall percentage</div>
+                            </td>
+                            <td style={{padding:'10px',verticalAlign:'top',background:'#f0fdf4'}}>
+                              <div style={{fontWeight:800,color:'#166534'}}>{adminLearnerSummaryMap[String(learner.learner_no)]?.level ?? '—'}</div>
+                              <div style={{fontSize:'11px',color:'#047857'}}>Achievement level</div>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
