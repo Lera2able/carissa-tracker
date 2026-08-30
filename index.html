@@ -182,6 +182,39 @@ const mergeBuiltinResources = (rows=[]) => {
   );
   return [...builtins, ...list];
 };
+const ensureBuiltinLearnWorldResources = async(rows=[]) => {
+  const list = Array.isArray(rows) ? rows : [];
+  const existingTitles = new Set(list.map(r=>String(r?.title||'').trim().toLowerCase()).filter(Boolean));
+  const existingUrls = new Set(list.map(r=>normalizeResourceUrl(r?.url)).filter(Boolean));
+  const missing = BUILTIN_LEARNWORLD_RESOURCES.filter(r=>
+    !existingTitles.has(String(r.title||'').trim().toLowerCase()) &&
+    !existingUrls.has(normalizeResourceUrl(r.url))
+  ).map(({id,builtin,...rest})=>rest);
+  if(!missing.length) return mergeBuiltinResources(list);
+  try{
+    const inserted = await db.post('carissa_resources', missing);
+    const insertedRows = Array.isArray(inserted) ? inserted : (inserted ? [inserted] : []);
+    return mergeBuiltinResources([...insertedRows, ...list]);
+  }catch(e){
+    console.warn('Could not seed built-in LearnWorld resources', e);
+    return mergeBuiltinResources(list);
+  }
+};
+const resolveBuiltInResourceId = async(resourceId, resources=[]) => {
+  const currentId = String(resourceId || '');
+  if(!/^builtin-/i.test(currentId)) return resourceId;
+  const source = (Array.isArray(resources) ? resources : []).find(r=>String(r?.id||'')===currentId);
+  const syncedResources = await ensureBuiltinLearnWorldResources(resources);
+  const match = syncedResources.find(r=>
+    !String(r?.id||'').startsWith('builtin-') &&
+    (
+      normalizeResourceUrl(r?.url)===normalizeResourceUrl(source?.url) ||
+      String(r?.title||'').trim().toLowerCase()===String(source?.title||'').trim().toLowerCase()
+    )
+  );
+  if(!match?.id) throw new Error('The built-in typing game resource could not be prepared yet. Please try again.');
+  return match.id;
+};
 const isLearnWorldGameResource = (r) => !!(r && isTrackableActivityUrl(r.url));
 const STATUS_OPTS = [{v:"assigned",l:"Assigned",c:"#667eea"},{v:"in_progress",l:"In Progress",c:"#f97316"},{v:"completed",l:"Completed",c:"#28a745"}];
 const formatStatusLabel = (status, fallback='assigned') => String(status || fallback).replace(/_/g,' ');
@@ -1076,9 +1109,10 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
     setBusy(true);
     setBusyLabel('Preparing assignment...');
     try{
+      const resolvedResourceId = await resolveBuiltInResourceId(form.resource_id, resources);
       const legacyAssignType = form.assign_type==='learner' ? 'learner' : 'class';
       const base = {
-        resource_id:form.resource_id,
+        resource_id:resolvedResourceId,
         class_name:form.class_name,
         assign_type:legacyAssignType,
         assigned_by:'Admin',
@@ -6021,7 +6055,7 @@ function AdminDashboard({onBack,adminUser}){
           db.get('carissa_teacher_audit','order=created_at.desc&limit=300').catch(()=>[]),
         ]);
         setInterventions(int_);
-        setResources(mergeBuiltinResources(res));
+        setResources(await ensureBuiltinLearnWorldResources(res));
         setAssignments(asn);
         setAssessments(asm);
         setOverrides(ovr);
@@ -6483,7 +6517,7 @@ function LearnerPortalView(){
           db.get('carissa_resources','order=created_at.desc'),
         ]);
         setAssignments(asn||[]);
-        setResources(mergeBuiltinResources(r||[]));
+        setResources(await ensureBuiltinLearnWorldResources(r||[]));
         setResults([]);
       }catch(e){ console.error(e); }
       setLoading(false);
@@ -7125,7 +7159,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
         db.get('carissa_config','key=eq.admin_pin').catch(()=>[]),
       ]);
       const lres = lresResp?.results || [];
-      setAssessments(a); setAssignments(asn); setLearnerResults(lres); setResources(mergeBuiltinResources(r)); setReading(rdg); setInterventions(ints);
+      setAssessments(a); setAssignments(asn); setLearnerResults(lres); setResources(await ensureBuiltinLearnWorldResources(r)); setReading(rdg); setInterventions(ints);
       const parsedCfg = parseAdminConfigValue(adminCfg?.[0]?.value || '{}');
       setSharedAdminEmails([...new Set(parsedCfg.shared_admin_teachers || [])]);
     }catch(e){
@@ -11455,9 +11489,10 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
     }
     setAssignBusy(true);
     try{
+      const resolvedResourceId = await resolveBuiltInResourceId(assignFor.id, resources);
       const teacherName = `${teacherAuth?.first_name||''} ${teacherAuth?.surname||''}`.trim() || teacherAuth?.email || 'Teacher';
       const base = {
-        resource_id: assignFor.id,
+        resource_id: resolvedResourceId,
         class_name: selClass,
         assign_type: assignForm.assign_type==='learner' ? 'learner' : 'class',
         assigned_by: teacherName,
