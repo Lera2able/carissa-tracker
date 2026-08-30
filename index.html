@@ -7769,6 +7769,7 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
       showMsg('Load the SASAMS grid first before printing or saving as PDF.');
       return;
     }
+    const generatedAt = new Date().toLocaleString('en-ZA');
     const groupedHeadRow = sasamsCriterionGroups.map(group=>`
       <th colspan="${group.criteria.length}" class="group-head">${htmlEscape(group.label)}</th>
     `).join('') + `<th colspan="4" class="results-head">Results</th>`;
@@ -7797,9 +7798,9 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
       `;
       return `
         <tr>
+          <td class="number-cell">${htmlEscape(learnerNo)}</td>
           <td class="learner-cell">
             <div class="learner-name">${htmlEscape(learner.surname)}, ${htmlEscape(learner.firstname)}</div>
-            <div class="learner-no">No. ${htmlEscape(learnerNo)}</div>
           </td>
           ${cellHtml}
         </tr>
@@ -7813,22 +7814,30 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
   <style>
     @page { size: A4 landscape; margin: 12mm; }
     body { font-family: Arial, sans-serif; color: #0f172a; margin: 0; }
-    .wrap { padding: 8px 4px; }
-    .header { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom: 12px; }
-    .title { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
-    .meta { font-size: 12px; color:#475569; line-height:1.55; }
-    .summary { border:1px solid #cbd5e1; border-radius: 10px; padding:10px 12px; font-size:12px; min-width: 220px; }
-    .summary strong { display:block; font-size:14px; color:#312e81; margin-bottom:4px; }
-    table { width:100%; border-collapse:collapse; font-size:11px; }
-    th, td { border:1px solid #cbd5e1; padding:6px 7px; vertical-align:top; }
+    .wrap { padding: 4px 2px; }
+    .sheet-head { border:1px solid #94a3b8; margin-bottom:10px; }
+    .sheet-top { display:flex; justify-content:space-between; gap:18px; padding:10px 12px 6px; border-bottom:1px solid #cbd5e1; }
+    .title-block { flex:1; }
+    .school { font-size:18px; font-weight:900; letter-spacing:.2px; color:#111827; margin-bottom:4px; }
+    .title { font-size:15px; font-weight:800; color:#312e81; margin-bottom:2px; }
+    .subtitle { font-size:11px; color:#475569; }
+    .meta-grid { display:grid; grid-template-columns: repeat(2,minmax(160px,1fr)); gap:4px 18px; font-size:11px; color:#334155; min-width:360px; }
+    .meta-grid strong { color:#0f172a; }
+    .summary-bar { display:flex; gap:18px; flex-wrap:wrap; padding:6px 12px; background:#f8fafc; font-size:11px; color:#334155; }
+    .summary-pill strong { color:#0f172a; }
+    table { width:100%; border-collapse:collapse; font-size:10px; table-layout:auto; }
+    thead { display:table-header-group; }
+    tr { page-break-inside:avoid; }
+    th, td { border:1px solid #cbd5e1; padding:5px 6px; vertical-align:top; }
     th { background:#eef2ff; text-align:left; }
     .group-head { background:#e0e7ff; text-align:center; color:#312e81; font-weight:800; }
     .results-head { background:#dcfce7; text-align:center; color:#14532d; font-weight:800; }
     .crit-title { font-weight:700; color:#111827; margin-bottom:3px; }
     .crit-sub { font-size:10px; color:#64748b; }
+    .number-cell { width:36px; text-align:center; font-weight:700; }
     .learner-cell { min-width: 170px; }
     .learner-name { font-weight:700; }
-    .learner-no { font-size:10px; color:#64748b; margin-top:2px; }
+    .result-cell { background:#f8fafc; }
     .toolbar { margin-bottom: 10px; }
     .btn-print { border:0; background:#4f46e5; color:#fff; padding:10px 14px; border-radius:8px; font-weight:700; cursor:pointer; }
     @media print { .toolbar { display:none; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
@@ -7837,27 +7846,33 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
 <body>
   <div class="wrap">
     <div class="toolbar"><button class="btn-print" onclick="window.print()">🖨 Print / Save as PDF</button></div>
-    <div class="header">
-      <div>
-        <div class="title">SASAMS Marks Export</div>
-        <div class="meta">
+    <div class="sheet-head">
+      <div class="sheet-top">
+        <div class="title-block">
+          <div class="school">CARISSA PRIMARY SCHOOL</div>
+          <div class="title">SA-SAMS Recording Sheet</div>
+          <div class="subtitle">Digital capture layout aligned to patch ${htmlEscape(sasamsPatchVersion)}</div>
+        </div>
+        <div class="meta-grid">
           <div><strong>Class:</strong> ${htmlEscape(selClass)}</div>
+          <div><strong>Academic year:</strong> ${htmlEscape(academicYear)}</div>
           <div><strong>Subject:</strong> ${htmlEscape(activeSubject?.name_english || '')}</div>
           <div><strong>Term:</strong> ${htmlEscape(`Term ${termNo}`)}</div>
           <div><strong>Teacher:</strong> ${htmlEscape(teacherName)}</div>
-          <div><strong>Patch:</strong> ${htmlEscape(sasamsPatchVersion)}</div>
+          <div><strong>Generated:</strong> ${htmlEscape(generatedAt)}</div>
         </div>
       </div>
-      <div class="summary">
-        <strong>${htmlEscape(batchStatus)}</strong>
-        <div>Academic year: ${htmlEscape(academicYear)}</div>
-        <div>Captured cells: ${htmlEscape(capturedCells)} / ${htmlEscape(expectedCells || 0)}</div>
-        <div>Completeness: ${htmlEscape(`${completenessPct}%`)}</div>
+      <div class="summary-bar">
+        <div class="summary-pill"><strong>Status:</strong> ${htmlEscape(batchStatus)}</div>
+        <div class="summary-pill"><strong>Learners:</strong> ${htmlEscape(learners.length)}</div>
+        <div class="summary-pill"><strong>Captured cells:</strong> ${htmlEscape(capturedCells)} / ${htmlEscape(expectedCells || 0)}</div>
+        <div class="summary-pill"><strong>Completeness:</strong> ${htmlEscape(`${completenessPct}%`)}</div>
       </div>
     </div>
     <table>
       <thead>
         <tr>
+          <th rowspan="2">No</th>
           <th rowspan="2">Learner</th>
           ${groupedHeadRow}
         </tr>
