@@ -919,8 +919,8 @@ async function handlePaymentsReportPdf(request, env, corsOrigin) {
   const PAGE_H = 841.89;
   const M = 48;
   const HEADER_H = 118;
-  const CREST_MAX_W = 58;
-  const CREST_MAX_H = 74;
+  const CREST_MAX_W = 44;
+  const CREST_MAX_H = 56;
 
   const drawHeader = (page, title) => {
     const yTop = PAGE_H - M;
@@ -932,7 +932,8 @@ async function handlePaymentsReportPdf(request, env, corsOrigin) {
       const scale = Math.min(CREST_MAX_W / crest.width, CREST_MAX_H / crest.height, 1);
       crestW = crest.width * scale;
       const crestH = crest.height * scale;
-      page.drawImage(crest, { x: M, y: yTop - crestH + 2, width: crestW, height: crestH });
+      const crestBottomY = yTop - 58;
+      page.drawImage(crest, { x: M + 2, y: crestBottomY, width: crestW, height: crestH });
     }
 
     const textLeft = M + crestW + 14;
