@@ -1,0 +1,645 @@
+official_subject_id,grade_no,subj_key,name_english,report_label,has_report_splits,is_active
+16,0,AFRI 0,Afrikaans Home Language,Afrikaans Home Language,false,true
+1727,0,CODROB R,Coding and Robotics,Coding and Robotics,false,true
+113,0,ENG 0,English Home Language,English Home Language,false,true
+1751,0,Gen Dev R,General Development & Perceptual Skills,General Development & Perceptual Skills,false,true
+200,0,ISIN 0,IsiNdebele Home Language,IsiNdebele Home Language,false,true
+234,0,ISIX 0,IsiXhosa Home Language,IsiXhosa Home Language,false,true
+268,0,ISIZ 0,IsiZulu Home Language,IsiZulu Home Language,false,true
+309,0,LS 0,Life Skills,Life Skills,false,true
+322,0,MATH 0,Mathematics,Mathematics,false,true
+1917,0,LE Afr y6,O: Afrikaans (LE yr6),O: Afrikaans (LE yr6),false,true
+1896,0,LE Art y6,O: Art (LE yr6),O: Art (LE yr6),false,true
+1882,0,LE Bot y6,O: Botany (LE yr6),O: Botany (LE yr6),false,true
+1840,0,LE Eng y6,O: English (LE yr6),O: English (LE yr6),false,true
+1868,0,LE Geog y6,O: Geography (LE yr6),O: Geography (LE yr6),false,true
+1854,0,LE geom y6,O: Geometry (LE yr6),O: Geometry (LE yr6),false,true
+1861,0,LE Hist y6,O: History (LE yr6),O: History (LE yr6),false,true
+1924,0,LE Ndeb y6,O: IsiNdebele (LE yr6),O: IsiNdebele (LE yr6),false,true
+1931,0,LE Xh y6,O: IsiXhosa (LE yr6),O: IsiXhosa (LE yr6),false,true
+1938,0,LE Zu y6,O: IsiZulu (LE yr6),O: IsiZulu (LE yr6),false,true
+1847,0,LE Mat y6,O: Mathematics (LE yr6),O: Mathematics (LE yr6),false,true
+1903,0,LE Mus y6,O: Music (LE yr6),O: Music (LE yr6),false,true
+1910,0,LE PrLif y6,O: Practical Life (LE yr6),O: Practical Life (LE yr6),false,true
+1875,0,LE Sci y6,O: Science (LE yr6),O: Science (LE yr6),false,true
+1945,0,LE PEd y6,O: Sepedi (LE yr6),O: Sepedi (LE yr6),false,true
+1952,0,LE Sot y6,O: Sesotho (LE yr6),O: Sesotho (LE yr6),false,true
+1959,0,LE Tsw y6,O: Setswana (LE yr6),O: Setswana (LE yr6),false,true
+1987,0,LE Sign y6,O: Sign Language (LE yr6),O: Sign Language (LE yr6),false,true
+1966,0,LE Swa y6,O: Siswati (LE yr6),O: Siswati (LE yr6),false,true
+1973,0,LE Ven y6,O: Tshivenda (LE yr6),O: Tshivenda (LE yr6),false,true
+1980,0,LE Xit y6,O: Xitsonga (LE yr6),O: Xitsonga (LE yr6),false,true
+1889,0,LE Zool y6,O: Zoology (LE yr6),O: Zoology (LE yr6),false,true
+1752,0,PerSkil R,Perceptial Skills,Perceptial Skills,false,true
+389,0,SEPE 0,Sepedi Home Language,Sepedi Home Language,false,true
+442,0,SESO 0,Sesotho Home Language,Sesotho Home Language,false,true
+476,0,SETS 0,Setswana Home Language,Setswana Home Language,false,true
+510,0,SISW 0,SiSwati Home Language,SiSwati Home Language,false,true
+889,0,SIGNHL 0,South African Sign Language,South African Sign Language,false,true
+592,0,TSHI 0,Tshivenda Home Language,Tshivenda Home Language,false,true
+849,0,XITS 0,Xitsonga Home Language,Xitsonga Home Language,false,true
+4,1,AFAL 1,Afrikaans First Additional Language,Afrikaans First Additional Language,false,true
+17,1,AFRI 1,Afrikaans Home Language,Afrikaans Home Language,false,true
+1737,1,AFRHLA PR,Afrikaans Home Language (Pre Gr R),Afrikaans Home Language (Pre Gr R),false,true
+1424,1,AFSAL 1,Afrikaans Second Additional Language,Afrikaans Second Additional Language,false,true
+1728,1,CODROB 01,Coding and Robotics,Coding and Robotics,false,true
+1774,1,ELNA,ELNA,ELNA,false,true
+101,1,ENGAL 1,English First Additional Language,English First Additional Language,false,true
+114,1,ENG 1,English Home Language,English Home Language,false,true
+1738,1,ENGHLA PR,English Home Language (Pre Gr R),English Home Language (Pre Gr R),false,true
+1427,1,ENGSAL 1,English Second Additional Language,English Second Additional Language,false,true
+188,1,ISINFAL 1,IsiNdebele First Additional Language,IsiNdebele First Additional Language,false,true
+201,1,ISIN 1,IsiNdebele Home Language,IsiNdebele Home Language,false,true
+1739,1,NDEHLA PR,IsiNdebele Home Language (Pre Gr R),IsiNdebele Home Language (Pre Gr R),false,true
+1430,1,ISINSAL 1,IsiNdebele Second Additional Language,IsiNdebele Second Additional Language,false,true
+222,1,ISIXFAL 1,IsiXhosa First Additional Language,IsiXhosa First Additional Language,false,true
+235,1,ISIX 1,IsiXhosa Home Language,IsiXhosa Home Language,false,true
+1740,1,XHOHLA PR,IsiXhosa Home Language (Pre Gr R),IsiXhosa Home Language (Pre Gr R),false,true
+1433,1,ISIXSAL 1,IsiXhosa Second Additional Language,IsiXhosa Second Additional Language,false,true
+256,1,ISIZFAL 1,IsiZulu First Additional Language,IsiZulu First Additional Language,false,true
+269,1,ISIZ 1,IsiZulu Home Language,IsiZulu Home Language,false,true
+1741,1,ZULHLA PR,IsiZulu Home Language (Pre Gr R),IsiZulu Home Language (Pre Gr R),false,true
+1436,1,ISIZSAL 1,IsiZulu Second Additional Language,IsiZulu Second Additional Language,false,true
+310,1,LS 1,Life Skills,Life Skills,false,true
+1742,1,LS PR,Life Skills (Pre Gr R),Life Skills (Pre Gr R),false,true
+323,1,MATH 1,Mathematics,Mathematics,false,true
+1743,1,MATH PR,Mathematics (Pre Gr R),Mathematics (Pre Gr R),false,true
+1918,1,LE Afr y7,O: Afrikaans (LE yr7),O: Afrikaans (LE yr7),false,true
+1897,1,LE Art y7,O: Art (LE yr7),O: Art (LE yr7),false,true
+1883,1,LE Bot y7,O: Botany (LE yr7),O: Botany (LE yr7),false,true
+1841,1,LE Eng y7,O: English (LE yr7),O: English (LE yr7),false,true
+1869,1,LE Geog y7,O: Geography (LE yr7),O: Geography (LE yr7),false,true
+1855,1,LE geom y7,O: Geometry (LE yr7),O: Geometry (LE yr7),false,true
+1862,1,LE Hist y7,O: History (LE yr7),O: History (LE yr7),false,true
+1925,1,LE Ndeb y7,O: IsiNdebele (LE yr7),O: IsiNdebele (LE yr7),false,true
+1932,1,LE Xh y7,O: IsiXhosa (LE yr7),O: IsiXhosa (LE yr7),false,true
+1939,1,LE Zu y7,O: IsiZulu (LE yr7),O: IsiZulu (LE yr7),false,true
+1848,1,LE Mat y7,O: Mathematics (LE yr7),O: Mathematics (LE yr7),false,true
+1904,1,LE Mus y7,O: Music (LE yr7),O: Music (LE yr7),false,true
+1911,1,LE PrLif y7,O: Practical Life (LE yr7),O: Practical Life (LE yr7),false,true
+1876,1,LE Sci y7,O: Science (LE yr7),O: Science (LE yr7),false,true
+1946,1,LE PEd y7,O: Sepedi (LE yr7),O: Sepedi (LE yr7),false,true
+1953,1,LE Sot y7,O: Sesotho (LE yr7),O: Sesotho (LE yr7),false,true
+1960,1,LE Tsw y7,O: Setswana (LE yr7),O: Setswana (LE yr7),false,true
+1988,1,LE Sign y7,O: Sign Language (LE yr7),O: Sign Language (LE yr7),false,true
+1967,1,LE Swa y7,O: Siswati (LE yr7),O: Siswati (LE yr7),false,true
+1974,1,LE Ven y7,O: Tshivenda (LE yr7),O: Tshivenda (LE yr7),false,true
+1981,1,LE Xit y7,O: Xitsonga (LE yr7),O: Xitsonga (LE yr7),false,true
+1890,1,LE Zool y7,O: Zoology (LE yr7),O: Zoology (LE yr7),false,true
+377,1,SEPEFAL 1,Sepedi First Additional Language,Sepedi First Additional Language,false,true
+390,1,SEPE 1,Sepedi Home Language,Sepedi Home Language,false,true
+1744,1,SEPHLA PR,Sepedi Home Language (Pre Gr R),Sepedi Home Language (Pre Gr R),false,true
+1439,1,SEPESAL 1,Sepedi Second Additional Language,Sepedi Second Additional Language,false,true
+430,1,SESOFAL 1,Sesotho First Additional Language,Sesotho First Additional Language,false,true
+443,1,SESO 1,Sesotho Home Language,Sesotho Home Language,false,true
+1745,1,SESHLA PR,Sesotho Home Language (Pre Gr R),Sesotho Home Language (Pre Gr R),false,true
+1442,1,SESOSAL 1,Sesotho Second Additional Language,Sesotho Second Additional Language,false,true
+464,1,SETSFAL 1,Setswana First Additional Language,Setswana First Additional Language,false,true
+477,1,SETS 1,Setswana Home Language,Setswana Home Language,false,true
+1746,1,SETHLA PR,Setswana Home Language (Pre Gr R),Setswana Home Language (Pre Gr R),false,true
+1445,1,SETSSAL 1,Setswana Second Additional Language,Setswana Second Additional Language,false,true
+498,1,SISWFAL 1,SiSwati First Additional Language,SiSwati First Additional Language,false,true
+511,1,SISW 1,SiSwati Home Language,SiSwati Home Language,false,true
+1747,1,SWAHLA PR,SiSwati Home Language (Pre Gr R),SiSwati Home Language (Pre Gr R),false,true
+1448,1,SISWSAL 1,SiSwati Second Additional Language,SiSwati Second Additional Language,false,true
+890,1,SIGNHL 1,South African Sign Language,South African Sign Language,false,true
+1750,1,SASLAN PR,South African Sign Language (Pre Gr R),South African Sign Language (Pre Gr R),false,true
+580,1,TSHIFAL 1,Tshivenda First Additional Language,Tshivenda First Additional Language,false,true
+593,1,TSHI 1,Tshivenda Home Language,Tshivenda Home Language,false,true
+1748,1,TSHHLA PR,Tshivenda Home Language (Pre Gr R),Tshivenda Home Language (Pre Gr R),false,true
+1451,1,TSHISAL 1,Tshivenda Second Additional Language,Tshivenda Second Additional Language,false,true
+837,1,XITSFAL 1,Xitsonga First Additional Language,Xitsonga First Additional Language,false,true
+850,1,XITS 1,Xitsonga Home Language,Xitsonga Home Language,false,true
+1749,1,XITHLA PR,Xitsonga Home Language (Pre Gr R),Xitsonga Home Language (Pre Gr R),false,true
+1454,1,XITSSAL 1,Xitsonga Second Additional Language,Xitsonga Second Additional Language,false,true
+5,2,AFAL 2,Afrikaans First Additional Language,Afrikaans First Additional Language,false,true
+18,2,AFRI 2,Afrikaans Home Language,Afrikaans Home Language,false,true
+1425,2,AFSAL 2,Afrikaans Second Additional Language,Afrikaans Second Additional Language,false,true
+1729,2,CODROB 02,Coding and Robotics,Coding and Robotics,false,true
+102,2,ENGAL 2,English First Additional Language,English First Additional Language,false,true
+115,2,ENG 2,English Home Language,English Home Language,false,true
+1428,2,ENGSAL 2,English Second Additional Language,English Second Additional Language,false,true
+189,2,ISINFAL 2,IsiNdebele First Additional Language,IsiNdebele First Additional Language,false,true
+202,2,ISIN 2,IsiNdebele Home Language,IsiNdebele Home Language,false,true
+1431,2,ISINSAL 2,IsiNdebele Second Additional Language,IsiNdebele Second Additional Language,false,true
+223,2,ISIXFAL 2,IsiXhosa First Additional Language,IsiXhosa First Additional Language,false,true
+236,2,ISIX 2,IsiXhosa Home Language,IsiXhosa Home Language,false,true
+1434,2,ISIXSAL 2,IsiXhosa Second Additional Language,IsiXhosa Second Additional Language,false,true
+257,2,ISIZFAL 2,IsiZulu First Additional Language,IsiZulu First Additional Language,false,true
+270,2,ISIZ 2,IsiZulu Home Language,IsiZulu Home Language,false,true
+1437,2,ISIZSAL 2,IsiZulu Second Additional Language,IsiZulu Second Additional Language,false,true
+311,2,LS 2,Life Skills,Life Skills,false,true
+324,2,MATH 2,Mathematics,Mathematics,false,true
+1919,2,LE Afr y8,O: Afrikaans (LE yr8),O: Afrikaans (LE yr8),false,true
+1898,2,LE Art y8,O: Art (LE yr8),O: Art (LE yr8),false,true
+1884,2,LE Bot y8,O: Botany (LE yr8),O: Botany (LE yr8),false,true
+1842,2,LE Eng y8,O: English (LE yr8),O: English (LE yr8),false,true
+1870,2,LE Geog y8,O: Geography (LE yr8),O: Geography (LE yr8),false,true
+1856,2,LE geom y8,O: Geometry (LE yr8),O: Geometry (LE yr8),false,true
+1863,2,LE Hist y8,O: History (LE yr8),O: History (LE yr8),false,true
+1926,2,LE Ndeb y8,O: IsiNdebele (LE yr8),O: IsiNdebele (LE yr8),false,true
+1933,2,LE Xh y8,O: IsiXhosa (LE yr8),O: IsiXhosa (LE yr8),false,true
+1940,2,LE Zu y8,O: IsiZulu (LE yr8),O: IsiZulu (LE yr8),false,true
+1849,2,LE Mat y8,O: Mathematics (LE yr8),O: Mathematics (LE yr8),false,true
+1905,2,LE Mus y8,O: Music (LE yr8),O: Music (LE yr8),false,true
+1912,2,LE PrLif y8,O: Practical Life (LE yr8),O: Practical Life (LE yr8),false,true
+1877,2,LE Sci y8,O: Science (LE yr8),O: Science (LE yr8),false,true
+1947,2,LE PEd y8,O: Sepedi (LE yr8),O: Sepedi (LE yr8),false,true
+1954,2,LE Sot y8,O: Sesotho (LE yr8),O: Sesotho (LE yr8),false,true
+1961,2,LE Tsw y8,O: Setswana (LE yr8),O: Setswana (LE yr8),false,true
+1989,2,LE Sign y8,O: Sign Language (LE yr8),O: Sign Language (LE yr8),false,true
+1968,2,LE Swa y8,O: Siswati (LE yr8),O: Siswati (LE yr8),false,true
+1975,2,LE Ven y8,O: Tshivenda (LE yr8),O: Tshivenda (LE yr8),false,true
+1982,2,LE Xit y8,O: Xitsonga (LE yr8),O: Xitsonga (LE yr8),false,true
+1891,2,LE Zool y8,O: Zoology (LE yr8),O: Zoology (LE yr8),false,true
+378,2,SEPEFAL 2,Sepedi First Additional Language,Sepedi First Additional Language,false,true
+391,2,SEPE 2,Sepedi Home Language,Sepedi Home Language,false,true
+1440,2,SEPESAL 2,Sepedi Second Additional Language,Sepedi Second Additional Language,false,true
+431,2,SESOFAL 2,Sesotho First Additional Language,Sesotho First Additional Language,false,true
+444,2,SESO 2,Sesotho Home Language,Sesotho Home Language,false,true
+1443,2,SESOSAL 2,Sesotho Second Additional Language,Sesotho Second Additional Language,false,true
+465,2,SETSFAL 2,Setswana First Additional Language,Setswana First Additional Language,false,true
+478,2,SETS 2,Setswana Home Language,Setswana Home Language,false,true
+1446,2,SETSSAL 2,Setswana Second Additional Language,Setswana Second Additional Language,false,true
+499,2,SISWFAL 2,SiSwati First Additional Language,SiSwati First Additional Language,false,true
+512,2,SISW 2,SiSwati Home Language,SiSwati Home Language,false,true
+1449,2,SISWSAL 2,SiSwati Second Additional Language,SiSwati Second Additional Language,false,true
+891,2,SIGNHL 2,South African Sign Language,South African Sign Language,false,true
+581,2,TSHIFAL 2,Tshivenda First Additional Language,Tshivenda First Additional Language,false,true
+594,2,TSHI 2,Tshivenda Home Language,Tshivenda Home Language,false,true
+1452,2,TSHISAL 2,Tshivenda Second Additional Language,Tshivenda Second Additional Language,false,true
+838,2,XITSFAL 2,Xitsonga First Additional Language,Xitsonga First Additional Language,false,true
+851,2,XITS 2,Xitsonga Home Language,Xitsonga Home Language,false,true
+1455,2,XITSSAL 2,Xitsonga Second Additional Language,Xitsonga Second Additional Language,false,true
+6,3,AFAL 3,Afrikaans First Additional Language,Afrikaans First Additional Language,false,true
+19,3,AFRI 3,Afrikaans Home Language,Afrikaans Home Language,false,true
+1426,3,AFSAL 3,Afrikaans Second Additional Language,Afrikaans Second Additional Language,false,true
+1730,3,CODROB 03,Coding and Robotics,Coding and Robotics,false,true
+103,3,ENGAL 3,English First Additional Language,English First Additional Language,false,true
+116,3,ENG 3,English Home Language,English Home Language,false,true
+1429,3,ENGSAL 3,English Second Additional Language,English Second Additional Language,false,true
+190,3,ISINFAL 3,IsiNdebele First Additional Language,IsiNdebele First Additional Language,false,true
+203,3,ISIN 3,IsiNdebele Home Language,IsiNdebele Home Language,false,true
+1432,3,ISINSAL 3,IsiNdebele Second Additional Language,IsiNdebele Second Additional Language,false,true
+224,3,ISIXFAL 3,IsiXhosa First Additional Language,IsiXhosa First Additional Language,false,true
+237,3,ISIX 3,IsiXhosa Home Language,IsiXhosa Home Language,false,true
+1435,3,ISIXSAL 3,IsiXhosa Second Additional Language,IsiXhosa Second Additional Language,false,true
+258,3,ISIZFAL 3,IsiZulu First Additional Language,IsiZulu First Additional Language,false,true
+271,3,ISIZ 3,IsiZulu Home Language,IsiZulu Home Language,false,true
+1438,3,ISIZSAL 3,IsiZulu Second Additional Language,IsiZulu Second Additional Language,false,true
+312,3,LS 3,Life Skills,Life Skills,false,true
+325,3,MATH 3,Mathematics,Mathematics,false,true
+1920,3,LE Afr y9,O: Afrikaans (LE yr9),O: Afrikaans (LE yr9),false,true
+1899,3,LE Art y9,O: Art (LE yr9),O: Art (LE yr9),false,true
+1885,3,LE Bot y9,O: Botany (LE yr9),O: Botany (LE yr9),false,true
+1843,3,LE Eng y9,O: English (LE yr9),O: English (LE yr9),false,true
+1871,3,LE Geog y9,O: Geography (LE yr9),O: Geography (LE yr9),false,true
+1857,3,LE geom y9,O: Geometry (LE yr9),O: Geometry (LE yr9),false,true
+1864,3,LE Hist y9,O: History (LE yr9),O: History (LE yr9),false,true
+1927,3,LE Ndeb y9,O: IsiNdebele (LE yr9),O: IsiNdebele (LE yr9),false,true
+1934,3,LE Xh y9,O: IsiXhosa (LE yr9),O: IsiXhosa (LE yr9),false,true
+1941,3,LE Zu y9,O: IsiZulu (LE yr9),O: IsiZulu (LE yr9),false,true
+1850,3,LE Mat y9,O: Mathematics (LE yr9),O: Mathematics (LE yr9),false,true
+1906,3,LE Mus y9,O: Music (LE yr9),O: Music (LE yr9),false,true
+1913,3,LE PrLif y9,O: Practical Life (LE yr9),O: Practical Life (LE yr9),false,true
+1878,3,LE Sci y9,O: Science (LE yr9),O: Science (LE yr9),false,true
+1948,3,LE PEd y9,O: Sepedi (LE yr9),O: Sepedi (LE yr9),false,true
+1955,3,LE Sot y9,O: Sesotho (LE yr9),O: Sesotho (LE yr9),false,true
+1962,3,LE Tsw y9,O: Setswana (LE yr9),O: Setswana (LE yr9),false,true
+1990,3,LE Sign y9,O: Sign Language (LE yr9),O: Sign Language (LE yr9),false,true
+1969,3,LE Swa y9,O: Siswati (LE yr9),O: Siswati (LE yr9),false,true
+1976,3,LE Ven y9,O: Tshivenda (LE yr9),O: Tshivenda (LE yr9),false,true
+1983,3,LE Xit y9,O: Xitsonga (LE yr9),O: Xitsonga (LE yr9),false,true
+1892,3,LE Zool y9,O: Zoology (LE yr9),O: Zoology (LE yr9),false,true
+379,3,SEPEFAL 3,Sepedi First Additional Language,Sepedi First Additional Language,false,true
+392,3,SEPE 3,Sepedi Home Language,Sepedi Home Language,false,true
+1441,3,SEPESAL 3,Sepedi Second Additional Language,Sepedi Second Additional Language,false,true
+432,3,SESOFAL 3,Sesotho First Additional Language,Sesotho First Additional Language,false,true
+445,3,SESO 3,Sesotho Home Language,Sesotho Home Language,false,true
+1444,3,SESOSAL 3,Sesotho Second Additional Language,Sesotho Second Additional Language,false,true
+466,3,SETSFAL 3,Setswana First Additional Language,Setswana First Additional Language,false,true
+479,3,SETS 3,Setswana Home Language,Setswana Home Language,false,true
+1447,3,SETSSAL 3,Setswana Second Additional Language,Setswana Second Additional Language,false,true
+500,3,SISWFAL 3,SiSwati First Additional Language,SiSwati First Additional Language,false,true
+513,3,SISW 3,SiSwati Home Language,SiSwati Home Language,false,true
+1450,3,SISWSAL 3,SiSwati Second Additional Language,SiSwati Second Additional Language,false,true
+892,3,SIGNHL 3,South African Sign Language,South African Sign Language,false,true
+582,3,TSHIFAL 3,Tshivenda First Additional Language,Tshivenda First Additional Language,false,true
+595,3,TSHI 3,Tshivenda Home Language,Tshivenda Home Language,false,true
+1453,3,TSHISAL 3,Tshivenda Second Additional Language,Tshivenda Second Additional Language,false,true
+839,3,XITSFAL 3,Xitsonga First Additional Language,Xitsonga First Additional Language,false,true
+852,3,XITS 3,Xitsonga Home Language,Xitsonga Home Language,false,true
+1456,3,XITSSAL 3,Xitsonga Second Additional Language,Xitsonga Second Additional Language,false,true
+7,4,AFAL 4,Afrikaans First Additional Language,Afrikaans First Additional Language,false,true
+20,4,AFRI 4,Afrikaans Home Language,Afrikaans Home Language,false,true
+29,4,AFSAL 4,Afrikaans Second Additional Language,Afrikaans Second Additional Language,false,true
+50,4,AC 4,Arts and Culture,Arts and Culture,false,true
+1731,4,CODROB 04,Coding and Robotics,Coding and Robotics,false,true
+86,4,EMS 4,Economic Management Sciences,Economic Management Sciences,false,true
+104,4,ENGAL 4,English First Additional Language,English First Additional Language,false,true
+117,4,ENG 4,English Home Language,English Home Language,false,true
+126,4,ENGSAL 4,English Second Additional Language,English Second Additional Language,false,true
+148,4,GRSAL 4,German Second Additional Language,German Second Additional Language,false,true
+191,4,ISINFAL 4,IsiNdebele First Additional Language,IsiNdebele First Additional Language,false,true
+204,4,ISIN 4,IsiNdebele Home Language,IsiNdebele Home Language,false,true
+213,4,ISINSAL 4,IsiNdebele Second Additional Language,IsiNdebele Second Additional Language,false,true
+225,4,ISIXFAL 4,IsiXhosa First Additional Language,IsiXhosa First Additional Language,false,true
+238,4,ISIX 4,IsiXhosa Home Language,IsiXhosa Home Language,false,true
+247,4,ISIXSAL 4,IsiXhosa Second Additional Language,IsiXhosa Second Additional Language,false,true
+259,4,ISIZFAL 4,IsiZulu First Additional Language,IsiZulu First Additional Language,false,true
+272,4,ISIZ 4,IsiZulu Home Language,IsiZulu Home Language,false,true
+281,4,ISIZSAL 4,IsiZulu Second Additional Language,IsiZulu Second Additional Language,false,true
+297,4,LO 4,Life Orientation,Life Orientation,false,true
+313,4,LS 4,Life Skills,Life Skills,false,true
+877,4,MANSAL 4,Mandarin Second Additional Language,Mandarin Second Additional Language,false,true
+326,4,MATH 4,Mathematics,Mathematics,false,true
+348,4,NS 4,Natural Sciences,Natural Sciences,false,true
+354,4,NST 4,Natural Sciences and Technology,Natural Sciences and Technology,false,true
+1921,4,UE Afr y10,O: Afrikaans (UE yr10),O: Afrikaans (UE yr10),false,true
+1900,4,UE Art y10,O: Art (UE yr10),O: Art (UE yr10),false,true
+1886,4,UE Bot y10,O: Botany (UE yr10),O: Botany (UE yr10),false,true
+1844,4,UE Eng y10,O: English (UE yr10),O: English (UE yr10),false,true
+1872,4,UE Geog y10,O: Geography (UE yr10),O: Geography (UE yr10),false,true
+1858,4,UE geom y10,O: Geometry (UE yr10),O: Geometry (UE yr10),false,true
+1865,4,UE Hist y10,O: History (UE yr10),O: History (UE yr10),false,true
+1928,4,UE Ndeb y10,O: IsiNdebele (UE yr10),O: IsiNdebele (UE yr10),false,true
+1935,4,UE Xh y10,O: IsiXhosa (UE yr10),O: IsiXhosa (UE yr10),false,true
+1942,4,UE Zu y10,O: IsiZulu (UE yr10),O: IsiZulu (UE yr10),false,true
+1851,4,UE Mat y10,O: Mathematics (UE yr10),O: Mathematics (UE yr10),false,true
+1907,4,UE Mus y10,O: Music (UE yr10),O: Music (UE yr10),false,true
+1914,4,UE PrLif y10,O: Practical Life (UE yr10),O: Practical Life (UE yr10),false,true
+1879,4,UE Sci y10,O: Science (UE yr10),O: Science (UE yr10),false,true
+1949,4,UE PEd y10,O: Sepedi (UE yr10),O: Sepedi (UE yr10),false,true
+1956,4,UE Sot y10,O: Sesotho (UE yr10),O: Sesotho (UE yr10),false,true
+1963,4,UE Tsw y10,O: Setswana (UE yr10),O: Setswana (UE yr10),false,true
+1991,4,UE Sign y10,O: Sign Language (UE yr10),O: Sign Language (UE yr10),false,true
+1970,4,UE Swa y10,O: Siswati (UE yr10),O: Siswati (UE yr10),false,true
+1977,4,UE Ven y10,O: Tshivenda (UE yr10),O: Tshivenda (UE yr10),false,true
+1984,4,UE Xit y10,O: Xitsonga (UE yr10),O: Xitsonga (UE yr10),false,true
+1893,4,UE Zool y10,O: Zoology (UE yr10),O: Zoology (UE yr10),false,true
+380,4,SEPEFAL 4,Sepedi First Additional Language,Sepedi First Additional Language,false,true
+393,4,SEPE 4,Sepedi Home Language,Sepedi Home Language,false,true
+402,4,SEPESAL 4,Sepedi Second Additional Language,Sepedi Second Additional Language,false,true
+412,4,SERBI 4,Serbian Home Language,Serbian Home Language,false,true
+421,4,SERBISAL 4,Serbian Second Additional Language,Serbian Second Additional Language,false,true
+433,4,SESOFAL 4,Sesotho First Additional Language,Sesotho First Additional Language,false,true
+446,4,SESO 4,Sesotho Home Language,Sesotho Home Language,false,true
+455,4,SESOSAL 4,Sesotho Second Additional Language,Sesotho Second Additional Language,false,true
+467,4,SETSFAL 4,Setswana First Additional Language,Setswana First Additional Language,false,true
+480,4,SETS 4,Setswana Home Language,Setswana Home Language,false,true
+489,4,SETSSAL 4,Setswana Second Additional Language,Setswana Second Additional Language,false,true
+501,4,SISWFAL 4,SiSwati First Additional Language,SiSwati First Additional Language,false,true
+514,4,SISW 4,SiSwati Home Language,SiSwati Home Language,false,true
+523,4,SISWSAL 4,SiSwati Second Additional Language,SiSwati Second Additional Language,false,true
+532,4,SS 4,Social Sciences,Social Sciences,false,true
+893,4,SIGNHL 4,South African Sign Language,South African Sign Language,false,true
+555,4,TECH 4,Technology,Technology,false,true
+583,4,TSHIFAL 4,Tshivenda First Additional Language,Tshivenda First Additional Language,false,true
+596,4,TSHI 4,Tshivenda Home Language,Tshivenda Home Language,false,true
+605,4,TSHISAL 4,Tshivenda Second Additional Language,Tshivenda Second Additional Language,false,true
+840,4,XITSFAL 4,Xitsonga First Additional Language,Xitsonga First Additional Language,false,true
+853,4,XITS 4,Xitsonga Home Language,Xitsonga Home Language,false,true
+862,4,XITSSAL 4,Xitsonga Second Additional Language,Xitsonga Second Additional Language,false,true
+8,5,AFAL 5,Afrikaans First Additional Language,Afrikaans First Additional Language,false,true
+21,5,AFRI 5,Afrikaans Home Language,Afrikaans Home Language,false,true
+30,5,AFSAL 5,Afrikaans Second Additional Language,Afrikaans Second Additional Language,false,true
+51,5,AC 5,Arts and Culture,Arts and Culture,false,true
+1732,5,CODROB 05,Coding and Robotics,Coding and Robotics,false,true
+87,5,EMS 5,Economic Management Sciences,Economic Management Sciences,false,true
+105,5,ENGAL 5,English First Additional Language,English First Additional Language,false,true
+118,5,ENG 5,English Home Language,English Home Language,false,true
+127,5,ENGSAL 5,English Second Additional Language,English Second Additional Language,false,true
+149,5,GRSAL 5,German Second Additional Language,German Second Additional Language,false,true
+192,5,ISINFAL 5,IsiNdebele First Additional Language,IsiNdebele First Additional Language,false,true
+205,5,ISIN 5,IsiNdebele Home Language,IsiNdebele Home Language,false,true
+214,5,ISINSAL 5,IsiNdebele Second Additional Language,IsiNdebele Second Additional Language,false,true
+226,5,ISIXFAL 5,IsiXhosa First Additional Language,IsiXhosa First Additional Language,false,true
+239,5,ISIX 5,IsiXhosa Home Language,IsiXhosa Home Language,false,true
+248,5,ISIXSAL 5,IsiXhosa Second Additional Language,IsiXhosa Second Additional Language,false,true
+260,5,ISIZFAL 5,IsiZulu First Additional Language,IsiZulu First Additional Language,false,true
+273,5,ISIZ 5,IsiZulu Home Language,IsiZulu Home Language,false,true
+282,5,ISIZSAL 5,IsiZulu Second Additional Language,IsiZulu Second Additional Language,false,true
+298,5,LO 5,Life Orientation,Life Orientation,false,true
+314,5,LS 5,Life Skills,Life Skills,false,true
+878,5,MANSAL 5,Mandarin Second Additional Language,Mandarin Second Additional Language,false,true
+327,5,MATH 5,Mathematics,Mathematics,false,true
+349,5,NS 5,Natural Sciences,Natural Sciences,false,true
+355,5,NST 5,Natural Sciences and Technology,Natural Sciences and Technology,false,true
+1922,5,UE Afr y11,O: Afrikaans (UE yr11),O: Afrikaans (UE yr11),false,true
+1901,5,UE Art y11,O: Art (UE yr11),O: Art (UE yr11),false,true
+1887,5,UE Bot y11,O: Botany (UE yr11),O: Botany (UE yr11),false,true
+1845,5,UE Eng y11,O: English (UE yr11),O: English (UE yr11),false,true
+1873,5,UE Geog y11,O: Geography (UE yr11),O: Geography (UE yr11),false,true
+1859,5,UE geom y11,O: Geometry (UE yr11),O: Geometry (UE yr11),false,true
+1866,5,UE Hist y11,O: History (UE yr11),O: History (UE yr11),false,true
+1929,5,UE Ndeb y11,O: IsiNdebele (UE yr11),O: IsiNdebele (UE yr11),false,true
+1936,5,UE Xh y11,O: IsiXhosa (UE yr11),O: IsiXhosa (UE yr11),false,true
+1943,5,UE Zu y11,O: IsiZulu (UE yr11),O: IsiZulu (UE yr11),false,true
+1852,5,UE Mat y11,O: Mathematics (UE yr11),O: Mathematics (UE yr11),false,true
+1908,5,UE Mus y11,O: Music (UE yr11),O: Music (UE yr11),false,true
+1915,5,UE PrLif y11,O: Practical Life (UE yr11),O: Practical Life (UE yr11),false,true
+1880,5,UE Sci y11,O: Science (UE yr11),O: Science (UE yr11),false,true
+1950,5,UE PEd y11,O: Sepedi (UE yr11),O: Sepedi (UE yr11),false,true
+1957,5,UE Sot y11,O: Sesotho (UE yr11),O: Sesotho (UE yr11),false,true
+1964,5,UE Tsw y11,O: Setswana (UE yr11),O: Setswana (UE yr11),false,true
+1992,5,UE Sign y11,O: Sign Language (UE yr11),O: Sign Language (UE yr11),false,true
+1971,5,UE Swa y11,O: Siswati (UE yr11),O: Siswati (UE yr11),false,true
+1978,5,UE Ven y11,O: Tshivenda (UE yr11),O: Tshivenda (UE yr11),false,true
+1985,5,UE Xit y11,O: Xitsonga (UE yr11),O: Xitsonga (UE yr11),false,true
+1894,5,UE Zool y11,O: Zoology (UE yr11),O: Zoology (UE yr11),false,true
+381,5,SEPEFAL 5,Sepedi First Additional Language,Sepedi First Additional Language,false,true
+394,5,SEPE 5,Sepedi Home Language,Sepedi Home Language,false,true
+403,5,SEPESAL 5,Sepedi Second Additional Language,Sepedi Second Additional Language,false,true
+413,5,SERBI 5,Serbian Home Language,Serbian Home Language,false,true
+422,5,SERBISAL 5,Serbian Second Additional Language,Serbian Second Additional Language,false,true
+434,5,SESOFAL 5,Sesotho First Additional Language,Sesotho First Additional Language,false,true
+447,5,SESO 5,Sesotho Home Language,Sesotho Home Language,false,true
+456,5,SESOSAL 5,Sesotho Second Additional Language,Sesotho Second Additional Language,false,true
+468,5,SETSFAL 5,Setswana First Additional Language,Setswana First Additional Language,false,true
+481,5,SETS 5,Setswana Home Language,Setswana Home Language,false,true
+490,5,SETSSAL 5,Setswana Second Additional Language,Setswana Second Additional Language,false,true
+502,5,SISWFAL 5,SiSwati First Additional Language,SiSwati First Additional Language,false,true
+515,5,SISW 5,SiSwati Home Language,SiSwati Home Language,false,true
+524,5,SISWSAL 5,SiSwati Second Additional Language,SiSwati Second Additional Language,false,true
+533,5,SS 5,Social Sciences,Social Sciences,false,true
+894,5,SIGNHL 5,South African Sign Language,South African Sign Language,false,true
+556,5,TECH 5,Technology,Technology,false,true
+584,5,TSHIFAL 5,Tshivenda First Additional Language,Tshivenda First Additional Language,false,true
+597,5,TSHI 5,Tshivenda Home Language,Tshivenda Home Language,false,true
+606,5,TSHISAL 5,Tshivenda Second Additional Language,Tshivenda Second Additional Language,false,true
+841,5,XITSFAL 5,Xitsonga First Additional Language,Xitsonga First Additional Language,false,true
+854,5,XITS 5,Xitsonga Home Language,Xitsonga Home Language,false,true
+863,5,XITSSAL 5,Xitsonga Second Additional Language,Xitsonga Second Additional Language,false,true
+9,6,AFAL 6,Afrikaans First Additional Language,Afrikaans First Additional Language,false,true
+22,6,AFRI 6,Afrikaans Home Language,Afrikaans Home Language,false,true
+31,6,AFSAL 6,Afrikaans Second Additional Language,Afrikaans Second Additional Language,false,true
+52,6,AC 6,Arts and Culture,Arts and Culture,false,true
+1733,6,CODROB 06,Coding and Robotics,Coding and Robotics,false,true
+88,6,EMS 6,Economic Management Sciences,Economic Management Sciences,false,true
+106,6,ENGAL 6,English First Additional Language,English First Additional Language,false,true
+119,6,ENG 6,English Home Language,English Home Language,false,true
+128,6,ENGSAL 6,English Second Additional Language,English Second Additional Language,false,true
+150,6,GRSAL 6,German Second Additional Language,German Second Additional Language,false,true
+193,6,ISINFAL 6,IsiNdebele First Additional Language,IsiNdebele First Additional Language,false,true
+206,6,ISIN 6,IsiNdebele Home Language,IsiNdebele Home Language,false,true
+215,6,ISINSAL 6,IsiNdebele Second Additional Language,IsiNdebele Second Additional Language,false,true
+227,6,ISIXFAL 6,IsiXhosa First Additional Language,IsiXhosa First Additional Language,false,true
+240,6,ISIX 6,IsiXhosa Home Language,IsiXhosa Home Language,false,true
+249,6,ISIXSAL 6,IsiXhosa Second Additional Language,IsiXhosa Second Additional Language,false,true
+261,6,ISIZFAL 6,IsiZulu First Additional Language,IsiZulu First Additional Language,false,true
+274,6,ISIZ 6,IsiZulu Home Language,IsiZulu Home Language,false,true
+283,6,ISIZSAL 6,IsiZulu Second Additional Language,IsiZulu Second Additional Language,false,true
+299,6,LO 6,Life Orientation,Life Orientation,false,true
+315,6,LS 6,Life Skills,Life Skills,false,true
+879,6,MANSAL 6,Mandarin Second Additional Language,Mandarin Second Additional Language,false,true
+328,6,MATH 6,Mathematics,Mathematics,false,true
+350,6,NS 6,Natural Sciences,Natural Sciences,false,true
+356,6,NST 6,Natural Sciences and Technology,Natural Sciences and Technology,false,true
+1923,6,UE Afr y12,O: Afrikaans (UE yr12),O: Afrikaans (UE yr12),false,true
+1902,6,UE Art y12,O: Art (UE yr12),O: Art (UE yr12),false,true
+1888,6,UE Bot y12,O: Botany (UE yr12),O: Botany (UE yr12),false,true
+1846,6,UE Eng y12,O: English (UE yr12),O: English (UE yr12),false,true
+1874,6,UE Geog y12,O: Geography (UE yr12),O: Geography (UE yr12),false,true
+1860,6,UE geom y12,O: Geometry (UE yr12),O: Geometry (UE yr12),false,true
+1867,6,UE Hist y12,O: History (UE yr12),O: History (UE yr12),false,true
+1930,6,UE Ndeb y12,O: IsiNdebele (UE yr12),O: IsiNdebele (UE yr12),false,true
+1937,6,UE Xh y12,O: IsiXhosa (UE yr12),O: IsiXhosa (UE yr12),false,true
+1944,6,UE Zu y12,O: IsiZulu (UE yr12),O: IsiZulu (UE yr12),false,true
+1853,6,UE Mat y12,O: Mathematics (UE yr12),O: Mathematics (UE yr12),false,true
+1909,6,UE Mus y12,O: Music (UE yr12),O: Music (UE yr12),false,true
+1916,6,UE PrLif y12,O: Practical Life (UE yr12),O: Practical Life (UE yr12),false,true
+1881,6,UE Sci y12,O: Science (UE yr12),O: Science (UE yr12),false,true
+1951,6,UE PEd y12,O: Sepedi (UE yr12),O: Sepedi (UE yr12),false,true
+1958,6,UE Sot y12,O: Sesotho (UE yr12),O: Sesotho (UE yr12),false,true
+1965,6,UE Tsw y12,O: Setswana (UE yr12),O: Setswana (UE yr12),false,true
+1993,6,UE Sign y12,O: Sign Language (UE yr12),O: Sign Language (UE yr12),false,true
+1972,6,UE Swa y12,O: Siswati (UE yr12),O: Siswati (UE yr12),false,true
+1979,6,UE Ven y12,O: Tshivenda (UE yr12),O: Tshivenda (UE yr12),false,true
+1986,6,UE Xit y12,O: Xitsonga (UE yr12),O: Xitsonga (UE yr12),false,true
+1895,6,UE Zool y12,O: Zoology (UE yr12),O: Zoology (UE yr12),false,true
+382,6,SEPEFAL 6,Sepedi First Additional Language,Sepedi First Additional Language,false,true
+395,6,SEPE 6,Sepedi Home Language,Sepedi Home Language,false,true
+404,6,SEPESAL 6,Sepedi Second Additional Language,Sepedi Second Additional Language,false,true
+414,6,SERBI 6,Serbian Home Language,Serbian Home Language,false,true
+423,6,SERBISAL 6,Serbian Second Additional Language,Serbian Second Additional Language,false,true
+435,6,SESOFAL 6,Sesotho First Additional Language,Sesotho First Additional Language,false,true
+448,6,SESO 6,Sesotho Home Language,Sesotho Home Language,false,true
+457,6,SESOSAL 6,Sesotho Second Additional Language,Sesotho Second Additional Language,false,true
+469,6,SETSFAL 6,Setswana First Additional Language,Setswana First Additional Language,false,true
+482,6,SETS 6,Setswana Home Language,Setswana Home Language,false,true
+491,6,SETSSAL 6,Setswana Second Additional Language,Setswana Second Additional Language,false,true
+503,6,SISWFAL 6,SiSwati First Additional Language,SiSwati First Additional Language,false,true
+516,6,SISW 6,SiSwati Home Language,SiSwati Home Language,false,true
+525,6,SISWSAL 6,SiSwati Second Additional Language,SiSwati Second Additional Language,false,true
+534,6,SS 6,Social Sciences,Social Sciences,false,true
+895,6,SIGNHL 6,South African Sign Language,South African Sign Language,false,true
+912,6,TOFRFAL V1,TO: Afrikaans First Additional Language (Yr 1),TO: Afrikaans First Additional Language (Yr 1),false,true
+654,6,TOCOMAFR 6,TO: Afrikaans Home Language (Yr 1),TO: Afrikaans Home Language (Yr 1),false,true
+630,6,TOAGRI 6,TO: Agricultural Studies (Yr 1),TO: Agricultural Studies (Yr 1),false,true
+750,6,TOLIFE 6,TO: Ancillary Health Care (Yr 1),TO: Ancillary Health Care (Yr 1),false,true
+634,6,TOAC 6,TO: Art and Crafts (Yr 1),TO: Art and Crafts (Yr 1),false,true
+770,6,TONAILCARE 6,TO: Beauty & Nail Technology (Yr 1),TO: Beauty & Nail Technology (Yr 1),false,true
+638,6,TOBOAT 6,TO: Boat Building (Yr 1),TO: Boat Building (Yr 1),false,true
+968,6,TOBUILD 1,TO: Bricklaying and Plastering (Yr 1),TO: Bricklaying and Plastering (Yr 1),false,true
+702,6,TOCOMPTYP 6,TO: Computyping (Yr 1),TO: Computyping (Yr 1),false,true
+706,6,TOCOOK 6,TO: Consumer Studies (Food Production) (Yr 1),TO: Consumer Studies (Food Production) (Yr 1),false,true
+650,6,TOCLOTH 6,TO: Consumer Studies (Sewing) (Yr 1),TO: Consumer Studies (Sewing) (Yr 1),false,true
+710,6,TOCOSM 6,TO: Cosmetic Beauty Care (Yr 1),TO: Cosmetic Beauty Care (Yr 1),false,true
+642,6,TOCHIL 6,TO: Early Childhood Development (Yr 1),TO: Early Childhood Development (Yr 1),false,true
+822,6,TOVART 6,TO: Economic and Management Sciences (Yr 1),TO: Economic and Management Sciences (Yr 1),false,true
+714,6,TOELEC 6,TO: Electrical Technology (Yr 1),TO: Electrical Technology (Yr 1),false,true
+718,6,TOEMBR 6,TO: Embroidery (Yr 1),TO: Embroidery (Yr 1),false,true
+916,6,TONGFAL V1,TO: English First Additional Language (Yr 1),TO: English First Additional Language (Yr 1),false,true
+658,6,TOCOMENG 6,TO: English Home Language (Yr 1),TO: English Home Language (Yr 1),false,true
+722,6,TOFAID 6,TO: First Aid (Yr 1),TO: First Aid (Yr 1),false,true
+726,6,TOFT 6,TO: Fitting and Turning (Yr 1),TO: Fitting and Turning (Yr 1),false,true
+730,6,TOHAIR 6,TO: Hairdressing and Beauty Care (Yr 1),TO: Hairdressing and Beauty Care (Yr 1),false,true
+734,6,TOHKEEP 6,TO: Hospitality Studies (Yr 1),TO: Hospitality Studies (Yr 1),false,true
+806,6,TOSS 6,TO: Human and Social Studies (Yr 1),TO: Human and Social Studies (Yr 1),false,true
+738,6,TOINDSOW 6,TO: Industrial Sewing (Yr 1),TO: Industrial Sewing (Yr 1),false,true
+698,6,TOCOMPLIT 6,TO: Information and Communications Technology (Yr 1),TO: Information and Communications Technology (Yr 1),false,true
+920,6,TODBFAL V1,TO: IsiNdebele First Additional Language (Yr 1),TO: IsiNdebele First Additional Language (Yr 1),false,true
+662,6,TOCOMISIN 6,TO: IsiNdebele Home Language (Yr 1),TO: IsiNdebele Home Language (Yr 1),false,true
+924,6,TOHFAL V1,TO: IsiXhosa First Additional Language (Yr 1),TO: IsiXhosa First Additional Language (Yr 1),false,true
+666,6,TOCOMISIX 6,TO: IsiXhosa Home Language (Yr 1),TO: IsiXhosa Home Language (Yr 1),false,true
+928,6,TOULFAL V1,TO: IsiZulu First Additional Language (Yr 1),TO: IsiZulu First Additional Language (Yr 1),false,true
+670,6,TOCOMISIZ 6,TO: IsiZulu Home Language (Yr 1),TO: IsiZulu Home Language (Yr 1),false,true
+742,6,TOKNITT 6,TO: Knitting and Crocheting (Yr 1),TO: Knitting and Crocheting (Yr 1),false,true
+746,6,TOLEAW 6,TO: Leather Work (Yr 1),TO: Leather Work (Yr 1),false,true
+754,6,TOLIFEORI 6,TO: Life Skills (Yr 1),TO: Life Skills (Yr 1),false,true
+786,6,TOPHYSEDU 6,TO: Life Skills : Physical Education (Yr 1),TO: Life Skills : Physical Education (Yr 1),false,true
+976,6,TOLSART 1,TO: Life Skills: Creative Arts (Yr 1),TO: Life Skills: Creative Arts (Yr 1),false,true
+964,6,TOMAINT 1,TO: Maintenance (Yr 1),TO: Maintenance (Yr 1),false,true
+758,6,TOMATHLIT 6,TO: Mathematics (Yr 1),TO: Mathematics (Yr 1),false,true
+766,6,TOMOTMEC 6,TO: Motor Mechanics (Yr 1),TO: Motor Mechanics (Yr 1),false,true
+980,6,TOLSSCI 1,TO: Natural Sciences (Yr 1),TO: Natural Sciences (Yr 1),false,true
+774,6,TOOOFADM 6,TO: Office Administration (Yr 1),TO: Office Administration (Yr 1),false,true
+778,6,TOPANELB 6,TO: Panel Beating: Body works (Yr 1),TO: Panel Beating: Body works (Yr 1),false,true
+960,6,TOPBEAT 1,TO: Panel Beating: Combined works (Yr 1),TO: Panel Beating: Combined works (Yr 1),false,true
+956,6,TOSPRAY 1,TO: Panel Beating: Spray Painting (Yr 1),TO: Panel Beating: Spray Painting (Yr 1),false,true
+782,6,TOPERART 6,TO: Performing Arts (Yr 1),TO: Performing Arts (Yr 1),false,true
+972,6,TOPLUMB 1,TO: Plumbing (Yr 1),TO: Plumbing (Yr 1),false,true
+790,6,TORS 6,TO: Religion Studies (Yr 1),TO: Religion Studies (Yr 1),false,true
+798,6,TOSECSER 6,TO: Security Services (Yr 1),TO: Security Services (Yr 1),false,true
+932,6,TOEPFAL V1,TO: Sepedi First Additional Language (Yr 1),TO: Sepedi First Additional Language (Yr 1),false,true
+674,6,TOCOMSEP 6,TO: Sepedi Home Language (Yr 1),TO: Sepedi Home Language (Yr 1),false,true
+936,6,TOOTFAL V1,TO: Sesotho First Additional Language (Yr 1),TO: Sesotho First Additional Language (Yr 1),false,true
+678,6,TOCOMSES 6,TO: Sesotho Home Language (Yr 1),TO: Sesotho Home Language (Yr 1),false,true
+940,6,TOSWFAL V1,TO: Setswana First Additional Language (Yr 1),TO: Setswana First Additional Language (Yr 1),false,true
+682,6,TOCOMSET 6,TO: Setswana Home Language (Yr 1),TO: Setswana Home Language (Yr 1),false,true
+802,6,TOSMW 6,TO: Sheet Metal Work (Yr 1),TO: Sheet Metal Work (Yr 1),false,true
+944,6,TOWFAL V1,TO: SiSwati First Additional Language (Yr 1),TO: SiSwati First Additional Language (Yr 1),false,true
+686,6,TOCOMSIS 6,TO: SiSwati Home Language (Yr 1),TO: SiSwati Home Language (Yr 1),false,true
+794,6,TOSCUP 6,TO: Social Sciences (Yr 1),TO: Social Sciences (Yr 1),false,true
+810,6,TOSFURN 6,TO: Soft Furnishing (Yr 1),TO: Soft Furnishing (Yr 1),false,true
+908,6,TOIGNHL V1,TO: South African Sign Language (Yr 01),TO: South African Sign Language (Yr 01),false,true
+814,6,TOTECDR 6,TO: Technical Drawing (Yr 1),TO: Technical Drawing (Yr 1),false,true
+948,6,TOENFAL V1,TO: Tshivenda First Additional Language (Yr 1),TO: Tshivenda First Additional Language (Yr 1),false,true
+690,6,TOCOMTSH 6,TO: Tshivenda Home Language (Yr 1),TO: Tshivenda Home Language (Yr 1),false,true
+818,6,TOUPHOL 6,TO: Upholstery (Yr 1),TO: Upholstery (Yr 1),false,true
+826,6,TOWAITE 6,TO: Waitering (Yr 1),TO: Waitering (Yr 1),false,true
+762,6,TOMETWEL 6,TO: Welding (Yr 1),TO: Welding (Yr 1),false,true
+646,6,TOCLIENT 6,TO: Wholesale and Retail (Yr 1),TO: Wholesale and Retail (Yr 1),false,true
+830,6,TOWOOD 6,TO: Woodworking and Timber (Yr 1),TO: Woodworking and Timber (Yr 1),false,true
+952,6,TOAINT V1,TO: Xitsonga First Additional Language (Yr 1),TO: Xitsonga First Additional Language (Yr 1),false,true
+694,6,TOCOMZIT 6,TO: Xitsonga Home Language (Yr 1),TO: Xitsonga Home Language (Yr 1),false,true
+557,6,TECH 6,Technology,Technology,false,true
+585,6,TSHIFAL 6,Tshivenda First Additional Language,Tshivenda First Additional Language,false,true
+598,6,TSHI 6,Tshivenda Home Language,Tshivenda Home Language,false,true
+607,6,TSHISAL 6,Tshivenda Second Additional Language,Tshivenda Second Additional Language,false,true
+842,6,XITSFAL 6,Xitsonga First Additional Language,Xitsonga First Additional Language,false,true
+855,6,XITS 6,Xitsonga Home Language,Xitsonga Home Language,false,true
+864,6,XITSSAL 6,Xitsonga Second Additional Language,Xitsonga Second Additional Language,false,true
+10,7,AFAL 7,Afrikaans First Additional Language,Afrikaans First Additional Language,false,true
+23,7,AFRI 7,Afrikaans Home Language,Afrikaans Home Language,false,true
+32,7,AFSAL 7,Afrikaans Second Additional Language,Afrikaans Second Additional Language,false,true
+1734,7,CODROB 07,Coding and Robotics,Coding and Robotics,false,true
+53,7,AC 7,Creative Arts,Creative Arts,false,true
+1754,7,ArtDAD 7,Creative Arts: Dance & Drama,Creative Arts: Dance & Drama,false,true
+1755,7,ArtDAM 7,Creative Arts: Dance & Music,Creative Arts: Dance & Music,false,true
+1756,7,ArtDAV 7,Creative Arts: Dance & Visual Arts,Creative Arts: Dance & Visual Arts,false,true
+1757,7,ArtDRM 7,Creative Arts: Drama & Music,Creative Arts: Drama & Music,false,true
+1758,7,ArtDRV 7,Creative Arts: Drama & Visual Arts,Creative Arts: Drama & Visual Arts,false,true
+1759,7,ArtMUV 7,Creative Arts: Music & Visual Arts,Creative Arts: Music & Visual Arts,false,true
+89,7,EMS 7,Economic Management Sciences,Economic Management Sciences,false,true
+107,7,ENGAL 7,English First Additional Language,English First Additional Language,false,true
+120,7,ENG 7,English Home Language,English Home Language,false,true
+129,7,ENGSAL 7,English Second Additional Language,English Second Additional Language,false,true
+151,7,GRSAL 7,German Second Additional Language,German Second Additional Language,false,true
+194,7,ISINFAL 7,IsiNdebele First Additional Language,IsiNdebele First Additional Language,false,true
+207,7,ISIN 7,IsiNdebele Home Language,IsiNdebele Home Language,false,true
+216,7,ISINSAL 7,IsiNdebele Second Additional Language,IsiNdebele Second Additional Language,false,true
+228,7,ISIXFAL 7,IsiXhosa First Additional Language,IsiXhosa First Additional Language,false,true
+241,7,ISIX 7,IsiXhosa Home Language,IsiXhosa Home Language,false,true
+250,7,ISIXSAL 7,IsiXhosa Second Additional Language,IsiXhosa Second Additional Language,false,true
+262,7,ISIZFAL 7,IsiZulu First Additional Language,IsiZulu First Additional Language,false,true
+275,7,ISIZ 7,IsiZulu Home Language,IsiZulu Home Language,false,true
+284,7,ISIZSAL 7,IsiZulu Second Additional Language,IsiZulu Second Additional Language,false,true
+300,7,LO 7,Life Orientation,Life Orientation,false,true
+880,7,MANSAL 7,Mandarin Second Additional Language,Mandarin Second Additional Language,false,true
+329,7,MATH 7,Mathematics,Mathematics,false,true
+351,7,NS 7,Natural Sciences,Natural Sciences,false,true
+1776,7,OAfr 7,O: Afrikaans Second Language (Other),O: Afrikaans Second Language (Other),false,true
+1781,7,OBiol 7,O: Biology (Other),O: Biology (Other),false,true
+1784,7,OBS7,O: Business Studies (Other),O: Business Studies (Other),false,true
+1775,7,OEng 7,O: English First Language (Other),O: English First Language (Other),false,true
+1777,7,OFre 7,O: French Second Language (Other),O: French Second Language (Other),false,true
+1782,7,OGeog 7,O: Geography (Other),O: Geography (Other),false,true
+1783,7,Ohist 7,O: History (Other),O: History (Other),false,true
+1785,7,OICS 7,O: Information & Communication Studies (Other),O: Information & Communication Studies (Other),false,true
+1779,7,OMat 7,O: Mathematics (Other),O: Mathematics (Other),false,true
+1780,7,OSci 7,O: Science (Other),O: Science (Other),false,true
+1778,7,OSp 7,O: Spanish Second Language (Other),O: Spanish Second Language (Other),false,true
+383,7,SEPEFAL 7,Sepedi First Additional Language,Sepedi First Additional Language,false,true
+396,7,SEPE 7,Sepedi Home Language,Sepedi Home Language,false,true
+405,7,SEPESAL 7,Sepedi Second Additional Language,Sepedi Second Additional Language,false,true
+415,7,SERBI 7,Serbian Home Language,Serbian Home Language,false,true
+424,7,SERBISAL 7,Serbian Second Additional Language,Serbian Second Additional Language,false,true
+436,7,SESOFAL 7,Sesotho First Additional Language,Sesotho First Additional Language,false,true
+449,7,SESO 7,Sesotho Home Language,Sesotho Home Language,false,true
+458,7,SESOSAL 7,Sesotho Second Additional Language,Sesotho Second Additional Language,false,true
+470,7,SETSFAL 7,Setswana First Additional Language,Setswana First Additional Language,false,true
+483,7,SETS 7,Setswana Home Language,Setswana Home Language,false,true
+492,7,SETSSAL 7,Setswana Second Additional Language,Setswana Second Additional Language,false,true
+504,7,SISWFAL 7,SiSwati First Additional Language,SiSwati First Additional Language,false,true
+517,7,SISW 7,SiSwati Home Language,SiSwati Home Language,false,true
+526,7,SISWSAL 7,SiSwati Second Additional Language,SiSwati Second Additional Language,false,true
+535,7,SS 7,Social Sciences,Social Sciences,false,true
+896,7,SIGNHL 7,South African Sign Language,South African Sign Language,false,true
+913,7,TOFRFAL V2,TO: Afrikaans First Additional Language (Yr 2),TO: Afrikaans First Additional Language (Yr 2),false,true
+655,7,TOCOMAFR 7,TO: Afrikaans Home Language (Yr 2),TO: Afrikaans Home Language (Yr 2),false,true
+631,7,TOAGRI 7,TO: Agricultural Studies (Yr 2),TO: Agricultural Studies (Yr 2),false,true
+751,7,TOLIFE 7,TO: Ancillary Health Care (Yr 2),TO: Ancillary Health Care (Yr 2),false,true
+635,7,TOAC 7,TO: Art and Crafts (Yr 2),TO: Art and Crafts (Yr 2),false,true
+771,7,TONAILCARE 7,TO: Beauty & Nail Technology (Yr 2),TO: Beauty & Nail Technology (Yr 2),false,true
+639,7,TOBOAT 7,TO: Boat Building (Yr 2),TO: Boat Building (Yr 2),false,true
+969,7,TOBUILD 2,TO: Bricklaying and Plastering (Yr 2),TO: Bricklaying and Plastering (Yr 2),false,true
+703,7,TOCOMPTYP 7,TO: Computyping (Yr 2),TO: Computyping (Yr 2),false,true
+707,7,TOCOOK 7,TO: Consumer Studies (Food Production) (Yr 2),TO: Consumer Studies (Food Production) (Yr 2),false,true
+651,7,TOCLOTH 7,TO: Consumer Studies (Sewing) (Yr 2),TO: Consumer Studies (Sewing) (Yr 2),false,true
+711,7,TOCOSM 7,TO: Cosmetic Beauty Care (Yr 2),TO: Cosmetic Beauty Care (Yr 2),false,true
+643,7,TOCHIL 7,TO: Early Childhood Development (Yr 2),TO: Early Childhood Development (Yr 2),false,true
+823,7,TOVART 7,TO: Economic and Management Sciences (Yr 2),TO: Economic and Management Sciences (Yr 2),false,true
+715,7,TOELEC 7,TO: Electrical Technology (Yr 2),TO: Electrical Technology (Yr 2),false,true
+719,7,TOEMBR 7,TO: Embroidery (Yr 2),TO: Embroidery (Yr 2),false,true
+917,7,TONGFAL V2,TO: English First Additional Language (Yr 2),TO: English First Additional Language (Yr 2),false,true
+659,7,TOCOMENG 7,TO: English Home Language (Yr 2),TO: English Home Language (Yr 2),false,true
+723,7,TOFAID 7,TO: First Aid (Yr 2),TO: First Aid (Yr 2),false,true
+727,7,TOFT 7,TO: Fitting and Turning (Yr 2),TO: Fitting and Turning (Yr 2),false,true
+731,7,TOHAIR 7,TO: Hairdressing and Beauty Care (Yr 2),TO: Hairdressing and Beauty Care (Yr 2),false,true
+735,7,TOHKEEP 7,TO: Hospitality Studies (Yr 2),TO: Hospitality Studies (Yr 2),false,true
+807,7,TOSS 7,TO: Human and Social Studies (Yr 2),TO: Human and Social Studies (Yr 2),false,true
+739,7,TOINDSOW 7,TO: Industrial Sewing (Yr 2),TO: Industrial Sewing (Yr 2),false,true
+699,7,TOCOMPLIT 7,TO: Information and Communications Technology (Yr 2),TO: Information and Communications Technology (Yr 2),false,true
+921,7,TODBFAL V2,TO: IsiNdebele First Additional Language (Yr 2),TO: IsiNdebele First Additional Language (Yr 2),false,true
+663,7,TOCOMISIN 7,TO: IsiNdebele Home Language (Yr 2),TO: IsiNdebele Home Language (Yr 2),false,true
+925,7,TOHFAL V2,TO: IsiXhosa First Additional Language (Yr 2),TO: IsiXhosa First Additional Language (Yr 2),false,true
+667,7,TOCOMISIX 7,TO: IsiXhosa Home Language (Yr 2),TO: IsiXhosa Home Language (Yr 2),false,true
+929,7,TOULFAL V2,TO: IsiZulu First Additional Language (Yr 2),TO: IsiZulu First Additional Language (Yr 2),false,true
+671,7,TOCOMISIZ 7,TO: IsiZulu Home Language (Yr 2),TO: IsiZulu Home Language (Yr 2),false,true
+743,7,TOKNITT 7,TO: Knitting and Crocheting (Yr 2),TO: Knitting and Crocheting (Yr 2),false,true
+747,7,TOLEAW 7,TO: Leather Work (Yr 2),TO: Leather Work (Yr 2),false,true
+755,7,TOLIFEORI 7,TO: Life Skills (Yr 2),TO: Life Skills (Yr 2),false,true
+787,7,TOPHYSEDU 7,TO: Life Skills : Physical Education (Yr 2),TO: Life Skills : Physical Education (Yr 2),false,true
+977,7,TOLSART 2,TO: Life Skills: Creative Arts (Yr 2),TO: Life Skills: Creative Arts (Yr 2),false,true
+965,7,TOMAINT 2,TO: Maintenance (Yr 2),TO: Maintenance (Yr 2),false,true
+759,7,TOMATHLIT 7,TO: Mathematics (Yr 2),TO: Mathematics (Yr 2),false,true
+767,7,TOMOTMEC 7,TO: Motor Mechanics (Yr 2),TO: Motor Mechanics (Yr 2),false,true
+981,7,TOLSSCI 2,TO: Natural Sciences (Yr 2),TO: Natural Sciences (Yr 2),false,true
+775,7,TOOOFADM 7,TO: Office Administration (Yr 2),TO: Office Administration (Yr 2),false,true
+779,7,TOPANELB 7,TO: Panel Beating: Body works (Yr 2),TO: Panel Beating: Body works (Yr 2),false,true
+961,7,TOPBEAT 2,TO: Panel Beating: Combined works (Yr 2),TO: Panel Beating: Combined works (Yr 2),false,true
+957,7,TOSPRAY 2,TO: Panel Beating: Spray Painting (Yr 2),TO: Panel Beating: Spray Painting (Yr 2),false,true
+783,7,TOPERART 7,TO: Performing Arts (Yr 2),TO: Performing Arts (Yr 2),false,true
+973,7,TOPLUMB 2,TO: Plumbing (Yr 2),TO: Plumbing (Yr 2),false,true
+791,7,TORS 7,TO: Religion Studies (Yr 2),TO: Religion Studies (Yr 2),false,true
+799,7,TOSECSER 7,TO: Security Services (Yr 2),TO: Security Services (Yr 2),false,true
+933,7,TOEPFAL V2,TO: Sepedi First Additional Language (Yr 2),TO: Sepedi First Additional Language (Yr 2),false,true
+675,7,TOCOMSEP 7,TO: Sepedi Home Language (Yr 2),TO: Sepedi Home Language (Yr 2),false,true
+937,7,TOOTFAL V2,TO: Sesotho First Additional Language (Yr 2),TO: Sesotho First Additional Language (Yr 2),false,true
+679,7,TOCOMSES 7,TO: Sesotho Home Language (Yr 2),TO: Sesotho Home Language (Yr 2),false,true
+941,7,TOSWFAL V2,TO: Setswana First Additional Language (Yr 2),TO: Setswana First Additional Language (Yr 2),false,true
+683,7,TOCOMSET 7,TO: Setswana Home Language (Yr 2),TO: Setswana Home Language (Yr 2),false,true
+803,7,TOSMW 7,TO: Sheet Metal Work (Yr 2),TO: Sheet Metal Work (Yr 2),false,true
+945,7,TOWFAL V2,TO: SiSwati First Additional Language (Yr 2),TO: SiSwati First Additional Language (Yr 2),false,true
+687,7,TOCOMSIS 7,TO: SiSwati Home Language (Yr 2),TO: SiSwati Home Language (Yr 2),false,true
+795,7,TOSCUP 7,TO: Social Sciences (Yr 2),TO: Social Sciences (Yr 2),false,true
+811,7,TOSFURN 7,TO: Soft Furnishing (Yr 2),TO: Soft Furnishing (Yr 2),false,true
+909,7,TOIGNHL V2,TO: South African Sign Language (Yr 02),TO: South African Sign Language (Yr 02),false,true
+815,7,TOTECDR 7,TO: Technical Drawing (Yr 2),TO: Technical Drawing (Yr 2),false,true
+949,7,TOENFAL V2,TO: Tshivenda First Additional Language (Yr 2),TO: Tshivenda First Additional Language (Yr 2),false,true
+691,7,TOCOMTSH 7,TO: Tshivenda Home Language (Yr 2),TO: Tshivenda Home Language (Yr 2),false,true
+819,7,TOUPHOL 7,TO: Upholstery (Yr 2),TO: Upholstery (Yr 2),false,true
+827,7,TOWAITE 7,TO: Waitering (Yr 2),TO: Waitering (Yr 2),false,true
+763,7,TOMETWEL 7,TO: Welding (Yr 2),TO: Welding (Yr 2),false,true
+647,7,TOCLIENT 7,TO: Wholesale and Retail (Yr 2),TO: Wholesale and Retail (Yr 2),false,true
+831,7,TOWOOD 7,TO: Woodworking and Timber (Yr 2),TO: Woodworking and Timber (Yr 2),false,true
+953,7,TOAINT V2,TO: Xitsonga First Additional Language (Yr 2),TO: Xitsonga First Additional Language (Yr 2),false,true
+695,7,TOCOMZIT 7,TO: Xitsonga Home Language (Yr 2),TO: Xitsonga Home Language (Yr 2),false,true
+558,7,TECH 7,Technology,Technology,false,true
+586,7,TSHIFAL 7,Tshivenda First Additional Language,Tshivenda First Additional Language,false,true
+599,7,TSHI 7,Tshivenda Home Language,Tshivenda Home Language,false,true
+608,7,TSHISAL 7,Tshivenda Second Additional Language,Tshivenda Second Additional Language,false,true
+843,7,XITSFAL 7,Xitsonga First Additional Language,Xitsonga First Additional Language,false,true
+856,7,XITS 7,Xitsonga Home Language,Xitsonga Home Language,false,true
+865,7,XITSSAL 7,Xitsonga Second Additional Language,Xitsonga Second Additional Language,false,true
