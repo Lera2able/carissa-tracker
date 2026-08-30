@@ -8980,6 +8980,7 @@ function TeacherSasamsLearnerReportsTab({ teacherAuth, selClass, showMsg, onAudi
           subjectName: subject.name_english || subject.report_label || subject.subj_key || `Subject ${subjectId}`,
           taskTotal: aggregate.captured ? aggregate.taskTotal : null,
           weightedTotal: aggregate.captured ? aggregate.weightedTotal : null,
+          subjectWeight: totalPossibleWeighted || null,
           termPercent,
           level: sasamsLevelFromPercent(termPercent),
           captured: aggregate.captured || 0,
@@ -8987,8 +8988,14 @@ function TeacherSasamsLearnerReportsTab({ teacherAuth, selClass, showMsg, onAudi
         };
       });
       const subjectsWithMarks = subjectSummaries.filter(row=>row.termPercent!==null && row.termPercent!==undefined && !Number.isNaN(Number(row.termPercent)));
-      const overallAverage = subjectsWithMarks.length
-        ? Math.round((subjectsWithMarks.reduce((sum, row)=>sum + Number(row.termPercent || 0), 0) / subjectsWithMarks.length) * 100) / 100
+      const totalWeightUsed = subjectsWithMarks.length
+        ? Math.round(subjectsWithMarks.reduce((sum, row)=>sum + Number(row.subjectWeight || 0), 0) * 100) / 100
+        : null;
+      const weightedPercentTotal = subjectsWithMarks.length
+        ? Math.round(subjectsWithMarks.reduce((sum, row)=>sum + ((Number(row.termPercent || 0) * Number(row.subjectWeight || 0)) / 100), 0) * 100) / 100
+        : null;
+      const overallAverage = totalWeightUsed
+        ? Math.round(((Number(weightedPercentTotal || 0) / totalWeightUsed) * 100) * 100) / 100
         : null;
       const totalPercentPoints = subjectsWithMarks.length
         ? Math.round(subjectsWithMarks.reduce((sum, row)=>sum + Number(row.termPercent || 0), 0) * 100) / 100
@@ -9002,6 +9009,8 @@ function TeacherSasamsLearnerReportsTab({ teacherAuth, selClass, showMsg, onAudi
         markedSubjectCount: subjectsWithMarks.length,
         overallAverage,
         totalPercentPoints,
+        weightedPercentTotal,
+        totalWeightUsed,
         overallLevel: sasamsLevelFromPercent(overallAverage),
         strongestSubject,
         weakestSubject
@@ -9107,6 +9116,7 @@ function TeacherSasamsLearnerReportsTab({ teacherAuth, selClass, showMsg, onAudi
           <td>${String(subject.subjectName || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</td>
           <td>${String(formatSasamsNumber(subject.taskTotal)).replace(/&/g,'&amp;')}</td>
           <td>${String(formatSasamsNumber(subject.weightedTotal)).replace(/&/g,'&amp;')}</td>
+          <td>${String(formatSasamsNumber(subject.subjectWeight)).replace(/&/g,'&amp;')}</td>
           <td>${String(formatSasamsNumber(subject.termPercent)).replace(/&/g,'&amp;')}</td>
           <td>${String(subject.level || '—').replace(/&/g,'&amp;')}</td>
         </tr>
@@ -9130,13 +9140,13 @@ function TeacherSasamsLearnerReportsTab({ teacherAuth, selClass, showMsg, onAudi
           </div>
           <div class="pill-row">
             <div class="pill"><span>Subjects captured</span><strong>${String(report.markedSubjectCount).replace(/&/g,'&amp;')}</strong></div>
-            <div class="pill"><span>Total % points</span><strong>${String(formatSasamsNumber(report.totalPercentPoints)).replace(/&/g,'&amp;')}</strong></div>
-            <div class="pill"><span>Overall average</span><strong>${String(formatSasamsNumber(report.overallAverage)).replace(/&/g,'&amp;')}</strong></div>
+            <div class="pill"><span>Weighted total</span><strong>${String(formatSasamsNumber(report.weightedPercentTotal)).replace(/&/g,'&amp;')}</strong></div>
+            <div class="pill"><span>Weighted average</span><strong>${String(formatSasamsNumber(report.overallAverage)).replace(/&/g,'&amp;')}</strong></div>
             <div class="pill"><span>Final level</span><strong>${String(report.overallLevel || '—').replace(/&/g,'&amp;')}</strong></div>
             <div class="pill"><span>Class average</span><strong>${String(formatSasamsNumber(classAverageOverall.average)).replace(/&/g,'&amp;')}</strong></div>
           </div>
           <table>
-            <thead><tr><th>Subject</th><th>Task total</th><th>Weighted mark</th><th>Term %</th><th>Level</th></tr></thead>
+            <thead><tr><th>Subject</th><th>Task total</th><th>Weighted mark</th><th>Subject weight</th><th>Term %</th><th>Level</th></tr></thead>
             <tbody>${rowsHtml}</tbody>
           </table>
           <div class="comment-box">
@@ -9224,7 +9234,7 @@ function TeacherSasamsLearnerReportsTab({ teacherAuth, selClass, showMsg, onAudi
           <div style={{fontSize:'12px',fontWeight:800,color:'#334155',marginBottom:'6px'}}>Class average</div>
           <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
             <span style={{background:'#ede9fe',color:'#5b21b6',padding:'7px 10px',borderRadius:'999px',fontSize:'12px',fontWeight:800}}>
-              Overall average: {formatSasamsNumber(classAverageOverall.average)}
+              Weighted average: {formatSasamsNumber(classAverageOverall.average)}
             </span>
             <span style={{background:'#ede9fe',color:'#5b21b6',padding:'7px 10px',borderRadius:'999px',fontSize:'12px',fontWeight:800}}>
               Level: {classAverageOverall.level || '—'}
@@ -9285,7 +9295,7 @@ function TeacherSasamsLearnerReportsTab({ teacherAuth, selClass, showMsg, onAudi
                   </div>
                   <div style={{fontSize:'12px',color:'#64748b',marginBottom:'3px'}}>Learner no. {report.learnerNo}</div>
                   <div style={{display:'flex',gap:'8px',flexWrap:'wrap',fontSize:'12px',color:'#334155'}}>
-                    <span>Average: {formatSasamsNumber(report.overallAverage)}</span>
+                    <span>Weighted average: {formatSasamsNumber(report.overallAverage)}</span>
                     <span>Subjects: {report.markedSubjectCount}/{subjects.length}</span>
                   </div>
                 </button>
@@ -9316,8 +9326,8 @@ function TeacherSasamsLearnerReportsTab({ teacherAuth, selClass, showMsg, onAudi
 
                 <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:'10px',marginBottom:'12px'}}>
                   <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px 12px'}}><div style={{fontSize:'11px',color:'#64748b',marginBottom:'3px'}}>Subjects captured</div><div style={{fontSize:'18px',fontWeight:800,color:'#111827'}}>{selectedLearnerReport.markedSubjectCount}</div></div>
-                  <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px 12px'}}><div style={{fontSize:'11px',color:'#64748b',marginBottom:'3px'}}>Total % points</div><div style={{fontSize:'18px',fontWeight:800,color:'#111827'}}>{formatSasamsNumber(selectedLearnerReport.totalPercentPoints)}</div></div>
-                  <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px 12px'}}><div style={{fontSize:'11px',color:'#64748b',marginBottom:'3px'}}>Overall average</div><div style={{fontSize:'18px',fontWeight:800,color:'#111827'}}>{formatSasamsNumber(selectedLearnerReport.overallAverage)}</div></div>
+                  <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px 12px'}}><div style={{fontSize:'11px',color:'#64748b',marginBottom:'3px'}}>Weighted total</div><div style={{fontSize:'18px',fontWeight:800,color:'#111827'}}>{formatSasamsNumber(selectedLearnerReport.weightedPercentTotal)}</div></div>
+                  <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px 12px'}}><div style={{fontSize:'11px',color:'#64748b',marginBottom:'3px'}}>Weighted average</div><div style={{fontSize:'18px',fontWeight:800,color:'#111827'}}>{formatSasamsNumber(selectedLearnerReport.overallAverage)}</div></div>
                   <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px 12px'}}><div style={{fontSize:'11px',color:'#64748b',marginBottom:'3px'}}>Final level</div><div style={{fontSize:'18px',fontWeight:800,color:'#111827'}}>{selectedLearnerReport.overallLevel || '—'}</div></div>
                   <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px 12px'}}><div style={{fontSize:'11px',color:'#64748b',marginBottom:'3px'}}>Class average</div><div style={{fontSize:'18px',fontWeight:800,color:'#111827'}}>{formatSasamsNumber(classAverageOverall.average)}</div></div>
                 </div>
@@ -9329,6 +9339,7 @@ function TeacherSasamsLearnerReportsTab({ teacherAuth, selClass, showMsg, onAudi
                         <th style={{padding:'8px 10px',textAlign:'left'}}>Subject</th>
                         <th style={{padding:'8px 10px',textAlign:'left'}}>Task total</th>
                         <th style={{padding:'8px 10px',textAlign:'left'}}>Weighted mark</th>
+                        <th style={{padding:'8px 10px',textAlign:'left'}}>Subject weight</th>
                         <th style={{padding:'8px 10px',textAlign:'left'}}>Term %</th>
                         <th style={{padding:'8px 10px',textAlign:'left'}}>Level</th>
                         <th style={{padding:'8px 10px',textAlign:'left'}}>Status</th>
@@ -9340,6 +9351,7 @@ function TeacherSasamsLearnerReportsTab({ teacherAuth, selClass, showMsg, onAudi
                           <td style={{padding:'8px 10px'}}>{subject.subjectName}</td>
                           <td style={{padding:'8px 10px'}}>{formatSasamsNumber(subject.taskTotal)}</td>
                           <td style={{padding:'8px 10px'}}>{formatSasamsNumber(subject.weightedTotal)}</td>
+                          <td style={{padding:'8px 10px'}}>{formatSasamsNumber(subject.subjectWeight)}</td>
                           <td style={{padding:'8px 10px'}}>{formatSasamsNumber(subject.termPercent)}</td>
                           <td style={{padding:'8px 10px'}}>{subject.level || '—'}</td>
                           <td style={{padding:'8px 10px'}}>{subject.status || 'Not captured yet'}</td>
