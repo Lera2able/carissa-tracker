@@ -3658,6 +3658,11 @@ function SasamsAdminSubmissionsTab({adminUser}){
     .number-cell { width:36px; text-align:center; font-weight:700; }
     .learner-cell { min-width: 170px; }
     .learner-name { font-weight:700; }
+    .signoff-grid { display:grid; grid-template-columns:repeat(2,minmax(240px,1fr)); gap:16px; margin-top:14px; }
+    .signoff-card { border:1px solid #cbd5e1; border-radius:10px; padding:12px; min-height:84px; }
+    .signoff-card.full { grid-column:1 / -1; min-height:92px; }
+    .signoff-title { font-size:11px; font-weight:800; color:#334155; margin-bottom:18px; text-transform:uppercase; letter-spacing:.3px; }
+    .sign-line { border-top:1px solid #94a3b8; margin-top:26px; padding-top:4px; font-size:11px; color:#64748b; }
     @media print { .toolbar { display:none; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
   </style>
 </head>
@@ -3694,6 +3699,21 @@ function SasamsAdminSubmissionsTab({adminUser}){
       </thead>
       <tbody>${bodyHtml}</tbody>
     </table>
+    <div class="signoff-grid">
+      <div class="signoff-card">
+        <div class="signoff-title">Educator sign-off</div>
+        <div class="sign-line">Educator signature and date</div>
+      </div>
+      <div class="signoff-card">
+        <div class="signoff-title">Admin review sign-off</div>
+        <div class="sign-line">Reviewer signature and date</div>
+      </div>
+      <div class="signoff-card full">
+        <div class="signoff-title">Remarks</div>
+        <div style="height:52px;"></div>
+        <div class="sign-line">Comments / approval notes / next steps</div>
+      </div>
+    </div>
   </div>
 </body>
 </html>`;
@@ -7532,6 +7552,8 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
   const teacherTableScrollerRef = useRef(null);
   const [teacherCanScrollLeft,setTeacherCanScrollLeft] = useState(false);
   const [teacherCanScrollRight,setTeacherCanScrollRight] = useState(false);
+  const [showLearnerReports,setShowLearnerReports] = useState(false);
+  const [learnerComments,setLearnerComments] = useState({});
 
   const clearSaveTimer = (key)=>{
     if(saveTimersRef.current[key]){
@@ -7865,6 +7887,114 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
     });
     return out;
   },[criteria, draftValues, invalidCells, learners, marksMap, totalPossibleWeighted]);
+  const learnerReportStorageKey = useMemo(
+    ()=>`carissa_sasams_report_comments_v2|${academicYear}|${termNo}|${selClass}|${subjectId}`,
+    [academicYear, termNo, selClass, subjectId]
+  );
+  const buildSasamsLearnerComment = useCallback((learner, learnerNo, summary)=>{
+    const name = String(learner?.firstname || learner?.surname || 'The learner').trim().split(/\s+/)[0] || 'The learner';
+    const progressValue = Number(summary?.termPercent);
+    const progressBand = Number.isNaN(progressValue) ? null : progressValue;
+    const introStrong = [
+      `${name} has worked hard this term.`,
+      `${name} has shown good effort this term.`,
+      `${name} has tried well this term.`,
+      `${name} has kept working this term.`
+    ];
+    const introSupport = [
+      `${name} has kept trying this term.`,
+      `${name} has shown effort this term.`,
+      `${name} is still learning and growing this term.`,
+      `${name} is trying and can improve this term.`
+    ];
+    const strengthOpeners = [
+      `${name} is doing well in`,
+      `${name} shows good understanding in`,
+      `${name} is strongest in`,
+      `${name} has done well in`
+    ];
+    const supportOpeners = [
+      `${name} needs to focus more on`,
+      `${name} can do better in`,
+      `${name} still needs support in`,
+      `${name} should keep practising`
+    ];
+    const closers = [
+      `Keep practising and ${name} will shine.`,
+      `${name} should keep working hard and will improve.`,
+      `With steady practice, ${name} will do even better.`,
+      `${name} can do very well with regular practice.`
+    ];
+    const criterionScores = criteria.map((criterion, idx)=>{
+      const rawValue = getCellRawValue(learnerNo, criterion.off_criterion_id);
+      const numeric = rawValue==='' || rawValue===null || rawValue===undefined ? null : Number(rawValue);
+      const maxScore = Number(criterion?.criterion_score_max || 0);
+      const percent = numeric===null || Number.isNaN(numeric) || !maxScore ? null : (numeric / maxScore) * 100;
+      const rawTitle = String(criterion?.short_label || criterion?.description || `Criterion ${criterion?.off_criterion_id || ''}`).trim();
+      return {
+        idx,
+        percent,
+        title: rawTitle.replace(/^\d+\s*:\s*/,'').trim() || rawTitle
+      };
+    }).filter(item=>item.percent!==null);
+    const strongest = [...criterionScores].sort((a,b)=>Number(b.percent) - Number(a.percent))[0];
+    const weakest = [...criterionScores].sort((a,b)=>Number(a.percent) - Number(b.percent))[0];
+    const introPool = progressBand!==null && progressBand >= 50 ? introStrong : introSupport;
+    const seedBase = Number(String(learnerNo).replace(/\D/g,'')) || (criterionScores.length + name.length);
+    const intro = introPool[seedBase % introPool.length];
+    const strengthLine = strongest
+      ? `${strengthOpeners[(seedBase + 1) % strengthOpeners.length]} ${strongest.title}.`
+      : `${name} is still building marks in this subject.`;
+    const supportLine = weakest
+      ? `${supportOpeners[(seedBase + 2) % supportOpeners.length]} ${weakest.title}.`
+      : `${name} should keep trying one task at a time.`;
+    const closing = closers[(seedBase + 3) % closers.length];
+    return `${intro} ${strengthLine} ${supportLine} ${closing}`.replace(/\s+/g,' ').trim();
+  },[criteria, getCellRawValue]);
+  const learnerReportRows = useMemo(()=>{
+    return learners.map((learner, index)=>{
+      const learnerNo = String(learner.__learner_no || learner.number || index + 1);
+      const summary = learnerSummaryMap[learnerNo] || {};
+      return {
+        learner,
+        learnerNo,
+        summary
+      };
+    });
+  },[learnerSummaryMap, learners]);
+  const classAverageSummary = useMemo(()=>{
+    const rowsWithMarks = learnerReportRows.filter(row=>row.summary?.termPercent!==null && row.summary?.termPercent!==undefined && !Number.isNaN(Number(row.summary.termPercent)));
+    if(!rowsWithMarks.length){
+      return { termPercent:null, level:null };
+    }
+    const avgPercent = Math.round((rowsWithMarks.reduce((sum,row)=>sum + Number(row.summary.termPercent || 0), 0) / rowsWithMarks.length) * 100) / 100;
+    const avgLevel = Math.round((rowsWithMarks.reduce((sum,row)=>sum + Number(row.summary.level || 0), 0) / rowsWithMarks.length) * 100) / 100;
+    return { termPercent:avgPercent, level:avgLevel };
+  },[learnerReportRows]);
+  useEffect(()=>{
+    if(!subjectId){
+      setLearnerComments({});
+      return;
+    }
+    let stored = {};
+    try{
+      stored = JSON.parse(localStorage.getItem(learnerReportStorageKey) || '{}') || {};
+    }catch(e){
+      stored = {};
+    }
+    const next = {};
+    learnerReportRows.forEach(({learner, learnerNo, summary})=>{
+      const savedComment = String(stored?.[learnerNo] || '').trim();
+      next[learnerNo] = savedComment || buildSasamsLearnerComment(learner, learnerNo, summary);
+    });
+    setLearnerComments(next);
+  },[buildSasamsLearnerComment, learnerReportRows, learnerReportStorageKey, subjectId]);
+  useEffect(()=>{
+    if(!subjectId) return;
+    try{
+      localStorage.setItem(learnerReportStorageKey, JSON.stringify(learnerComments || {}));
+    }catch(e){}
+  },[learnerComments, learnerReportStorageKey, subjectId]);
   const formatSasamsNumber = (value)=>{
     if(value===null || value===undefined || value==='') return '—';
     const numeric = Number(value);
@@ -8030,6 +8160,11 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
     .learner-cell { min-width: 170px; }
     .learner-name { font-weight:700; }
     .result-cell { background:#f8fafc; }
+    .signoff-grid { display:grid; grid-template-columns:repeat(2,minmax(240px,1fr)); gap:16px; margin-top:14px; }
+    .signoff-card { border:1px solid #cbd5e1; border-radius:10px; padding:12px; min-height:84px; }
+    .signoff-card.full { grid-column:1 / -1; min-height:92px; }
+    .signoff-title { font-size:11px; font-weight:800; color:#334155; margin-bottom:18px; text-transform:uppercase; letter-spacing:.3px; }
+    .sign-line { border-top:1px solid #94a3b8; margin-top:26px; padding-top:4px; font-size:11px; color:#64748b; }
     .toolbar { margin-bottom: 10px; }
     .btn-print { border:0; background:#4f46e5; color:#fff; padding:10px 14px; border-radius:8px; font-weight:700; cursor:pointer; }
     @media print { .toolbar { display:none; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
@@ -8076,6 +8211,21 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
         ${tableBody}
       </tbody>
     </table>
+    <div class="signoff-grid">
+      <div class="signoff-card">
+        <div class="signoff-title">Educator sign-off</div>
+        <div class="sign-line">Educator signature and date</div>
+      </div>
+      <div class="signoff-card">
+        <div class="signoff-title">Admin review sign-off</div>
+        <div class="sign-line">Reviewer signature and date</div>
+      </div>
+      <div class="signoff-card full">
+        <div class="signoff-title">Remarks</div>
+        <div style="height:52px;"></div>
+        <div class="sign-line">Comments / support needed / next steps</div>
+      </div>
+    </div>
   </div>
 </body>
 </html>`;
@@ -8090,6 +8240,103 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
     setTimeout(()=>{ try{ w.print(); }catch(e){} }, 350);
     setStatus('Print view opened.');
     onAudit && onAudit('sasams_export_pdf');
+  };
+  const printLearnerReports = ()=>{
+    if(!criteria.length){
+      showMsg('Load the SASAMS grid first before printing learner reports.');
+      return;
+    }
+    const generatedAt = new Date().toLocaleString('en-ZA');
+    const reportCards = learnerReportRows.map(({learner, learnerNo, summary})=>{
+      const comment = learnerComments[learnerNo] || buildSasamsLearnerComment(learner, learnerNo, summary);
+      const rowsHtml = criteria.map(criterion=>{
+        const rawValue = getCellRawValue(learnerNo, criterion.off_criterion_id);
+        const numeric = rawValue==='' || rawValue===null || rawValue===undefined ? null : Number(rawValue);
+        const maxScore = Number(criterion?.criterion_score_max || 0);
+        const pct = numeric===null || Number.isNaN(numeric) || !maxScore ? '—' : `${Math.round((numeric / maxScore) * 100)}%`;
+        return `<tr><td>${htmlEscape(normalizeSasamsCriterionTitle(criterion))}</td><td>${htmlEscape(rawValue || '—')}</td><td>${htmlEscape(maxScore || 0)}</td><td>${htmlEscape(pct)}</td></tr>`;
+      }).join('');
+      return `
+      <section class="report-card">
+        <div class="report-head">
+          <div>
+            <div class="school">CARISSA PRIMARY SCHOOL</div>
+            <div class="title">Learner SASAMS Report</div>
+            <div class="subtitle">${htmlEscape(activeSubject?.name_english || '')} • ${htmlEscape(`Term ${termNo}`)} • Patch ${htmlEscape(sasamsPatchVersion)}</div>
+          </div>
+          <div class="generated">Generated: ${htmlEscape(generatedAt)}</div>
+        </div>
+        <div class="meta-grid">
+          <div><strong>Learner:</strong> ${htmlEscape(`${learner.surname}, ${learner.firstname}`)}</div>
+          <div><strong>No:</strong> ${htmlEscape(learnerNo)}</div>
+          <div><strong>Class:</strong> ${htmlEscape(selClass)}</div>
+          <div><strong>Teacher:</strong> ${htmlEscape(teacherName)}</div>
+        </div>
+        <div class="pill-row">
+          <div class="pill"><span>Task total</span><strong>${htmlEscape(formatSasamsNumber(summary.taskTotal))}</strong></div>
+          <div class="pill"><span>Weighted mark</span><strong>${htmlEscape(formatSasamsNumber(summary.weightedTotal))}</strong></div>
+          <div class="pill"><span>Term %</span><strong>${htmlEscape(formatSasamsNumber(summary.termPercent))}</strong></div>
+          <div class="pill"><span>Level</span><strong>${htmlEscape(summary.level || '—')}</strong></div>
+          <div class="pill"><span>Class average</span><strong>${htmlEscape(formatSasamsNumber(classAverageSummary.termPercent))}</strong></div>
+        </div>
+        <table>
+          <thead><tr><th>Task</th><th>Mark</th><th>Max</th><th>%</th></tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+        <div class="comment-box">
+          <div class="comment-label">Teacher comment</div>
+          <div>${htmlEscape(comment)}</div>
+        </div>
+      </section>`;
+    }).join('');
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>${htmlEscape(`${selClass} learner SASAMS reports`)}</title>
+  <style>
+    @page { size: A4 portrait; margin: 12mm; }
+    body { font-family: Arial, sans-serif; color:#0f172a; margin:0; background:#f8fafc; }
+    .wrap { padding:10px; }
+    .toolbar { margin-bottom:10px; }
+    .btn-print { border:0; background:#4f46e5; color:#fff; padding:10px 14px; border-radius:8px; font-weight:700; cursor:pointer; }
+    .report-card { background:#fff; border:1px solid #cbd5e1; border-radius:14px; padding:16px; margin:0 auto 16px; max-width:900px; page-break-after:always; }
+    .report-card:last-child { page-break-after:auto; }
+    .report-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; border-bottom:2px solid #c7d2fe; padding-bottom:10px; margin-bottom:12px; }
+    .school { font-size:13px; font-weight:900; color:#475569; letter-spacing:.3px; }
+    .title { font-size:19px; font-weight:800; color:#312e81; margin-top:2px; }
+    .subtitle,.generated { font-size:11px; color:#64748b; margin-top:4px; }
+    .meta-grid { display:grid; grid-template-columns:repeat(2,minmax(160px,1fr)); gap:6px 14px; font-size:12px; margin-bottom:12px; }
+    .pill-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-bottom:12px; }
+    .pill { background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px; }
+    .pill span { display:block; font-size:10px; color:#64748b; text-transform:uppercase; margin-bottom:4px; }
+    .pill strong { font-size:18px; color:#111827; }
+    table { width:100%; border-collapse:collapse; font-size:11px; }
+    th,td { border:1px solid #cbd5e1; padding:7px 8px; text-align:left; vertical-align:top; }
+    th { background:#eef2ff; color:#312e81; }
+    .comment-box { margin-top:12px; background:#eff6ff; border-left:4px solid #3b82f6; border-radius:10px; padding:12px 14px; font-size:12px; line-height:1.6; color:#1e3a5f; }
+    .comment-label { font-size:10px; font-weight:800; color:#2563eb; text-transform:uppercase; letter-spacing:.4px; margin-bottom:4px; }
+    @media print { body { background:#fff; } .toolbar { display:none; } .wrap { padding:0; } .report-card { border:none; border-radius:0; max-width:none; margin:0 0 12px; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="toolbar"><button class="btn-print" onclick="window.print()">🖨 Print learner reports</button></div>
+    ${reportCards}
+  </div>
+</body>
+</html>`;
+    const w = window.open('', '_blank');
+    if(!w){
+      showMsg('Could not open the learner reports print view on this device.');
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    setTimeout(()=>{ try{ w.print(); }catch(e){} }, 350);
+    setStatus('Learner reports print view opened.');
+    onAudit && onAudit('sasams_export_learner_reports');
   };
 
   const submitForHodReview = async()=>{
@@ -8343,6 +8590,9 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
               <button onClick={printSasamsPdf} disabled={!criteria.length} style={{...sbtn,background:'#334155',opacity:!criteria.length?0.7:1}}>
                 🖨 Print / Save as PDF
               </button>
+              <button onClick={()=>setShowLearnerReports(prev=>!prev)} disabled={!criteria.length} style={{...sbtn,background:'#7c3aed',opacity:!criteria.length?0.7:1}}>
+                {showLearnerReports ? 'Hide learner reports' : 'Open learner reports'}
+              </button>
               <button
                 onClick={submitForHodReview}
                 disabled={submitBusy || isLocked || !criteria.length}
@@ -8352,6 +8602,100 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
               </button>
             </div>
           </div>
+          {showLearnerReports && (
+            <div style={{marginTop:'16px',border:'1px solid #ddd6fe',borderRadius:'14px',background:'#faf5ff',padding:'16px'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'12px',flexWrap:'wrap',marginBottom:'14px'}}>
+                <div>
+                  <div style={{fontSize:'18px',fontWeight:800,color:'#4c1d95',marginBottom:'4px'}}>Learner reports folder</div>
+                  <div style={{fontSize:'13px',color:'#6d28d9',lineHeight:1.6,maxWidth:'760px'}}>
+                    This report view collects the marks for each learner and shows the term result, level, class average, and a short teacher comment that can be edited before printing.
+                  </div>
+                </div>
+                <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+                  <span style={{background:'#ede9fe',color:'#5b21b6',padding:'8px 11px',borderRadius:'999px',fontSize:'12px',fontWeight:800}}>
+                    Class average: {formatSasamsNumber(classAverageSummary.termPercent)}
+                  </span>
+                  <span style={{background:'#ede9fe',color:'#5b21b6',padding:'8px 11px',borderRadius:'999px',fontSize:'12px',fontWeight:800}}>
+                    Average level: {formatSasamsNumber(classAverageSummary.level)}
+                  </span>
+                  <button onClick={printLearnerReports} style={{...sbtn,background:'#5b21b6'}}>
+                    🖨 Print learner reports
+                  </button>
+                </div>
+              </div>
+              <div style={{display:'grid',gap:'12px'}}>
+                {learnerReportRows.map(({learner, learnerNo, summary})=>{
+                  const comment = learnerComments[learnerNo] || buildSasamsLearnerComment(learner, learnerNo, summary);
+                  return (
+                    <details key={`sasams_report_${learnerNo}`} style={{background:'#fff',border:'1px solid #ddd6fe',borderRadius:'12px',overflow:'hidden'}} open>
+                      <summary style={{cursor:'pointer',padding:'14px 16px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',fontWeight:800,color:'#111827',listStyle:'none'}}>
+                        <div>
+                          {learner.surname}, {learner.firstname}
+                          <div style={{fontSize:'11px',fontWeight:600,color:'#6b7280',marginTop:'4px'}}>Learner no. {learnerNo}</div>
+                        </div>
+                        <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+                          <span style={{background:'#f8fafc',padding:'6px 10px',borderRadius:'999px',fontSize:'12px',color:'#334155'}}>Task total: {formatSasamsNumber(summary.taskTotal)}</span>
+                          <span style={{background:'#f8fafc',padding:'6px 10px',borderRadius:'999px',fontSize:'12px',color:'#334155'}}>Term %: {formatSasamsNumber(summary.termPercent)}</span>
+                          <span style={{background:'#f8fafc',padding:'6px 10px',borderRadius:'999px',fontSize:'12px',color:'#334155'}}>Level: {summary.level || '—'}</span>
+                        </div>
+                      </summary>
+                      <div style={{padding:'0 16px 16px'}}>
+                        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:'10px',marginBottom:'12px'}}>
+                          <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px 12px'}}><div style={{fontSize:'11px',color:'#64748b',marginBottom:'3px'}}>Weighted mark</div><div style={{fontSize:'18px',fontWeight:800,color:'#111827'}}>{formatSasamsNumber(summary.weightedTotal)}</div></div>
+                          <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px 12px'}}><div style={{fontSize:'11px',color:'#64748b',marginBottom:'3px'}}>Class average</div><div style={{fontSize:'18px',fontWeight:800,color:'#111827'}}>{formatSasamsNumber(classAverageSummary.termPercent)}</div></div>
+                          <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px 12px'}}><div style={{fontSize:'11px',color:'#64748b',marginBottom:'3px'}}>Captured tasks</div><div style={{fontSize:'18px',fontWeight:800,color:'#111827'}}>{summary.captured || 0}</div></div>
+                        </div>
+                        <div style={{overflowX:'auto',border:'1px solid #e2e8f0',borderRadius:'10px',marginBottom:'12px',background:'#fff'}}>
+                          <table style={{width:'100%',borderCollapse:'collapse',fontSize:'12px'}}>
+                            <thead>
+                              <tr style={{background:'#f5f3ff'}}>
+                                <th style={{padding:'8px 10px',textAlign:'left'}}>Task</th>
+                                <th style={{padding:'8px 10px',textAlign:'left'}}>Mark</th>
+                                <th style={{padding:'8px 10px',textAlign:'left'}}>Max</th>
+                                <th style={{padding:'8px 10px',textAlign:'left'}}>%</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {criteria.map(criterion=>{
+                                const rawValue = getCellRawValue(learnerNo, criterion.off_criterion_id);
+                                const numeric = rawValue==='' || rawValue===null || rawValue===undefined ? null : Number(rawValue);
+                                const maxScore = Number(criterion?.criterion_score_max || 0);
+                                const pct = numeric===null || Number.isNaN(numeric) || !maxScore ? '—' : `${Math.round((numeric / maxScore) * 100)}%`;
+                                return (
+                                  <tr key={`report_row_${learnerNo}_${criterion.off_criterion_id}`} style={{borderTop:'1px solid #f1f5f9'}}>
+                                    <td style={{padding:'8px 10px'}}>{normalizeSasamsCriterionTitle(criterion)}</td>
+                                    <td style={{padding:'8px 10px'}}>{rawValue || '—'}</td>
+                                    <td style={{padding:'8px 10px'}}>{maxScore || 0}</td>
+                                    <td style={{padding:'8px 10px'}}>{pct}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                        <div>
+                          <label style={lbl}>Teacher comment</label>
+                          <textarea
+                            rows={3}
+                            value={comment}
+                            onChange={e=>setLearnerComments(prev=>({...prev,[learnerNo]:e.target.value}))}
+                            placeholder="Write a short encouraging comment for this learner..."
+                            style={{...inp,resize:'vertical',minHeight:'88px'}}
+                          />
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',marginTop:'8px'}}>
+                            <div style={{fontSize:'12px',color:'#64748b'}}>Use short, simple, encouraging feedback written in the learner&apos;s name.</div>
+                            <button type="button" onClick={()=>setLearnerComments(prev=>({...prev,[learnerNo]:buildSasamsLearnerComment(learner, learnerNo, summary)}))} style={{...sbtn,background:'#8b5cf6',padding:'8px 12px',fontSize:'12px'}}>
+                              Use suggested comment
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </details>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
