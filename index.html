@@ -143,7 +143,7 @@ const BUILTIN_LEARNWORLD_RESOURCES = [
   {
     id:'builtin-typerix-game',
     title:'Typerix Typing Game',
-    type:'typing',
+    type:'link',
     url:'./typerix-game.html',
     subject:'Typing',
     grade_range:'Grade 1 - 7',
@@ -154,7 +154,7 @@ const BUILTIN_LEARNWORLD_RESOURCES = [
   {
     id:'builtin-typing-striker',
     title:'Typing Striker',
-    type:'typing',
+    type:'link',
     url:'./typing-striker-v2.html',
     subject:'Typing',
     grade_range:'Grade 1 - 7',
@@ -184,8 +184,9 @@ const mergeBuiltinResources = (rows=[]) => {
 };
 const ensureBuiltinLearnWorldResources = async(rows=[]) => {
   const list = Array.isArray(rows) ? rows : [];
-  const existingTitles = new Set(list.map(r=>String(r?.title||'').trim().toLowerCase()).filter(Boolean));
-  const existingUrls = new Set(list.map(r=>normalizeResourceUrl(r?.url)).filter(Boolean));
+  const dbRows = list.filter(r=>!String(r?.id||'').startsWith('builtin-'));
+  const existingTitles = new Set(dbRows.map(r=>String(r?.title||'').trim().toLowerCase()).filter(Boolean));
+  const existingUrls = new Set(dbRows.map(r=>normalizeResourceUrl(r?.url)).filter(Boolean));
   const missing = BUILTIN_LEARNWORLD_RESOURCES.filter(r=>
     !existingTitles.has(String(r.title||'').trim().toLowerCase()) &&
     !existingUrls.has(normalizeResourceUrl(r.url))
@@ -203,7 +204,7 @@ const ensureBuiltinLearnWorldResources = async(rows=[]) => {
 const resolveBuiltInResourceId = async(resourceId, resources=[]) => {
   const currentId = String(resourceId || '');
   if(!/^builtin-/i.test(currentId)) return resourceId;
-  const source = (Array.isArray(resources) ? resources : []).find(r=>String(r?.id||'')===currentId);
+  const source = (Array.isArray(resources) ? resources : []).find(r=>String(r?.id||'')===currentId) || BUILTIN_LEARNWORLD_RESOURCES.find(r=>String(r?.id||'')===currentId);
   const syncedResources = await ensureBuiltinLearnWorldResources(resources);
   const match = syncedResources.find(r=>
     !String(r?.id||'').startsWith('builtin-') &&
@@ -1120,15 +1121,21 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
       };
 
       const postRows = async (cls, targets) => {
-        if(!targets.length) return [];
-        const payload = targets.map(t=>({
-          ...base,
-          class_name:cls,
-          surname:t.surname,
-          firstname:t.firstname
-        }));
-        const rows = await db.post('carissa_resource_assignments', payload);
-        return Array.isArray(rows) ? rows : (rows ? [rows] : []);
+        if(!targets.length) return 0;
+        let insertedCount = 0;
+        const chunkSize = 120;
+        for(let i=0; i<targets.length; i+=chunkSize){
+          const chunk = targets.slice(i, i + chunkSize);
+          const payload = chunk.map(t=>({
+            ...base,
+            class_name:cls,
+            surname:t.surname,
+            firstname:t.firstname
+          }));
+          await db.post('carissa_resource_assignments', payload, 'return=minimal');
+          insertedCount += chunk.length;
+        }
+        return insertedCount;
       };
 
       if(form.assign_type==='learner'){
@@ -1144,7 +1151,7 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
       }
 
       let totalTargets = 0;
-      const rowsAll = [];
+      let insertedCount = 0;
 
       if(form.assign_type==='interventions_class'){
         const targets = classInterventions.map(i=>({surname:i.surname,firstname:i.firstname}));
@@ -1152,7 +1159,7 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
         totalTargets = targets.length;
         if(totalTargets>60 && !confirm(`This will assign to ${totalTargets} intervention learners. Continue?`)){setBusy(false);return;}
         setBusyLabel(`Assigning to ${totalTargets} intervention learner(s)...`);
-        rowsAll.push(...await postRows(form.class_name, targets));
+        insertedCount += await postRows(form.class_name, targets);
       }
 
       if(form.assign_type==='classlist_class'){
@@ -1161,7 +1168,7 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
         totalTargets = targets.length;
         if(totalTargets>60 && !confirm(`This will assign to ${totalTargets} learners in the class list. Continue?`)){setBusy(false);return;}
         setBusyLabel(`Assigning to ${totalTargets} learner(s) in ${form.class_name}...`);
-        rowsAll.push(...await postRows(form.class_name, targets));
+        insertedCount += await postRows(form.class_name, targets);
       }
 
       if(form.assign_type==='interventions_all'){
@@ -1173,7 +1180,7 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
         if(!clsWithTargets.length){alert('No intervention learners found across any classes.');setBusy(false);return;}
         if(totalTargets>60 && !confirm(`This will assign to ${totalTargets} intervention learners across ${clsWithTargets.length} classes. Continue?`)){setBusy(false);return;}
         setBusyLabel(`Assigning to ${totalTargets} intervention learner(s) across ${clsWithTargets.length} classes...`);
-        for(const x of clsWithTargets) rowsAll.push(...await postRows(x.cls, x.targets));
+        for(const x of clsWithTargets) insertedCount += await postRows(x.cls, x.targets);
       }
 
       if(form.assign_type==='classlist_all'){
@@ -1185,11 +1192,10 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
         if(!clsWithTargets.length){alert('No class lists found across any classes.');setBusy(false);return;}
         if(totalTargets>60 && !confirm(`This will assign to ${totalTargets} learners across ${clsWithTargets.length} classes. Continue?`)){setBusy(false);return;}
         setBusyLabel(`Assigning to ${totalTargets} learner(s) across ${clsWithTargets.length} classes...`);
-        for(const x of clsWithTargets) rowsAll.push(...await postRows(x.cls, x.targets));
+        for(const x of clsWithTargets) insertedCount += await postRows(x.cls, x.targets);
       }
 
-      setAssignments(p=>[...rowsAll,...p]);
-      showMsg(`✓ Assigned to ${rowsAll.length} learner(s).`);
+      showMsg(`✓ Assigned to ${insertedCount} learner(s).`);
       setForm({...blank});
     }catch(e){alert('Error: '+e.message);}
     setBusy(false);
@@ -11500,15 +11506,19 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
         notes: String(assignForm.notes||'').trim() || null
       };
       const postRows = async(targets)=>{
-        const rows = [];
-        for(const t of targets){
-          const r = await db.post('carissa_resource_assignments',{...base,surname:t.surname,firstname:t.firstname});
-          rows.push(r[0]);
+        if(!targets.length) return 0;
+        let insertedCount = 0;
+        const chunkSize = 120;
+        for(let i=0; i<targets.length; i+=chunkSize){
+          const chunk = targets.slice(i, i + chunkSize);
+          const payload = chunk.map(t=>({...base,surname:t.surname,firstname:t.firstname}));
+          await db.post('carissa_resource_assignments', payload, 'return=minimal');
+          insertedCount += chunk.length;
         }
-        return rows;
+        return insertedCount;
       };
 
-      let rowsAll = [];
+      let insertedCount = 0;
       if(assignForm.assign_type==='learner'){
         if(!assignForm.surname || !assignForm.firstname){
           alert('Please select a learner.');
@@ -11516,7 +11526,8 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
           return;
         }
         const r = await db.post('carissa_resource_assignments',{...base,surname:assignForm.surname,firstname:assignForm.firstname});
-        rowsAll = [r[0]];
+        insertedCount = 1;
+        setAssignments && setAssignments(p=>[r[0],...p]);
       }else if(assignForm.assign_type==='interventions_class'){
         const targets = classInterventions.map(i=>({surname:i.surname,firstname:i.firstname}));
         if(!targets.length){
@@ -11524,7 +11535,7 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
           setAssignBusy(false);
           return;
         }
-        rowsAll = await postRows(targets);
+        insertedCount = await postRows(targets);
       }else{
         const targets = rosterLearners.map(l=>({surname:l.surname,firstname:l.firstname}));
         if(!targets.length){
@@ -11532,11 +11543,10 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
           setAssignBusy(false);
           return;
         }
-        rowsAll = await postRows(targets);
+        insertedCount = await postRows(targets);
       }
 
-      setAssignments && setAssignments(p=>[...rowsAll,...p]);
-      showMsg && showMsg(`✓ Assigned ${assignFor.title} to ${rowsAll.length} learner(s) in ${selClass}.`);
+      showMsg && showMsg(`✓ Assigned ${assignFor.title} to ${insertedCount} learner(s) in ${selClass}.`);
       try{ onAudit && onAudit('learnworld_assign', assignFor); }catch(e){}
       resetAssign();
     }catch(e){
