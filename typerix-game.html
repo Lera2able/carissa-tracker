@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Typerix - Typing Game</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: #1a1a2e;
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  #game-wrapper {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* HUD */
+  #hud {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 20px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .hud-item {
+    text-align: center;
+  }
+  .hud-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #8892b0;
+  }
+  .hud-value {
+    font-size: 22px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .hud-value.score { color: #64ffda; }
+  .hud-value.level { color: #ffd700; }
+  .hud-value.lives { color: #ff6b6b; }
+  #hud-controls {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .hud-toggle {
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    padding: 9px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .hud-toggle:hover {
+    background: rgba(255,255,255,0.14);
+  }
+  .hidden {
+    display: none !important;
+  }
+  #send-wrap {
+    display: none;
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.06);
+    text-align: center;
+    max-width: 380px;
+  }
+  #send-status {
+    font-size: 13px;
+    color: #ccd6f6;
+    line-height: 1.5;
+    margin-bottom: 10px;
+  }
+
+  /* Game area */
+  #game-container {
+    position: relative;
+    width: 480px;
+    height: 640px;
+    background: #0f0f23;
+    border-radius: 12px;
+    border: 2px solid #2a2a4a;
+    overflow: hidden;
+  }
+
+  /* Grid cells (the stack) */
+  #grid-layer {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-template-rows: repeat(16, 1fr);
+  }
+  .grid-cell {
+    border: 0.5px solid rgba(255,255,255,0.03);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+    transition: background 0.15s, color 0.15s;
+  }
+  .grid-cell.junk {
+    background: #3a3a5a;
+    color: #8892b0;
+    border-color: rgba(255,255,255,0.08);
+  }
+  .grid-cell.yellow {
+    background: #ffd700;
+    color: #1a1a2e;
+    border-color: #ffec8b;
+    animation: pulse-yellow 1s infinite;
+  }
+  .grid-cell.typing {
+    background: #64ffda;
+    color: #1a1a2e;
+  }
+  @keyframes pulse-yellow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.75; }
+  }
+
+  /* Falling words layer */
+  #words-layer {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+  .falling-word {
+    position: absolute;
+    display: flex;
+    gap: 1px;
+    transition: top 0.05s linear;
+  }
+  .falling-letter {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+    background: #64ffda;
+    color: #0f0f23;
+    border-radius: 6px;
+    border: 1px solid #4dd0c7;
+  }
+  .falling-letter.typed {
+    background: #1a1a2e;
+    color: #64ffda;
+    border-color: #64ffda;
+  }
+  .falling-word.target .falling-letter {
+    box-shadow: 0 0 12px rgba(100,255,218,0.4);
+  }
+
+  /* Input display */
+  #input-display {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    color: #64ffda;
+    background: rgba(15,15,35,0.9);
+    padding: 6px 20px;
+    border-radius: 8px;
+    border: 1px solid rgba(100,255,218,0.3);
+    min-width: 120px;
+    text-align: center;
+    white-space: pre;
+  }
+  #input-display.error {
+    color: #ff6b6b;
+    border-color: rgba(255,107,107,0.3);
+    animation: shake 0.3s ease;
+  }
+  @keyframes shake {
+    0%,100%{transform:translateX(-50%) translateX(0);}
+    25%{transform:translateX(-50%) translateX(-4px);}
+    75%{transform:translateX(-50%) translateX(4px);}
+  }
+
+  /* Overlays */
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15,15,35,0.92);
+    z-index: 10;
+    border-radius: 12px;
+  }
+  .overlay h1 {
+    font-size: 42px;
+    font-weight: 800;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #64ffda, #ffd700);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .overlay h2 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #ff6b6b;
+  }
+  .overlay p {
+    font-size: 15px;
+    color: #8892b0;
+    margin-bottom: 6px;
+    text-align: center;
+    line-height: 1.5;
+    max-width: 380px;
+  }
+  .overlay .big-score {
+    font-size: 56px;
+    font-weight: 800;
+    color: #64ffda;
+    margin: 12px 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .btn {
+    padding: 12px 32px;
+    font-size: 16px;
+    font-weight: 700;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    margin-top: 16px;
+    transition: transform 0.15s, opacity 0.15s;
+  }
+  .btn:hover { transform: scale(1.05); }
+  .btn-primary {
+    background: linear-gradient(135deg, #64ffda, #4dd0c7);
+    color: #0f0f23;
+  }
+  .btn-secondary {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+
+  /* Freeze overlay */
+  #freeze-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(100,200,255,0.08);
+    border: 2px solid rgba(100,200,255,0.3);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  #freeze-overlay.active { opacity: 1; }
+  #freeze-overlay span {
+    font-size: 32px;
+    font-weight: 800;
+    color: #64c8ff;
+    text-shadow: 0 0 20px rgba(100,200,255,0.5);
+  }
+
+  /* Danger indicator */
+  #danger-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: transparent;
+    z-index: 4;
+  }
+  #danger-bar.danger { background: linear-gradient(90deg, transparent, #ff6b6b, transparent); }
+
+  /* Instructions */
+  .instructions {
+    text-align: left;
+    font-size: 13px;
+    color: #8892b0;
+    line-height: 1.7;
+    max-width: 380px;
+    margin: 12px 0;
+  }
+  .instructions li { margin-bottom: 4px; }
+  .instructions strong { color: #ccd6f6; }
+
+  /* Next word preview */
+  #next-word {
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    font-size: 12px;
+    color: #8892b0;
+    z-index: 3;
+  }
+  #next-word span {
+    color: #64ffda;
+    font-weight: 700;
+    letter-spacing: 2px;
+  }
+
+  /* Combo indicator */
+  #combo-display {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 48px;
+    font-weight: 800;
+    color: #ffd700;
+    text-shadow: 0 0 30px rgba(255,215,0,0.5);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 6;
+    transition: opacity 0.2s;
+  }
+  #combo-display.show { opacity: 1; }
+
+  @media (max-width: 520px) {
+    #game-container { width: 360px; height: 480px; }
+    .falling-letter { width: 30px; height: 30px; font-size: 14px; }
+    .grid-cell { font-size: 14px; }
+    .overlay h1 { font-size: 32px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="game-wrapper">
+  <div id="hud">
+    <div class="hud-item">
+      <div class="hud-label">Score</div>
+      <div class="hud-value score" id="score">0</div>
+    </div>
+    <div class="hud-item">
+      <div class="hud-label">Level</div>
+      <div class="hud-value level" id="level">1</div>
+    </div>
+    <div class="hud-item">
+      <div class="hud-label">High Score</div>
+      <div class="hud-value" id="highscore">0</div>
+    </div>
+    <div class="hud-item">
+      <div class="hud-label">WPM</div>
+      <div class="hud-value" id="wpm">0</div>
+    </div>
+    <div class="hud-item">
+      <div class="hud-label">Accuracy</div>
+      <div class="hud-value" id="accuracy">100%</div>
+    </div>
+  </div>
+  <div id="hud-controls">
+    <button id="sound-toggle" class="hud-toggle" type="button" onclick="toggleSound()">🔊 Sound On</button>
+  </div>
+
+  <div id="game-container">
+    <div id="danger-bar"></div>
+    <div id="grid-layer"></div>
+    <div id="words-layer"></div>
+    <div id="input-display"></div>
+    <div id="next-word">Next: <span id="next-word-text">---</span></div>
+    <div id="combo-display"></div>
+    <div id="freeze-overlay"><span>FREEZE!</span></div>
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="overlay">
+      <h1>TYPERIX</h1>
+      <p>Clear falling words before they stack up!<br>Type fast, think smart.</p>
+      <ul class="instructions">
+        <li><strong>Type falling words</strong> to clear them (+10 pts)</li>
+        <li><strong>Words become blocks</strong> when they land</li>
+        <li><strong>Full rows turn yellow</strong> — type them to clear (+50 pts)</li>
+        <li><strong>Freeze triggers</strong> at 5/7/9 rows to help you catch up</li>
+        <li><strong>Esc</strong> to pause, <strong>Backspace</strong> to reset input</li>
+      </ul>
+      <button class="btn btn-primary" onclick="startGame()">Start Game</button>
+    </div>
+
+    <!-- Pause Screen -->
+    <div id="pause-screen" class="overlay hidden">
+      <h2>Paused</h2>
+      <p>Press Enter or click Resume to continue</p>
+      <button class="btn btn-primary" onclick="resumeGame()">Resume</button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameover-screen" class="overlay hidden">
+      <h2>Game Over</h2>
+      <p id="gameover-msg">The stack reached the top!</p>
+      <div class="big-score" id="final-score">0</div>
+      <p>Level reached: <span id="final-level">1</span></p>
+      <p>WPM: <span id="final-wpm">0</span> | Accuracy: <span id="final-accuracy">0%</span></p>
+      <div id="send-wrap">
+        <div id="send-status"></div>
+        <button class="btn btn-secondary" type="button" onclick="sendToTeacher(true)">Send result again</button>
+      </div>
+      <button class="btn btn-primary" onclick="startGame()">Play Again</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== CONFIG =====================
+const COLS = 12;
+const ROWS = 16;
+const CELL_W = 40; // px per cell
+const CELL_H = 40;
+const WORD_BANK = [
+  "the","and","for","are","but","not","you","all","can","had","her","was","one","our","out","day","get","has","him","his","how","man","new","now","old","see","two","way","who","boy","did","its","let","put","say","she","too","use","dad","mom","cat","dog","run","sun","fun","bug","hat","map","nap","pen","red","bed","box","car","egg","fan","gym","ice","jam","key","leg","mix","net","owl","pig","rat","sit","tag","van","wet","zip","ace","act","add","age","ago","aid","aim","air","ale","all","alp","amp","ant","ape","app","apt","arc","ark","arm","art","ash","ask","asp","ate","awe","axe","bad","bag","ban","bar","bat","bay","bee","beg","bet","bid","big","bin","bit","bob","bog","boo","bow","bra","bud","bum","bun","bus","buy","cab","cad","cam","cap","cod","cog","con","coo","cop","cot","cow","coy","cry","cub","cue","cup","cur","cut","dab","dam","dew","die","dig","dim","din","dip","doe","dot","dry","dub","dud","due","dug","duo","dye","ear","eat","eel","eft","elf","elk","elm","emo","end","eon","era","ere","erg","err","ewe","eye","fad","fag","far","fat","fax","fed","fee","fen","few","fez","fib","fig","fin","fir","fit","fix","flu","fly","fob","foe","fog","foh","fop","fox","fro","fry","fug","fur","gab","gag","gal","gap","gas","gay","gee","gel","gem","get","gig","gin","gnu","gob","god","gog","goo","got","gum","gun","gut","guy","gym","hag","ham","hap","has","haw","hay","hem","hen","hep","her","hew","hex","hey","hid","hie","him","hip","his","hit","hob","hod","hoe","hog","hon","hop","hot","how","hub","hue","hug","huh","hum","hun","hut","ick","icy","imp","ink","inn","ion","ire","irk","ivy","jab","jag","jam","jar","jaw","jay","jet","jew","jib","jig","job","joe","jog","jot","joy","jug","jun","kay","kea","keg","ken","key","kid","kin","kip","kit","lab","lac","lad","lag","lam","lap","law","lax","lay","lea","led","lee","leg","lei","lek","let","lew","lex","ley","lid","lie","lip","lit","lob","log","loo","lop","lot","low","lox","lug","lux","lye","mac","mad","mag","man","map","mar","mas","mat","maw","max","may","med","meg","men","met","mew","mid","mil","mix","mob","mod","mog","mom","mon","moo","mop","mot","mow","mud","mug","mum","nab","nag","nah","nap","nay","neb","nee","net","new","nib","nil","nip","nit","nix","nob","nod","nog","nor","not","now","nth","nub","nun","nut","oaf","oak","oar","oat","odd","ode","off","oft","ohm","oho","oil","old","ole","one","ooh","ops","opt","orb","orc","ore","our","out","ova","owe","owl","own","pac","pad","pal","pan","pap","par","pat","paw","pax","pay","pea","peg","pen","pep","per","pet","pew","phi","pic","pie","pig","pin","pip","pit","ply","pod","poi","pol","pop","pot","pow","pox","pro","pry","psi","pub","pug","pun","pup","pus","put","pyx","qat","qua","rad","rag","rah","ram","ran","rap","rat","raw","ray","red","ref","rep","rev","rib","rid","rig","rim","rip","rob","rod","roe","rom","rot","row","rub","rue","rug","rum","run","rut","rye","sac","sad","sag","sap","sat","saw","sax","say","sea","sec","see","set","sew","sex","she","shy","sib","sic","sin","sip","sir","sit","six","ski","sky","sly","sob","sod","sol","son","sop","sot","sow","soy","spa","spy","sty","sub","sue","sum","sun","sup","tab","tad","tag","tam","tan","tap","tar","tat","tax","tea","tee","ten","the","thy","tic","tie","tin","tip","tod","toe","tog","tom","ton","too","top","tor","tot","tow","toy","try","tub","tug","tun","tux","two","use","van","vat","vee","vet","vex","via","vie","vim","voe","vow","wad","wag","wan","war","was","wax","way","web","wed","wee","wet","who","why","wig","win","wit","woe","wok","won","woo","wow","wry","wye","yak","yam","yap","yaw","yea","yeh","yen","yep","yes","yet","yew","yip","yob","yod","yon","you","yow","yuk","yum","yup","zag","zap","zed","zen","zig","zip","zit","zoa","zoo"
+];
+
+const qs = new URLSearchParams(window.location.search);
+const ASSIGNMENT_ID = qs.get('assignment_id') || '';
+const AUTO_GRADE = Number(qs.get('grade') || 0) || null;
+const OPENED_FROM_TRACKER = !!ASSIGNMENT_ID;
+
+// ===================== STATE =====================
+let grid = []; // 2D array: null or {letter, type: 'junk'|'yellow'}
+let fallingWords = []; // {id, word, letters[], x, y, col, speed, target}
+let activeWord = null; // which falling word is being typed
+let inputBuffer = "";
+let score = 0;
+let level = 1;
+let highScore = parseInt(localStorage.getItem('typerix_highscore') || '0');
+let gameActive = false;
+let paused = false;
+let spawnTimer = null;
+let gameLoopId = null;
+let nextWord = "";
+let freezeActive = false;
+let freezeTimer = null;
+let slowMotion = false;
+let combo = 0;
+let lastClearTime = 0;
+let frozenRowsTriggered = new Set();
+let soundEnabled = true;
+let gameStartTime = 0;
+let totalKeystrokes = 0;
+let correctChars = 0;
+let lastResult = null;
+let resultSent = false;
+
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function beep(freq, dur = 0.08, type = 'sine', vol = 0.05, when = 0) {
+  if (!soundEnabled) return;
+  try {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const t = ctx.currentTime + when;
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + dur);
+  } catch (e) {}
+}
+function sndKey() { beep(680, 0.04, 'square', 0.04); }
+function sndErr() { beep(170, 0.14, 'sawtooth', 0.06); }
+function sndWin() { [523, 659, 784].forEach((f, i) => beep(f, 0.18, 'triangle', 0.08, i * 0.12)); }
+function elapsedSec() {
+  return gameStartTime ? (Date.now() - gameStartTime) / 1000 : 0;
+}
+function getWpm() {
+  const minutes = elapsedSec() / 60;
+  return minutes > 0 ? Math.round((correctChars / 5) / minutes) : 0;
+}
+function getAccuracy() {
+  return totalKeystrokes > 0 ? Math.round((correctChars / totalKeystrokes) * 100) : 100;
+}
+function syncSoundButton() {
+  const btn = document.getElementById('sound-toggle');
+  if (!btn) return;
+  btn.textContent = soundEnabled ? '🔊 Sound On' : '🔇 Sound Off';
+}
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  syncSoundButton();
+}
+function setSendStatus(message) {
+  const el = document.getElementById('send-status');
+  if (el) el.textContent = message || '';
+}
+function showToast(message) {
+  const el = document.createElement('div');
+  el.textContent = message;
+  el.style.position = 'fixed';
+  el.style.left = '50%';
+  el.style.bottom = '24px';
+  el.style.transform = 'translateX(-50%)';
+  el.style.zIndex = '99999';
+  el.style.background = 'rgba(15, 23, 42, 0.95)';
+  el.style.color = 'white';
+  el.style.padding = '12px 16px';
+  el.style.borderRadius = '999px';
+  el.style.fontWeight = '900';
+  el.style.fontSize = '14px';
+  el.style.boxShadow = '0 10px 30px rgba(0,0,0,0.25)';
+  document.body.appendChild(el);
+  setTimeout(() => {
+    el.style.opacity = '0';
+    el.style.transition = 'opacity 400ms';
+  }, 2200);
+  setTimeout(() => {
+    try { el.remove(); } catch (e) {}
+  }, 2800);
+}
+function sendToTeacher(showPopup = false) {
+  if (!OPENED_FROM_TRACKER) {
+    setSendStatus('This game was not opened from a learner assignment.');
+    return;
+  }
+  if (!lastResult) {
+    setSendStatus('Finish the game first, then send the result.');
+    return;
+  }
+  const payload = {
+    type: 'typing_speed_result',
+    assignment_id: lastResult.assignment_id,
+    wpm: lastResult.wpm,
+    accuracy: lastResult.accuracy,
+    typed_chars: lastResult.typed_chars,
+    errors: lastResult.errors,
+    duration_sec: lastResult.duration_sec,
+    activity_title: lastResult.activity_title,
+    stars: lastResult.stars,
+    time_label: lastResult.time_label,
+    result_summary: lastResult.result_summary
+  };
+  try {
+    if (window.opener) {
+      window.opener.postMessage(payload, window.location.origin);
+      resultSent = true;
+      setSendStatus('✓ Mark sent to teacher. Return to the learner portal to see it save.');
+      if (showPopup) showToast('✓ Mark sent to teacher');
+      return;
+    }
+  } catch (e) {}
+  try {
+    localStorage.setItem('typing_speed_result_pending', JSON.stringify(payload));
+    resultSent = true;
+    setSendStatus('✓ Mark sent to teacher. Return to the learner portal tab to finish saving.');
+    if (showPopup) showToast('✓ Mark sent to teacher');
+  } catch (e) {
+    setSendStatus('Could not send automatically. Please try again.');
+  }
+}
+
+// ===================== INIT =====================
+function initGrid() {
+  grid = [];
+  const layer = document.getElementById('grid-layer');
+  layer.innerHTML = '';
+  for (let r = 0; r < ROWS; r++) {
+    grid[r] = [];
+    for (let c = 0; c < COLS; c++) {
+      grid[r][c] = null;
+      const cell = document.createElement('div');
+      cell.className = 'grid-cell';
+      cell.dataset.r = r;
+      cell.dataset.c = c;
+      layer.appendChild(cell);
+    }
+  }
+}
+
+function getCellEl(r, c) {
+  return document.querySelector(`.grid-cell[data-r="${r}"][data-c="${c}"]`);
+}
+
+function renderGrid() {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const cell = grid[r][c];
+      const el = getCellEl(r, c);
+      el.className = 'grid-cell';
+      el.textContent = '';
+      if (cell) {
+        el.textContent = cell.letter.toUpperCase();
+        el.classList.add(cell.type);
+      }
+    }
+  }
+}
+
+// ===================== WORD SPAWNING =====================
+function pickWord() {
+  const minLen = Math.min(3, Math.max(3, 2 + Math.floor(level / 3)));
+  const maxLen = Math.min(8, 3 + Math.floor(level / 2));
+  const candidates = WORD_BANK.filter(w => w.length >= minLen && w.length <= maxLen);
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+function spawnWord() {
+  if (!gameActive || paused || freezeActive) return;
+  const word = nextWord || pickWord();
+  nextWord = pickWord();
+  document.getElementById('next-word-text').textContent = nextWord.toUpperCase();
+
+  const wordLen = word.length;
+  const maxCol = COLS - wordLen;
+  const col = Math.floor(Math.random() * (maxCol + 1));
+
+  const fw = {
+    id: Date.now() + Math.random(),
+    word: word,
+    letters: word.split(''),
+    col: col,
+    x: col * CELL_W,
+    y: -CELL_H,
+    speed: getSpeed(),
+    target: false,
+    el: null
+  };
+
+  // Create DOM
+  const el = document.createElement('div');
+  el.className = 'falling-word';
+  el.style.left = fw.x + 'px';
+  el.style.top = fw.y + 'px';
+  word.split('').forEach(ch => {
+    const le = document.createElement('div');
+    le.className = 'falling-letter';
+    le.textContent = ch.toUpperCase();
+    el.appendChild(le);
+  });
+  document.getElementById('words-layer').appendChild(el);
+  fw.el = el;
+
+  fallingWords.push(fw);
+}
+
+function getSpeed() {
+  let base = 0.8 + level * 0.25;
+  if (slowMotion) base *= 0.25;
+  // Stack slowdown
+  const stackHeight = getStackHeight();
+  if (stackHeight > 4) base *= 0.85;
+  if (stackHeight > 8) base *= 0.85;
+  return base;
+}
+
+function getStackHeight() {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r][c]) return ROWS - r;
+    }
+  }
+  return 0;
+}
+
+// ===================== GAME LOOP =====================
+function gameLoop() {
+  if (!gameActive || paused) {
+    gameLoopId = requestAnimationFrame(gameLoop);
+    return;
+  }
+
+  if (!freezeActive) {
+    // Move falling words
+    fallingWords.forEach(fw => {
+      fw.speed = getSpeed();
+      fw.y += fw.speed;
+      fw.el.style.top = fw.y + 'px';
+
+      // Check collision with grid
+      const row = Math.floor((fw.y + CELL_H) / CELL_H);
+      let landed = false;
+
+      if (row >= ROWS) {
+        landed = true;
+      } else {
+        for (let i = 0; i < fw.letters.length; i++) {
+          const c = fw.col + i;
+          const checkRow = Math.floor((fw.y + CELL_H - 2) / CELL_H);
+          if (checkRow >= 0 && checkRow < ROWS && grid[checkRow][c]) {
+            landed = true;
+            break;
+          }
+        }
+      }
+
+      if (landed) {
+        landWord(fw);
+      }
+    });
+
+    // Remove landed words from fallingWords (handled in landWord)
+    fallingWords = fallingWords.filter(fw => fw.el && fw.el.parentNode);
+  }
+
+  // Check freeze triggers
+  checkFreeze();
+
+  // Check game over
+  if (getStackHeight() >= ROWS) {
+    endGame();
+    return;
+  }
+
+  updateHUD();
+  gameLoopId = requestAnimationFrame(gameLoop);
+}
+
+function landWord(fw) {
+  // Place letters into grid
+  const row = Math.min(ROWS - 1, Math.floor((fw.y + CELL_H / 2) / CELL_H));
+  let placedRow = -1;
+
+  for (let i = 0; i < fw.letters.length; i++) {
+    const c = fw.col + i;
+    if (c < 0 || c >= COLS) continue;
+    // Find lowest empty cell in this column starting from row
+    for (let r = ROWS - 1; r >= 0; r--) {
+      if (!grid[r][c]) {
+        grid[r][c] = { letter: fw.letters[i], type: 'junk' };
+        placedRow = Math.max(placedRow, r);
+        break;
+      }
+    }
+  }
+
+  // Remove falling word element
+  if (fw.el && fw.el.parentNode) fw.el.parentNode.removeChild(fw.el);
+
+  // Reset active word if this was it
+  if (activeWord === fw) {
+    activeWord = null;
+    inputBuffer = "";
+    updateInputDisplay();
+  }
+
+  // Check for full rows
+  checkFullRows();
+  renderGrid();
+  combo = 0;
+}
+
+function checkFullRows() {
+  for (let r = ROWS - 1; r >= 0; r--) {
+    const isFull = grid[r].every(cell => cell !== null);
+    if (isFull) {
+      grid[r].forEach(cell => { if (cell) cell.type = 'yellow'; });
+    }
+  }
+}
+
+function checkFreeze() {
+  const height = getStackHeight();
+  const triggers = [5, 7, 9];
+  triggers.forEach(h => {
+    if (height >= h && !frozenRowsTriggered.has(h)) {
+      frozenRowsTriggered.add(h);
+      triggerFreeze();
+    }
+  });
+}
+
+function triggerFreeze() {
+  freezeActive = true;
+  document.getElementById('freeze-overlay').classList.add('active');
+  if (freezeTimer) clearTimeout(freezeTimer);
+  freezeTimer = setTimeout(() => {
+    freezeActive = false;
+    document.getElementById('freeze-overlay').classList.remove('active');
+  }, 5000);
+}
+
+// ===================== TYPING =====================
+document.addEventListener('keydown', e => {
+  if (!gameActive) {
+    if (e.key === 'Enter' && document.getElementById('start-screen').classList.contains('hidden') === false) {
+      startGame();
+    }
+    return;
+  }
+
+  if (e.key === 'Escape') {
+    togglePause();
+    return;
+  }
+
+  if (paused) {
+    if (e.key === 'Enter') resumeGame();
+    return;
+  }
+
+  if (e.key === 'Backspace') {
+    inputBuffer = "";
+    activeWord = null;
+    slowMotion = false;
+    updateInputDisplay();
+    updateTargetHighlight();
+    return;
+  }
+
+  // Only accept letters
+  if (!/^[a-zA-Z]$/.test(e.key)) return;
+  e.preventDefault();
+
+  const char = e.key.toLowerCase();
+  totalKeystrokes++;
+
+  // Check if typing a yellow row
+  const yellowRow = findYellowRow();
+  if (yellowRow !== -1) {
+    slowMotion = true;
+    handleYellowRowType(yellowRow, char);
+    return;
+  }
+
+  slowMotion = false;
+
+  if (!activeWord) {
+    // Find a falling word starting with this letter
+    const candidates = fallingWords.filter(fw => fw.letters[0] === char);
+    if (candidates.length > 0) {
+      // Pick the one closest to landing
+      activeWord = candidates.sort((a, b) => b.y - a.y)[0];
+      inputBuffer = char;
+      correctChars++;
+      sndKey();
+      updateTargetHighlight();
+      updateInputDisplay();
+      checkWordComplete();
+    } else {
+      // Check grid junk for this letter (optional - can type junk letters too)
+      showError();
+      sndErr();
+    }
+  } else {
+    // Continue typing active word
+    const nextIndex = inputBuffer.length;
+    if (activeWord.letters[nextIndex] === char) {
+      inputBuffer += char;
+      correctChars++;
+      sndKey();
+      updateTargetHighlight();
+      updateInputDisplay();
+      checkWordComplete();
+    } else {
+      // Wrong letter - reset
+      inputBuffer = "";
+      activeWord = null;
+      updateTargetHighlight();
+      updateInputDisplay();
+      showError();
+    }
+  }
+});
+
+function findYellowRow() {
+  for (let r = ROWS - 1; r >= 0; r--) {
+    if (grid[r].every(cell => cell && cell.type === 'yellow')) {
+      return r;
+    }
+  }
+  return -1;
+}
+
+function handleYellowRowType(row, char) {
+  // Find the letter in the yellow row
+  for (let c = 0; c < COLS; c++) {
+    if (grid[row][c] && grid[row][c].letter === char && grid[row][c].type === 'yellow') {
+      grid[row][c] = null;
+      correctChars++;
+      sndKey();
+      renderGrid();
+      inputBuffer += char;
+      updateInputDisplay();
+
+      // Check if row is cleared
+      const rowCleared = grid[row].every(cell => cell === null);
+      if (rowCleared) {
+        // Shift everything above down
+        for (let r = row; r > 0; r--) {
+          grid[r] = [...grid[r - 1]];
+        }
+        grid[0] = new Array(COLS).fill(null);
+        renderGrid();
+
+        score += 50;
+        updateHUD();
+        checkLevelUp();
+
+        // Combo
+        const now = Date.now();
+        if (now - lastClearTime < 3000) combo++;
+        else combo = 1;
+        lastClearTime = now;
+        showCombo();
+
+        inputBuffer = "";
+        updateInputDisplay();
+        slowMotion = false;
+
+        // Re-check full rows
+        checkFullRows();
+        renderGrid();
+      }
+      return;
+    }
+  }
+  // Letter not found in yellow row
+  showError();
+}
+
+function checkWordComplete() {
+  if (!activeWord) return;
+  if (inputBuffer === activeWord.word) {
+    // Word completed!
+    score += 10;
+    updateHUD();
+    checkLevelUp();
+
+    // Remove word
+    if (activeWord.el && activeWord.el.parentNode) {
+      activeWord.el.parentNode.removeChild(activeWord.el);
+    }
+    fallingWords = fallingWords.filter(fw => fw !== activeWord);
+
+    combo++;
+    lastClearTime = Date.now();
+    showCombo();
+
+    activeWord = null;
+    inputBuffer = "";
+    updateInputDisplay();
+    updateTargetHighlight();
+  }
+}
+
+function updateTargetHighlight() {
+  fallingWords.forEach(fw => {
+    fw.el.classList.toggle('target', fw === activeWord);
+  });
+}
+
+function updateInputDisplay() {
+  const el = document.getElementById('input-display');
+  el.textContent = inputBuffer.toUpperCase();
+  el.classList.remove('error');
+}
+
+function showError() {
+  const el = document.getElementById('input-display');
+  el.classList.add('error');
+  setTimeout(() => el.classList.remove('error'), 300);
+}
+
+function showCombo() {
+  if (combo < 2) return;
+  const el = document.getElementById('combo-display');
+  el.textContent = combo + 'x COMBO!';
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 800);
+}
+
+// ===================== LEVEL & SCORE =====================
+function updateHUD() {
+  document.getElementById('score').textContent = score;
+  document.getElementById('level').textContent = level;
+  document.getElementById('highscore').textContent = Math.max(highScore, score);
+  const wpmEl = document.getElementById('wpm');
+  const accEl = document.getElementById('accuracy');
+  if (wpmEl) wpmEl.textContent = getWpm();
+  if (accEl) accEl.textContent = getAccuracy() + '%';
+}
+
+function checkLevelUp() {
+  const newLevel = Math.floor(score / 200) + 1;
+  if (newLevel > level) {
+    level = newLevel;
+    updateHUD();
+    // Flash level
+    const el = document.getElementById('level');
+    el.style.transform = 'scale(1.3)';
+    setTimeout(() => el.style.transform = 'scale(1)', 300);
+  }
+}
+
+// ===================== GAME CONTROL =====================
+function startGame() {
+  // Reset state
+  score = 0;
+  level = 1;
+  combo = 0;
+  inputBuffer = "";
+  activeWord = null;
+  fallingWords = [];
+  freezeActive = false;
+  slowMotion = false;
+  frozenRowsTriggered = new Set();
+  gameActive = true;
+  paused = false;
+  gameStartTime = Date.now();
+  totalKeystrokes = 0;
+  correctChars = 0;
+  lastResult = null;
+  resultSent = false;
+
+  document.getElementById('words-layer').innerHTML = '';
+  document.getElementById('input-display').textContent = '';
+  document.getElementById('freeze-overlay').classList.remove('active');
+
+  initGrid();
+  renderGrid();
+  updateHUD();
+
+  document.getElementById('start-screen').classList.add('hidden');
+  document.getElementById('gameover-screen').classList.add('hidden');
+  document.getElementById('pause-screen').classList.add('hidden');
+  document.getElementById('send-wrap').style.display = 'none';
+  setSendStatus('');
+  syncSoundButton();
+
+  nextWord = pickWord();
+  document.getElementById('next-word-text').textContent = nextWord.toUpperCase();
+
+  // Start loops
+  if (gameLoopId) cancelAnimationFrame(gameLoopId);
+  gameLoopId = requestAnimationFrame(gameLoop);
+
+  if (spawnTimer) clearInterval(spawnTimer);
+  spawnTimer = setInterval(() => {
+    if (gameActive && !paused && !freezeActive) {
+      spawnWord();
+    }
+  }, Math.max(1500, 3000 - level * 200));
+}
+
+function togglePause() {
+  if (!gameActive) return;
+  paused = !paused;
+  document.getElementById('pause-screen').classList.toggle('hidden', !paused);
+}
+
+function resumeGame() {
+  paused = false;
+  document.getElementById('pause-screen').classList.add('hidden');
+}
+
+function endGame() {
+  gameActive = false;
+  if (gameLoopId) cancelAnimationFrame(gameLoopId);
+  if (spawnTimer) clearInterval(spawnTimer);
+  if (freezeTimer) clearTimeout(freezeTimer);
+
+  if (score > highScore) {
+    highScore = score;
+    localStorage.setItem('typerix_highscore', highScore.toString());
+  }
+
+  const durationSec = Math.max(1, Math.round(elapsedSec()));
+  const wpm = getWpm();
+  const accuracy = getAccuracy();
+  const errors = Math.max(0, totalKeystrokes - correctChars);
+  const targetWpm = AUTO_GRADE ? (AUTO_GRADE <= 2 ? 10 : AUTO_GRADE <= 4 ? 16 : 22) : 16;
+  let stars = 1;
+  if (accuracy >= 90) stars++;
+  if (wpm >= targetWpm) stars++;
+  lastResult = {
+    assignment_id: ASSIGNMENT_ID,
+    activity_title: 'Typerix Typing Game',
+    stars,
+    wpm,
+    accuracy,
+    typed_chars: totalKeystrokes,
+    errors,
+    duration_sec: durationSec,
+    time_label: durationSec + 's',
+    result_summary: `Typerix — Score: ${score}, Level: ${level}, WPM: ${wpm}, Accuracy: ${accuracy}%, Errors: ${errors}, Time: ${durationSec}s, Stars: ${stars}/3`
+  };
+
+  document.getElementById('final-score').textContent = score;
+  document.getElementById('final-level').textContent = level;
+  document.getElementById('final-wpm').textContent = wpm;
+  document.getElementById('final-accuracy').textContent = accuracy + '%';
+  document.getElementById('gameover-screen').classList.remove('hidden');
+  document.getElementById('send-wrap').style.display = OPENED_FROM_TRACKER ? 'block' : 'none';
+  if (OPENED_FROM_TRACKER) {
+    setSendStatus('Sending result back to the learner portal...');
+    if (!resultSent) setTimeout(() => sendToTeacher(false), 180);
+  }
+  sndWin();
+}
+
+// Init
+initGrid();
+renderGrid();
+document.getElementById('highscore').textContent = highScore;
+</script>
+</body>
+</html>

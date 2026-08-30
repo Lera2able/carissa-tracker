@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Typing Striker - Soccer Typing Game</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: #0d2818;
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  #game-wrapper {
+    position: relative;
+    width: 960px;
+    height: 640px;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+  }
+
+  /* ===== SOCCER FIELD ===== */
+  #field {
+    position: absolute;
+    inset: 0;
+    background:
+      repeating-linear-gradient(0deg, #1a5c2e 0px, #1a5c2e 40px, #176b2e 40px, #176b2e 80px);
+  }
+  #field::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 50%, transparent 0%, rgba(0,0,0,0.15) 100%);
+  }
+
+  /* Field markings */
+  .field-marking {
+    position: absolute;
+    border: 2px solid rgba(255,255,255,0.25);
+    pointer-events: none;
+  }
+  .center-circle {
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+  }
+  .center-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.5);
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    position: absolute;
+  }
+  .center-line {
+    width: 100%; height: 0;
+    border-top: 2px solid rgba(255,255,255,0.25);
+    top: 50%; left: 0;
+    position: absolute;
+  }
+  .half-circle-top {
+    width: 180px; height: 90px;
+    border-radius: 0 0 90px 90px;
+    border-top: none;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+  }
+
+  /* ===== GOALS (SCORE POLES WITH NETS) ===== */
+  .goal-container {
+    position: absolute;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 3;
+  }
+  .goal-net {
+    width: 120px;
+    height: 55px;
+    background:
+      linear-gradient(90deg, rgba(255,255,255,0.12) 1px, transparent 1px),
+      linear-gradient(rgba(255,255,255,0.12) 1px, transparent 1px);
+    background-size: 8px 8px;
+    border-left: 4px solid #ddd;
+    border-right: 4px solid #ddd;
+    border-bottom: 4px solid #ddd;
+    position: relative;
+  }
+  .goal-net::before, .goal-net::after {
+    content: '';
+    position: absolute;
+    top: -35px;
+    width: 4px;
+    height: 35px;
+    background: linear-gradient(to bottom, #ddd, #bbb);
+    border-radius: 2px 2px 0 0;
+  }
+  .goal-net::before { left: -4px; }
+  .goal-net::after { right: -4px; }
+  .goal-crossbar {
+    position: absolute;
+    top: -35px;
+    left: -4px;
+    right: -4px;
+    height: 4px;
+    background: linear-gradient(to right, #bbb, #fff, #bbb);
+    border-radius: 2px;
+  }
+  .goal-label {
+    margin-top: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 2px;
+  }
+  .goal-container.active .goal-net {
+    border-color: #ffd700;
+    box-shadow: 0 0 20px rgba(255,215,0,0.2);
+  }
+  .goal-container.active .goal-label {
+    color: #ffd700;
+  }
+  .goal-container.scored .goal-net {
+    animation: net-bulge 0.4s ease;
+  }
+  @keyframes net-bulge {
+    0% { transform: scaleX(1) scaleY(1); }
+    30% { transform: scaleX(1.15) scaleY(1.3); }
+    100% { transform: scaleX(1) scaleY(1); }
+  }
+
+  /* ===== CROWD / STANDS ===== */
+  #stands {
+    position: absolute;
+    top: -50px; left: 0; right: 0;
+    height: 50px;
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+    padding: 0 10px;
+    z-index: 2;
+  }
+  .stand-section {
+    display: flex;
+    gap: 2px;
+    align-items: flex-end;
+  }
+  .spectator {
+    width: 8px;
+    border-radius: 3px 3px 0 0;
+    transition: transform 0.2s;
+  }
+  .spectator.cheering {
+    animation: spectator-cheer 0.25s infinite alternate;
+  }
+  @keyframes spectator-cheer {
+    from { transform: translateY(0); }
+    to { transform: translateY(-10px); }
+  }
+
+  /* ===== WORDS LAYER ===== */
+  #words-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+  }
+  .word-bubble {
+    position: absolute;
+    padding: 10px 18px;
+    border-radius: 24px;
+    background: rgba(0,0,0,0.75);
+    border: 2px solid rgba(255,255,255,0.25);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    white-space: nowrap;
+    transition: transform 0.1s, border-color 0.2s;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  }
+  .word-bubble .typed {
+    color: #2ecc71;
+  }
+  .word-bubble .untyped {
+    color: #fff;
+  }
+  .word-bubble.target {
+    border-color: #ffd700;
+    box-shadow: 0 0 20px rgba(255,215,0,0.35), 0 4px 15px rgba(0,0,0,0.3);
+    transform: scale(1.06);
+  }
+  .word-bubble.danger {
+    border-color: #ff4444;
+    animation: word-shake 0.5s ease infinite;
+  }
+  @keyframes word-shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
+  }
+
+  /* ===== SOCCER BALL ===== */
+  .soccer-ball {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 35% 35%, #fff 0%, #e0e0e0 30%, #999 70%, #666 100%);
+    border: 1px solid #555;
+    z-index: 15;
+    pointer-events: none;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+  }
+  .soccer-ball::after {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border-radius: 50%;
+    background:
+      conic-gradient(from 0deg, #333 0deg 30deg, transparent 30deg 60deg,
+        #333 60deg 90deg, transparent 90deg 120deg,
+        #333 120deg 150deg, transparent 150deg 180deg,
+        #333 180deg 210deg, transparent 210deg 240deg,
+        #333 240deg 270deg, transparent 270deg 300deg,
+        #333 300deg 330deg, transparent 330deg 360deg);
+    opacity: 0.25;
+  }
+  .soccer-ball.spin {
+    animation: ball-spin 0.3s linear infinite;
+  }
+  @keyframes ball-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* ===== GOAL CELEBRATION ===== */
+  .goal-burst {
+    position: absolute;
+    font-size: 52px;
+    font-weight: 900;
+    color: #ffd700;
+    text-shadow: 0 0 30px rgba(255,215,0,0.7), 0 2px 10px rgba(0,0,0,0.5);
+    z-index: 20;
+    pointer-events: none;
+    opacity: 0;
+  }
+  .goal-burst.show {
+    animation: goal-burst-anim 1.2s ease forwards;
+  }
+  @keyframes goal-burst-anim {
+    0% { opacity: 0; transform: scale(0.2); }
+    20% { opacity: 1; transform: scale(1.3); }
+    50% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.1) translateY(-40px); }
+  }
+
+  /* ===== CONFETTI ===== */
+  .confetti-piece {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    z-index: 18;
+    pointer-events: none;
+  }
+
+  /* ===== HUD ===== */
+  #hud {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    right: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .hud-panel {
+    background: rgba(0,0,0,0.6);
+    border-radius: 12px;
+    padding: 10px 18px;
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .hud-score-val {
+    font-size: 32px;
+    font-weight: 800;
+    color: #ffd700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .hud-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #aaa;
+    margin-bottom: 2px;
+  }
+  .hud-wpm-val {
+    font-size: 22px;
+    font-weight: 700;
+    color: #64ffda;
+    font-variant-numeric: tabular-nums;
+  }
+  .hud-streak-val {
+    font-size: 20px;
+    font-weight: 700;
+    color: #ff8c00;
+  }
+  #sound-fab {
+    position: absolute;
+    top: 88px;
+    right: 14px;
+    z-index: 12;
+  }
+  .hud-toggle {
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.58);
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .hud-toggle:hover {
+    background: rgba(0,0,0,0.75);
+  }
+  #send-wrap {
+    display: none;
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.06);
+    text-align: center;
+    max-width: 420px;
+  }
+  #send-status {
+    font-size: 13px;
+    color: #e5e7eb;
+    line-height: 1.5;
+    margin-bottom: 10px;
+  }
+
+  /* ===== LIVES & CLEARS ===== */
+  #bottom-hud {
+    position: absolute;
+    bottom: 14px;
+    left: 14px;
+    right: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .lives-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .life-icon {
+    width: 28px;
+    height: 28px;
+    position: relative;
+  }
+  .life-icon svg {
+    width: 100%; height: 100%;
+    fill: #2ecc71;
+    filter: drop-shadow(0 0 6px rgba(46,204,113,0.4));
+    transition: all 0.3s;
+  }
+  .life-icon.lost svg {
+    fill: #444;
+    filter: none;
+  }
+  .clear-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 800;
+    color: #fff;
+    background: rgba(0,0,0,0.4);
+    transition: all 0.3s;
+  }
+  .clear-badge.used {
+    border-color: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.15);
+  }
+  .clear-badge.suggested {
+    border-color: #ff4444;
+    box-shadow: 0 0 12px rgba(255,68,68,0.5);
+    animation: pulse-clear 0.8s infinite alternate;
+  }
+  @keyframes pulse-clear {
+    from { box-shadow: 0 0 6px rgba(255,68,68,0.3); }
+    to { box-shadow: 0 0 16px rgba(255,68,68,0.7); }
+  }
+  .accuracy-display {
+    font-size: 14px;
+    font-weight: 600;
+    color: #aaa;
+  }
+  .accuracy-display span { color: #64ffda; }
+
+  /* ===== OVERLAYS ===== */
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.88);
+    z-index: 30;
+    border-radius: 16px;
+  }
+  .overlay h1 {
+    font-size: 56px;
+    font-weight: 900;
+    margin-bottom: 6px;
+    background: linear-gradient(135deg, #ffd700, #ff8c00);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -1px;
+  }
+  .overlay h2 {
+    font-size: 40px;
+    font-weight: 800;
+    margin-bottom: 8px;
+    color: #ff4444;
+  }
+  .overlay p {
+    font-size: 15px;
+    color: #bbb;
+    margin-bottom: 6px;
+    text-align: center;
+    line-height: 1.5;
+    max-width: 480px;
+  }
+  .overlay .big-score {
+    font-size: 72px;
+    font-weight: 900;
+    color: #ffd700;
+    margin: 10px 0;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 40px rgba(255,215,0,0.3);
+  }
+  .btn {
+    padding: 14px 44px;
+    font-size: 18px;
+    font-weight: 700;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    margin-top: 18px;
+    transition: transform 0.15s, opacity 0.15s;
+    letter-spacing: 0.5px;
+  }
+  .btn:hover { transform: scale(1.06); }
+  .btn-primary {
+    background: linear-gradient(135deg, #ffd700, #ff8c00);
+    color: #1a1a1a;
+  }
+
+  .instructions {
+    text-align: left;
+    font-size: 13px;
+    color: #aaa;
+    line-height: 1.7;
+    max-width: 420px;
+    margin: 14px 0;
+  }
+  .instructions li { margin-bottom: 5px; }
+  .instructions strong { color: #ddd; }
+
+  #pause-overlay { display: none; }
+  #pause-overlay.active { display: flex; }
+  #gameover-screen { display: none; }
+
+  @media (max-width: 980px) {
+    #game-wrapper { width: 100%; max-width: 720px; height: 480px; }
+    .overlay h1 { font-size: 40px; }
+    .word-bubble { font-size: 16px; padding: 8px 14px; }
+    .goal-net { width: 90px; height: 42px; }
+    .goal-net::before, .goal-net::after { height: 28px; top: -28px; }
+    .goal-crossbar { top: -28px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="game-wrapper">
+  <!-- Field -->
+  <div id="field">
+    <div class="field-marking center-circle"></div>
+    <div class="center-dot"></div>
+    <div class="field-marking center-line"></div>
+    <div class="field-marking half-circle-top"></div>
+  </div>
+
+  <!-- Stands / Crowd -->
+  <div id="stands"></div>
+
+  <!-- Goals (Score Poles with Nets) -->
+  <div id="goals-container"></div>
+
+  <!-- Words -->
+  <div id="words-layer"></div>
+
+  <!-- Celebrations -->
+  <div id="celebrations"></div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-panel">
+      <div class="hud-label">Score</div>
+      <div class="hud-score-val" id="score-display">0</div>
+    </div>
+    <div style="display:flex;gap:12px;">
+      <div class="hud-panel">
+        <div class="hud-label">WPM</div>
+        <div class="hud-wpm-val" id="wpm-display">0</div>
+      </div>
+      <div class="hud-panel">
+        <div class="hud-label">Streak</div>
+        <div class="hud-streak-val" id="streak-display">0</div>
+      </div>
+    </div>
+  </div>
+  <div id="sound-fab">
+    <button id="sound-toggle" class="hud-toggle" type="button" onclick="toggleSound()">🔊 Sound On</button>
+  </div>
+
+  <!-- Bottom HUD -->
+  <div id="bottom-hud">
+    <div class="accuracy-display">Accuracy: <span id="accuracy-display">100%</span></div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <div class="lives-row" id="clears-row"></div>
+      <div class="lives-row" id="lives-row"></div>
+    </div>
+  </div>
+
+  <!-- Start Screen -->
+  <div id="start-screen" class="overlay">
+    <h1>TYPING STRIKER</h1>
+    <p>Type the words to shoot goals! Don't let them reach the net.</p>
+    <ul class="instructions">
+      <li><strong>Type words</strong> as they fall toward the goal nets</li>
+      <li><strong>Complete a word</strong> to kick the ball into that goal!</li>
+      <li><strong>Longer words & streaks</strong> earn more points</li>
+      <li><strong>3 lives</strong> — lose one if a word hits the net</li>
+      <li><strong>Press Enter</strong> for a super shot (clears all words, limited)</li>
+      <li><strong>Esc</strong> to pause</li>
+    </ul>
+    <button class="btn btn-primary" onclick="startGame()">Kick Off!</button>
+  </div>
+
+  <!-- Pause Screen -->
+  <div id="pause-overlay" class="overlay">
+    <h2>Paused</h2>
+    <p>Press Enter or click Resume to continue</p>
+    <button class="btn btn-primary" onclick="resumeGame()">Resume</button>
+  </div>
+
+  <!-- Game Over Screen -->
+  <div id="gameover-screen" class="overlay">
+    <h2>Full Time!</h2>
+    <p id="gameover-msg">The crowd goes home...</p>
+    <div class="big-score" id="final-score">0</div>
+    <p>WPM: <span id="final-wpm">0</span> &nbsp;|&nbsp; Accuracy: <span id="final-accuracy">0%</span></p>
+    <div id="send-wrap">
+      <div id="send-status"></div>
+      <button class="btn" type="button" onclick="sendToTeacher(true)">Send result again</button>
+    </div>
+    <button class="btn btn-primary" onclick="startGame()">Play Again</button>
+  </div>
+</div>
+
+<script>
+// ===================== CONFIG =====================
+const GOAL_COUNT = 5;
+const GOAL_WIDTH = 120;
+const FIELD_WIDTH = 960;
+const FIELD_HEIGHT = 640;
+const GOAL_Y = 55; // bottom of goal net
+const WORD_START_Y = 100;
+const GOAL_LINE_Y = 520; // where words expire
+
+const WORD_BANK = [
+  "the","and","for","are","but","not","you","all","can","had","her","was","one","our","out","day","get","has","him","his","how","man","new","now","old","see","two","way","who","boy","did","its","let","put","say","she","too","use","cat","dog","run","sun","fun","bug","hat","map","nap","pen","red","bed","box","car","egg","fan","gym","ice","jam","key","leg","mix","net","owl","pig","rat","sit","tag","van","wet","zip","ace","act","add","age","ago","aid","aim","air","all","ant","ape","app","apt","arc","ark","arm","art","ash","ask","ate","awe","axe","bad","bag","ban","bar","bat","bay","bee","beg","bet","bid","big","bin","bit","bob","bog","bow","bra","bud","bum","bun","bus","buy","cab","cad","cam","cap","cod","cog","con","coo","cop","cot","cow","coy","cry","cub","cue","cup","cur","cut","dab","dam","dew","die","dig","dim","din","dip","doe","dot","dry","dub","dud","due","dug","duo","dye","ear","eat","eel","elf","elk","elm","end","era","err","eve","eye","fad","far","fat","fax","fed","fee","fen","few","fez","fib","fig","fin","fir","fit","fix","flu","fly","fob","foe","fog","fox","fry","fur","gab","gag","gal","gap","gas","gay","gee","gel","gem","get","gig","gin","gnu","gob","god","got","gum","gun","gut","guy","gym","hag","ham","has","haw","hay","hem","hen","her","hew","hex","hey","hid","him","hip","his","hit","hob","hod","hoe","hog","hop","hot","how","hub","hue","hug","huh","hum","hun","hut","icy","imp","ink","inn","ion","ire","irk","ivy","jab","jag","jam","jar","jaw","jay","jet","jew","jib","jig","job","joe","jog","jot","joy","jug","jun","kay","keg","ken","key","kid","kin","kip","kit","lab","lac","lad","lag","lam","lap","law","lax","lay","lea","led","lee","leg","lei","let","lex","ley","lid","lie","lip","lit","lob","log","loo","lop","lot","low","lox","lug","lux","lye","mac","mad","mag","man","map","mar","mat","maw","max","may","men","met","mew","mid","mil","mix","mob","mod","mom","mon","moo","mop","mot","mow","mud","mug","mum","nab","nag","nap","nay","nee","net","new","nib","nil","nip","nit","nix","nod","nog","nor","not","now","nth","nub","nun","nut","oaf","oak","oar","oat","odd","ode","off","oft","ohm","oil","old","ole","one","opt","orb","orc","ore","our","out","ova","owe","owl","own","pad","pal","pan","pap","par","pat","paw","pax","pay","pea","peg","pen","pep","per","pet","pew","pic","pie","pig","pin","pip","pit","ply","pod","pol","pop","pot","pow","pox","pro","pry","pub","pug","pun","pup","pus","put","pyx","qua","rad","rag","ram","ran","rap","rat","raw","ray","red","ref","rep","rev","rib","rid","rig","rim","rip","rob","rod","roe","rot","row","rub","rue","rug","rum","run","rut","rye","sad","sag","sap","sat","saw","sax","say","sea","sec","see","set","sew","sex","she","shy","sib","sic","sin","sip","sir","sit","six","ski","sky","sly","sob","sod","sol","son","sop","sot","sow","soy","spa","spy","sty","sub","sue","sum","sun","sup","tab","tad","tag","tam","tan","tap","tar","tat","tax","tea","tee","ten","the","thy","tic","tie","tin","tip","toe","tog","tom","ton","too","top","tor","tot","tow","toy","try","tub","tug","tun","tux","two","use","van","vat","vet","vex","via","vie","vim","voe","vow","wad","wag","wan","war","was","wax","way","web","wed","wee","wet","who","why","wig","win","wit","woe","wok","won","woo","wow","wry","wye","yak","yam","yap","yaw","yea","yen","yep","yes","yet","yew","yip","yob","yon","you","yow","yuk","yum","yup","zag","zap","zed","zen","zig","zip","zit","zoo",
+  "apple","beach","bread","chair","dance","eagle","flame","grape","house","juice","knife","lemon","melon","night","ocean","piano","queen","river","sheep","table","uncle","voice","water","zebra","angel","brain","camel","dream","earth","field","globe","heart","ideal","jewel","kite","light","money","noble","olive","peace","quiet","rider","smile","tiger","unity","vivid","whale","youth","actor","beast",
+  "bridge","castle","danger","effort","flower","garden","harbor","island","jungle","kernel","lounge","market","nature","orange","palace","quiver","rescue","saddle","temple","urgent","valley","wander","yellow","absent","banana","candle","dragon","exotic","fabric","guitar","hammer","insect","jacket","kettle","ladder","magnet","napkin","object","packet","rabbit","tunnel","united","vacant","wallet","zipper","anchor","basket","copper","donkey",
+  "abstract","blizzard","cinnamon","dinosaur","elephant","festival","grateful","horizon","illusion","journey","kangaroo","laughter","magnetic","notebook","overcome","painting","question","reliable","sandwich","treasure","umbrella","vacation","whisper","yesterday","zodiac","backpack","calendar","diamond","emerald","fountain","gorilla","hospital","internet","jasmine","kingdom","lantern","mystery","necklace","octopus","penguin","quicksand","rainbow","sunshine","teaspoon","universe","volcano","wildlife","xylophone","yoghurt","zeppelin"
+];
+
+const qs = new URLSearchParams(window.location.search);
+const ASSIGNMENT_ID = qs.get('assignment_id') || '';
+const AUTO_GRADE = Number(qs.get('grade') || 0) || null;
+const OPENED_FROM_TRACKER = !!ASSIGNMENT_ID;
+
+// ===================== STATE =====================
+let goals = []; // {index, x, centerX, el}
+let words = []; // {id, word, goalIndex, x, y, speed, typedIndex, el}
+let score = 0;
+let lives = 3;
+let streak = 0;
+let level = 1;
+let wpm = 0;
+let totalCharsTyped = 0;
+let gameStartTime = 0;
+let correctChars = 0;
+let totalKeystrokes = 0;
+let clearsLeft = 3;
+let activeWordId = null;
+let gameActive = false;
+let paused = false;
+let spawnInterval = null;
+let gameLoopId = null;
+let soundEnabled = true;
+let audioCtx = null;
+let lastResult = null;
+let resultSent = false;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function beep(freq, dur = 0.08, type = 'sine', vol = 0.05, when = 0) {
+  if (!soundEnabled) return;
+  try {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const t = ctx.currentTime + when;
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + dur);
+  } catch (e) {}
+}
+function sndKey() { beep(700, 0.04, 'square', 0.04); }
+function sndMiss() { beep(170, 0.16, 'sawtooth', 0.06); }
+function sndGoal() { [523, 659, 784].forEach((f, i) => beep(f, 0.16, 'triangle', 0.08, i * 0.09)); }
+function syncSoundButton() {
+  const btn = document.getElementById('sound-toggle');
+  if (!btn) return;
+  btn.textContent = soundEnabled ? '🔊 Sound On' : '🔇 Sound Off';
+}
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  syncSoundButton();
+}
+function setSendStatus(message) {
+  const el = document.getElementById('send-status');
+  if (el) el.textContent = message || '';
+}
+function showToast(message) {
+  const el = document.createElement('div');
+  el.textContent = message;
+  el.style.position = 'fixed';
+  el.style.left = '50%';
+  el.style.bottom = '24px';
+  el.style.transform = 'translateX(-50%)';
+  el.style.zIndex = '99999';
+  el.style.background = 'rgba(15, 23, 42, 0.95)';
+  el.style.color = 'white';
+  el.style.padding = '12px 16px';
+  el.style.borderRadius = '999px';
+  el.style.fontWeight = '900';
+  el.style.fontSize = '14px';
+  el.style.boxShadow = '0 10px 30px rgba(0,0,0,0.25)';
+  document.body.appendChild(el);
+  setTimeout(() => {
+    el.style.opacity = '0';
+    el.style.transition = 'opacity 400ms';
+  }, 2200);
+  setTimeout(() => {
+    try { el.remove(); } catch (e) {}
+  }, 2800);
+}
+function sendToTeacher(showPopup = false) {
+  if (!OPENED_FROM_TRACKER) {
+    setSendStatus('This game was not opened from a learner assignment.');
+    return;
+  }
+  if (!lastResult) {
+    setSendStatus('Finish the game first, then send the result.');
+    return;
+  }
+  const payload = {
+    type: 'typing_speed_result',
+    assignment_id: lastResult.assignment_id,
+    wpm: lastResult.wpm,
+    accuracy: lastResult.accuracy,
+    typed_chars: lastResult.typed_chars,
+    errors: lastResult.errors,
+    duration_sec: lastResult.duration_sec,
+    activity_title: lastResult.activity_title,
+    stars: lastResult.stars,
+    time_label: lastResult.time_label,
+    result_summary: lastResult.result_summary
+  };
+  try {
+    if (window.opener) {
+      window.opener.postMessage(payload, window.location.origin);
+      resultSent = true;
+      setSendStatus('✓ Mark sent to teacher. Return to the learner portal to see it save.');
+      if (showPopup) showToast('✓ Mark sent to teacher');
+      return;
+    }
+  } catch (e) {}
+  try {
+    localStorage.setItem('typing_speed_result_pending', JSON.stringify(payload));
+    resultSent = true;
+    setSendStatus('✓ Mark sent to teacher. Return to the learner portal tab to finish saving.');
+    if (showPopup) showToast('✓ Mark sent to teacher');
+  } catch (e) {
+    setSendStatus('Could not send automatically. Please try again.');
+  }
+}
+
+// ===================== INIT GOALS =====================
+function initGoals() {
+  const container = document.getElementById('goals-container');
+  container.innerHTML = '';
+  goals = [];
+
+  const spacing = FIELD_WIDTH / (GOAL_COUNT + 1);
+
+  for (let i = 0; i < GOAL_COUNT; i++) {
+    const centerX = spacing * (i + 1);
+    const x = centerX - GOAL_WIDTH / 2;
+
+    const goalEl = document.createElement('div');
+    goalEl.className = 'goal-container';
+    goalEl.style.left = x + 'px';
+    goalEl.innerHTML = `
+      <div class="goal-net">
+        <div class="goal-crossbar"></div>
+      </div>
+      <div class="goal-label">GOAL ${i + 1}</div>
+    `;
+    container.appendChild(goalEl);
+
+    goals.push({
+      index: i,
+      x: x,
+      centerX: centerX,
+      el: goalEl,
+      hasWord: false
+    });
+  }
+}
+
+// ===================== INIT CROWD =====================
+function initCrowd() {
+  const stands = document.getElementById('stands');
+  stands.innerHTML = '';
+  const colors = ['#e74c3c','#3498db','#f1c40f','#2ecc71','#9b59b6','#e67e22','#1abc9c','#e91e63','#00bcd4','#ff5722'];
+
+  for (let s = 0; s < 12; s++) {
+    const section = document.createElement('div');
+    section.className = 'stand-section';
+    const count = 8 + Math.floor(Math.random() * 8);
+    for (let i = 0; i < count; i++) {
+      const p = document.createElement('div');
+      p.className = 'spectator';
+      p.style.background = colors[Math.floor(Math.random() * colors.length)];
+      p.style.height = (12 + Math.random() * 14) + 'px';
+      section.appendChild(p);
+    }
+    stands.appendChild(section);
+  }
+}
+
+function cheerCrowd(duration = 2000) {
+  document.querySelectorAll('.spectator').forEach(p => p.classList.add('cheering'));
+  setTimeout(() => {
+    document.querySelectorAll('.spectator').forEach(p => p.classList.remove('cheering'));
+  }, duration);
+}
+
+// ===================== LIVES & CLEARS =====================
+function renderLives() {
+  const container = document.getElementById('lives-row');
+  container.innerHTML = '';
+  const heartSVG = `<svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`;
+  for (let i = 0; i < 3; i++) {
+    const div = document.createElement('div');
+    div.className = 'life-icon' + (i >= lives ? ' lost' : '');
+    div.innerHTML = heartSVG;
+    container.appendChild(div);
+  }
+}
+
+function renderClears() {
+  const container = document.getElementById('clears-row');
+  container.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    const badge = document.createElement('div');
+    badge.className = 'clear-badge' + (i >= clearsLeft ? ' used' : '');
+    badge.textContent = 'S';
+    container.appendChild(badge);
+  }
+  suggestClear();
+}
+
+function suggestClear() {
+  const badges = document.querySelectorAll('.clear-badge:not(.used)');
+  const dangerCount = words.filter(w => w.y > GOAL_LINE_Y - 120).length;
+  badges.forEach(b => b.classList.toggle('suggested', dangerCount >= 3 && clearsLeft > 0));
+}
+
+// ===================== WORD SPAWNING =====================
+function pickWord() {
+  const minLen = Math.min(3, Math.max(3, 2 + Math.floor(level / 3)));
+  const maxLen = Math.min(10, 4 + Math.floor(level / 2));
+  const pool = WORD_BANK.filter(w => w.length >= minLen && w.length <= maxLen);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function getAvailableGoal() {
+  // Find goals without active words, prefer center
+  const available = goals.filter(g => !words.some(w => w.goalIndex === g.index));
+  if (available.length === 0) return null;
+  // Prefer center goals
+  available.sort((a, b) => Math.abs(a.index - 2) - Math.abs(b.index - 2));
+  return available[0];
+}
+
+function spawnWord() {
+  if (!gameActive || paused) return;
+
+  const goal = getAvailableGoal();
+  if (!goal) return; // All goals occupied
+
+  const word = pickWord();
+  const el = document.createElement('div');
+  el.className = 'word-bubble';
+  el.innerHTML = word.split('').map(ch => `<span class="untyped">${ch.toUpperCase()}</span>`).join('');
+
+  const x = goal.centerX - (word.length * 11 + 20) / 2;
+  const y = WORD_START_Y;
+
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  document.getElementById('words-layer').appendChild(el);
+
+  // Highlight goal
+  goal.el.classList.add('active');
+
+  words.push({
+    id: Date.now() + Math.random(),
+    word: word,
+    letters: word.split(''),
+    goalIndex: goal.index,
+    x: x,
+    y: y,
+    speed: 0.35 + level * 0.1 + Math.random() * 0.15,
+    typedIndex: 0,
+    el: el
+  });
+}
+
+// ===================== GAME LOOP =====================
+function gameLoop() {
+  if (!gameActive || paused) {
+    gameLoopId = requestAnimationFrame(gameLoop);
+    return;
+  }
+
+  words.forEach(w => {
+    w.y += w.speed;
+    w.el.style.top = w.y + 'px';
+    w.el.classList.toggle('danger', w.y > GOAL_LINE_Y - 100);
+
+    if (w.y >= GOAL_LINE_Y) {
+      loseLife(w);
+    }
+  });
+
+  const elapsed = (Date.now() - gameStartTime) / 60000;
+  wpm = elapsed > 0 ? Math.round(totalCharsTyped / 5 / elapsed) : 0;
+  document.getElementById('wpm-display').textContent = wpm;
+
+  suggestClear();
+  gameLoopId = requestAnimationFrame(gameLoop);
+}
+
+function loseLife(wordObj) {
+  lives--;
+  streak = 0;
+  sndMiss();
+  renderLives();
+  updateHUD();
+
+  // Un-highlight goal
+  const goal = goals[wordObj.goalIndex];
+  if (goal) goal.el.classList.remove('active');
+
+  if (wordObj.el && wordObj.el.parentNode) wordObj.el.parentNode.removeChild(wordObj.el);
+  words = words.filter(w => w !== wordObj);
+  if (activeWordId === wordObj.id) activeWordId = null;
+
+  // Sad crowd
+  document.querySelectorAll('.spectator').forEach((p, i) => {
+    if (Math.random() > 0.4) p.style.background = '#555';
+  });
+
+  if (lives <= 0) endGame();
+}
+
+// ===================== TYPING =====================
+document.addEventListener('keydown', e => {
+  if (!gameActive) {
+    if (e.key === 'Enter') startGame();
+    return;
+  }
+
+  if (e.key === 'Escape') { togglePause(); return; }
+  if (paused) { if (e.key === 'Enter') resumeGame(); return; }
+
+  if (e.key === 'Enter') {
+    if (clearsLeft > 0 && words.length > 0) {
+      clearsLeft--;
+      words.forEach(w => {
+        score += Math.round(8 * (1 + streak * 0.1));
+        shootBall(w, true);
+      });
+      sndGoal();
+      words.forEach(w => {
+        const g = goals[w.goalIndex];
+        if (g) g.el.classList.remove('active');
+        if (w.el.parentNode) w.el.parentNode.removeChild(w.el);
+      });
+      words = [];
+      activeWordId = null;
+      streak++;
+      updateHUD();
+      renderClears();
+      cheerCrowd(1500);
+    }
+    return;
+  }
+
+  if (e.key === 'Backspace') {
+    if (activeWordId) {
+      const w = words.find(x => x.id === activeWordId);
+      if (w) { w.typedIndex = 0; updateWordDisplay(w); }
+    }
+    return;
+  }
+
+  if (!/^[a-zA-Z]$/.test(e.key)) return;
+  e.preventDefault();
+
+  const char = e.key.toLowerCase();
+  totalKeystrokes++;
+
+  if (!activeWordId) {
+    const candidates = words.filter(w => w.letters[0] === char);
+    if (candidates.length === 0) { streak = 0; updateHUD(); sndMiss(); return; }
+    const target = candidates.sort((a, b) => b.y - a.y)[0];
+    activeWordId = target.id;
+    target.typedIndex = 1;
+    correctChars++;
+    totalCharsTyped++;
+    sndKey();
+    updateWordDisplay(target);
+    checkWordComplete(target);
+  } else {
+    const w = words.find(x => x.id === activeWordId);
+    if (!w) { activeWordId = null; return; }
+    if (w.letters[w.typedIndex] === char) {
+      w.typedIndex++;
+      correctChars++;
+      totalCharsTyped++;
+      sndKey();
+      updateWordDisplay(w);
+      checkWordComplete(w);
+    } else {
+      w.typedIndex = 0;
+      updateWordDisplay(w);
+      activeWordId = null;
+      streak = 0;
+      updateHUD();
+      sndMiss();
+    }
+  }
+});
+
+function updateWordDisplay(w) {
+  const spans = w.el.querySelectorAll('span');
+  spans.forEach((span, i) => {
+    span.className = i < w.typedIndex ? 'typed' : 'untyped';
+  });
+  w.el.classList.toggle('target', w.id === activeWordId);
+}
+
+function checkWordComplete(w) {
+  if (w.typedIndex >= w.letters.length) {
+    const wordLen = w.letters.length;
+    const basePoints = wordLen * 4;
+    const streakBonus = Math.floor(streak * 3);
+    const points = basePoints + streakBonus;
+    score += points;
+    streak++;
+    sndGoal();
+
+    // SHOOT THE BALL!
+    shootBall(w);
+
+    // Remove word
+    if (w.el.parentNode) w.el.parentNode.removeChild(w.el);
+    words = words.filter(x => x !== w);
+    activeWordId = null;
+
+    // Un-highlight goal
+    const goal = goals[w.goalIndex];
+    if (goal) goal.el.classList.remove('active');
+
+    updateHUD();
+    cheerCrowd();
+    spawnConfetti(goal ? goal.centerX : 480, GOAL_Y + 20);
+
+    const newLevel = Math.floor(score / 120) + 1;
+    if (newLevel > level) {
+      level = newLevel;
+      updateHUD();
+    }
+  }
+}
+
+// ===================== BALL SHOOTING =====================
+function shootBall(wordObj, isSuperShot = false) {
+  const goal = goals[wordObj.goalIndex];
+  const startX = wordObj.x + wordObj.el.offsetWidth / 2;
+  const startY = wordObj.y + 15;
+  const endX = goal ? goal.centerX : 480;
+  const endY = GOAL_Y + 25;
+
+  const ball = document.createElement('div');
+  ball.className = 'soccer-ball spin';
+  ball.style.left = startX + 'px';
+  ball.style.top = startY + 'px';
+  document.getElementById('game-wrapper').appendChild(ball);
+
+  const startTime = Date.now();
+  const duration = isSuperShot ? 400 : 500;
+
+  function animate() {
+    const elapsed = Date.now() - startTime;
+    const t = Math.min(1, elapsed / duration);
+    const ease = 1 - Math.pow(1 - t, 3);
+
+    const x = startX + (endX - startX) * ease;
+    // Arc trajectory
+    const y = startY + (endY - startY) * ease - Math.sin(t * Math.PI) * (isSuperShot ? 60 : 100);
+    const scale = 1 - t * 0.3;
+
+    ball.style.left = x + 'px';
+    ball.style.top = y + 'px';
+    ball.style.transform = `scale(${scale})`;
+
+    if (t < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      // Ball hit the net!
+      if (ball.parentNode) ball.parentNode.removeChild(ball);
+      if (goal) {
+        goal.el.classList.add('scored');
+        setTimeout(() => goal.el.classList.remove('scored'), 500);
+      }
+      showGoalText(endX, endY);
+    }
+  }
+  requestAnimationFrame(animate);
+}
+
+function showGoalText(x, y) {
+  const el = document.createElement('div');
+  el.className = 'goal-burst';
+  el.textContent = Math.random() > 0.5 ? 'GOAL!' : 'SCORE!';
+  el.style.left = (x - 60) + 'px';
+  el.style.top = (y - 30) + 'px';
+  document.getElementById('celebrations').appendChild(el);
+  el.classList.add('show');
+  setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 1300);
+}
+
+function spawnConfetti(x, y) {
+  const colors = ['#ffd700','#ff6b6b','#64ffda','#ff8c00','#e74c3c','#3498db','#2ecc71','#f1c40f'];
+  const wrapper = document.getElementById('game-wrapper');
+  for (let i = 0; i < 24; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti-piece';
+    c.style.background = colors[Math.floor(Math.random() * colors.length)];
+    c.style.left = x + 'px';
+    c.style.top = y + 'px';
+    c.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+    wrapper.appendChild(c);
+
+    const angle = (Math.random() - 0.5) * Math.PI * 1.5;
+    const speed = 3 + Math.random() * 5;
+    const vx = Math.sin(angle) * speed;
+    const vy = -Math.abs(Math.cos(angle)) * speed - 2;
+    let cx = x, cy = y;
+
+    function anim() {
+      cx += vx;
+      cy += vy + 0.35;
+      c.style.left = cx + 'px';
+      c.style.top = cy + 'px';
+      c.style.opacity = Math.max(0, 1 - (cy / 500));
+      c.style.transform = `rotate(${cy * 2}deg)`;
+      if (cy < 650 && c.parentNode) requestAnimationFrame(anim);
+      else if (c.parentNode) c.parentNode.removeChild(c);
+    }
+    requestAnimationFrame(anim);
+  }
+}
+
+// ===================== HUD =====================
+function updateHUD() {
+  document.getElementById('score-display').textContent = score;
+  document.getElementById('streak-display').textContent = streak;
+  const accuracy = totalKeystrokes > 0 ? Math.round((correctChars / totalKeystrokes) * 100) : 100;
+  document.getElementById('accuracy-display').textContent = accuracy + '%';
+}
+
+// ===================== GAME CONTROL =====================
+function startGame() {
+  score = 0; lives = 3; streak = 0; level = 1; wpm = 0;
+  totalCharsTyped = 0; correctChars = 0; totalKeystrokes = 0;
+  clearsLeft = 3; activeWordId = null;
+  gameActive = true; paused = false;
+  gameStartTime = Date.now();
+  lastResult = null;
+  resultSent = false;
+
+  words.forEach(w => { if (w.el.parentNode) w.el.parentNode.removeChild(w.el); });
+  words = [];
+  document.getElementById('celebrations').innerHTML = '';
+
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('gameover-screen').style.display = 'none';
+  document.getElementById('pause-overlay').classList.remove('active');
+  document.getElementById('send-wrap').style.display = 'none';
+  setSendStatus('');
+  syncSoundButton();
+
+  initGoals();
+  initCrowd();
+  renderLives();
+  renderClears();
+  updateHUD();
+
+  if (gameLoopId) cancelAnimationFrame(gameLoopId);
+  gameLoopId = requestAnimationFrame(gameLoop);
+
+  if (spawnInterval) clearInterval(spawnInterval);
+  spawnInterval = setInterval(() => {
+    if (gameActive && !paused) spawnWord();
+  }, 2200);
+
+  setTimeout(spawnWord, 400);
+  setTimeout(spawnWord, 900);
+}
+
+function togglePause() {
+  if (!gameActive) return;
+  paused = !paused;
+  document.getElementById('pause-overlay').classList.toggle('active', paused);
+}
+
+function resumeGame() {
+  paused = false;
+  document.getElementById('pause-overlay').classList.remove('active');
+}
+
+function endGame() {
+  gameActive = false;
+  if (gameLoopId) cancelAnimationFrame(gameLoopId);
+  if (spawnInterval) clearInterval(spawnInterval);
+
+  const accuracy = totalKeystrokes > 0 ? Math.round((correctChars / totalKeystrokes) * 100) : 0;
+  const durationSec = Math.max(1, Math.round((Date.now() - gameStartTime) / 1000));
+  const targetWpm = AUTO_GRADE ? (AUTO_GRADE <= 2 ? 10 : AUTO_GRADE <= 4 ? 16 : 22) : 16;
+  let stars = 1;
+  if (accuracy >= 90) stars++;
+  if (wpm >= targetWpm) stars++;
+  lastResult = {
+    assignment_id: ASSIGNMENT_ID,
+    activity_title: 'Typing Striker',
+    stars,
+    wpm,
+    accuracy,
+    typed_chars: totalCharsTyped,
+    errors: Math.max(0, totalKeystrokes - correctChars),
+    duration_sec: durationSec,
+    time_label: durationSec + 's',
+    result_summary: `Typing Striker — Score: ${score}, WPM: ${wpm}, Accuracy: ${accuracy}%, Streak: ${streak}, Lives left: ${lives}, Time: ${durationSec}s, Stars: ${stars}/3`
+  };
+  document.getElementById('final-score').textContent = score;
+  document.getElementById('final-wpm').textContent = wpm;
+  document.getElementById('final-accuracy').textContent = accuracy + '%';
+  document.getElementById('gameover-screen').style.display = 'flex';
+  document.getElementById('send-wrap').style.display = OPENED_FROM_TRACKER ? 'block' : 'none';
+  if (OPENED_FROM_TRACKER) {
+    setSendStatus('Sending result back to the learner portal...');
+    if (!resultSent) setTimeout(() => sendToTeacher(false), 180);
+  }
+}
+
+// Init
+initGoals();
+initCrowd();
+renderLives();
+renderClears();
+updateHUD();
+</script>
+</body>
+</html>

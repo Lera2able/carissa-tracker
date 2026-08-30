@@ -139,6 +139,49 @@ const isTrackableActivityUrl = (url) => {
     return false;
   }
 };
+const BUILTIN_LEARNWORLD_RESOURCES = [
+  {
+    id:'builtin-typerix-game',
+    title:'Typerix Typing Game',
+    type:'typing',
+    url:'./typerix-game.html',
+    subject:'Typing',
+    grade_range:'Grade 1 - 7',
+    description:'Stack-clearing typing game with automatic score return, WPM, accuracy, and optional sound.',
+    uploaded_by:'System',
+    builtin:true
+  },
+  {
+    id:'builtin-typing-striker',
+    title:'Typing Striker',
+    type:'typing',
+    url:'./typing-striker-v2.html',
+    subject:'Typing',
+    grade_range:'Grade 1 - 7',
+    description:'Soccer typing game with automatic score return, WPM, accuracy, and optional sound.',
+    uploaded_by:'System',
+    builtin:true
+  }
+];
+const normalizeResourceUrl = (url) => {
+  try{
+    return new URL(String(url||''), window.location.href).pathname.toLowerCase();
+  }catch(_e){
+    return String(url||'').trim().toLowerCase();
+  }
+};
+const mergeBuiltinResources = (rows=[]) => {
+  const list = Array.isArray(rows) ? rows : [];
+  const existingIds = new Set(list.map(r=>String(r?.id||'').trim().toLowerCase()).filter(Boolean));
+  const existingTitles = new Set(list.map(r=>String(r?.title||'').trim().toLowerCase()).filter(Boolean));
+  const existingUrls = new Set(list.map(r=>normalizeResourceUrl(r?.url)).filter(Boolean));
+  const builtins = BUILTIN_LEARNWORLD_RESOURCES.filter(r=>
+    !existingIds.has(String(r.id||'').trim().toLowerCase()) &&
+    !existingTitles.has(String(r.title||'').trim().toLowerCase()) &&
+    !existingUrls.has(normalizeResourceUrl(r.url))
+  );
+  return [...builtins, ...list];
+};
 const isLearnWorldGameResource = (r) => !!(r && isTrackableActivityUrl(r.url));
 const STATUS_OPTS = [{v:"assigned",l:"Assigned",c:"#667eea"},{v:"in_progress",l:"In Progress",c:"#f97316"},{v:"completed",l:"Completed",c:"#28a745"}];
 const formatStatusLabel = (status, fallback='assigned') => String(status || fallback).replace(/_/g,' ');
@@ -975,7 +1018,11 @@ function ResourcesTab({resources,setResources}){
                         </div>
                         <div style={{display:'flex',gap:'8px',flexShrink:0}}>
                           <a href={r.url} target="_blank" rel="noreferrer" download={/\.zip($|\?)/i.test(r.url||'') ? '' : undefined} style={{...sbtn,background:'#28a745',textDecoration:'none',display:'inline-block'}}>{/\.zip($|\?)/i.test(r.url||'') ? '⬇ Download' : '🔗 Open'}</a>
-                          <button style={{...sbtn,background:'#dc3545'}} onClick={()=>handleDelete(r.id)}>🗑 Delete</button>
+                          {r.builtin ? (
+                            <span style={{...sbtn,background:'#0f766e',cursor:'default'}}>Built-in game</span>
+                          ) : (
+                            <button style={{...sbtn,background:'#dc3545'}} onClick={()=>handleDelete(r.id)}>🗑 Delete</button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -5957,7 +6004,7 @@ function AdminDashboard({onBack,adminUser}){
           db.get('carissa_teacher_audit','order=created_at.desc&limit=300').catch(()=>[]),
         ]);
         setInterventions(int_);
-        setResources(res);
+        setResources(mergeBuiltinResources(res));
         setAssignments(asn);
         setAssessments(asm);
         setOverrides(ovr);
@@ -6419,7 +6466,7 @@ function LearnerPortalView(){
           db.get('carissa_resources','order=created_at.desc'),
         ]);
         setAssignments(asn||[]);
-        setResources(r||[]);
+        setResources(mergeBuiltinResources(r||[]));
         setResults([]);
       }catch(e){ console.error(e); }
       setLoading(false);
@@ -7061,7 +7108,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
         db.get('carissa_config','key=eq.admin_pin').catch(()=>[]),
       ]);
       const lres = lresResp?.results || [];
-      setAssessments(a); setAssignments(asn); setLearnerResults(lres); setResources(r); setReading(rdg); setInterventions(ints);
+      setAssessments(a); setAssignments(asn); setLearnerResults(lres); setResources(mergeBuiltinResources(r)); setReading(rdg); setInterventions(ints);
       const parsedCfg = parseAdminConfigValue(adminCfg?.[0]?.value || '{}');
       setSharedAdminEmails([...new Set(parsedCfg.shared_admin_teachers || [])]);
     }catch(e){
