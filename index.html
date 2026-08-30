@@ -7646,6 +7646,61 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
     .replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;')
     .replace(/'/g,'&#39;');
+  const sasamsLevelFromPercent = (pct)=>{
+    if(pct===null || pct===undefined || Number.isNaN(Number(pct))) return '';
+    const value = Number(pct);
+    if(value >= 80) return 7;
+    if(value >= 70) return 6;
+    if(value >= 60) return 5;
+    if(value >= 50) return 4;
+    if(value >= 40) return 3;
+    if(value >= 30) return 2;
+    return 1;
+  };
+  const totalPossibleWeighted = useMemo(()=>{
+    return Math.round((criteria||[]).reduce((sum, criterion)=>sum + (Number(criterion?.sba_of_yearmark_pct || 0) || 0), 0) * 100) / 100;
+  },[criteria]);
+  const learnerSummaryMap = useMemo(()=>{
+    const out = {};
+    learners.forEach((learner, index)=>{
+      const learnerNo = String(learner.__learner_no || learner.number || index + 1);
+      let taskTotal = 0;
+      let weightedTotal = 0;
+      let captured = 0;
+      criteria.forEach(criterion=>{
+        const key = sasamsCellKey(learnerNo, String(criterion.off_criterion_id));
+        const rawValue = Object.prototype.hasOwnProperty.call(draftValues,key)
+          ? draftValues[key]
+          : (marksMap[key]?.raw_mark_entered===null || marksMap[key]?.raw_mark_entered===undefined ? '' : String(marksMap[key].raw_mark_entered));
+        if(rawValue==='' || rawValue===null || rawValue===undefined || invalidCells[key]) return;
+        const numeric = Number(rawValue);
+        if(Number.isNaN(numeric)) return;
+        const maxScore = Number(criterion?.criterion_score_max || 0);
+        const percent = maxScore ? (numeric / maxScore) * 100 : null;
+        const weighting = Number(criterion?.sba_of_yearmark_pct || 0) || 0;
+        taskTotal += numeric;
+        captured += 1;
+        if(percent!==null) weightedTotal += (percent * weighting) / 100;
+      });
+      const roundedTaskTotal = Math.round(taskTotal * 100) / 100;
+      const roundedWeightedTotal = Math.round(weightedTotal * 100) / 100;
+      const termPercent = totalPossibleWeighted ? Math.round(((roundedWeightedTotal / totalPossibleWeighted) * 100) * 100) / 100 : null;
+      out[learnerNo] = {
+        taskTotal: roundedTaskTotal,
+        weightedTotal: roundedWeightedTotal,
+        termPercent,
+        level: sasamsLevelFromPercent(termPercent),
+        captured
+      };
+    });
+    return out;
+  },[criteria, draftValues, invalidCells, learners, marksMap, totalPossibleWeighted]);
+  const formatSasamsNumber = (value)=>{
+    if(value===null || value===undefined || value==='') return '—';
+    const numeric = Number(value);
+    if(Number.isNaN(numeric)) return '—';
+    return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(2).replace(/\.00$/,'');
+  };
   const sasamsExportBaseName = ()=>{
     const safeClass = String(selClass || 'class').trim().replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'').toLowerCase();
     const safeSubject = String(activeSubject?.name_english || 'subject').trim().replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'').toLowerCase();
@@ -7661,15 +7716,24 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
       'Learner No',
       'Surname',
       'Firstname',
-      ...criteria.map(criterion=>`${criterion.short_label || criterion.description || `Criterion ${criterion.off_criterion_id}`} / ${criterion.criterion_score_max || 0}`)
+      ...criteria.map(criterion=>`${criterion.short_label || criterion.description || `Criterion ${criterion.off_criterion_id}`} / ${criterion.criterion_score_max || 0}`),
+      'Task Total',
+      'Total Weighted Mark',
+      'Term %',
+      'Level'
     ];
     const rows = learners.map((learner, index)=>{
       const learnerNo = String(learner.__learner_no || learner.number || index + 1);
+      const summary = learnerSummaryMap[learnerNo] || {};
       return [
         learnerNo,
         learner.surname || '',
         learner.firstname || '',
-        ...criteria.map(criterion=>getCellRawValue(learnerNo, criterion.off_criterion_id))
+        ...criteria.map(criterion=>getCellRawValue(learnerNo, criterion.off_criterion_id)),
+        summary.taskTotal ?? '',
+        summary.weightedTotal ?? '',
+        summary.termPercent ?? '',
+        summary.level ?? ''
       ];
     });
     const csv = [columns, ...rows].map(row=>row.map(csvEscape).join(',')).join('\r\n');
@@ -7688,13 +7752,24 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
         <div class="crit-title">${htmlEscape(criterion.short_label || criterion.description || `Criterion ${criterion.off_criterion_id}`)}</div>
         <div class="crit-sub">Max ${htmlEscape(criterion.criterion_score_max || 0)}</div>
       </th>
-    `).join('');
+    `).join('') + `
+      <th><div class="crit-title">Task total</div><div class="crit-sub">Raw marks</div></th>
+      <th><div class="crit-title">Total weighted mark</div><div class="crit-sub">SBA weighted</div></th>
+      <th><div class="crit-title">Term %</div><div class="crit-sub">Out of 100</div></th>
+      <th><div class="crit-title">Level</div><div class="crit-sub">1 to 7</div></th>
+    `;
     const tableBody = learners.map((learner, index)=>{
       const learnerNo = String(learner.__learner_no || learner.number || index + 1);
+      const summary = learnerSummaryMap[learnerNo] || {};
       const cellHtml = criteria.map(criterion=>{
         const rawValue = getCellRawValue(learnerNo, criterion.off_criterion_id);
         return `<td>${htmlEscape(rawValue || '—')}</td>`;
-      }).join('');
+      }).join('') + `
+        <td>${htmlEscape(formatSasamsNumber(summary.taskTotal))}</td>
+        <td>${htmlEscape(formatSasamsNumber(summary.weightedTotal))}</td>
+        <td>${htmlEscape(formatSasamsNumber(summary.termPercent))}</td>
+        <td>${htmlEscape(summary.level || '—')}</td>
+      `;
       return `
         <tr>
           <td class="learner-cell">
@@ -7912,11 +7987,28 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
                       </div>
                     </th>
                   ))}
+                  <th style={{textAlign:'left',padding:'10px',minWidth:'120px',verticalAlign:'top'}}>
+                    <div style={{fontWeight:800,color:'#1f2937',marginBottom:'4px'}}>Task total</div>
+                    <div style={{fontSize:'11px',color:'#64748b',lineHeight:1.45}}>Raw marks</div>
+                  </th>
+                  <th style={{textAlign:'left',padding:'10px',minWidth:'130px',verticalAlign:'top'}}>
+                    <div style={{fontWeight:800,color:'#1f2937',marginBottom:'4px'}}>Total weighted mark</div>
+                    <div style={{fontSize:'11px',color:'#64748b',lineHeight:1.45}}>SBA weighted</div>
+                  </th>
+                  <th style={{textAlign:'left',padding:'10px',minWidth:'100px',verticalAlign:'top'}}>
+                    <div style={{fontWeight:800,color:'#1f2937',marginBottom:'4px'}}>Term %</div>
+                    <div style={{fontSize:'11px',color:'#64748b',lineHeight:1.45}}>Out of 100</div>
+                  </th>
+                  <th style={{textAlign:'left',padding:'10px',minWidth:'90px',verticalAlign:'top'}}>
+                    <div style={{fontWeight:800,color:'#1f2937',marginBottom:'4px'}}>Level</div>
+                    <div style={{fontSize:'11px',color:'#64748b',lineHeight:1.45}}>1 to 7</div>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {learners.map((learner, index)=>{
                   const learnerNo = String(learner.__learner_no || learner.number || index + 1);
+                  const summary = learnerSummaryMap[learnerNo] || {};
                   return (
                     <tr key={learnerNo} style={{borderBottom:'1px solid #f1f5f9'}}>
                       <td style={{padding:'10px',position:'sticky',left:0,background:'#fff',zIndex:1}}>
@@ -7955,6 +8047,22 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
                           </td>
                         );
                       })}
+                      <td style={{padding:'10px',verticalAlign:'top',background:'#f8fafc'}}>
+                        <div style={{fontWeight:800,color:'#111827'}}>{formatSasamsNumber(summary.taskTotal)}</div>
+                        <div style={{fontSize:'11px',color:'#64748b'}}>Captured {summary.captured || 0}</div>
+                      </td>
+                      <td style={{padding:'10px',verticalAlign:'top',background:'#f8fafc'}}>
+                        <div style={{fontWeight:800,color:'#111827'}}>{formatSasamsNumber(summary.weightedTotal)}</div>
+                        <div style={{fontSize:'11px',color:'#64748b'}}>Out of {formatSasamsNumber(totalPossibleWeighted)}</div>
+                      </td>
+                      <td style={{padding:'10px',verticalAlign:'top',background:'#f8fafc'}}>
+                        <div style={{fontWeight:800,color:'#111827'}}>{formatSasamsNumber(summary.termPercent)}</div>
+                        <div style={{fontSize:'11px',color:'#64748b'}}>Term result</div>
+                      </td>
+                      <td style={{padding:'10px',verticalAlign:'top',background:'#f8fafc'}}>
+                        <div style={{fontWeight:800,color:'#111827'}}>{summary.level || '—'}</div>
+                        <div style={{fontSize:'11px',color:'#64748b'}}>Achievement level</div>
+                      </td>
                     </tr>
                   );
                 })}
