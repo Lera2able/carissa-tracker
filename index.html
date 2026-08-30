@@ -182,6 +182,44 @@ const CLASS_DATA = {
 "Grade 7.3":[{number:1,surname:"MAHLANGU",firstname:"Khulubuse"},{number:2,surname:"MAILE",firstname:"Thapelo"},{number:3,surname:"MAKOLA +",firstname:"Lydia"},{number:4,surname:"MALUNGA",firstname:"Mduduzi"},{number:5,surname:"MASANGO",firstname:"Aphile"},{number:6,surname:"MASANGO",firstname:"Thandolwethu"},{number:7,surname:"MASILELA",firstname:"Blessing"},{number:8,surname:"MATULUDI",firstname:"Tamedi"},{number:9,surname:"MMAGAPA",firstname:"Mahlaise"},{number:10,surname:"MOTHA",firstname:"Lethokuhle"},{number:11,surname:"MLOTSHWA",firstname:"Mamukelo"},{number:12,surname:"NTIMBA",firstname:"Blessing"},{number:13,surname:"SHABALALA",firstname:"Bandile"},{number:14,surname:"SHABANGU",firstname:"Simamukele"},{number:15,surname:"SIFUNDA",firstname:"Prince"},{number:16,surname:"SILINGILE",firstname:"Simtholile"},{number:17,surname:"TABU",firstname:"Assani"},{number:18,surname:"THOBOKGALE",firstname:"Tshepang"},{number:19,surname:"THWALA",firstname:"Nqubeko"},{number:20,surname:"MABUZA",firstname:"Lindokuhle"},{number:21,surname:"MABUZA",firstname:"Thakgatso"},{number:22,surname:"MAHLANGU",firstname:"Amahle"},{number:23,surname:"MAKOFANE",firstname:"Owethu"},{number:24,surname:"MALAZA",firstname:"Lonwabo"},{number:25,surname:"MASHININI",firstname:"Siphesihle"},{number:26,surname:"MATHIBE",firstname:"Mahlatsi"},{number:27,surname:"MAZIBUKO",firstname:"Ofentshe"},{number:28,surname:"MHLANGA",firstname:"Mpendulo"},{number:29,surname:"MHLONGO",firstname:"Zinhle"},{number:30,surname:"MOTLHAMME",firstname:"Oletlile"},{number:31,surname:"MSIBI",firstname:"Masesi"},{number:32,surname:"MUNASUNGI",firstname:"Pretty"},{number:33,surname:"NAVESS",firstname:"Mandy"},{number:34,surname:"NGELE",firstname:"Mogau"},{number:35,surname:"NGWANE",firstname:"Tsakane"},{number:36,surname:"NKABINDE",firstname:"Nkosenhle"},{number:37,surname:"NYOSI",firstname:"Lethu"},{number:38,surname:"RANGWAGA",firstname:"Tshepiso"},{number:39,surname:"SENOELO",firstname:"Buang"},{number:40,surname:"SHIVITI",firstname:"Graca"}]
 };
 const CLASS_NAMES = Object.keys(CLASS_DATA);
+const sasamsDefaultTermNo = ()=>{
+  const month = new Date().getMonth() + 1;
+  if(month <= 3) return 1;
+  if(month <= 6) return 2;
+  if(month <= 9) return 3;
+  return 4;
+};
+const gradeNoFromClassName = (className='')=>{
+  const raw = String(className || '').trim();
+  const m = raw.match(/grade\s*(r|\d+)/i);
+  if(!m) return null;
+  return String(m[1]).toLowerCase() === 'r' ? 0 : Number(m[1]);
+};
+const getTeacherPortalLearnersForClass = (className='')=>{
+  const base = Array.isArray(CLASS_DATA[className]) ? CLASS_DATA[className] : [];
+  let edits = {};
+  try{
+    const allEdits = JSON.parse(localStorage.getItem('carissa_classlist_edits_v1') || '{}') || {};
+    edits = allEdits[className] || {};
+  }catch(e){}
+  return base.map((learner, index)=>{
+    const learnerNo = String(learner?.number ?? index + 1);
+    const edit = edits[learnerNo] || null;
+    return {
+      ...learner,
+      ...(edit || {}),
+      __learner_no: learnerNo
+    };
+  });
+};
+const sasamsCellKey = (learnerNo, criterionId)=>`${learnerNo}__${criterionId}`;
+const sasamsFriendlyError = (err, fallback)=>{
+  const msg = String(err?.message || err || fallback || 'Could not load the SASAMS marks data.');
+  if(/relation .* does not exist|Could not find the table|schema cache/i.test(msg)){
+    return 'The SASAMS marks tables are not set up yet. Run the SASAMS schema file in Supabase first.';
+  }
+  return msg;
+};
 const learnerLoginSlug = cls => String(cls||'').toLowerCase().replace(/grade\s*/i,'g').replace(/[^a-z0-9]+/g,'').replace(/^g/,'g');
 const learnerUsernameFor = (cls, learner) => `${learnerLoginSlug(cls)}-${String(learner?.number || 0).padStart(2,'0')}`;
 const learnerPinFor = learner => String(learner?.number || 0).padStart(4,'0');
@@ -6564,6 +6602,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
             {[
               ['dashboard',`🏠 Dashboard`],
               ['assessments',`📝 Assessments`],
+              ...(teacherAuth ? [['sasams_marks','🧮 SASAMS Marks']] : []),
               ['progress',`📈 Track Progress (${classAssignments.length})`],
               ...(teacherAuth ? [['classlist',`👥 Classlist (${(CLASS_DATA[selClass]||[]).length})`]] : []),
               ...(teacherAuth ? [['discipline','⚖️ Discipline']] : []),
@@ -6768,6 +6807,16 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
             </div>
           )}
 
+          {/* ── SASAMS marks tab ───────────────────── */}
+          {tab==='sasams_marks' && teacherAuth && (
+            <TeacherSasamsMarksTab
+              teacherAuth={teacherAuth}
+              selClass={selClass}
+              showMsg={showMsg}
+              onAudit={(evt)=>logTeacherAudit(evt, selClass)}
+            />
+          )}
+
           {/* ── Progress tab ──────────────────────── */}
           {tab==='progress' && (
             <div>
@@ -6846,6 +6895,487 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
 
           {/* ── Resources tab ─────────────────────── */}
           {tab==='resources' && <ResourcesLibrary resources={resources} onAudit={(type,r)=>logTeacherAudit(`${type}:${String(r?.title||'').slice(0,40)}`, selClass)}/>}
+        </>
+      )}
+    </div>
+  );
+}
+
+function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit }){
+  const academicYear = new Date().getFullYear();
+  const teacherEmail = String(teacherAuth?.email || '').trim().toLowerCase();
+  const teacherName = `${teacherAuth?.first_name || ''} ${teacherAuth?.surname || ''}`.trim() || teacherEmail || 'Teacher';
+  const gradeNo = useMemo(()=>gradeNoFromClassName(selClass),[selClass]);
+  const learners = useMemo(()=>getTeacherPortalLearnersForClass(selClass),[selClass]);
+  const [termNo,setTermNo] = useState(sasamsDefaultTermNo());
+  const [subjects,setSubjects] = useState([]);
+  const [subjectId,setSubjectId] = useState('');
+  const [criteria,setCriteria] = useState([]);
+  const [marksMap,setMarksMap] = useState({});
+  const [draftValues,setDraftValues] = useState({});
+  const [invalidCells,setInvalidCells] = useState({});
+  const [batch,setBatch] = useState(null);
+  const [loading,setLoading] = useState(false);
+  const [status,setStatus] = useState('');
+  const [error,setError] = useState('');
+  const [submitBusy,setSubmitBusy] = useState(false);
+  const saveTimersRef = useRef({});
+
+  const clearSaveTimer = (key)=>{
+    if(saveTimersRef.current[key]){
+      clearTimeout(saveTimersRef.current[key]);
+      delete saveTimersRef.current[key];
+    }
+  };
+
+  useEffect(()=>()=>Object.values(saveTimersRef.current).forEach(clearTimeout),[]);
+
+  useEffect(()=>{
+    let alive = true;
+    if(gradeNo===null){
+      Object.keys(saveTimersRef.current).forEach(clearSaveTimer);
+      setSubjects([]);
+      setSubjectId('');
+      setError('The selected class does not match a SASAMS grade yet.');
+      return;
+    }
+    (async()=>{
+      setError('');
+      try{
+        const rows = await db.get(
+          'carissa_sasams_subjects',
+          `grade_no=eq.${gradeNo}&order=name_english.asc`
+        );
+        if(!alive) return;
+        setSubjects(rows || []);
+        if(!(rows||[]).length){
+          setSubjectId('');
+          setError(`No SASAMS subjects have been loaded yet for ${selClass}. Import the SASAMS subject data first.`);
+          return;
+        }
+        setSubjectId(prev=>{
+          if(prev && (rows||[]).some(r=>String(r.official_subject_id)===String(prev))) return prev;
+          return String(rows[0].official_subject_id);
+        });
+      }catch(err){
+        if(!alive) return;
+        setSubjects([]);
+        setSubjectId('');
+        setError(sasamsFriendlyError(err, 'Could not load the SASAMS subjects.'));
+      }
+    })();
+    return ()=>{ alive = false; };
+  },[gradeNo, selClass]);
+
+  const criteriaById = useMemo(()=>{
+    const map = {};
+    (criteria||[]).forEach(row=>{ map[String(row.off_criterion_id)] = row; });
+    return map;
+  },[criteria]);
+
+  const batchStatus = String(batch?.status || 'DRAFT').toUpperCase();
+  const isLocked = batchStatus === 'SUBMITTED' || batchStatus === 'APPROVED';
+
+  useEffect(()=>{
+    let alive = true;
+    if(!selClass || !subjectId || gradeNo===null || !teacherEmail){
+      Object.keys(saveTimersRef.current).forEach(clearSaveTimer);
+      setCriteria([]);
+      setMarksMap({});
+      setDraftValues({});
+      setInvalidCells({});
+      setBatch(null);
+      return;
+    }
+    (async()=>{
+      Object.keys(saveTimersRef.current).forEach(clearSaveTimer);
+      setLoading(true);
+      setError('');
+      try{
+        const classFilter = encodeURIComponent(selClass);
+        const emailFilter = encodeURIComponent(teacherEmail);
+        const [criteriaRows, batchRows, markRows] = await Promise.all([
+          db.get(
+            'carissa_sasams_criteria',
+            `academic_year=eq.${academicYear}&term_no=eq.${termNo}&grade_no=eq.${gradeNo}&official_subject_id=eq.${subjectId}&order=sort_order.asc,off_criterion_id.asc`
+          ),
+          db.get(
+            'carissa_sasams_batches',
+            `academic_year=eq.${academicYear}&term_no=eq.${termNo}&class_name=eq.${classFilter}&official_subject_id=eq.${subjectId}&teacher_email=eq.${emailFilter}&limit=1`
+          ),
+          db.get(
+            'carissa_sasams_marks',
+            `academic_year=eq.${academicYear}&term_no=eq.${termNo}&class_name=eq.${classFilter}&official_subject_id=eq.${subjectId}&teacher_email=eq.${emailFilter}&order=updated_at.desc`
+          ),
+        ]);
+        if(!alive) return;
+        const sortedCriteria = [...(criteriaRows||[])].sort((a,b)=>{
+          const aSort = Number.isFinite(Number(a?.sort_order)) ? Number(a.sort_order) : 999999;
+          const bSort = Number.isFinite(Number(b?.sort_order)) ? Number(b.sort_order) : 999999;
+          if(aSort !== bSort) return aSort - bSort;
+          return Number(a?.off_criterion_id || 0) - Number(b?.off_criterion_id || 0);
+        });
+        const nextMarks = {};
+        const nextDrafts = {};
+        (markRows||[]).forEach(row=>{
+          const key = sasamsCellKey(String(row.learner_no), String(row.off_criterion_id));
+          nextMarks[key] = row;
+          nextDrafts[key] = row.raw_mark_entered===null || row.raw_mark_entered===undefined ? '' : String(row.raw_mark_entered);
+        });
+        setCriteria(sortedCriteria);
+        setMarksMap(nextMarks);
+        setDraftValues(nextDrafts);
+        setInvalidCells({});
+        setBatch((batchRows||[])[0] || null);
+        setStatus((batchRows||[])[0]?.status ? `Batch status: ${(batchRows||[])[0].status}` : 'Ready to capture marks.');
+        if(!(sortedCriteria||[]).length){
+          setError('No SASAMS criteria were found for this term and subject yet. Load the criteria data before capturing marks.');
+        }
+      }catch(err){
+        if(!alive) return;
+        setCriteria([]);
+        setMarksMap({});
+        setDraftValues({});
+        setBatch(null);
+        setError(sasamsFriendlyError(err, 'Could not load the SASAMS marks grid.'));
+      }finally{
+        if(alive) setLoading(false);
+      }
+    })();
+    return ()=>{ alive = false; };
+  },[academicYear, gradeNo, selClass, subjectId, teacherEmail, termNo]);
+
+  const ensureDraftBatch = async()=>{
+    if(batch?.id) return batch;
+    const payload = {
+      academic_year: academicYear,
+      term_no: termNo,
+      class_name: selClass,
+      grade_no: gradeNo,
+      official_subject_id: Number(subjectId),
+      teacher_email: teacherEmail,
+      teacher_name: teacherName,
+      status: 'DRAFT',
+      updated_at: new Date().toISOString(),
+    };
+    const rows = await db.post(
+      'carissa_sasams_batches?on_conflict=academic_year,term_no,class_name,official_subject_id,teacher_email',
+      payload,
+      'resolution=merge-duplicates,return=representation'
+    );
+    const saved = Array.isArray(rows) ? rows[0] : rows;
+    setBatch(saved || payload);
+    return saved || payload;
+  };
+
+  const schedulePersist = (key, worker)=>{
+    clearSaveTimer(key);
+    saveTimersRef.current[key] = setTimeout(async()=>{
+      clearSaveTimer(key);
+      await worker();
+    }, 500);
+  };
+
+  const persistCell = async(learner, criterion, numericValue)=>{
+    const learnerNo = String(learner.__learner_no || learner.number || '');
+    const key = sasamsCellKey(learnerNo, String(criterion.off_criterion_id));
+    try{
+      if(numericValue===null || numericValue===''){
+        const existing = marksMap[key];
+        if(existing?.id){
+          await db.del('carissa_sasams_marks', `id=eq.${existing.id}`);
+        }
+        setMarksMap(prev=>{
+          const next = {...prev};
+          delete next[key];
+          return next;
+        });
+        setStatus(`Autosaved ${new Date().toLocaleTimeString('en-ZA')}`);
+        return;
+      }
+      const savedBatch = await ensureDraftBatch();
+      const maxScore = Number(criterion.criterion_score_max || 0);
+      const pct = maxScore ? Math.round((Number(numericValue) / maxScore) * 10000) / 100 : null;
+      const weighting = Number(criterion.sba_of_yearmark_pct || 0);
+      const payload = {
+        batch_id: savedBatch.id,
+        academic_year: academicYear,
+        term_no: termNo,
+        class_name: selClass,
+        grade_no: gradeNo,
+        official_subject_id: Number(subjectId),
+        off_criterion_id: Number(criterion.off_criterion_id),
+        learner_no: learnerNo,
+        surname: String(learner.surname || ''),
+        firstname: String(learner.firstname || ''),
+        raw_mark_entered: Number(numericValue),
+        raw_mark_max: maxScore,
+        mark_percent: pct,
+        weighted_sba_pct: pct===null ? null : Math.round(((pct * weighting) / 100) * 1000) / 1000,
+        teacher_email: teacherEmail,
+        teacher_name: teacherName,
+        status: batchStatus === 'REJECTED' ? 'REJECTED' : 'PENDING',
+        updated_at: new Date().toISOString(),
+      };
+      const rows = await db.post(
+        'carissa_sasams_marks?on_conflict=batch_id,off_criterion_id,learner_no',
+        payload,
+        'resolution=merge-duplicates,return=representation'
+      );
+      const saved = Array.isArray(rows) ? rows[0] : rows;
+      setMarksMap(prev=>({
+        ...prev,
+        [key]: {...prev[key], ...(saved || payload)}
+      }));
+      setStatus(`Autosaved ${new Date().toLocaleTimeString('en-ZA')}`);
+    }catch(err){
+      setStatus(sasamsFriendlyError(err, 'Could not autosave this mark.'));
+    }
+  };
+
+  const handleCellChange = (learner, criterion, rawValue)=>{
+    const learnerNo = String(learner.__learner_no || learner.number || '');
+    const key = sasamsCellKey(learnerNo, String(criterion.off_criterion_id));
+    setDraftValues(prev=>({...prev,[key]:rawValue}));
+    if(rawValue===''){
+      setInvalidCells(prev=>{
+        const next = {...prev};
+        delete next[key];
+        return next;
+      });
+      schedulePersist(key, ()=>persistCell(learner, criterion, null));
+      return;
+    }
+    const numeric = Number(rawValue);
+    const maxScore = Number(criterion.criterion_score_max || 0);
+    if(Number.isNaN(numeric) || numeric < 0 || (maxScore && numeric > maxScore)){
+      setInvalidCells(prev=>({...prev,[key]:`Use a mark between 0 and ${maxScore}.`}));
+      clearSaveTimer(key);
+      return;
+    }
+    setInvalidCells(prev=>{
+      const next = {...prev};
+      delete next[key];
+      return next;
+    });
+    schedulePersist(key, ()=>persistCell(learner, criterion, numeric));
+  };
+
+  const expectedCells = learners.length * criteria.length;
+  const capturedCells = useMemo(()=>{
+    if(!learners.length || !criteria.length) return 0;
+    let total = 0;
+    learners.forEach(learner=>{
+      criteria.forEach(criterion=>{
+        const learnerNo = String(learner.__learner_no || learner.number || '');
+        const key = sasamsCellKey(learnerNo, String(criterion.off_criterion_id));
+        const value = Object.prototype.hasOwnProperty.call(draftValues,key)
+          ? draftValues[key]
+          : (marksMap[key]?.raw_mark_entered===null || marksMap[key]?.raw_mark_entered===undefined ? '' : String(marksMap[key].raw_mark_entered));
+        if(value!=='' && value!==null && value!==undefined && !invalidCells[key]) total += 1;
+      });
+    });
+    return total;
+  },[criteria, draftValues, invalidCells, learners, marksMap]);
+  const completenessPct = expectedCells ? Math.round((capturedCells / expectedCells) * 100) : 0;
+
+  const submitForHodReview = async()=>{
+    if(isLocked){
+      showMsg('This batch has already been submitted for HOD review.');
+      return;
+    }
+    if(!criteria.length){
+      showMsg('Load the SASAMS criteria first before submitting.');
+      return;
+    }
+    if(Object.keys(invalidCells).length){
+      showMsg('Please fix the invalid marks before submitting.');
+      return;
+    }
+    setSubmitBusy(true);
+    try{
+      await new Promise(resolve=>setTimeout(resolve, 650));
+      const savedBatch = await ensureDraftBatch();
+      const missing = expectedCells - capturedCells;
+      if(missing > 0 && !window.confirm(`There are still ${missing} blank mark cells. Submit this batch to HOD review anyway?`)){
+        setSubmitBusy(false);
+        return;
+      }
+      const now = new Date().toISOString();
+      const rows = await db.patch(
+        'carissa_sasams_batches',
+        `id=eq.${savedBatch.id}`,
+        {status:'SUBMITTED', submitted_at:now, updated_at:now}
+      );
+      await db.patch('carissa_sasams_marks', `batch_id=eq.${savedBatch.id}`, {status:'SUBMITTED', updated_at:now});
+      const updated = Array.isArray(rows) ? rows[0] : rows;
+      setBatch(updated || {...savedBatch,status:'SUBMITTED',submitted_at:now,updated_at:now});
+      setStatus('Submitted for HOD review.');
+      showMsg('✓ SASAMS marks submitted for HOD review.');
+      onAudit && onAudit('sasams_submit_hod');
+    }catch(err){
+      setStatus(sasamsFriendlyError(err, 'Could not submit this batch for HOD review.'));
+    }
+    setSubmitBusy(false);
+  };
+
+  const activeSubject = subjects.find(row=>String(row.official_subject_id)===String(subjectId));
+
+  return (
+    <div style={card}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'12px',flexWrap:'wrap',marginBottom:'14px'}}>
+        <div>
+          <h3 style={{...ctitle,marginBottom:'6px'}}>🧮 SASAMS Marks</h3>
+          <p style={{fontSize:'13px',color:'#64748b',lineHeight:1.6,maxWidth:'820px'}}>
+            Capture marks for the selected class using SASAMS criteria, with autosave and a submit step for HOD review. SA-SAMS sync will be added later after the capture flow is stable.
+          </p>
+        </div>
+        <div style={{background:'#eef2ff',border:'1px solid #c7d2fe',borderRadius:'12px',padding:'10px 12px',minWidth:'240px'}}>
+          <div style={{fontSize:'12px',fontWeight:800,color:'#4338ca',marginBottom:'4px'}}>Teacher batch</div>
+          <div style={{fontSize:'14px',fontWeight:700,color:'#312e81'}}>{teacherName}</div>
+          <div style={{fontSize:'12px',color:'#6366f1',marginTop:'4px'}}>{selClass} • {activeSubject?.name_english || 'Choose a subject'}</div>
+        </div>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:'12px',marginBottom:'12px'}}>
+        <div>
+          <label style={lbl}>Term</label>
+          <select style={inp} value={termNo} onChange={e=>setTermNo(Number(e.target.value))}>
+            {[1,2,3,4].map(n=><option key={n} value={n}>{`Term ${n}`}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={lbl}>Subject</label>
+          <select style={inp} value={subjectId} onChange={e=>setSubjectId(e.target.value)} disabled={!subjects.length}>
+            {!subjects.length ? <option value="">Load subjects first</option> : subjects.map(row=>(
+              <option key={row.official_subject_id} value={row.official_subject_id}>
+                {row.name_english || row.subj_key || `Subject ${row.official_subject_id}`}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div style={{display:'flex',flexDirection:'column',justifyContent:'flex-end'}}>
+          <div style={{fontSize:'12px',fontWeight:800,color:'#334155',marginBottom:'6px'}}>Completeness</div>
+          <div style={{height:'12px',background:'#e2e8f0',borderRadius:'999px',overflow:'hidden'}}>
+            <div style={{height:'100%',width:`${completenessPct}%`,background:completenessPct===100?'#10b981':'linear-gradient(90deg,#667eea,#8b5cf6)'}} />
+          </div>
+          <div style={{fontSize:'12px',color:'#475569',marginTop:'6px'}}>
+            {capturedCells} of {expectedCells || 0} cells captured ({completenessPct}%)
+          </div>
+        </div>
+        <div style={{display:'flex',flexDirection:'column',justifyContent:'flex-end',gap:'8px'}}>
+          <div style={{fontSize:'12px',fontWeight:800,color:'#334155'}}>Status</div>
+          <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+            <span style={{background:isLocked?'#fee2e2':'#ecfeff',color:isLocked?'#b91c1c':'#155e75',padding:'6px 10px',borderRadius:'999px',fontSize:'12px',fontWeight:800}}>
+              {batchStatus}
+            </span>
+            <span style={{background:'#f8fafc',color:'#475569',padding:'6px 10px',borderRadius:'999px',fontSize:'12px',fontWeight:700}}>
+              {academicYear}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {status && (
+        <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px 12px',fontSize:'13px',color:'#334155',marginBottom:'12px'}}>
+          {status}
+        </div>
+      )}
+
+      {error && (
+        <div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:'10px',padding:'11px 12px',fontSize:'13px',color:'#9a3412',marginBottom:'12px',lineHeight:1.55}}>
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'26px',textAlign:'center',color:'#64748b'}}>
+          Loading the SASAMS marks grid...
+        </div>
+      ) : !criteria.length ? (
+        <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'22px 18px',color:'#64748b',lineHeight:1.6}}>
+          Once the SASAMS subject and criteria tables are loaded, the learner-by-criterion marks grid will appear here.
+        </div>
+      ) : (
+        <>
+          <div style={{overflowX:'auto',border:'1px solid #e2e8f0',borderRadius:'12px',background:'#fff'}}>
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:'12px'}}>
+              <thead>
+                <tr style={{background:'#f8fafc',borderBottom:'1px solid #e2e8f0'}}>
+                  <th style={{textAlign:'left',padding:'10px',minWidth:'210px',position:'sticky',left:0,background:'#f8fafc',zIndex:2}}>Learner</th>
+                  {criteria.map(criterion=>(
+                    <th key={criterion.off_criterion_id} style={{textAlign:'left',padding:'10px',minWidth:'180px',verticalAlign:'top'}}>
+                      <div style={{fontWeight:800,color:'#1f2937',marginBottom:'4px'}}>
+                        {criterion.short_label || criterion.description || `Criterion ${criterion.off_criterion_id}`}
+                      </div>
+                      <div style={{fontSize:'11px',color:'#64748b',lineHeight:1.45}}>
+                        Max {criterion.criterion_score_max || 0}
+                        {criterion.sba_of_yearmark_pct!==null && criterion.sba_of_yearmark_pct!==undefined ? ` • ${criterion.sba_of_yearmark_pct}% of SBA` : ''}
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {learners.map((learner, index)=>{
+                  const learnerNo = String(learner.__learner_no || learner.number || index + 1);
+                  return (
+                    <tr key={learnerNo} style={{borderBottom:'1px solid #f1f5f9'}}>
+                      <td style={{padding:'10px',position:'sticky',left:0,background:'#fff',zIndex:1}}>
+                        <div style={{fontWeight:800,color:'#111827'}}>{learner.surname}, {learner.firstname}</div>
+                        <div style={{fontSize:'11px',color:'#64748b'}}>No. {learnerNo}</div>
+                      </td>
+                      {criteria.map(criterion=>{
+                        const cellKey = sasamsCellKey(learnerNo, String(criterion.off_criterion_id));
+                        const rawValue = Object.prototype.hasOwnProperty.call(draftValues,cellKey)
+                          ? draftValues[cellKey]
+                          : (marksMap[cellKey]?.raw_mark_entered===null || marksMap[cellKey]?.raw_mark_entered===undefined ? '' : String(marksMap[cellKey].raw_mark_entered));
+                        const numeric = rawValue==='' ? null : Number(rawValue);
+                        const maxScore = Number(criterion.criterion_score_max || 0);
+                        const pct = numeric===null || Number.isNaN(numeric) || !maxScore ? null : Math.round((numeric / maxScore) * 100);
+                        return (
+                          <td key={cellKey} style={{padding:'10px',verticalAlign:'top'}}>
+                            <input
+                              type="number"
+                              min="0"
+                              max={maxScore}
+                              step="0.01"
+                              value={rawValue}
+                              disabled={isLocked}
+                              onChange={e=>handleCellChange(learner, criterion, e.target.value)}
+                              style={{
+                                ...inp,
+                                margin:'0 0 6px',
+                                minWidth:'120px',
+                                borderColor: invalidCells[cellKey] ? '#dc2626' : '#dbe2f0',
+                                background: isLocked ? '#f8fafc' : 'white'
+                              }}
+                            />
+                            <div style={{fontSize:'11px',color:invalidCells[cellKey] ? '#b91c1c' : '#64748b',lineHeight:1.4}}>
+                              {invalidCells[cellKey] || (pct===null ? `Out of ${maxScore}` : `${pct}%`)}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',marginTop:'14px'}}>
+            <div style={{fontSize:'12px',color:'#64748b',lineHeight:1.6}}>
+              Autosave runs while the teacher types. After checking completeness, submit the batch for HOD review to lock the marks.
+            </div>
+            <button
+              onClick={submitForHodReview}
+              disabled={submitBusy || isLocked || !criteria.length}
+              style={{...sbtn,background:isLocked?'#94a3b8':'#4f46e5',opacity:(submitBusy || !criteria.length)?0.7:1}}
+            >
+              {submitBusy ? 'Submitting...' : 'Submit for HOD review'}
+            </button>
+          </div>
         </>
       )}
     </div>
