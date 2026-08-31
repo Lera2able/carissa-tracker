@@ -138,7 +138,7 @@ footer{text-align:center;margin-top:34px;color:#8aa6ad;font-weight:700;font-size
 
   <section id="screen-modes" class="screen active">
     <h2 class="section-title">Choose Your Level</h2>
-    <p class="section-sub">Play easy, medium, or hard rounds. Score 100 or finish all 12 words to complete the activity.</p>
+    <p class="section-sub">Play easy, medium, or hard rounds. Each round has 10 words and a 60 second timer.</p>
     <div class="mode-grid" id="modeGrid"></div>
     <div style="text-align:center;margin-top:26px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
       <a class="btn ghost" href="typing-speed-quest.html">⌨️ Typing Garden</a>
@@ -154,9 +154,9 @@ footer{text-align:center;margin-top:34px;color:#8aa6ad;font-weight:700;font-size
       <button class="btn ghost" id="soundBtn" onclick="toggleSound()">🔊</button>
     </div>
     <div class="stats">
-      <div class="stat"><div class="sv" id="stQ">0/12</div><div class="sl">Words</div></div>
+      <div class="stat"><div class="sv" id="stQ">0/10</div><div class="sl">Words</div></div>
       <div class="stat"><div class="sv" id="stLives">3</div><div class="sl">Lives</div></div>
-      <div class="stat"><div class="sv" id="stTime">0:00</div><div class="sl">Time</div></div>
+      <div class="stat"><div class="sv" id="stTime">1:00</div><div class="sl">Time left</div></div>
       <div class="stat"><div class="sv" id="stLevel">1</div><div class="sl">Level</div></div>
     </div>
     <div class="bloom">
@@ -284,9 +284,12 @@ const ENCOURAGE = {
   3:["Excellent! That was championship spelling.","Brilliant round! You built every word with real confidence."]
 };
 
+const ROUND_WORDS = 10;
+const ROUND_SECONDS = 60;
+
 const state = {
   mode:"easy", items:[], current:null, asked:0, correct:0, wrong:0, lives:3, level:1,
-  score:0, start:null, timer:null, sound:true, locked:false, lastResult:null
+  score:0, start:null, endAt:null, timer:null, sound:true, locked:false, lastResult:null
 };
 
 let audioCtx = null;
@@ -317,6 +320,10 @@ function shuffle(arr){
 }
 function formatTime(sec){ return `${Math.floor(sec/60)}:${String(Math.floor(sec%60)).padStart(2,"0")}`; }
 function elapsed(){ return state.start ? (Date.now()-state.start)/1000 : 0; }
+function remaining(){
+  if(!state.endAt) return ROUND_SECONDS;
+  return Math.max(0, (state.endAt - Date.now())/1000);
+}
 function accuracy(){
   const total = state.asked || 0;
   return total ? Math.round((state.correct/total)*100) : 100;
@@ -352,21 +359,25 @@ function renderModes(){
 }
 
 function updateStats(){
-  $('#stQ').textContent = `${state.asked}/12`;
+  $('#stQ').textContent = `${state.asked}/${ROUND_WORDS}`;
   $('#stLives').textContent = state.lives;
-  $('#stTime').textContent = formatTime(elapsed());
+  $('#stTime').textContent = formatTime(remaining());
   $('#stLevel').textContent = state.level;
   $('#bfill').style.width = `${state.score}%`;
   $('#bscore').textContent = `${state.score}/100`;
   const p = state.score / 100;
   $('#bflower').textContent = p<0.25 ? '🌱' : p<0.5 ? '🌿' : p<0.75 ? '🌼' : p<1 ? '🌺' : '🏆';
   $('#bflower').style.transform = `scale(${0.9 + p*0.5}) rotate(${p*8}deg)`;
+  // Auto-finish when timer runs out
+  if(state.start && remaining() <= 0 && (state.asked > 0 || state.correct > 0 || state.wrong > 0)){
+    finish();
+  }
 }
 
 function stopTimer(){ if(state.timer){ clearInterval(state.timer); state.timer=null; } }
 
 function nextWord(){
-  if(state.asked >= 12 || state.lives <= 0 || state.score >= 100){
+  if(state.asked >= ROUND_WORDS || state.lives <= 0 || state.score >= 100 || remaining() <= 0){
     finish();
     return;
   }
@@ -387,7 +398,7 @@ function nextWord(){
 
 function startMode(mode){
   state.mode = mode;
-  state.items = shuffle(WORD_SETS[mode]).slice(0, 12);
+  state.items = shuffle(WORD_SETS[mode]).slice(0, ROUND_WORDS);
   state.current = null;
   state.asked = 0;
   state.correct = 0;
@@ -398,6 +409,7 @@ function startMode(mode){
   state.locked = false;
   state.lastResult = null;
   state.start = Date.now();
+  state.endAt = state.start + ROUND_SECONDS*1000;
   stopTimer();
   state.timer = setInterval(updateStats, 300);
   $('#crumbMode').textContent = `${MODES[mode].icon} ${MODES[mode].title}`;
@@ -440,9 +452,12 @@ function submitAnswer(){
 
 function finish(){
   stopTimer();
+  // Prevent double-finish from timer tick + nextWord
+  if(state.locked && state.lastResult) return;
+  state.locked = true;
   const acc = accuracy();
   const score = Math.round(state.score);
-  const timeLabel = formatTime(elapsed());
+  const timeLabel = formatTime(Math.min(ROUND_SECONDS, elapsed()));
   let stars = 1;
   if(acc >= 75) stars++;
   if(acc >= 90 && score >= 80) stars++;
@@ -467,11 +482,11 @@ function finish(){
     correct: state.correct,
     asked: state.asked,
     wrong: state.wrong,
-    duration_sec: Math.round(elapsed()),
+    duration_sec: Math.min(ROUND_SECONDS, Math.round(elapsed())),
     time_label: timeLabel,
     level: state.level,
     lives_left: state.lives,
-    result_summary: `Intermediate Word Builder — Score: ${score}/100, Accuracy: ${acc}%, Correct: ${state.correct}/${state.asked}, Level: ${state.level}, Lives left: ${state.lives}, Time: ${timeLabel}`
+    result_summary: `Intermediate Word Builder — 10 words / 60s, Score: ${score}/100, Accuracy: ${acc}%, Correct: ${state.correct}/${state.asked}, Level: ${state.level}, Lives left: ${state.lives}, Time: ${timeLabel}`
   };
 
   const bestKey = `carissa_word_builder_intermediate_${state.mode}`;

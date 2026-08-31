@@ -11438,12 +11438,15 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
     return (
       subject.includes('typing') ||
       title.includes('typing') ||
+      title.includes('word builder') ||
       title.includes('typerix') ||
       title.includes('striker') ||
       description.includes('wpm') ||
       description.includes('accuracy') ||
+      url.includes('word-builder') ||
       url.includes('typerix') ||
-      url.includes('typing-striker')
+      url.includes('typing-striker') ||
+      url.includes('typing-speed-quest')
     );
   },[]);
   const hiddenResourceCount = Math.max(0, (resources?.length || 0) - games.length);
@@ -11452,10 +11455,52 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
   );
   const rosterLearners = selClass ? (CLASS_DATA[selClass] || []) : [];
   const classInterventions = selClass ? interventions : [];
+  const gradeFoldersForResource = useCallback((r)=>{
+    const raw = String(r?.grade_range || '').trim();
+    const out = [];
+    const push = (label)=>{ if(label && !out.includes(label)) out.push(label); };
+    const lower = raw.toLowerCase();
+
+    // If this is a typing activity and no grade was set, show it to all grades.
+    if(isTypingGame(r) && !raw){
+      push('Grade R');
+      for(let g=1; g<=7; g++) push(`Grade ${g}`);
+      return out;
+    }
+
+    if(/grade\s*r\b/i.test(raw)) push('Grade R');
+    const mRange = lower.match(/grade\s*(\d+)\s*-\s*(\d+)/i) || lower.match(/grade\s*(\d+)\s*to\s*(\d+)/i);
+    if(mRange){
+      const a = parseInt(mRange[1],10);
+      const b = parseInt(mRange[2],10);
+      if(Number.isFinite(a) && Number.isFinite(b)){
+        const from = Math.min(a,b);
+        const to = Math.max(a,b);
+        for(let g=from; g<=to; g++) push(`Grade ${g}`);
+      }
+      return out.length ? out : (raw ? [raw] : []);
+    }
+    const mSingle = lower.match(/grade\s*(\d+)/i);
+    if(mSingle){
+      push(`Grade ${parseInt(mSingle[1],10)}`);
+      return out;
+    }
+    if(raw) push(raw);
+    return out.length ? out : ['General'];
+  },[isTypingGame]);
+
+  const foldersForResource = useCallback((r)=>{
+    const folders = [];
+    if(isTypingGame(r)) folders.push('Typing Games');
+    gradeFoldersForResource(r).forEach(f=>folders.push(f));
+    return [...new Set(folders.filter(Boolean))];
+  },[gradeFoldersForResource, isTypingGame]);
+
   const grouped = filtered.reduce((acc,r)=>{
-    const folder = isTypingGame(r) ? 'Typing Games' : ((r.grade_range || 'General').trim() || 'General');
-    if(!acc[folder]) acc[folder]=[];
-    acc[folder].push(r);
+    foldersForResource(r).forEach(folder=>{
+      if(!acc[folder]) acc[folder]=[];
+      if(!acc[folder].some(x=>String(x.id)===String(r.id))) acc[folder].push(r);
+    });
     return acc;
   },{});
   const folderOrder = useMemo(()=>{
