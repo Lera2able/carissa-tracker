@@ -337,6 +337,18 @@
   .hud-toggle:hover {
     background: rgba(0,0,0,0.75);
   }
+  .hud-select {
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.58);
+    color: #fff;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    outline: none;
+  }
+  .hud-select option { color: #111827; }
   #send-wrap {
     display: none;
     margin-top: 12px;
@@ -548,6 +560,13 @@
   </div>
   <div id="sound-fab">
     <button id="sound-toggle" class="hud-toggle" type="button" onclick="toggleSound()">🔊 Sound On</button>
+    <div style="margin-top:8px;">
+      <select id="difficulty" class="hud-select" onchange="setDifficulty(this.value)">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+    </div>
   </div>
 
   <!-- Bottom HUD -->
@@ -636,6 +655,8 @@ let paused = false;
 let spawnInterval = null;
 let gameLoopId = null;
 let soundEnabled = true;
+let difficulty = (localStorage.getItem('typing_striker_difficulty') || 'medium').toLowerCase();
+let spawnIntervalMs = 2200;
 let audioCtx = null;
 let lastResult = null;
 let resultSent = false;
@@ -672,6 +693,24 @@ function syncSoundButton() {
 function toggleSound() {
   soundEnabled = !soundEnabled;
   syncSoundButton();
+}
+function syncDifficulty() {
+  const sel = document.getElementById('difficulty');
+  if (!sel) return;
+  const v = String(difficulty || 'medium').toLowerCase();
+  sel.value = (v === 'easy' || v === 'hard') ? v : 'medium';
+}
+function setDifficulty(v) {
+  const next = String(v || '').toLowerCase();
+  difficulty = (next === 'easy' || next === 'hard') ? next : 'medium';
+  try { localStorage.setItem('typing_striker_difficulty', difficulty); } catch(e){}
+  syncDifficulty();
+  if (gameActive) updateSpawnLoop();
+}
+function difficultyPreset() {
+  if (difficulty === 'easy') return {min:3, max:5, speedMul:0.92, spawnMul:1.18, font:18};
+  if (difficulty === 'hard') return {min:6, max:9, speedMul:1.18, spawnMul:0.82, font:22};
+  return {min:4, max:7, speedMul:1.0, spawnMul:1.0, font:20};
 }
 function setSendStatus(message) {
   const el = document.getElementById('send-status');
@@ -836,9 +875,13 @@ function suggestClear() {
 
 // ===================== WORD SPAWNING =====================
 function pickWord() {
-  const minLen = Math.min(3, Math.max(3, 2 + Math.floor(level / 3)));
-  const maxLen = Math.min(10, 4 + Math.floor(level / 2));
-  const pool = WORD_BANK.filter(w => w.length >= minLen && w.length <= maxLen);
+  const d = difficultyPreset();
+  const extraMin = Math.floor(level / 4);
+  const extraMax = Math.floor(level / 3);
+  const minLen = Math.max(3, Math.min(9, d.min + extraMin));
+  const maxLen = Math.max(minLen, Math.min(9, d.max + extraMax));
+  let pool = WORD_BANK.filter(w => w.length >= minLen && w.length <= maxLen);
+  if (!pool.length) pool = WORD_BANK;
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
@@ -857,17 +900,20 @@ function spawnWord() {
   const goal = getAvailableGoal();
   if (!goal) return; // All goals occupied
 
+  const d = difficultyPreset();
   const word = pickWord();
   const el = document.createElement('div');
   el.className = 'word-bubble';
+  el.style.fontSize = d.font + 'px';
   el.innerHTML = word.split('').map(ch => `<span class="untyped">${ch.toUpperCase()}</span>`).join('');
+  document.getElementById('words-layer').appendChild(el);
 
-  const x = goal.centerX - (word.length * 11 + 20) / 2;
+  // Center based on actual rendered width (works across difficulties)
+  const bubbleWidth = el.offsetWidth || (word.length * 11 + 20);
+  const x = goal.centerX - bubbleWidth / 2;
   const y = WORD_START_Y;
-
   el.style.left = x + 'px';
   el.style.top = y + 'px';
-  document.getElementById('words-layer').appendChild(el);
 
   // Highlight goal
   goal.el.classList.add('active');
@@ -879,10 +925,23 @@ function spawnWord() {
     goalIndex: goal.index,
     x: x,
     y: y,
-    speed: 0.35 + level * 0.1 + Math.random() * 0.15,
+    speed: (0.35 + level * 0.1 + Math.random() * 0.15) * d.speedMul,
     typedIndex: 0,
     el: el
   });
+}
+
+function computeSpawnIntervalMs() {
+  const d = difficultyPreset();
+  const base = Math.max(1200, 2400 - level * 120);
+  return Math.round(base * d.spawnMul);
+}
+function updateSpawnLoop() {
+  spawnIntervalMs = computeSpawnIntervalMs();
+  if (spawnInterval) clearInterval(spawnInterval);
+  spawnInterval = setInterval(() => {
+    if (gameActive && !paused) spawnWord();
+  }, spawnIntervalMs);
 }
 
 // ===================== GAME LOOP =====================
@@ -1050,6 +1109,7 @@ function checkWordComplete(w) {
     if (newLevel > level) {
       level = newLevel;
       updateHUD();
+      updateSpawnLoop();
     }
   }
 }
@@ -1171,6 +1231,7 @@ function startGame() {
   document.getElementById('send-wrap').style.display = 'none';
   setSendStatus('');
   syncSoundButton();
+  syncDifficulty();
 
   initGoals();
   initCrowd();
@@ -1182,9 +1243,7 @@ function startGame() {
   gameLoopId = requestAnimationFrame(gameLoop);
 
   if (spawnInterval) clearInterval(spawnInterval);
-  spawnInterval = setInterval(() => {
-    if (gameActive && !paused) spawnWord();
-  }, 2200);
+  updateSpawnLoop();
 
   setTimeout(spawnWord, 400);
   setTimeout(spawnWord, 900);
@@ -1222,7 +1281,7 @@ function endGame() {
     errors: Math.max(0, totalKeystrokes - correctChars),
     duration_sec: durationSec,
     time_label: durationSec + 's',
-    result_summary: `Typing Striker — Score: ${score}, WPM: ${wpm}, Accuracy: ${accuracy}%, Streak: ${streak}, Lives left: ${lives}, Time: ${durationSec}s, Stars: ${stars}/3`
+    result_summary: `Typing Striker — Difficulty: ${difficulty}, Score: ${score}, WPM: ${wpm}, Accuracy: ${accuracy}%, Streak: ${streak}, Lives left: ${lives}, Time: ${durationSec}s, Stars: ${stars}/3`
   };
   document.getElementById('final-score').textContent = score;
   document.getElementById('final-wpm').textContent = wpm;
@@ -1241,6 +1300,8 @@ initCrowd();
 renderLives();
 renderClears();
 updateHUD();
+syncSoundButton();
+syncDifficulty();
 </script>
 </body>
 </html>

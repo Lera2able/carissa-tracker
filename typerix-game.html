@@ -62,9 +62,22 @@
     align-items: center;
     flex-wrap: wrap;
   }
+  .hud-select {
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    padding: 9px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    outline: none;
+  }
+  .hud-select option { color: #111827; }
   .hud-toggle {
     border: 1px solid rgba(255,255,255,0.14);
     background: rgba(255,255,255,0.08);
+    color: #fff;
     color: #fff;
     padding: 9px 14px;
     border-radius: 10px;
@@ -383,6 +396,11 @@
   </div>
   <div id="hud-controls">
     <button id="sound-toggle" class="hud-toggle" type="button" onclick="toggleSound()">🔊 Sound On</button>
+    <select id="difficulty" class="hud-select" onchange="setDifficulty(this.value)">
+      <option value="easy">Easy</option>
+      <option value="medium" selected>Medium</option>
+      <option value="hard">Hard</option>
+    </select>
   </div>
 
   <div id="game-container">
@@ -440,6 +458,11 @@ const CELL_H = 40;
 const WORD_BANK = [
   "the","and","for","are","but","not","you","all","can","had","her","was","one","our","out","day","get","has","him","his","how","man","new","now","old","see","two","way","who","boy","did","its","let","put","say","she","too","use","dad","mom","cat","dog","run","sun","fun","bug","hat","map","nap","pen","red","bed","box","car","egg","fan","gym","ice","jam","key","leg","mix","net","owl","pig","rat","sit","tag","van","wet","zip","ace","act","add","age","ago","aid","aim","air","ale","all","alp","amp","ant","ape","app","apt","arc","ark","arm","art","ash","ask","asp","ate","awe","axe","bad","bag","ban","bar","bat","bay","bee","beg","bet","bid","big","bin","bit","bob","bog","boo","bow","bra","bud","bum","bun","bus","buy","cab","cad","cam","cap","cod","cog","con","coo","cop","cot","cow","coy","cry","cub","cue","cup","cur","cut","dab","dam","dew","die","dig","dim","din","dip","doe","dot","dry","dub","dud","due","dug","duo","dye","ear","eat","eel","eft","elf","elk","elm","emo","end","eon","era","ere","erg","err","ewe","eye","fad","fag","far","fat","fax","fed","fee","fen","few","fez","fib","fig","fin","fir","fit","fix","flu","fly","fob","foe","fog","foh","fop","fox","fro","fry","fug","fur","gab","gag","gal","gap","gas","gay","gee","gel","gem","get","gig","gin","gnu","gob","god","gog","goo","got","gum","gun","gut","guy","gym","hag","ham","hap","has","haw","hay","hem","hen","hep","her","hew","hex","hey","hid","hie","him","hip","his","hit","hob","hod","hoe","hog","hon","hop","hot","how","hub","hue","hug","huh","hum","hun","hut","ick","icy","imp","ink","inn","ion","ire","irk","ivy","jab","jag","jam","jar","jaw","jay","jet","jew","jib","jig","job","joe","jog","jot","joy","jug","jun","kay","kea","keg","ken","key","kid","kin","kip","kit","lab","lac","lad","lag","lam","lap","law","lax","lay","lea","led","lee","leg","lei","lek","let","lew","lex","ley","lid","lie","lip","lit","lob","log","loo","lop","lot","low","lox","lug","lux","lye","mac","mad","mag","man","map","mar","mas","mat","maw","max","may","med","meg","men","met","mew","mid","mil","mix","mob","mod","mog","mom","mon","moo","mop","mot","mow","mud","mug","mum","nab","nag","nah","nap","nay","neb","nee","net","new","nib","nil","nip","nit","nix","nob","nod","nog","nor","not","now","nth","nub","nun","nut","oaf","oak","oar","oat","odd","ode","off","oft","ohm","oho","oil","old","ole","one","ooh","ops","opt","orb","orc","ore","our","out","ova","owe","owl","own","pac","pad","pal","pan","pap","par","pat","paw","pax","pay","pea","peg","pen","pep","per","pet","pew","phi","pic","pie","pig","pin","pip","pit","ply","pod","poi","pol","pop","pot","pow","pox","pro","pry","psi","pub","pug","pun","pup","pus","put","pyx","qat","qua","rad","rag","rah","ram","ran","rap","rat","raw","ray","red","ref","rep","rev","rib","rid","rig","rim","rip","rob","rod","roe","rom","rot","row","rub","rue","rug","rum","run","rut","rye","sac","sad","sag","sap","sat","saw","sax","say","sea","sec","see","set","sew","sex","she","shy","sib","sic","sin","sip","sir","sit","six","ski","sky","sly","sob","sod","sol","son","sop","sot","sow","soy","spa","spy","sty","sub","sue","sum","sun","sup","tab","tad","tag","tam","tan","tap","tar","tat","tax","tea","tee","ten","the","thy","tic","tie","tin","tip","tod","toe","tog","tom","ton","too","top","tor","tot","tow","toy","try","tub","tug","tun","tux","two","use","van","vat","vee","vet","vex","via","vie","vim","voe","vow","wad","wag","wan","war","was","wax","way","web","wed","wee","wet","who","why","wig","win","wit","woe","wok","won","woo","wow","wry","wye","yak","yam","yap","yaw","yea","yeh","yen","yep","yes","yet","yew","yip","yob","yod","yon","you","yow","yuk","yum","yup","zag","zap","zed","zen","zig","zip","zit","zoa","zoo"
 ];
+const EXTRA_WORDS = [
+  "school","teacher","learner","reading","writing","numbers","practice","keyboard","computer","challenge",
+  "afrikaans","english","mathematics","language","creative","physical","education","exercise","remember","improve"
+];
+const WORD_BANK_ALL = Array.from(new Set([...WORD_BANK, ...EXTRA_WORDS]));
 
 const qs = new URLSearchParams(window.location.search);
 const ASSIGNMENT_ID = qs.get('assignment_id') || '';
@@ -466,11 +489,13 @@ let combo = 0;
 let lastClearTime = 0;
 let frozenRowsTriggered = new Set();
 let soundEnabled = true;
+let difficulty = (localStorage.getItem('typerix_difficulty') || 'medium').toLowerCase();
 let gameStartTime = 0;
 let totalKeystrokes = 0;
 let correctChars = 0;
 let lastResult = null;
 let resultSent = false;
+let spawnIntervalMs = 2200;
 
 let audioCtx = null;
 function getAudioCtx() {
@@ -511,6 +536,24 @@ function syncSoundButton() {
   const btn = document.getElementById('sound-toggle');
   if (!btn) return;
   btn.textContent = soundEnabled ? '🔊 Sound On' : '🔇 Sound Off';
+}
+function syncDifficulty() {
+  const sel = document.getElementById('difficulty');
+  if (!sel) return;
+  const v = String(difficulty || 'medium').toLowerCase();
+  sel.value = (v === 'easy' || v === 'hard') ? v : 'medium';
+}
+function setDifficulty(v) {
+  const next = String(v || '').toLowerCase();
+  difficulty = (next === 'easy' || next === 'hard') ? next : 'medium';
+  try { localStorage.setItem('typerix_difficulty', difficulty); } catch(e){}
+  syncDifficulty();
+  if (gameActive) updateSpawnLoop();
+}
+function difficultyPreset() {
+  if (difficulty === 'easy') return {min:3, max:5, speedMul:0.92, spawnMul:1.18};
+  if (difficulty === 'hard') return {min:6, max:10, speedMul:1.18, spawnMul:0.82};
+  return {min:4, max:7, speedMul:1.0, spawnMul:1.0};
 }
 function toggleSound() {
   soundEnabled = !soundEnabled;
@@ -624,9 +667,13 @@ function renderGrid() {
 
 // ===================== WORD SPAWNING =====================
 function pickWord() {
-  const minLen = Math.min(3, Math.max(3, 2 + Math.floor(level / 3)));
-  const maxLen = Math.min(8, 3 + Math.floor(level / 2));
-  const candidates = WORD_BANK.filter(w => w.length >= minLen && w.length <= maxLen);
+  const d = difficultyPreset();
+  const extraMin = Math.floor(level / 4);
+  const extraMax = Math.floor(level / 3);
+  const minLen = Math.min(10, Math.max(3, d.min + extraMin));
+  const maxLen = Math.min(10, Math.max(minLen, d.max + extraMax));
+  let candidates = WORD_BANK_ALL.filter(w => w.length >= minLen && w.length <= maxLen);
+  if (!candidates.length) candidates = WORD_BANK_ALL;
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
@@ -670,13 +717,31 @@ function spawnWord() {
 }
 
 function getSpeed() {
+  const d = difficultyPreset();
   let base = 0.8 + level * 0.25;
+  base *= d.speedMul;
   if (slowMotion) base *= 0.25;
   // Stack slowdown
   const stackHeight = getStackHeight();
   if (stackHeight > 4) base *= 0.85;
   if (stackHeight > 8) base *= 0.85;
   return base;
+}
+
+function computeSpawnIntervalMs() {
+  const d = difficultyPreset();
+  // base gets faster as level rises, difficulty scales it
+  const base = Math.max(1100, 2400 - level * 140);
+  return Math.round(base * d.spawnMul);
+}
+function updateSpawnLoop() {
+  spawnIntervalMs = computeSpawnIntervalMs();
+  if (spawnTimer) clearInterval(spawnTimer);
+  spawnTimer = setInterval(() => {
+    if (gameActive && !paused && !freezeActive) {
+      spawnWord();
+    }
+  }, spawnIntervalMs);
 }
 
 function getStackHeight() {
@@ -1052,6 +1117,7 @@ function startGame() {
   document.getElementById('send-wrap').style.display = 'none';
   setSendStatus('');
   syncSoundButton();
+  syncDifficulty();
 
   nextWord = pickWord();
   document.getElementById('next-word-text').textContent = nextWord.toUpperCase();
@@ -1060,12 +1126,7 @@ function startGame() {
   if (gameLoopId) cancelAnimationFrame(gameLoopId);
   gameLoopId = requestAnimationFrame(gameLoop);
 
-  if (spawnTimer) clearInterval(spawnTimer);
-  spawnTimer = setInterval(() => {
-    if (gameActive && !paused && !freezeActive) {
-      spawnWord();
-    }
-  }, Math.max(1500, 3000 - level * 200));
+  updateSpawnLoop();
 }
 
 function togglePause() {
@@ -1108,7 +1169,7 @@ function endGame() {
     errors,
     duration_sec: durationSec,
     time_label: durationSec + 's',
-    result_summary: `Typerix — Score: ${score}, Level: ${level}, WPM: ${wpm}, Accuracy: ${accuracy}%, Errors: ${errors}, Time: ${durationSec}s, Stars: ${stars}/3`
+    result_summary: `Typerix — Difficulty: ${difficulty}, Score: ${score}, Level: ${level}, WPM: ${wpm}, Accuracy: ${accuracy}%, Errors: ${errors}, Time: ${durationSec}s, Stars: ${stars}/3`
   };
 
   document.getElementById('final-score').textContent = score;
@@ -1128,6 +1189,8 @@ function endGame() {
 initGrid();
 renderGrid();
 document.getElementById('highscore').textContent = highScore;
+syncSoundButton();
+syncDifficulty();
 </script>
 </body>
 </html>
