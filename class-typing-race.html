@@ -570,6 +570,58 @@
       line-height:1.55;
     }
 
+    .live-panel{
+      margin-top:12px;
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:18px;
+      padding:12px;
+    }
+    .live-panel h4{
+      margin:0 0 8px 0;
+      font-size:12px;
+      letter-spacing:.6px;
+      text-transform:uppercase;
+      color:#e2e8f0;
+      font-weight:900;
+    }
+    .live-row{
+      display:grid;
+      grid-template-columns:44px 1fr 70px 74px;
+      gap:10px;
+      align-items:center;
+      padding:9px 10px;
+      border-radius:14px;
+      background:rgba(0,0,0,.16);
+      border:1px solid rgba(255,255,255,.06);
+      margin-bottom:8px;
+      color:#fff;
+      font-size:13px;
+      font-weight:800;
+    }
+    .live-row:last-child{margin-bottom:0}
+    .live-rank{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:36px;
+      padding:6px 8px;
+      border-radius:999px;
+      background:rgba(255,213,74,.16);
+      border:1px solid rgba(255,213,74,.24);
+      color:var(--gold);
+      font-weight:900;
+    }
+    .live-wpm{color:#7dd3fc}
+    .live-acc{color:#fde68a}
+    .live-hint{
+      margin-top:8px;
+      font-size:12px;
+      font-weight:800;
+      color:#cbd5e1;
+      line-height:1.5;
+    }
+
     /* Results */
     #results-screen{
       padding-top:20px;
@@ -876,6 +928,12 @@
             </div>
             <div class="nitro-bar"><div class="nitro-fill" id="nitro-fill"></div></div>
           </div>
+
+          <div class="live-panel" id="livePanel" style="display:none">
+            <h4>Live class race</h4>
+            <div id="liveBoard"></div>
+            <div class="live-hint">If this shows only you, it means other learners are not currently racing, or the race-room table hasn’t been created in Supabase yet.</div>
+          </div>
         </div>
 
         <div class="race-card">
@@ -1016,6 +1074,8 @@
     const OPENED_FROM_TRACKER = !!ASSIGNMENT_ID;
     const PENDING_KEY = 'typing_speed_result_pending';
     const LOCAL_LB_KEY = 'class_typing_race_local_scores_v2';
+    const RACE_ROOM_QS = qs.get('race_room') || (ASSIGNMENT_ID ? `race:${ASSIGNMENT_ID}` : '');
+    const RACE_TABLE = 'carissa_class_race_progress';
 
     const ROUND_LIMIT_SEC = 60;
     const MAX_NITRO = 20;
@@ -1063,9 +1123,16 @@
       nitro:0,
       aiInterval:null,
       countdownTimer:null,
+      pollTimer:null,
+      pushTimer:null,
       resultSent:false,
       lastResult:null,
-      audioCtx:null
+      audioCtx:null,
+      sbUrl:'',
+      sbKey:'',
+      roomId:RACE_ROOM_QS,
+      clientId:'',
+      realtimeReady:false
     };
 
     function $(id){ return document.getElementById(id); }
@@ -1139,6 +1206,146 @@
       }catch(e){
         return [];
       }
+    }
+
+    // -------------------- live class race (polling-based) --------------------
+    function getOrCreateClientId(){
+      try{
+        const k = 'class_race_client_id_v1';
+        const existing = localStorage.getItem(k);
+        if(existing) return existing;
+        const gen = `c_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
+        localStorage.setItem(k, gen);
+        return gen;
+      }catch(_e){
+        return `c_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
+      }
+    }
+
+    function realtimeEnabled(){
+      return !!(state.sbUrl && state.sbKey && state.roomId);
+    }
+
+    function sbHeaders(extra={}){
+      const key = state.sbKey;
+      return {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json',
+        ...extra
+      };
+    }
+
+    async function sbUpsertProgress(payload){
+      if(!realtimeEnabled()) return false;
+      const url = `${state.sbUrl}/rest/v1/${RACE_TABLE}?on_conflict=room_id,client_id`;
+      const body = [{
+        room_id: state.roomId,
+        client_id: state.clientId,
+        racer_name: state.playerName || payload.racer_name || 'Learner',
+        progress: Number(payload.progress ?? 0),
+        wpm: Math.round(Number(payload.wpm ?? 0)),
+        accuracy: Math.round(Number(payload.accuracy ?? 100)),
+        status: String(payload.status || 'racing'),
+        updated_at: new Date().toISOString()
+      }];
+      try{
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: sbHeaders({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
+          body: JSON.stringify(body)
+        });
+        return res.ok;
+      }catch(_e){
+        return false;
+      }
+    }
+
+    async function sbFetchRoom(){
+      if(!realtimeEnabled()) return [];
+      const since = new Date(Date.now() - 120000).toISOString(); // 2 minutes
+      const q = [
+        `room_id=eq.${encodeURIComponent(state.roomId)}`,
+        `updated_at=gte.${encodeURIComponent(since)}`,
+        `select=client_id,racer_name,progress,wpm,accuracy,status,updated_at`,
+        `order=progress.desc`,
+        `limit=25`
+      ].join('&');
+      try{
+        const res = await fetch(`${state.sbUrl}/rest/v1/${RACE_TABLE}?${q}`, { headers: sbHeaders() });
+        if(!res.ok) return [];
+        const data = await res.json();
+        return Array.isArray(data) ? data : [];
+      }catch(_e){
+        return [];
+      }
+    }
+
+    function applyRoomRows(rows){
+      const panel = $('livePanel');
+      const board = $('liveBoard');
+      if(!panel || !board) return;
+      panel.style.display = rows && rows.length ? 'block' : 'none';
+      if(!rows || !rows.length){
+        board.innerHTML = '';
+        return;
+      }
+      const sorted = [...rows].sort((a,b)=>Number(b.progress||0)-Number(a.progress||0));
+      board.innerHTML = sorted.slice(0,10).map((r,i)=>{
+        const name = escapeHtml(r.racer_name || 'Learner');
+        const w = Math.round(Number(r.wpm||0));
+        const a = Math.round(Number(r.accuracy||100));
+        const me = String(r.client_id||'') === String(state.clientId||'');
+        return `<div class="live-row" style="${me ? 'border-color:rgba(255,213,74,.35);background:rgba(255,213,74,.10);' : ''}">
+          <span class="live-rank">#${i+1}</span>
+          <span>${me ? '⭐ ' : ''}${name}</span>
+          <span class="live-wpm">${w} wpm</span>
+          <span class="live-acc">${a}%</span>
+        </div>`;
+      }).join('');
+
+      // Map top other real racers onto our ghost lanes
+      const others = sorted.filter(r=>String(r.client_id||'') !== String(state.clientId||''));
+      const ghosts = state.racers.filter(r=>!r.isPlayer);
+      ghosts.forEach((g, idx)=>{
+        const row = others[idx];
+        if(row){
+          g.mode = 'realtime';
+          g.name = String(row.racer_name || 'Classmate').slice(0, 22);
+          g.progress = clamp(Number(row.progress||0), 0, 100);
+          g.wpm = Math.round(Number(row.wpm||0));
+          g.finished = String(row.status||'') === 'finished' || g.progress >= 100;
+          g.finishTime = g.finished ? (g.finishTime || 0) : 0;
+        }else{
+          // allow AI fallback if no real classmates are connected
+          g.mode = 'ai';
+        }
+      });
+      renderTrack(); // refresh labels + ids
+      state.racers.forEach(updateCarPosition);
+      updatePositions();
+    }
+
+    async function startRoomPolling(){
+      if(state.pollTimer) clearInterval(state.pollTimer);
+      if(!realtimeEnabled()) return;
+      state.pollTimer = setInterval(async()=>{
+        const rows = await sbFetchRoom();
+        applyRoomRows(rows);
+      }, 1000);
+    }
+
+    function startRoomPush(){
+      if(state.pushTimer) clearInterval(state.pushTimer);
+      if(!realtimeEnabled()) return;
+      state.pushTimer = setInterval(async()=>{
+        if(!state.playerName) return;
+        const wpm = calcWpm();
+        const acc = calcAccuracy();
+        const progress = Math.round((state.typedIndex / Math.max(1, state.raceChars.length)) * 100);
+        const status = state.raceFinished ? 'finished' : (state.raceActive ? 'racing' : 'ready');
+        await sbUpsertProgress({ progress, wpm, accuracy: acc, status });
+      }, 800);
     }
     function saveLocalLeaderboard(entry){
       const rows = readLocalLeaderboard();
@@ -1246,10 +1453,11 @@
       for(let i=0;i<4;i++){
         const base = diffBase[0] + Math.random()*(diffBase[1]-diffBase[0]);
         state.racers.push({
-          id:`ai_${i}`,
-          name:aiNames[i] || `Racer ${i+1}`,
+          id:`ghost_${i}`,
+          name:aiNames[i] || `Classmate`,
           emoji:cars[i+1] || cars[0] || '🚙',
           isPlayer:false,
+          mode:'ai',
           progress:0,
           wpm:Math.round(base),
           speedBase:base,
@@ -1297,6 +1505,8 @@
     function resetRaceUI(){
       clearInterval(state.aiInterval);
       clearInterval(state.countdownTimer);
+      if(state.pollTimer) clearInterval(state.pollTimer);
+      if(state.pushTimer) clearInterval(state.pushTimer);
       state.typedIndex = 0;
       state.mistakes = 0;
       state.totalKeystrokes = 0;
@@ -1321,6 +1531,12 @@
       updatePositions();
       state.racers.forEach(updateCarPosition);
       updateNitroBar();
+
+      // re-enable polling/push if available (roomId + sb config)
+      if(realtimeEnabled()){
+        startRoomPolling();
+        startRoomPush();
+      }
     }
 
     function startCountdown(){
@@ -1353,7 +1569,7 @@
       updateNitroBar();
       state.aiInterval = setInterval(()=>{
         if(!state.raceActive) return;
-        state.racers.filter(r=>!r.isPlayer && !r.finished).forEach(r=>{
+        state.racers.filter(r=>!r.isPlayer && !r.finished && (r.mode||'ai') === 'ai').forEach(r=>{
           const charsPerSec = (r.wpm * 5) / 60;
           const nitroPressure = Math.min(1.18, 0.92 + Math.random()*0.32);
           r.progress += (charsPerSec * nitroPressure) / state.raceChars.length * 100;
@@ -1649,6 +1865,7 @@
       if(learnerName){
         $('player-name').value = String(learnerName).slice(0,22);
       }
+      state.clientId = getOrCreateClientId();
       $('typing-input').addEventListener('input', handleInput);
       $('race-screen').addEventListener('click', ()=>{
         if(state.raceActive) $('typing-input').focus();
@@ -1661,6 +1878,23 @@
     }
 
     init();
+
+    // Receive Supabase config from the LearnWorld opener (more secure than URL params)
+    window.addEventListener('message', (ev)=>{
+      try{
+        const d = ev?.data;
+        if(!d || d.type !== 'carissa_supabase_config') return;
+        if(d.sb_url && d.sb_key){
+          state.sbUrl = String(d.sb_url);
+          state.sbKey = String(d.sb_key);
+          if(d.race_room) state.roomId = String(d.race_room);
+          state.realtimeReady = true;
+          // Start polling immediately (it will show once there are rows)
+          startRoomPolling();
+          startRoomPush();
+        }
+      }catch(_e){}
+    });
   </script>
 </body>
 </html>

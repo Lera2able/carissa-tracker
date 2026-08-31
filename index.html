@@ -6766,6 +6766,11 @@ function LearnerPortalView(){
         const u = new URL(url, window.location.href);
         u.searchParams.set('assignment_id', assignment.id);
         if(grade) u.searchParams.set('grade', grade);
+        // Optional: helps the class race game show a name automatically.
+        const learnerLabel = [learnerAuth.firstname, learnerAuth.surname].filter(Boolean).join(' ').trim();
+        if(learnerLabel) u.searchParams.set('learner', learnerLabel);
+        // For the "live class race" room (only used by class-typing-race.html; ignored by other games)
+        u.searchParams.set('race_room', `race:${assignment.id}`);
         url = u.toString();
       }catch(e){}
     }
@@ -6775,7 +6780,24 @@ function LearnerPortalView(){
     }catch(e){}
     // IMPORTANT: typing game needs a window.opener to post results back.
     if(resourceType === 'typing'){
-      window.open(url,'_blank');
+      const w = window.open(url,'_blank');
+      // Handshake: provide Supabase config to support the live class race room.
+      // (Only the class race game uses it; other typing games will ignore it.)
+      try{
+        const u = new URL(url, window.location.href);
+        const origin = u.origin;
+        setTimeout(()=>{
+          try{
+            if(!w || w.closed) return;
+            w.postMessage({
+              type: 'carissa_supabase_config',
+              sb_url: SB,
+              sb_key: KEY,
+              race_room: `race:${assignment.id}`
+            }, origin);
+          }catch(_e){}
+        }, 400);
+      }catch(_e){}
     }else{
       window.open(url,'_blank','noopener,noreferrer');
     }
