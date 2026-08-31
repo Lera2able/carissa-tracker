@@ -133,7 +133,11 @@ const TRACKED_ACTIVITY_RESULT_TYPES = ['typing_speed_result','assignment_activit
 const isTrackableActivityUrl = (url) => {
   try{
     const u = new URL(String(url||''), window.location.href);
-    if(u.origin !== window.location.origin) return false;
+    const allowedHosts = new Set([
+      window.location.hostname,
+      'tracker.carissaprimary.co.za'
+    ]);
+    if(!allowedHosts.has(u.hostname)) return false;
     return /\.html$/i.test(u.pathname) && !/\/index\.html$/i.test(u.pathname);
   }catch(_e){
     return false;
@@ -159,6 +163,28 @@ const BUILTIN_LEARNWORLD_RESOURCES = [
     subject:'Typing',
     grade_range:'Grade 1 - 7',
     description:'Soccer typing game with automatic score return, WPM, accuracy, and optional sound.',
+    uploaded_by:'System',
+    builtin:true
+  },
+  {
+    id:'builtin-typing-speed-quest',
+    title:'Typing Speed Quest',
+    type:'link',
+    url:'./typing-speed-quest.html',
+    subject:'Typing',
+    grade_range:'Grade 1 - 7',
+    description:'Typing practice activity that records WPM and accuracy automatically.',
+    uploaded_by:'System',
+    builtin:true
+  },
+  {
+    id:'builtin-word-builder-intermediate',
+    title:'Intermediate Word Builder',
+    type:'link',
+    url:'./word-builder-intermediate.html',
+    subject:'Typing',
+    grade_range:'Grade 1 - 7',
+    description:'Timed word builder round (10 words in 60 seconds).',
     uploaded_by:'System',
     builtin:true
   }
@@ -6510,6 +6536,7 @@ function LearnerPortalView(){
   const [loginBusy,setLoginBusy]=useState(false);
   const [busyId,setBusyId]=useState(null);
   const [loading,setLoading]=useState(true);
+  const [assignmentsLoading,setAssignmentsLoading]=useState(false);
   const [loginErr,setLoginErr]=useState('');
   const [msg,setMsg]=useState('');
   const showMsg = m => {setMsg(m);setTimeout(()=>setMsg(''),5000);};
@@ -6518,17 +6545,37 @@ function LearnerPortalView(){
   useEffect(()=>{
     (async()=>{
       try{
-        const [asn, r] = await Promise.all([
-          db.get('carissa_resource_assignments','order=created_at.desc'),
-          db.get('carissa_resources','order=created_at.desc'),
-        ]);
-        setAssignments(asn||[]);
+        const r = await db.get('carissa_resources','order=created_at.desc');
         setResources(await ensureBuiltinLearnWorldResources(r||[]));
-        setResults([]);
       }catch(e){ console.error(e); }
       setLoading(false);
     })();
   },[]);
+
+  // Load assignments only for the logged-in learner (prevents missing items when the global table grows > 1000 rows)
+  useEffect(()=>{
+    (async()=>{
+      if(!learnerAuth){
+        setAssignments([]);
+        return;
+      }
+      setAssignmentsLoading(true);
+      try{
+        const q = [
+          `class_name=eq.${encodeURIComponent(String(learnerAuth.class_name||''))}`,
+          `surname=eq.${encodeURIComponent(String(learnerAuth.surname||''))}`,
+          `firstname=eq.${encodeURIComponent(String(learnerAuth.firstname||''))}`,
+          'order=created_at.desc'
+        ].join('&');
+        const asn = await db.get('carissa_resource_assignments', q);
+        setAssignments(asn||[]);
+      }catch(e){
+        console.warn(e);
+        setAssignments([]);
+      }
+      setAssignmentsLoading(false);
+    })();
+  },[learnerAuth?.class_name, learnerAuth?.surname, learnerAuth?.firstname]);
 
   useEffect(()=>{
     (async()=>{
@@ -6838,7 +6885,9 @@ function LearnerPortalView(){
             )}
           </div>
 
-          {myAssignments.length===0 ? (
+          {assignmentsLoading ? (
+            <div style={card}><p style={{color:'#64748b',textAlign:'center',padding:'24px',fontWeight:800}}>Loading your activities…</p></div>
+          ) : myAssignments.length===0 ? (
             <div style={card}><p style={{color:'#999',textAlign:'center',padding:'30px'}}>No activities have been assigned to this learner yet.</p></div>
           ) : myAssignments.map(a=>{
             const result = resultByAssignment.get(a.id);
