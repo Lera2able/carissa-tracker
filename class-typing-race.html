@@ -9,609 +9,1603 @@
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
   <style>
     :root{
-      --bg1:#0ea5e9;
-      --bg2:#1e293b;
-      --card:#ffffff;
+      --navy:#081120;
+      --navy-2:#13233c;
       --ink:#0f172a;
-      --muted:#475569;
+      --muted:#5b6678;
+      --gold:#ffd54a;
+      --orange:#ff8c42;
       --good:#16a34a;
       --warn:#f59e0b;
-      --bad:#dc2626;
+      --bad:#ef4444;
       --purple:#7c3aed;
-      --shadow:rgba(0,0,0,.20);
+      --sky:#0ea5e9;
+      --card:rgba(255,255,255,.90);
+      --shadow:rgba(0,0,0,.24);
     }
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
     body{
       font-family:'Nunito',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       min-height:100vh;
-      background:radial-gradient(1200px 700px at 20% 10%, rgba(255,255,255,.20), rgba(255,255,255,0) 60%),
-                 linear-gradient(140deg, var(--bg1) 0%, #22c55e 35%, #f59e0b 70%, #ef4444 100%);
-      color:var(--ink);
+      color:#fff;
+      background:
+        radial-gradient(1000px 520px at 20% 5%, rgba(255,213,74,.12), transparent 60%),
+        radial-gradient(900px 520px at 85% 15%, rgba(14,165,233,.16), transparent 60%),
+        linear-gradient(180deg, #0a1628 0%, #0f2036 52%, #0c1626 100%);
       overflow-x:hidden;
     }
     h1,h2,h3,.fk{font-family:'Fredoka',system-ui,sans-serif}
-    button,select,input{font-family:inherit}
-    .wrap{max-width:1100px;margin:0 auto;padding:16px}
-    header{
-      display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
-      background:rgba(255,255,255,.78);
-      border:1px solid rgba(15,23,42,.10);
-      box-shadow:0 16px 44px var(--shadow);
-      border-radius:18px;
-      padding:12px 14px;
-      backdrop-filter: blur(10px);
-    }
-    .title{display:flex;align-items:center;gap:12px}
-    .badge{
-      display:inline-flex;align-items:center;gap:8px;
-      padding:7px 12px;border-radius:999px;background:#eef2ff;color:#3730a3;
-      font-weight:900;font-size:12px;border:1px solid #c7d2fe;
-    }
-    .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
-    .toggle, .select{
-      border:1px solid rgba(15,23,42,.12);
-      background:rgba(255,255,255,.88);
-      padding:10px 12px;border-radius:12px;
-      font-weight:900;font-size:13px;
-      box-shadow:0 10px 24px rgba(15,23,42,.12);
-      cursor:pointer;
-      outline:none;
-    }
-    .select option{color:#111827}
-    .btn{
-      border:none;border-radius:999px;
-      padding:12px 18px;
-      background:var(--purple);color:#fff;
-      font-weight:900;font-size:14px;
-      box-shadow:0 10px 24px rgba(124,58,237,.28);
-      cursor:pointer;
-    }
-    .btn:active{transform:translateY(1px)}
-    .grid{
-      margin-top:14px;
-      display:grid;
-      grid-template-columns: 1.2fr .8fr;
+    button,input,select{font-family:inherit}
+    .hidden{display:none !important}
+    .wrap{max-width:1180px;margin:0 auto;padding:16px}
+    #game-header{
+      background:linear-gradient(90deg, rgba(8,17,32,.92), rgba(19,35,60,.92));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:20px;
+      padding:12px 16px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
       gap:12px;
+      flex-wrap:wrap;
+      box-shadow:0 20px 44px var(--shadow);
+      backdrop-filter: blur(10px);
+      position:sticky;
+      top:8px;
+      z-index:10;
+    }
+    #game-header h1{
+      font-size:24px;
+      font-weight:800;
+      background:linear-gradient(90deg, var(--gold), var(--orange), var(--gold));
+      -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;
+      letter-spacing:.6px;
+    }
+    .header-sub{
+      font-size:12px;
+      color:#cbd5e1;
+      font-weight:800;
+      margin-top:2px;
+    }
+    .header-nav{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .nav-btn,.small-btn,.main-btn,.diff-btn{
+      border:none;
+      cursor:pointer;
+      transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+    }
+    .nav-btn{
+      padding:9px 14px;
+      font-size:13px;
+      font-weight:800;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.05);
+      color:#cbd5e1;
+    }
+    .nav-btn:hover,.nav-btn.active{
+      background:rgba(255,213,74,.16);
+      color:var(--gold);
+      border-color:rgba(255,213,74,.36);
+    }
+    .screen{display:none;min-height:calc(100vh - 110px)}
+    .screen.active{display:block}
+
+    /* Start screen */
+    #start-screen{
+      padding:34px 10px 20px;
+    }
+    .hero{
+      display:grid;
+      grid-template-columns:1.05fr .95fr;
+      gap:16px;
+      align-items:stretch;
     }
     @media (max-width: 980px){
-      .grid{grid-template-columns:1fr}
+      .hero{grid-template-columns:1fr}
     }
-    .card{
-      background:rgba(255,255,255,.86);
-      border:1px solid rgba(15,23,42,.10);
-      border-radius:18px;
-      box-shadow:0 16px 44px rgba(0,0,0,.16);
-      padding:14px;
+    .panel{
+      background:var(--card);
+      color:var(--ink);
+      border-radius:24px;
+      border:1px solid rgba(255,255,255,.1);
+      box-shadow:0 24px 60px rgba(0,0,0,.22);
+      padding:22px 20px;
       backdrop-filter: blur(10px);
+    }
+    .hero-left{
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.86)),
+        linear-gradient(135deg, #fff7d1, #e0f2fe);
+    }
+    .logo{
+      font-size:clamp(42px, 7vw, 72px);
+      line-height:.95;
+      font-weight:900;
+      background:linear-gradient(135deg, var(--gold), var(--orange), #ff5f6d);
+      -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;
+      letter-spacing:-2px;
+    }
+    .tagline{
+      margin-top:10px;
+      color:#475569;
+      font-size:18px;
+      font-weight:800;
+      max-width:620px;
+    }
+    .chips{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:14px;
+    }
+    .chip{
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+      padding:8px 12px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:900;
+      color:#0f172a;
+      background:#eef2ff;
+      border:1px solid #c7d2fe;
+    }
+    .field{
+      margin-top:20px;
+    }
+    .field label{
+      display:block;
+      margin-bottom:8px;
+      color:#475569;
+      font-size:12px;
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.8px;
+    }
+    .player-input{
+      width:100%;
+      max-width:360px;
+      padding:14px 18px;
+      font-size:20px;
+      font-weight:800;
+      border-radius:16px;
+      border:2px solid rgba(15,23,42,.10);
+      outline:none;
+      background:#fff;
+      color:#0f172a;
+      box-shadow:0 10px 24px rgba(15,23,42,.08);
+    }
+    .player-input:focus{border-color:#60a5fa}
+    .difficulty-select{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:10px;
+    }
+    .diff-btn{
+      padding:10px 18px;
+      font-size:14px;
+      font-weight:900;
+      border-radius:12px;
+      border:2px solid rgba(15,23,42,.09);
+      background:#fff;
+      color:#475569;
+      box-shadow:0 8px 20px rgba(15,23,42,.07);
+    }
+    .diff-btn.selected{
+      border-color:rgba(255,140,66,.45);
+      background:linear-gradient(135deg, rgba(255,213,74,.22), rgba(255,140,66,.22));
+      color:#9a3412;
+    }
+    .start-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin-top:22px;
+    }
+    .main-btn{
+      padding:15px 28px;
+      font-size:18px;
+      font-weight:900;
+      border-radius:16px;
+      background:linear-gradient(135deg, var(--gold), var(--orange));
+      color:#1f2937;
+      box-shadow:0 16px 32px rgba(255,140,66,.32);
+    }
+    .main-btn:hover,.small-btn:hover,.diff-btn:hover,.nav-btn:hover{transform:translateY(-1px)}
+    .small-btn{
+      padding:12px 16px;
+      font-size:13px;
+      font-weight:900;
+      border-radius:12px;
+      background:#fff;
+      color:#0f172a;
+      border:1px solid rgba(15,23,42,.10);
+      box-shadow:0 10px 24px rgba(15,23,42,.08);
+    }
+    .helper-copy{
+      margin-top:14px;
+      font-size:13px;
+      color:#64748b;
+      font-weight:700;
+      line-height:1.55;
+    }
+    .preview-card{
+      background:linear-gradient(180deg, rgba(8,17,32,.94), rgba(18,31,54,.94));
+      color:#fff;
+    }
+    .preview-card h3{
+      font-size:18px;
+      margin-bottom:8px;
+    }
+    .preview-card p{
+      font-size:13px;
+      color:#cbd5e1;
+      line-height:1.6;
+      margin-bottom:12px;
+    }
+    .leaderboard-preview{
+      margin-top:10px;
+      background:rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:18px;
+      padding:12px;
+    }
+    .leader-row{
+      display:grid;
+      grid-template-columns:50px 1fr 80px 92px;
+      gap:10px;
+      align-items:center;
+      padding:10px 10px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      font-size:13px;
+      color:#e2e8f0;
+    }
+    .leader-row:last-child{border-bottom:none}
+    .leader-row strong{color:#fff}
+    .rank-pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:34px;
+      padding:6px 8px;
+      border-radius:999px;
+      background:rgba(255,213,74,.16);
+      border:1px solid rgba(255,213,74,.25);
+      color:var(--gold);
+      font-weight:900;
+    }
+    .mini-note{
+      margin-top:12px;
+      font-size:12px;
+      color:#cbd5e1;
+      line-height:1.55;
+    }
+
+    /* Race screen */
+    #race-screen{padding-top:16px}
+    .race-layout{
+      display:grid;
+      grid-template-columns:1.08fr .92fr;
+      gap:16px;
+      align-items:start;
+    }
+    @media (max-width: 980px){
+      .race-layout{grid-template-columns:1fr}
+    }
+    .track-panel{
+      background:rgba(8,17,32,.62);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:24px;
+      padding:14px;
+      box-shadow:0 24px 60px rgba(0,0,0,.22);
+      backdrop-filter: blur(8px);
     }
     .hud{
       display:grid;
       grid-template-columns:repeat(4,1fr);
       gap:10px;
+      margin-bottom:12px;
     }
-    @media (max-width: 540px){
+    @media (max-width: 600px){
       .hud{grid-template-columns:repeat(2,1fr)}
     }
     .hud-chip{
-      background:#fff;border:1px solid rgba(15,23,42,.10);
-      border-radius:14px;padding:10px 12px;
-      box-shadow:0 8px 22px rgba(15,23,42,.10);
+      background:rgba(255,255,255,.96);
+      color:#0f172a;
+      border-radius:16px;
+      padding:11px 12px;
       text-align:center;
+      box-shadow:0 10px 22px rgba(0,0,0,.15);
+      border:1px solid rgba(15,23,42,.08);
     }
     .hud-chip .v{font-family:'Fredoka';font-size:22px;font-weight:700}
-    .hud-chip .l{font-size:11px;font-weight:900;color:#475569;text-transform:uppercase;letter-spacing:.4px}
-
-    /* Track */
+    .hud-chip .l{
+      font-size:11px;
+      font-weight:900;
+      color:#64748b;
+      text-transform:uppercase;
+      letter-spacing:.4px;
+      margin-top:2px;
+    }
     .track{
       position:relative;
-      height:320px;
-      border-radius:18px;
       overflow:hidden;
+      border-radius:22px;
       background:
-        linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,0)),
-        repeating-linear-gradient(90deg, rgba(255,255,255,.06) 0 24px, rgba(0,0,0,0) 24px 48px),
-        linear-gradient(180deg, #0f172a 0%, #111827 100%);
-      border:1px solid rgba(15,23,42,.18);
-      box-shadow: inset 0 0 0 2px rgba(255,255,255,.06);
+        radial-gradient(closest-side at 50% -20%, rgba(255,255,255,.14), transparent 70%),
+        linear-gradient(180deg, #1d4d33 0%, #295f3f 22%, #152436 22%, #1b2b42 100%);
+      border:2px solid rgba(255,255,255,.08);
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,.04);
+      padding:16px 12px 12px;
+    }
+    .track:before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:repeating-linear-gradient(90deg, transparent, transparent 84px, rgba(255,255,255,.05) 84px, rgba(255,255,255,.05) 86px);
+      pointer-events:none;
     }
     .lane{
-      position:absolute;left:0;right:0;
-      height:33.33%;
-      border-bottom:1px dashed rgba(255,255,255,.14);
+      position:relative;
+      display:flex;
+      align-items:center;
+      height:58px;
+      margin-bottom:10px;
+      padding:0 10px 0 12px;
+      border-radius:14px;
+      background:rgba(0,0,0,.18);
+      border:1px solid rgba(255,255,255,.06);
+      overflow:hidden;
     }
-    .lane:nth-child(1){top:0}
-    .lane:nth-child(2){top:33.33%}
-    .lane:nth-child(3){top:66.66%;border-bottom:none}
-    .finish{
-      position:absolute;top:0;bottom:0;right:22px;width:10px;
-      background:
-        repeating-linear-gradient(180deg, #fff 0 10px, #000 10px 20px);
-      border-radius:10px;
-      box-shadow:0 0 0 3px rgba(255,255,255,.08);
+    .lane:last-child{margin-bottom:0}
+    .lane.player-lane{
+      border-color:rgba(255,213,74,.28);
+      background:rgba(255,213,74,.08);
+    }
+    .lane-label{
+      width:116px;
+      flex-shrink:0;
+      font-size:12px;
+      font-weight:900;
+      color:#cbd5e1;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      padding-right:10px;
+    }
+    .lane.player-lane .lane-label{color:var(--gold)}
+    .lane-track{
+      position:relative;
+      flex:1;
+      height:100%;
+      display:flex;
+      align-items:center;
+    }
+    .finish-line{
+      position:absolute;
+      right:4px;
+      top:6px;
+      bottom:6px;
+      width:8px;
+      border-radius:4px;
+      background:repeating-linear-gradient(0deg, #fff 0 10px, #0f172a 10px 20px);
+      box-shadow:0 0 0 2px rgba(255,255,255,.08);
     }
     .car{
       position:absolute;
-      left:10px;
+      left:0;
+      top:50%;
       transform:translateY(-50%);
-      display:flex;align-items:center;gap:10px;
-      padding:8px 10px;border-radius:999px;
-      background:rgba(255,255,255,.10);
+      display:flex;
+      align-items:center;
+      gap:8px;
+      min-width:62px;
+      padding:8px 12px;
+      border-radius:999px;
+      background:linear-gradient(135deg, rgba(255,255,255,.22), rgba(255,255,255,.08));
       border:1px solid rgba(255,255,255,.18);
       color:#fff;
       box-shadow:0 12px 28px rgba(0,0,0,.25);
-      user-select:none;
-      transition:left .08s linear;
+      transition:left .10s linear, transform .10s linear, box-shadow .10s linear;
     }
-    .car .emoji{font-size:24px}
-    .car .name{
+    .car.player-car{
+      background:linear-gradient(135deg, rgba(255,213,74,.30), rgba(255,140,66,.22));
+      border-color:rgba(255,213,74,.35);
+    }
+    .car.nitro{
+      transform:translateY(-50%) scale(1.03);
+      box-shadow:0 0 0 2px rgba(255,213,74,.18), 0 16px 36px rgba(255,140,66,.35);
+    }
+    .car-emoji{font-size:24px}
+    .nitro-flame{
+      display:none;
+      font-size:18px;
+      margin-left:-2px;
+    }
+    .car.nitro .nitro-flame{display:inline}
+    .position-badge,.lane-wpm{
+      position:absolute;
+      right:18px;
+      font-size:11px;
       font-weight:900;
-      font-size:12px;
-      opacity:.92;
-      white-space:nowrap;
-      max-width:180px;
-      overflow:hidden;
-      text-overflow:ellipsis;
+      padding:4px 8px;
+      border-radius:999px;
     }
-    .car .pct{font-weight:900;font-size:12px;opacity:.92}
-
-    /* Typing area */
+    .position-badge{
+      top:8px;
+      background:rgba(255,255,255,.12);
+      color:#fff;
+      border:1px solid rgba(255,255,255,.10);
+      min-width:42px;
+      text-align:center;
+    }
+    .lane-wpm{
+      bottom:8px;
+      background:rgba(14,165,233,.16);
+      color:#7dd3fc;
+      border:1px solid rgba(125,211,252,.18);
+    }
+    .nitro-wrap{
+      margin-top:12px;
+    }
+    .nitro-label{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:6px;
+      color:#e2e8f0;
+      font-size:12px;
+      font-weight:900;
+    }
+    .nitro-bar{
+      height:16px;
+      border-radius:999px;
+      background:rgba(255,255,255,.10);
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.08);
+    }
+    .nitro-fill{
+      width:0%;
+      height:100%;
+      border-radius:999px;
+      background:linear-gradient(90deg, #38bdf8, #a855f7, #ffd54a);
+      box-shadow:0 0 18px rgba(56,189,248,.36);
+      transition:width .12s linear;
+    }
+    .race-card{
+      background:var(--card);
+      color:#0f172a;
+      border-radius:24px;
+      padding:18px;
+      box-shadow:0 24px 60px rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .section-title{
+      font-size:18px;
+      margin-bottom:10px;
+      color:#0f172a;
+    }
     .prompt{
-      background:#fff;border:1px solid rgba(15,23,42,.10);
-      border-radius:16px;
-      padding:12px 12px;
-      box-shadow:0 10px 24px rgba(15,23,42,.10);
+      min-height:112px;
+      max-height:240px;
+      overflow:auto;
+      background:#fff;
+      border:1px solid rgba(15,23,42,.08);
+      border-radius:18px;
+      padding:14px 14px;
+      box-shadow:0 10px 24px rgba(15,23,42,.08);
       font-weight:900;
       color:#0f172a;
-      line-height:1.7;
-      font-size:15px;
-      min-height:76px;
+      line-height:1.85;
+      font-size:16px;
     }
-    .prompt .ok{color:var(--good)}
-    .prompt .cur{background:#dbeafe;border-radius:6px;box-shadow:0 3px 0 #60a5fa;color:#0f172a;padding:0 3px}
-    .prompt .bad{color:var(--bad);text-decoration:underline}
-    .inputRow{margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .char-correct{color:var(--good)}
+    .char-current{
+      background:#dbeafe;
+      box-shadow:0 3px 0 #60a5fa;
+      color:#0f172a;
+      border-radius:6px;
+      padding:0 3px;
+    }
+    .char-pending{color:#334155}
+    .char-wrong{
+      color:var(--bad);
+      text-decoration:underline;
+      text-decoration-thickness:2px;
+    }
+    .inputRow{
+      margin-top:12px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
     .typedBox{
-      flex:1;min-width:220px;
+      flex:1;
+      min-width:220px;
       border:1px solid rgba(15,23,42,.10);
-      border-radius:14px;
-      padding:12px 12px;
+      border-radius:16px;
+      padding:14px 14px;
       font-weight:900;
       letter-spacing:.3px;
       outline:none;
       background:#f8fafc;
-    }
-    .helper{
-      margin-top:10px;
       color:#0f172a;
-      font-weight:800;
-      font-size:12px;
-      opacity:.92;
+      box-shadow:0 10px 24px rgba(15,23,42,.06);
+    }
+    .typedBox:disabled{opacity:.7}
+    .helper{
+      margin-top:12px;
       display:flex;
       justify-content:space-between;
+      gap:8px;
+      flex-wrap:wrap;
+      font-size:12px;
+      font-weight:800;
+      color:#334155;
+    }
+    .helper span{
+      background:#eff6ff;
+      border:1px solid #bfdbfe;
+      padding:7px 10px;
+      border-radius:999px;
+    }
+    .race-note{
+      margin-top:12px;
+      padding:12px 13px;
+      border-radius:16px;
+      background:#fff7ed;
+      border:1px solid #fed7aa;
+      color:#9a3412;
+      font-size:13px;
+      font-weight:800;
+      line-height:1.55;
+    }
+
+    /* Results */
+    #results-screen{
+      padding-top:20px;
+      padding-bottom:30px;
+    }
+    .resultCard{
+      width:min(980px, 100%);
+      margin:0 auto;
+      background:var(--card);
+      color:#0f172a;
+      border-radius:28px;
+      padding:24px 22px;
+      box-shadow:0 28px 80px rgba(0,0,0,.26);
+      border:1px solid rgba(255,255,255,.1);
+    }
+    .resultHead{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-bottom:16px;
+    }
+    .stars{
+      font-size:42px;
+      letter-spacing:8px;
+    }
+    .place{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      border-radius:999px;
+      background:#fef3c7;
+      color:#92400e;
+      font-weight:900;
+      border:1px solid #fcd34d;
+      font-size:13px;
+    }
+    .resultStats{
+      display:grid;
+      grid-template-columns:repeat(5,1fr);
+      gap:10px;
+      margin-bottom:16px;
+    }
+    @media (max-width: 760px){
+      .resultStats{grid-template-columns:repeat(2,1fr)}
+    }
+    .resultStat{
+      background:#fff;
+      border:1px solid rgba(15,23,42,.08);
+      border-radius:18px;
+      padding:12px 12px;
+      text-align:center;
+      box-shadow:0 10px 24px rgba(15,23,42,.06);
+    }
+    .resultStat .num{
+      font-family:'Fredoka';
+      font-size:24px;
+      font-weight:700;
+    }
+    .resultStat .lab{
+      margin-top:4px;
+      font-size:11px;
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.45px;
+      color:#64748b;
+    }
+    .results-table-wrap{
+      overflow:auto;
+      border:1px solid rgba(15,23,42,.08);
+      border-radius:18px;
+      background:#fff;
+      box-shadow:0 12px 26px rgba(15,23,42,.06);
+    }
+    .results-table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:13px;
+    }
+    .results-table th{
+      background:#eff6ff;
+      color:#1d4ed8;
+      text-align:left;
+      padding:11px 10px;
+      font-weight:900;
+      white-space:nowrap;
+    }
+    .results-table td{
+      padding:10px;
+      border-top:1px solid #e2e8f0;
+      white-space:nowrap;
+    }
+    .results-table tr.player-row{background:#fffbeb}
+    .results-table tr.winner-row{background:#f0fdf4}
+    .sendRow{
+      margin-top:16px;
+      display:flex;
       gap:10px;
       flex-wrap:wrap;
     }
-    .helper span{background:rgba(255,255,255,.72);border:1px solid rgba(15,23,42,.10);padding:6px 10px;border-radius:999px}
+    .sendStatus{
+      margin-top:10px;
+      font-size:13px;
+      font-weight:900;
+      color:#475569;
+    }
+    .resultNote{
+      margin-top:12px;
+      color:#475569;
+      font-size:13px;
+      font-weight:800;
+      line-height:1.55;
+    }
 
-    /* Overlay results */
-    .overlay{
-      position:fixed;inset:0;
+    /* Leaderboard / howto */
+    #leaderboard-screen,#howto-screen{
+      padding-top:20px;
+      padding-bottom:30px;
+    }
+    .content-card{
+      width:min(980px, 100%);
+      margin:0 auto;
+      background:var(--card);
+      color:#0f172a;
+      border-radius:28px;
+      padding:24px 22px;
+      box-shadow:0 28px 80px rgba(0,0,0,.26);
+      border:1px solid rgba(255,255,255,.1);
+    }
+    .sub{
+      color:#64748b;
+      font-size:14px;
+      font-weight:700;
+      line-height:1.6;
+      margin-top:6px;
+      margin-bottom:14px;
+    }
+    .lb-table-wrap{
+      overflow:auto;
+      border:1px solid rgba(15,23,42,.08);
+      border-radius:18px;
+      background:#fff;
+      box-shadow:0 12px 26px rgba(15,23,42,.06);
+    }
+    .lb-table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:13px;
+    }
+    .lb-table th{
+      background:#eef2ff;
+      color:#4338ca;
+      text-align:left;
+      padding:11px 10px;
+      font-weight:900;
+      white-space:nowrap;
+    }
+    .lb-table td{
+      padding:10px;
+      border-top:1px solid #e2e8f0;
+      white-space:nowrap;
+    }
+    .wpm-cell{font-weight:900;color:#0f766e}
+    .acc-cell{font-weight:900;color:#92400e}
+    .howto-grid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:12px;
+    }
+    @media (max-width: 820px){
+      .howto-grid{grid-template-columns:1fr}
+    }
+    .howto-card{
+      background:#fff;
+      border:1px solid rgba(15,23,42,.08);
+      border-radius:18px;
+      padding:16px 15px;
+      box-shadow:0 10px 24px rgba(15,23,42,.06);
+    }
+    .howto-card h3{
+      font-size:18px;
+      margin-bottom:8px;
+      color:#0f172a;
+    }
+    .howto-card ul{
+      padding-left:18px;
+      color:#475569;
+      font-size:14px;
+      line-height:1.7;
+      font-weight:700;
+    }
+
+    /* Countdown */
+    #countdown-overlay{
+      position:fixed;
+      inset:0;
       display:none;
-      align-items:center;justify-content:center;
-      background:rgba(15,23,42,.62);
-      z-index:50;
-      padding:20px;
+      align-items:center;
+      justify-content:center;
+      background:rgba(8,17,32,.70);
+      z-index:80;
+      font-family:'Fredoka',system-ui,sans-serif;
+      font-size:min(26vw, 140px);
+      font-weight:700;
+      color:#fff;
+      text-shadow:0 12px 30px rgba(0,0,0,.35);
     }
-    .overlay.show{display:flex}
-    .resultCard{
-      width:min(680px, 96vw);
-      background:#fff;border-radius:26px;
-      padding:22px 20px;
-      box-shadow:0 24px 80px rgba(0,0,0,.35);
-      text-align:center;
+    #countdown-overlay.active{display:flex}
+
+    @media (max-width: 600px){
+      .wrap{padding:12px}
+      .panel,.race-card,.content-card,.resultCard{padding:18px 16px}
+      .player-input{max-width:none}
+      .leader-row{grid-template-columns:44px 1fr 72px 78px;font-size:12px}
+      .lane-label{width:88px}
     }
-    .stars{font-size:46px;letter-spacing:10px;margin-bottom:6px}
-    .note{margin-top:10px;color:#475569;font-weight:800;font-size:13px}
-    .sendRow{margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-    .sendStatus{margin-top:10px;font-weight:900;color:#334155;font-size:13px}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <header>
-      <div class="title">
-        <div style="font-size:34px">🏁</div>
-        <div>
-          <div class="badge">Whole-class competition</div>
-          <h1 style="font-size:22px;margin-top:4px">Class Typing Race</h1>
-          <div style="font-size:12px;color:#334155;font-weight:800;margin-top:2px">Timed race with difficulty levels. Results send automatically to the teacher.</div>
-        </div>
+    <div id="game-header">
+      <div>
+        <h1>CLASS TYPING RACE</h1>
+        <div class="header-sub">NitroType-style class race for LearnWorld. Teacher results send automatically.</div>
       </div>
-      <div class="controls">
-        <select id="difficulty" class="select" onchange="setDifficulty(this.value)">
-          <option value="easy">Easy</option>
-          <option value="medium" selected>Medium</option>
-          <option value="hard">Hard</option>
-        </select>
-        <button id="soundBtn" class="toggle" type="button" onclick="toggleSound()">🔊 Sound On</button>
-        <button class="btn" type="button" onclick="startRace()">▶ Start Race</button>
+      <div class="header-nav">
+        <button class="nav-btn active" data-screen="start" onclick="showScreen('start')">Race</button>
+        <button class="nav-btn" data-screen="leaderboard" onclick="showScreen('leaderboard')">Top Scores</button>
+        <button class="nav-btn" data-screen="howto" onclick="showScreen('howto')">How to Play</button>
       </div>
-    </header>
+    </div>
 
-    <div class="grid">
-      <div class="card">
-        <div class="hud">
-          <div class="hud-chip"><div class="v" id="stTime">1:00</div><div class="l">Time left</div></div>
-          <div class="hud-chip"><div class="v" id="stWpm">0</div><div class="l">WPM</div></div>
-          <div class="hud-chip"><div class="v" id="stAcc">0%</div><div class="l">Accuracy</div></div>
-          <div class="hud-chip"><div class="v" id="stChars">0</div><div class="l">Chars</div></div>
-        </div>
+    <div id="start-screen" class="screen active">
+      <div class="hero">
+        <div class="panel hero-left">
+          <div class="logo">TYPE RACE</div>
+          <div class="tagline">Race your classmates, build nitro, and finish with the fastest clean typing.</div>
 
-        <div style="margin-top:12px" class="track" id="track">
-          <div class="lane"></div>
-          <div class="lane"></div>
-          <div class="lane"></div>
-          <div class="finish" title="Finish line"></div>
-          <div class="car" id="carMe" style="top:16.66%">
-            <div class="emoji">🚗</div>
-            <div class="name" id="meName">You</div>
-            <div class="pct" id="mePct">0%</div>
+          <div class="chips">
+            <span class="chip">🏁 Whole-class competition</span>
+            <span class="chip">⚡ Nitro boost</span>
+            <span class="chip">📤 Automatic teacher scoring</span>
           </div>
-          <div class="car" id="carGhost1" style="top:50%">
-            <div class="emoji">🚙</div>
-            <div class="name">Classmate</div>
-            <div class="pct" id="gPct1">—</div>
+
+          <div class="field">
+            <label for="player-name">Racer name</label>
+            <input id="player-name" class="player-input" type="text" placeholder="Your Name" maxlength="22" autocomplete="off" />
           </div>
-          <div class="car" id="carGhost2" style="top:83.33%">
-            <div class="emoji">🚕</div>
-            <div class="name">Classmate</div>
-            <div class="pct" id="gPct2">—</div>
+
+          <div class="field">
+            <label>Difficulty</label>
+            <div class="difficulty-select">
+              <button class="diff-btn selected" data-diff="easy" onclick="setDifficulty('easy')">Easy</button>
+              <button class="diff-btn" data-diff="medium" onclick="setDifficulty('medium')">Medium</button>
+              <button class="diff-btn" data-diff="hard" onclick="setDifficulty('hard')">Hard</button>
+              <button class="diff-btn" data-diff="expert" onclick="setDifficulty('expert')">Expert</button>
+            </div>
+          </div>
+
+          <div class="start-actions">
+            <button class="main-btn" id="start-btn" onclick="beginRaceFlow()">▶ Start Race</button>
+            <button class="small-btn" id="soundBtn" type="button" onclick="toggleSound()">🔊 Sound On</button>
+          </div>
+
+          <div class="helper-copy">
+            The race uses a countdown, AI classmates, a nitro meter, and a live finishing table. When opened from LearnWorld, the final WPM, accuracy, time, and score are sent to the teacher automatically.
           </div>
         </div>
 
-        <div class="helper" style="margin-top:10px">
-          <span><b>Tip:</b> Type the sentence exactly.</span>
-          <span><b>Goal:</b> Highest WPM + Accuracy.</span>
+        <div class="panel preview-card">
+          <h3>What teachers will see</h3>
+          <p>The teacher can assign this activity to a class and then use the <b>Track Progress</b> area in LearnWorld to monitor who is leading by WPM and accuracy.</p>
+
+          <div class="leaderboard-preview">
+            <div style="font-size:13px;font-weight:900;color:#f8fafc;margin-bottom:8px;">Recent top scores on this device</div>
+            <div id="start-lb-preview"></div>
+          </div>
+
+          <div class="mini-note">
+            This preview is stored only on this device for motivation. The official teacher view comes from the marks that are sent back to LearnWorld automatically after each race.
+          </div>
         </div>
       </div>
+    </div>
 
-      <div class="card">
-        <h3 class="fk" style="font-size:18px;margin-bottom:10px">⌨️ The sentence</h3>
-        <div class="prompt" id="prompt">Press “Start Race”.</div>
-        <div class="inputRow">
-          <input id="typed" class="typedBox" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Type here..." oninput="onType(this.value)" />
-          <button class="btn" type="button" onclick="restart()">🔄 Restart</button>
+    <div id="race-screen" class="screen">
+      <div class="race-layout">
+        <div class="track-panel">
+          <div class="hud">
+            <div class="hud-chip"><div class="v" id="stat-time">1:00</div><div class="l">Time left</div></div>
+            <div class="hud-chip"><div class="v" id="stat-wpm">0</div><div class="l">WPM</div></div>
+            <div class="hud-chip"><div class="v" id="stat-acc">100%</div><div class="l">Accuracy</div></div>
+            <div class="hud-chip"><div class="v" id="stat-progress">0%</div><div class="l">Progress</div></div>
+          </div>
+
+          <div class="track" id="track-container"></div>
+
+          <div class="nitro-wrap">
+            <div class="nitro-label">
+              <span>Nitro Boost</span>
+              <span id="stat-nitro">0 / 20</span>
+            </div>
+            <div class="nitro-bar"><div class="nitro-fill" id="nitro-fill"></div></div>
+          </div>
         </div>
-        <div class="helper">
-          <span><b>Difficulty:</b> <span id="diffLabel">Medium</span></span>
-          <span><b>Status:</b> <span id="statusLabel">Ready</span></span>
+
+        <div class="race-card">
+          <h3 class="section-title">⌨️ Type the race text</h3>
+          <div class="prompt" id="race-text-display">Press “Start Race” to load your text.</div>
+          <div class="inputRow">
+            <input type="text" id="typing-input" class="typedBox" placeholder="Start typing when the race begins..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" disabled>
+            <button class="small-btn" onclick="restartRace()">🔄 Restart</button>
+          </div>
+          <div class="helper">
+            <span><b>Difficulty:</b> <span id="diffLabel">Easy</span></span>
+            <span><b>Status:</b> <span id="statusLabel">Ready</span></span>
+            <span><b>Target:</b> Finish before the timer ends</span>
+          </div>
+          <div class="race-note">
+            Tip: accurate typing builds nitro faster. Mistakes reduce your nitro and can cost you the race.
+          </div>
         </div>
-        <div style="margin-top:10px;color:#334155;font-weight:800;font-size:12px;line-height:1.5">
-          Teachers: assign this activity to a class, then open the <b>Track Progress</b> tab to see who is winning (best WPM and accuracy).
+      </div>
+    </div>
+
+    <div id="results-screen" class="screen">
+      <div class="resultCard">
+        <div class="resultHead">
+          <div>
+            <div class="stars" id="stars">⭐️⭐️⭐️</div>
+            <h2 class="fk" id="result-title" style="font-size:28px">Race Complete!</h2>
+            <div class="resultNote" id="rNote"></div>
+          </div>
+          <div class="place" id="result-place">🏁 Finished</div>
+        </div>
+
+        <div class="resultStats">
+          <div class="resultStat"><div class="num" id="res-wpm" style="color:#0f766e">0</div><div class="lab">WPM</div></div>
+          <div class="resultStat"><div class="num" id="res-acc" style="color:#92400e">0%</div><div class="lab">Accuracy</div></div>
+          <div class="resultStat"><div class="num" id="res-time" style="color:#7c3aed">0s</div><div class="lab">Time</div></div>
+          <div class="resultStat"><div class="num" id="res-score" style="color:#ea580c">0</div><div class="lab">Score</div></div>
+          <div class="resultStat"><div class="num" id="res-diff" style="color:#2563eb">Easy</div><div class="lab">Difficulty</div></div>
+        </div>
+
+        <div class="results-table-wrap">
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>Pos</th>
+                <th>Car</th>
+                <th>Racer</th>
+                <th>Result</th>
+                <th>WPM</th>
+                <th>Finish</th>
+              </tr>
+            </thead>
+            <tbody id="results-tbody"></tbody>
+          </table>
+        </div>
+
+        <div class="sendRow">
+          <button class="main-btn" onclick="showScreen('start')">🏁 Race Again</button>
+          <button class="small-btn" onclick="sendToTeacher(true)">📤 Send again</button>
+          <button class="small-btn" onclick="showScreen('leaderboard')">📊 View Top Scores</button>
+        </div>
+        <div class="sendStatus" id="sendStatus"></div>
+      </div>
+    </div>
+
+    <div id="leaderboard-screen" class="screen">
+      <div class="content-card">
+        <h2 class="fk" style="font-size:28px">Top Scores</h2>
+        <div class="sub">These are the best recent scores saved on this device for motivation. The official class tracking still happens through LearnWorld teacher reports.</div>
+        <div class="lb-table-wrap">
+          <table class="lb-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Racer</th>
+                <th>WPM</th>
+                <th>Accuracy</th>
+                <th>Score</th>
+                <th>Difficulty</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="lb-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="howto-screen" class="screen">
+      <div class="content-card">
+        <h2 class="fk" style="font-size:28px">How to Play</h2>
+        <div class="sub">This version feels more like NitroType: countdown, live opponents, nitro boost, and a final race table. It still sends your mark back to the teacher automatically when opened from LearnWorld.</div>
+        <div class="howto-grid">
+          <div class="howto-card">
+            <h3>The Race</h3>
+            <ul>
+              <li>Type the text as fast and accurately as you can.</li>
+              <li>Your car moves forward with every correct character.</li>
+              <li>AI classmates race beside you with different speeds.</li>
+              <li>The race ends when you finish the text or the timer runs out.</li>
+            </ul>
+          </div>
+          <div class="howto-card">
+            <h3>Nitro Boost</h3>
+            <ul>
+              <li>Accurate typing builds your nitro bar.</li>
+              <li>When nitro is full, your car gets a short visual boost.</li>
+              <li>Mistakes reduce nitro and hurt your final score.</li>
+            </ul>
+          </div>
+          <div class="howto-card">
+            <h3>Teacher scoring</h3>
+            <ul>
+              <li>WPM, accuracy, time, and summary are sent back automatically.</li>
+              <li>Teachers can monitor the class in LearnWorld Track Progress.</li>
+              <li>The built-in teacher view remains the official leaderboard.</li>
+            </ul>
+          </div>
+          <div class="howto-card">
+            <h3>Difficulty</h3>
+            <ul>
+              <li><strong>Easy:</strong> short sentences and slower AI.</li>
+              <li><strong>Medium:</strong> longer school-level sentences.</li>
+              <li><strong>Hard:</strong> advanced sentences and faster AI.</li>
+              <li><strong>Expert:</strong> long passages and tough opponents.</li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="overlay" id="overlay">
-    <div class="resultCard">
-      <div class="stars" id="stars">⭐️⭐️⭐️</div>
-      <h2 class="fk" id="rTitle" style="font-size:22px">Race finished!</h2>
-      <div class="note" id="rNote"></div>
-      <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:12px">
-        <div class="hud-chip" style="min-width:140px"><div class="v" id="rWpm">0</div><div class="l">WPM</div></div>
-        <div class="hud-chip" style="min-width:140px"><div class="v" id="rAcc">0%</div><div class="l">Accuracy</div></div>
-        <div class="hud-chip" style="min-width:140px"><div class="v" id="rTime">1:00</div><div class="l">Time</div></div>
-        <div class="hud-chip" style="min-width:140px"><div class="v" id="rChars">0</div><div class="l">Chars</div></div>
-      </div>
-      <div class="sendRow">
-        <button class="btn" type="button" onclick="startRace()">🔄 Race again</button>
-        <button class="toggle" type="button" onclick="sendToTeacher(true)">📤 Send again</button>
-      </div>
-      <div class="sendStatus" id="sendStatus"></div>
-    </div>
-  </div>
+  <div id="countdown-overlay"></div>
 
   <script>
-    // -------------------- tracker integration --------------------
     const qs = new URLSearchParams(window.location.search);
     const ASSIGNMENT_ID = qs.get('assignment_id') || '';
     const OPENED_FROM_TRACKER = !!ASSIGNMENT_ID;
     const PENDING_KEY = 'typing_speed_result_pending';
+    const LOCAL_LB_KEY = 'class_typing_race_local_scores_v2';
 
-    // -------------------- settings --------------------
-    const ROUND_SECONDS = 60;
-    const TRACK_DISTANCE_CHARS = 260; // purely visual "finish line"
+    const ROUND_LIMIT_SEC = 60;
+    const MAX_NITRO = 20;
+    const DIFF_MULTIPLIER = { easy:1, medium:1.35, hard:1.75, expert:2.2 };
+    const AI_NAMES = ['Speedy','Turbo','Flash','Blaze','Rocket','Storm','Bolt','Viper','Dash','Nova'];
+    const CAR_EMOJIS = ['🚗','🚙','🚕','🏎️','🚓','🚑','🚘','🚖'];
 
-    const sentences = {
+    const RACE_TEXTS = {
       easy: [
-        "the cat can run",
-        "i like to read a book",
-        "we can play in the sun",
-        "my dog is very happy",
-        "today is a good day"
+        "The cat can run very fast on the grass.",
+        "We like to read books at school every day.",
+        "My friend can jump and play in the sun.",
+        "Typing with calm hands helps me do my best."
       ],
       medium: [
-        "Practice every day and your typing will get faster.",
-        "Keep your eyes on the screen and use the correct fingers.",
-        "Typing is a skill that helps you learn faster at school.",
-        "Small improvements add up when you keep trying."
+        "Practice every day and your typing will become faster and more accurate.",
+        "Careful learners watch the screen, use the correct fingers, and keep a steady rhythm.",
+        "Small improvements in speed and accuracy add up when you keep trying."
       ],
       hard: [
-        "Wonderful learners practice carefully, improve accuracy, and build speed with patience.",
-        "Education becomes easier when you type confidently and focus on every letter.",
-        "Remember to stay calm, correct mistakes, and keep the rhythm of your typing."
+        "Confident learners improve their typing by staying calm, correcting mistakes, and maintaining a strong rhythm.",
+        "Education becomes easier when you can type quickly, accurately, and with excellent concentration.",
+        "Consistent typing practice builds fluency, confidence, and stronger classroom performance."
+      ],
+      expert: [
+        "Outstanding typists balance speed, rhythm, and precision while staying focused on the text from beginning to end.",
+        "High level typing requires discipline, concentration, and the ability to recover quickly from small mistakes.",
+        "Excellent keyboard control helps learners complete school tasks efficiently and communicate ideas with confidence."
       ]
     };
 
-    let difficulty = (localStorage.getItem('class_race_difficulty') || 'medium').toLowerCase();
-    let soundEnabled = (localStorage.getItem('class_race_sound') || 'on') === 'on';
-
     const state = {
-      running:false,
-      startAt:0,
-      endAt:0,
-      text:'',
-      typed:'',
+      difficulty:'easy',
+      playerName:'',
+      raceText:'',
+      raceChars:[],
+      typedIndex:0,
+      mistakes:0,
       totalKeystrokes:0,
-      correctChars:0,
-      errors:0,
-      lastResult:null,
+      raceStartTime:0,
+      raceActive:false,
+      raceFinished:false,
+      raceEndReason:'finish',
+      racers:[],
+      nitro:0,
+      aiInterval:null,
+      countdownTimer:null,
       resultSent:false,
-      raf:0
+      lastResult:null,
+      audioCtx:null
     };
 
     function $(id){ return document.getElementById(id); }
     function clamp(n,a,b){ return Math.max(a, Math.min(b,n)); }
-    function formatTime(sec){
-      sec = Math.max(0, Math.floor(sec));
-      const m = Math.floor(sec/60);
-      const s = String(sec%60).padStart(2,'0');
-      return `${m}:${s}`;
-    }
-    function remainingSec(){
-      if(!state.running) return ROUND_SECONDS;
-      return Math.max(0, (state.endAt - Date.now())/1000);
-    }
-
-    // -------------------- simple sound --------------------
-    let audioCtx = null;
-    function beep(freq=740, dur=0.05, type='sine', vol=0.05){
-      if(!soundEnabled) return;
-      try{
-        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-        const o = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
-        o.type = type;
-        o.frequency.value = freq;
-        g.gain.value = vol;
-        o.connect(g); g.connect(audioCtx.destination);
-        o.start();
-        o.stop(audioCtx.currentTime + dur);
-      }catch(e){}
-    }
-
-    function syncSound(){
-      $('soundBtn').textContent = soundEnabled ? '🔊 Sound On' : '🔇 Sound Off';
-    }
-    function toggleSound(){
-      soundEnabled = !soundEnabled;
-      try{ localStorage.setItem('class_race_sound', soundEnabled ? 'on' : 'off'); }catch(e){}
-      syncSound();
-    }
-
-    function syncDifficulty(){
-      const sel = $('difficulty');
-      if(!sel) return;
-      const v = (difficulty==='easy' || difficulty==='hard') ? difficulty : 'medium';
-      sel.value = v;
-      $('diffLabel').textContent = v.charAt(0).toUpperCase()+v.slice(1);
-    }
-    function setDifficulty(v){
-      const next = String(v||'').toLowerCase();
-      difficulty = (next==='easy' || next==='hard') ? next : 'medium';
-      try{ localStorage.setItem('class_race_difficulty', difficulty); }catch(e){}
-      syncDifficulty();
-      if(!state.running) pickSentence();
-    }
-
-    function pickSentence(){
-      const pool = sentences[difficulty] || sentences.medium;
-      const t = pool[Math.floor(Math.random()*pool.length)];
-      state.text = String(t || '').trim();
-      state.typed = '';
-      $('typed').value = '';
-      renderPrompt();
-      updateHud();
-    }
-
-    function renderPrompt(){
-      const target = state.text || '';
-      const typed = state.typed || '';
-      const parts = [];
-      for(let i=0; i<target.length; i++){
-        const ch = target[i];
-        const t = typed[i];
-        if(t === undefined){
-          parts.push(`<span>${escapeHtml(ch)}</span>`);
-        }else if(t === ch){
-          parts.push(`<span class="ok">${escapeHtml(ch)}</span>`);
-        }else{
-          parts.push(`<span class="bad">${escapeHtml(ch)}</span>`);
-        }
-      }
-      const curIdx = typed.length;
-      if(curIdx < target.length){
-        // highlight current expected char (approx)
-        parts[curIdx] = `<span class="cur">${parts[curIdx].replace(/<[^>]+>/g,'')}</span>`;
-      }
-      $('prompt').innerHTML = parts.join('');
-    }
-
     function escapeHtml(s){
       return String(s||'')
         .replace(/&/g,'&amp;')
         .replace(/</g,'&lt;')
         .replace(/>/g,'&gt;')
-        .replace(/\"/g,'&quot;')
-        .replace(/\'/g,'&#39;');
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#39;');
+    }
+    function formatTime(sec){
+      const safe = Math.max(0, Math.floor(sec));
+      const m = Math.floor(safe/60);
+      const s = String(safe%60).padStart(2,'0');
+      return `${m}:${s}`;
+    }
+    function nowISO(){ return new Date().toISOString(); }
+
+    function showScreen(name){
+      document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+      $(`${name}-screen`).classList.add('active');
+      document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.screen===name));
+      if(name==='leaderboard') renderLeaderboard();
+      if(name==='start') renderStartPreview();
     }
 
-    function updateHud(){
-      const tLeft = remainingSec();
-      $('stTime').textContent = formatTime(tLeft);
-      $('stChars').textContent = String(state.typed.length || 0);
-      const wpm = calcWpm();
-      const acc = calcAcc();
-      $('stWpm').textContent = String(wpm);
-      $('stAcc').textContent = String(acc) + '%';
-      updateCars();
+    function setDifficulty(diff){
+      state.difficulty = String(diff||'easy').toLowerCase();
+      try{ localStorage.setItem('class_race_difficulty', state.difficulty); }catch(e){}
+      document.querySelectorAll('.diff-btn').forEach(b=>b.classList.toggle('selected', b.dataset.diff===state.difficulty));
+      $('diffLabel').textContent = capitalize(state.difficulty);
     }
 
-    function calcAcc(){
-      if(state.totalKeystrokes <= 0) return 0;
-      return Math.round((state.correctChars / state.totalKeystrokes) * 100);
+    function capitalize(s){
+      s = String(s||'');
+      return s ? s.charAt(0).toUpperCase()+s.slice(1) : '';
     }
 
-    function calcWpm(){
-      const elapsed = state.running ? ((Date.now() - state.startAt)/1000) : 0;
-      const minutes = Math.max(1/60, elapsed/60);
-      // "words" from correct chars only to discourage random spam
-      const words = (state.correctChars / 5);
-      return Math.round(words / minutes);
+    function soundEnabled(){
+      return (localStorage.getItem('class_race_sound') || 'on') === 'on';
+    }
+    function syncSound(){
+      $('soundBtn').textContent = soundEnabled() ? '🔊 Sound On' : '🔇 Sound Off';
+    }
+    function toggleSound(){
+      const next = soundEnabled() ? 'off' : 'on';
+      try{ localStorage.setItem('class_race_sound', next); }catch(e){}
+      syncSound();
+    }
+    function beep(freq=740, dur=0.05, type='sine', vol=0.05){
+      if(!soundEnabled()) return;
+      try{
+        state.audioCtx = state.audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        const o = state.audioCtx.createOscillator();
+        const g = state.audioCtx.createGain();
+        o.type = type;
+        o.frequency.value = freq;
+        g.gain.value = vol;
+        o.connect(g); g.connect(state.audioCtx.destination);
+        o.start();
+        o.stop(state.audioCtx.currentTime + dur);
+      }catch(e){}
     }
 
-    function updateCars(){
-      const pct = clamp((state.typed.length / TRACK_DISTANCE_CHARS) * 100, 0, 100);
-      $('mePct').textContent = `${Math.round(pct)}%`;
-      const track = $('track');
-      const maxLeft = track.clientWidth - 210; // car width approx
-      const left = 10 + (maxLeft * (pct/100));
-      $('carMe').style.left = left + 'px';
-
-      // ghost cars: purely visual placeholders until we add realtime leaderboard
-      $('gPct1').textContent = state.running ? '…' : '—';
-      $('gPct2').textContent = state.running ? '…' : '—';
+    function readLocalLeaderboard(){
+      try{
+        const rows = JSON.parse(localStorage.getItem(LOCAL_LB_KEY) || '[]');
+        return Array.isArray(rows) ? rows : [];
+      }catch(e){
+        return [];
+      }
+    }
+    function saveLocalLeaderboard(entry){
+      const rows = readLocalLeaderboard();
+      rows.push(entry);
+      rows.sort((a,b)=>{
+        if(Number(b.score||0)!==Number(a.score||0)) return Number(b.score||0)-Number(a.score||0);
+        if(Number(b.wpm||0)!==Number(a.wpm||0)) return Number(b.wpm||0)-Number(a.wpm||0);
+        return new Date(b.created_at||0) - new Date(a.created_at||0);
+      });
+      const kept = rows.slice(0, 20);
+      try{ localStorage.setItem(LOCAL_LB_KEY, JSON.stringify(kept)); }catch(e){}
+      return kept;
     }
 
-    function setStatus(s){
-      $('statusLabel').textContent = s;
-    }
-
-    // Track keystrokes for accuracy
-    function onType(val){
-      if(!state.running) return;
-      const next = String(val || '');
-      // Only count newly typed chars
-      const prev = state.typed || '';
-      if(next.length < prev.length){
-        // backspace is allowed but doesn't change accuracy counters (simple)
-        state.typed = next;
-        renderPrompt();
-        updateHud();
+    function renderStartPreview(){
+      const rows = readLocalLeaderboard().slice(0,5);
+      const el = $('start-lb-preview');
+      if(!rows.length){
+        el.innerHTML = '<div class="leader-row"><span class="rank-pill">-</span><strong>No races yet</strong><span>—</span><span>—</span></div>';
         return;
       }
-      const added = next.slice(prev.length);
-      for(let i=0; i<added.length; i++){
-        const idx = prev.length + i;
-        const got = added[i];
-        const expected = state.text[idx] || '';
-        state.totalKeystrokes += 1;
-        if(got === expected) state.correctChars += 1;
-        else state.errors += 1;
-        if(got === expected) beep(880, 0.03, 'sine', 0.03);
-        else beep(220, 0.06, 'sawtooth', 0.04);
-      }
-      state.typed = next;
-      renderPrompt();
-      updateHud();
+      el.innerHTML = rows.map((r,i)=>(
+        `<div class="leader-row">
+          <span class="rank-pill">#${i+1}</span>
+          <strong>${escapeHtml(r.name||'Racer')}</strong>
+          <span>${Number(r.wpm||0)} WPM</span>
+          <span>${Number(r.accuracy||0)}%</span>
+        </div>`
+      )).join('');
     }
 
-    function loop(){
-      if(!state.running) return;
-      updateHud();
-      if(remainingSec() <= 0){
-        finishRace();
+    function renderLeaderboard(){
+      const rows = readLocalLeaderboard();
+      const tbody = $('lb-tbody');
+      if(!rows.length){
+        tbody.innerHTML = '<tr><td colspan="7" style="color:#64748b;padding:18px;text-align:center;font-weight:800;">No scores saved on this device yet.</td></tr>';
         return;
       }
-      state.raf = requestAnimationFrame(loop);
+      tbody.innerHTML = rows.map((r,i)=>(
+        `<tr>
+          <td>#${i+1}</td>
+          <td>${escapeHtml(r.name||'Racer')}</td>
+          <td class="wpm-cell">${Number(r.wpm||0)}</td>
+          <td class="acc-cell">${Number(r.accuracy||0)}%</td>
+          <td>${Number(r.score||0)}</td>
+          <td>${capitalize(r.difficulty||'easy')}</td>
+          <td>${new Date(r.created_at||Date.now()).toLocaleDateString('en-ZA')}</td>
+        </tr>`
+      )).join('');
+    }
+
+    function beginRaceFlow(){
+      const name = String(($('player-name').value || '').trim());
+      if(!name){
+        alert('Please enter your racer name.');
+        $('player-name').focus();
+        return;
+      }
+      state.playerName = name;
+      pickRaceText();
+      setupRacers();
+      renderTrack();
+      renderRaceText();
+      resetRaceUI();
+      showScreen('race');
+      startCountdown();
+    }
+
+    function pickRaceText(){
+      const pool = RACE_TEXTS[state.difficulty] || RACE_TEXTS.easy;
+      state.raceText = String(pool[Math.floor(Math.random()*pool.length)] || '').trim();
+      state.raceChars = state.raceText.split('');
+    }
+
+    function shuffled(arr){
+      const a = [...arr];
+      for(let i=a.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [a[i],a[j]]=[a[j],a[i]];
+      }
+      return a;
+    }
+
+    function setupRacers(){
+      const diffBase = {
+        easy:[16,28],
+        medium:[24,38],
+        hard:[32,48],
+        expert:[40,58]
+      }[state.difficulty] || [18,30];
+      const aiNames = shuffled(AI_NAMES);
+      const cars = shuffled(CAR_EMOJIS);
+      state.racers = [{
+        id:'player',
+        name:state.playerName,
+        emoji:'🚗',
+        isPlayer:true,
+        progress:0,
+        wpm:0,
+        speedBase:0,
+        finished:false,
+        finishTime:0,
+        carEl:null
+      }];
+      for(let i=0;i<4;i++){
+        const base = diffBase[0] + Math.random()*(diffBase[1]-diffBase[0]);
+        state.racers.push({
+          id:`ai_${i}`,
+          name:aiNames[i] || `Racer ${i+1}`,
+          emoji:cars[i+1] || cars[0] || '🚙',
+          isPlayer:false,
+          progress:0,
+          wpm:Math.round(base),
+          speedBase:base,
+          finished:false,
+          finishTime:0,
+          carEl:null
+        });
+      }
+      state.racers = shuffled(state.racers);
+    }
+
+    function renderTrack(){
+      const container = $('track-container');
+      container.innerHTML = state.racers.map(r=>(
+        `<div class="lane ${r.isPlayer?'player-lane':''}">
+          <div class="lane-label">${r.isPlayer?'⭐ ':''}${escapeHtml(r.name)}</div>
+          <div class="lane-track">
+            <div class="finish-line"></div>
+            <div class="car ${r.isPlayer?'player-car':''}" id="car-${r.id}">
+              <span class="car-emoji">${r.emoji}</span>
+              <span class="nitro-flame">🔥</span>
+            </div>
+            <div class="position-badge" id="pos-${r.id}"></div>
+            <div class="lane-wpm" id="wpm-${r.id}"></div>
+          </div>
+        </div>`
+      )).join('');
+      state.racers.forEach(r=>{ r.carEl = $(`car-${r.id}`); });
+      updatePositions();
+    }
+
+    function renderRaceText(wrongIndex=-1){
+      let html = '';
+      for(let i=0;i<state.raceChars.length;i++){
+        let cls = 'char-pending';
+        if(i < state.typedIndex) cls = 'char-correct';
+        else if(i === state.typedIndex) cls = 'char-current';
+        if(i === wrongIndex) cls = 'char-wrong';
+        const ch = state.raceChars[i];
+        html += `<span class="${cls}">${ch===' ' ? '&nbsp;' : escapeHtml(ch)}</span>`;
+      }
+      $('race-text-display').innerHTML = html;
+    }
+
+    function resetRaceUI(){
+      clearInterval(state.aiInterval);
+      clearInterval(state.countdownTimer);
+      state.typedIndex = 0;
+      state.mistakes = 0;
+      state.totalKeystrokes = 0;
+      state.raceStartTime = 0;
+      state.raceActive = false;
+      state.raceFinished = false;
+      state.raceEndReason = 'finish';
+      state.nitro = 0;
+      state.resultSent = false;
+      state.lastResult = null;
+      state.racers.forEach(r=>{
+        r.progress = 0;
+        r.finished = false;
+        r.finishTime = 0;
+        if(r.isPlayer) r.wpm = 0;
+      });
+      $('typing-input').value = '';
+      $('typing-input').disabled = true;
+      $('statusLabel').textContent = 'Ready';
+      $('sendStatus').textContent = '';
+      updateLiveStats();
+      updatePositions();
+      state.racers.forEach(updateCarPosition);
+      updateNitroBar();
+    }
+
+    function startCountdown(){
+      const overlay = $('countdown-overlay');
+      let count = 3;
+      overlay.classList.add('active');
+      overlay.textContent = count;
+      state.countdownTimer = setInterval(()=>{
+        count--;
+        if(count > 0){
+          overlay.textContent = count;
+          beep(720, 0.06, 'triangle', 0.05);
+        }else if(count === 0){
+          overlay.textContent = 'GO!';
+          beep(920, 0.10, 'triangle', 0.06);
+        }else{
+          clearInterval(state.countdownTimer);
+          overlay.classList.remove('active');
+          startRace();
+        }
+      }, 820);
     }
 
     function startRace(){
-      restart(true);
+      state.raceActive = true;
+      state.raceStartTime = Date.now();
+      $('typing-input').disabled = false;
+      $('typing-input').focus();
+      $('statusLabel').textContent = 'Racing…';
+      updateNitroBar();
+      state.aiInterval = setInterval(()=>{
+        if(!state.raceActive) return;
+        state.racers.filter(r=>!r.isPlayer && !r.finished).forEach(r=>{
+          const charsPerSec = (r.wpm * 5) / 60;
+          const nitroPressure = Math.min(1.18, 0.92 + Math.random()*0.32);
+          r.progress += (charsPerSec * nitroPressure) / state.raceChars.length * 100;
+          if(r.progress >= 100){
+            r.progress = 100;
+            r.finished = true;
+            r.finishTime = (Date.now() - state.raceStartTime) / 1000;
+          }
+          updateCarPosition(r);
+        });
+        updatePositions();
+        updateLiveStats();
+        if(getRemainingSeconds() <= 0){
+          finishRace('timeout');
+        }
+      }, 150);
     }
 
-    function restart(keepOpen=false){
-      if(state.raf) cancelAnimationFrame(state.raf);
-      state.running = false;
-      state.startAt = 0;
-      state.endAt = 0;
-      state.totalKeystrokes = 0;
-      state.correctChars = 0;
-      state.errors = 0;
-      state.lastResult = null;
-      state.resultSent = false;
-      if(!keepOpen) $('overlay').classList.remove('show');
-      pickSentence();
-      begin();
+    function getRemainingSeconds(){
+      if(!state.raceActive) return ROUND_LIMIT_SEC;
+      return Math.max(0, ROUND_LIMIT_SEC - ((Date.now() - state.raceStartTime)/1000));
     }
 
-    function begin(){
-      state.running = true;
-      state.startAt = Date.now();
-      state.endAt = state.startAt + (ROUND_SECONDS*1000);
-      setStatus('Racing…');
-      $('typed').focus();
-      loop();
+    function updateCarPosition(racer){
+      if(!racer?.carEl) return;
+      const laneTrack = racer.carEl.parentElement;
+      const trackWidth = Math.max(0, laneTrack.clientWidth - 98);
+      const pos = clamp(racer.progress,0,100);
+      racer.carEl.style.left = `${(pos/100)*trackWidth}px`;
+      racer.carEl.classList.toggle('nitro', racer.isPlayer && state.nitro >= MAX_NITRO);
+      const wpmEl = $(`wpm-${racer.id}`);
+      if(wpmEl){
+        if(racer.isPlayer) wpmEl.textContent = `${Math.max(0, Math.round(racer.wpm||0))} wpm`;
+        else wpmEl.textContent = racer.finished ? 'Done!' : `${Math.round(racer.wpm||0)} wpm`;
+      }
     }
 
-    function finishRace(){
-      if(!state.running) return;
-      state.running = false;
-      if(state.raf) cancelAnimationFrame(state.raf);
-      setStatus('Finished');
+    function updatePositions(){
+      const sorted = [...state.racers].sort((a,b)=>{
+        if(a.finished && b.finished) return a.finishTime - b.finishTime;
+        if(a.finished) return -1;
+        if(b.finished) return 1;
+        return b.progress - a.progress;
+      });
+      sorted.forEach((r,i)=>{
+        const badge = $(`pos-${r.id}`);
+        if(badge) badge.textContent = `#${i+1}`;
+      });
+    }
 
-      const durationSec = ROUND_SECONDS;
+    function updateNitroBar(){
+      const pct = Math.min(100, (state.nitro / MAX_NITRO) * 100);
+      $('nitro-fill').style.width = `${pct}%`;
+      $('stat-nitro').textContent = `${Math.floor(state.nitro)} / ${MAX_NITRO}`;
+    }
+
+    function calcAccuracy(){
+      if(state.totalKeystrokes <= 0) return 100;
+      const correct = Math.max(0, state.typedIndex - state.mistakes);
+      return clamp(Math.round((correct / state.totalKeystrokes) * 100), 0, 100);
+    }
+
+    function calcWpm(){
+      if(!state.raceStartTime) return 0;
+      const elapsedMin = Math.max(1/60, (Date.now() - state.raceStartTime) / 60000);
+      return Math.max(0, Math.round((state.typedIndex / 5) / elapsedMin));
+    }
+
+    function updatePlayerProgress(){
+      const player = state.racers.find(r=>r.isPlayer);
+      if(!player) return;
+      player.progress = clamp((state.typedIndex / Math.max(1, state.raceChars.length)) * 100, 0, 100);
+      player.wpm = calcWpm();
+      if(player.progress >= 100){
+        player.finished = true;
+        player.finishTime = (Date.now() - state.raceStartTime) / 1000;
+      }
+      updateCarPosition(player);
+    }
+
+    function updateLiveStats(){
       const wpm = calcWpm();
-      const acc = calcAcc();
-      const chars = state.typed.length || 0;
+      const acc = calcAccuracy();
+      const progress = Math.round((state.typedIndex / Math.max(1, state.raceChars.length)) * 100);
+      $('stat-wpm').textContent = wpm;
+      $('stat-acc').textContent = `${acc}%`;
+      $('stat-progress').textContent = `${clamp(progress,0,100)}%`;
+      $('stat-time').textContent = formatTime(getRemainingSeconds());
+      updateNitroBar();
+    }
 
-      const stars = (acc >= 92 && wpm >= 25) ? 3 : (acc >= 85 && wpm >= 15) ? 2 : 1;
+    function handleInput(e){
+      if(!state.raceActive || state.raceFinished) return;
+      const value = String(e.target.value || '');
+      if(value.length < state.typedIndex){
+        state.typedIndex = value.length;
+        renderRaceText();
+        updatePlayerProgress();
+        updateLiveStats();
+        return;
+      }
+      const expected = state.raceText.substring(0, value.length);
+      if(value === expected){
+        const added = value.length - state.typedIndex;
+        if(added > 0){
+          state.totalKeystrokes += added;
+          state.nitro = Math.min(MAX_NITRO, state.nitro + (added * 0.7));
+          beep(860, 0.03, 'sine', 0.035);
+        }
+        state.typedIndex = value.length;
+        renderRaceText();
+        updatePlayerProgress();
+        updateLiveStats();
+        if(state.typedIndex >= state.raceChars.length){
+          finishRace('finish');
+        }
+      }else{
+        const wrongIndex = Math.max(0, value.length - 1);
+        state.totalKeystrokes += 1;
+        state.mistakes += 1;
+        state.nitro = Math.max(0, state.nitro - 3.5);
+        renderRaceText(wrongIndex);
+        updateLiveStats();
+        beep(220, 0.08, 'sawtooth', 0.045);
+        e.target.value = state.raceText.substring(0, state.typedIndex);
+      }
+    }
+
+    function finishRace(reason){
+      if(state.raceFinished) return;
+      state.raceFinished = true;
+      state.raceActive = false;
+      state.raceEndReason = reason || 'finish';
+      clearInterval(state.aiInterval);
+      $('typing-input').disabled = true;
+      $('statusLabel').textContent = reason==='timeout' ? 'Time up' : 'Finished';
+
+      const remainingWindow = Math.max(1200, estimateRemainingAiWindow());
+      settleAiRacers(remainingWindow);
+      setTimeout(showResults, Math.min(remainingWindow + 220, 2600));
+    }
+
+    function estimateRemainingAiWindow(){
+      const player = state.racers.find(r=>r.isPlayer);
+      if(!player || !player.wpm) return 1800;
+      const remainingChars = Math.max(0, state.raceChars.length - state.typedIndex);
+      const charsPerMin = Math.max(1, player.wpm * 5);
+      return Math.min(3500, (remainingChars / charsPerMin) * 60000);
+    }
+
+    function settleAiRacers(maxWaitMs){
+      const started = Date.now();
+      const interval = setInterval(()=>{
+        let allDone = true;
+        state.racers.filter(r=>!r.isPlayer && !r.finished).forEach(r=>{
+          const charsPerSec = (r.wpm * 5) / 60;
+          r.progress += (charsPerSec * 1.18) / state.raceChars.length * 100;
+          if(r.progress >= 100){
+            r.progress = 100;
+            r.finished = true;
+            r.finishTime = (Date.now() - state.raceStartTime) / 1000;
+          }else{
+            allDone = false;
+          }
+          updateCarPosition(r);
+        });
+        updatePositions();
+        if(allDone || (Date.now() - started) > maxWaitMs) clearInterval(interval);
+      }, 90);
+    }
+
+    function showResults(){
+      const elapsed = state.raceStartTime ? ((Date.now() - state.raceStartTime) / 1000) : 0;
+      const wpm = calcWpm();
+      const accuracy = calcAccuracy();
+      const diffMult = DIFF_MULTIPLIER[state.difficulty] || 1;
+      const progress = Math.round((state.typedIndex / Math.max(1, state.raceChars.length)) * 100);
+      const finishers = [...state.racers].sort((a,b)=>{
+        if(a.finished && b.finished) return a.finishTime - b.finishTime;
+        if(a.finished) return -1;
+        if(b.finished) return 1;
+        return b.progress - a.progress;
+      });
+      const playerRank = finishers.findIndex(r=>r.isPlayer) + 1;
+      const playerWon = playerRank === 1;
+      const completedText = state.raceEndReason === 'timeout' ? `Stopped at ${progress}%` : 'Finished text';
+      const score = Math.round((wpm * (accuracy/100)) * diffMult * (playerWon ? 1.4 : 1));
+      const stars = playerWon && accuracy >= 92 ? 3 : (accuracy >= 85 && wpm >= 18 ? 2 : 1);
+
       $('stars').textContent = stars===3 ? '⭐️⭐️⭐️' : stars===2 ? '⭐️⭐️' : '⭐️';
-      $('rWpm').textContent = String(clamp(wpm,0,999));
-      $('rAcc').textContent = String(clamp(acc,0,100)) + '%';
-      $('rTime').textContent = formatTime(ROUND_SECONDS);
-      $('rChars').textContent = String(chars);
+      $('result-title').textContent = playerWon ? 'Victory!' : (state.raceEndReason==='timeout' ? 'Time Up!' : 'Race Complete!');
+      $('result-place').textContent = playerWon ? '🏆 1st Place' : `🏁 #${playerRank} Place`;
+      $('res-wpm').textContent = wpm;
+      $('res-acc').textContent = `${accuracy}%`;
+      $('res-time').textContent = `${Math.round(elapsed)}s`;
+      $('res-score').textContent = score;
+      $('res-diff').textContent = capitalize(state.difficulty);
       $('rNote').textContent = OPENED_FROM_TRACKER
-        ? 'Your mark will be sent to the teacher automatically.'
-        : 'Open this race from LearnWorld to send marks automatically.';
+        ? 'Your result has been prepared for automatic teacher scoring.'
+        : 'Open this race from LearnWorld to send results automatically to the teacher.';
+
+      $('results-tbody').innerHTML = finishers.map((r,i)=>{
+        const rowClass = r.isPlayer ? 'player-row' : (i===0 ? 'winner-row' : '');
+        const result = r.finished ? `#${i+1}` : `Progress ${Math.round(r.progress)}%`;
+        const finish = r.finished ? `${r.finishTime.toFixed(1)}s` : 'DNF';
+        return `<tr class="${rowClass}">
+          <td>${i+1}</td>
+          <td>${r.emoji}</td>
+          <td>${escapeHtml(r.name)}</td>
+          <td>${result}</td>
+          <td>${Math.round(r.wpm || 0)}</td>
+          <td>${finish}</td>
+        </tr>`;
+      }).join('');
+
+      saveLocalLeaderboard({
+        name: state.playerName,
+        wpm,
+        accuracy,
+        score,
+        difficulty: state.difficulty,
+        created_at: nowISO()
+      });
+      renderLeaderboard();
+      renderStartPreview();
 
       state.lastResult = {
-        type: 'typing_speed_result',
+        type:'typing_speed_result',
         assignment_id: ASSIGNMENT_ID,
         wpm: clamp(wpm, 0, 999),
-        accuracy: clamp(acc, 0, 100),
-        typed_chars: chars,
-        errors: state.errors,
-        duration_sec: durationSec,
-        activity_title: 'Class Typing Race',
+        accuracy: clamp(accuracy, 0, 100),
+        typed_chars: state.typedIndex,
+        errors: state.mistakes,
+        duration_sec: Math.round(elapsed),
+        activity_title:'Class Typing Race',
         stars,
-        time_label: formatTime(ROUND_SECONDS),
-        result_summary: `Class Typing Race — Difficulty: ${difficulty}, WPM: ${clamp(wpm,0,999)}, Accuracy: ${clamp(acc,0,100)}%, Chars: ${chars}, Time: ${ROUND_SECONDS}s, Stars: ${stars}/3`
+        time_label:`${Math.round(elapsed)}s`,
+        result_summary:`Class Typing Race — Difficulty: ${state.difficulty}, Place: #${playerRank}, WPM: ${clamp(wpm,0,999)}, Accuracy: ${clamp(accuracy,0,100)}%, Score: ${score}, Progress: ${progress}%, Result: ${completedText}`
       };
 
-      $('overlay').classList.add('show');
+      showScreen('results');
       if(!state.resultSent) setTimeout(()=>sendToTeacher(false), 350);
     }
 
     function sendToTeacher(showPopup=false){
       const st = $('sendStatus');
       if(!OPENED_FROM_TRACKER){
-        st.textContent = 'This race was not opened from LearnWorld (no assignment id).';
+        st.textContent = 'This race was not opened from LearnWorld, so there is no assignment id to send.';
         return;
       }
       if(!state.lastResult){
-        st.textContent = 'No result to send yet.';
+        st.textContent = 'No result is ready yet.';
         return;
       }
       const payload = state.lastResult;
@@ -630,23 +1624,43 @@
         st.textContent = '✓ Sent to teacher.';
         if(showPopup) alert('Sent to teacher.');
       }catch(e){
-        st.textContent = 'Could not send (blocked by browser).';
+        st.textContent = 'Could not send the result. Please ask the teacher for help.';
         if(showPopup) alert('Could not send the result. Please ask the teacher for help.');
       }
     }
 
-    // init
-    (function init(){
-      syncDifficulty();
+    function restartRace(){
+      if(state.raceActive || state.raceFinished){
+        beginRaceFlow();
+      }else{
+        pickRaceText();
+        renderRaceText();
+        resetRaceUI();
+      }
+    }
+
+    function init(){
+      const savedDiff = localStorage.getItem('class_race_difficulty') || 'easy';
+      setDifficulty(savedDiff);
       syncSound();
-      try{
-        const name = qs.get('learner') || qs.get('name') || '';
-        if(name) $('meName').textContent = String(name).slice(0, 28);
-      }catch(e){}
-      pickSentence();
-      updateHud();
-    })();
+      renderLeaderboard();
+      renderStartPreview();
+      const learnerName = qs.get('learner') || qs.get('name') || '';
+      if(learnerName){
+        $('player-name').value = String(learnerName).slice(0,22);
+      }
+      $('typing-input').addEventListener('input', handleInput);
+      $('race-screen').addEventListener('click', ()=>{
+        if(state.raceActive) $('typing-input').focus();
+      });
+      document.addEventListener('keydown',(e)=>{
+        if(e.key === 'Enter' && document.activeElement === $('player-name') && $('start-screen').classList.contains('active')){
+          beginRaceFlow();
+        }
+      });
+    }
+
+    init();
   </script>
 </body>
 </html>
-
