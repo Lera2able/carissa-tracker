@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Class Typing Race — Carissa LearnWorld</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg1:#0ea5e9;
+      --bg2:#1e293b;
+      --card:#ffffff;
+      --ink:#0f172a;
+      --muted:#475569;
+      --good:#16a34a;
+      --warn:#f59e0b;
+      --bad:#dc2626;
+      --purple:#7c3aed;
+      --shadow:rgba(0,0,0,.20);
+    }
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    body{
+      font-family:'Nunito',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      min-height:100vh;
+      background:radial-gradient(1200px 700px at 20% 10%, rgba(255,255,255,.20), rgba(255,255,255,0) 60%),
+                 linear-gradient(140deg, var(--bg1) 0%, #22c55e 35%, #f59e0b 70%, #ef4444 100%);
+      color:var(--ink);
+      overflow-x:hidden;
+    }
+    h1,h2,h3,.fk{font-family:'Fredoka',system-ui,sans-serif}
+    button,select,input{font-family:inherit}
+    .wrap{max-width:1100px;margin:0 auto;padding:16px}
+    header{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+      background:rgba(255,255,255,.78);
+      border:1px solid rgba(15,23,42,.10);
+      box-shadow:0 16px 44px var(--shadow);
+      border-radius:18px;
+      padding:12px 14px;
+      backdrop-filter: blur(10px);
+    }
+    .title{display:flex;align-items:center;gap:12px}
+    .badge{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:7px 12px;border-radius:999px;background:#eef2ff;color:#3730a3;
+      font-weight:900;font-size:12px;border:1px solid #c7d2fe;
+    }
+    .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+    .toggle, .select{
+      border:1px solid rgba(15,23,42,.12);
+      background:rgba(255,255,255,.88);
+      padding:10px 12px;border-radius:12px;
+      font-weight:900;font-size:13px;
+      box-shadow:0 10px 24px rgba(15,23,42,.12);
+      cursor:pointer;
+      outline:none;
+    }
+    .select option{color:#111827}
+    .btn{
+      border:none;border-radius:999px;
+      padding:12px 18px;
+      background:var(--purple);color:#fff;
+      font-weight:900;font-size:14px;
+      box-shadow:0 10px 24px rgba(124,58,237,.28);
+      cursor:pointer;
+    }
+    .btn:active{transform:translateY(1px)}
+    .grid{
+      margin-top:14px;
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:12px;
+    }
+    @media (max-width: 980px){
+      .grid{grid-template-columns:1fr}
+    }
+    .card{
+      background:rgba(255,255,255,.86);
+      border:1px solid rgba(15,23,42,.10);
+      border-radius:18px;
+      box-shadow:0 16px 44px rgba(0,0,0,.16);
+      padding:14px;
+      backdrop-filter: blur(10px);
+    }
+    .hud{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:10px;
+    }
+    @media (max-width: 540px){
+      .hud{grid-template-columns:repeat(2,1fr)}
+    }
+    .hud-chip{
+      background:#fff;border:1px solid rgba(15,23,42,.10);
+      border-radius:14px;padding:10px 12px;
+      box-shadow:0 8px 22px rgba(15,23,42,.10);
+      text-align:center;
+    }
+    .hud-chip .v{font-family:'Fredoka';font-size:22px;font-weight:700}
+    .hud-chip .l{font-size:11px;font-weight:900;color:#475569;text-transform:uppercase;letter-spacing:.4px}
+
+    /* Track */
+    .track{
+      position:relative;
+      height:320px;
+      border-radius:18px;
+      overflow:hidden;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,0)),
+        repeating-linear-gradient(90deg, rgba(255,255,255,.06) 0 24px, rgba(0,0,0,0) 24px 48px),
+        linear-gradient(180deg, #0f172a 0%, #111827 100%);
+      border:1px solid rgba(15,23,42,.18);
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,.06);
+    }
+    .lane{
+      position:absolute;left:0;right:0;
+      height:33.33%;
+      border-bottom:1px dashed rgba(255,255,255,.14);
+    }
+    .lane:nth-child(1){top:0}
+    .lane:nth-child(2){top:33.33%}
+    .lane:nth-child(3){top:66.66%;border-bottom:none}
+    .finish{
+      position:absolute;top:0;bottom:0;right:22px;width:10px;
+      background:
+        repeating-linear-gradient(180deg, #fff 0 10px, #000 10px 20px);
+      border-radius:10px;
+      box-shadow:0 0 0 3px rgba(255,255,255,.08);
+    }
+    .car{
+      position:absolute;
+      left:10px;
+      transform:translateY(-50%);
+      display:flex;align-items:center;gap:10px;
+      padding:8px 10px;border-radius:999px;
+      background:rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.18);
+      color:#fff;
+      box-shadow:0 12px 28px rgba(0,0,0,.25);
+      user-select:none;
+      transition:left .08s linear;
+    }
+    .car .emoji{font-size:24px}
+    .car .name{
+      font-weight:900;
+      font-size:12px;
+      opacity:.92;
+      white-space:nowrap;
+      max-width:180px;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .car .pct{font-weight:900;font-size:12px;opacity:.92}
+
+    /* Typing area */
+    .prompt{
+      background:#fff;border:1px solid rgba(15,23,42,.10);
+      border-radius:16px;
+      padding:12px 12px;
+      box-shadow:0 10px 24px rgba(15,23,42,.10);
+      font-weight:900;
+      color:#0f172a;
+      line-height:1.7;
+      font-size:15px;
+      min-height:76px;
+    }
+    .prompt .ok{color:var(--good)}
+    .prompt .cur{background:#dbeafe;border-radius:6px;box-shadow:0 3px 0 #60a5fa;color:#0f172a;padding:0 3px}
+    .prompt .bad{color:var(--bad);text-decoration:underline}
+    .inputRow{margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .typedBox{
+      flex:1;min-width:220px;
+      border:1px solid rgba(15,23,42,.10);
+      border-radius:14px;
+      padding:12px 12px;
+      font-weight:900;
+      letter-spacing:.3px;
+      outline:none;
+      background:#f8fafc;
+    }
+    .helper{
+      margin-top:10px;
+      color:#0f172a;
+      font-weight:800;
+      font-size:12px;
+      opacity:.92;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .helper span{background:rgba(255,255,255,.72);border:1px solid rgba(15,23,42,.10);padding:6px 10px;border-radius:999px}
+
+    /* Overlay results */
+    .overlay{
+      position:fixed;inset:0;
+      display:none;
+      align-items:center;justify-content:center;
+      background:rgba(15,23,42,.62);
+      z-index:50;
+      padding:20px;
+    }
+    .overlay.show{display:flex}
+    .resultCard{
+      width:min(680px, 96vw);
+      background:#fff;border-radius:26px;
+      padding:22px 20px;
+      box-shadow:0 24px 80px rgba(0,0,0,.35);
+      text-align:center;
+    }
+    .stars{font-size:46px;letter-spacing:10px;margin-bottom:6px}
+    .note{margin-top:10px;color:#475569;font-weight:800;font-size:13px}
+    .sendRow{margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+    .sendStatus{margin-top:10px;font-weight:900;color:#334155;font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="title">
+        <div style="font-size:34px">🏁</div>
+        <div>
+          <div class="badge">Whole-class competition</div>
+          <h1 style="font-size:22px;margin-top:4px">Class Typing Race</h1>
+          <div style="font-size:12px;color:#334155;font-weight:800;margin-top:2px">Timed race with difficulty levels. Results send automatically to the teacher.</div>
+        </div>
+      </div>
+      <div class="controls">
+        <select id="difficulty" class="select" onchange="setDifficulty(this.value)">
+          <option value="easy">Easy</option>
+          <option value="medium" selected>Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+        <button id="soundBtn" class="toggle" type="button" onclick="toggleSound()">🔊 Sound On</button>
+        <button class="btn" type="button" onclick="startRace()">▶ Start Race</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <div class="hud">
+          <div class="hud-chip"><div class="v" id="stTime">1:00</div><div class="l">Time left</div></div>
+          <div class="hud-chip"><div class="v" id="stWpm">0</div><div class="l">WPM</div></div>
+          <div class="hud-chip"><div class="v" id="stAcc">0%</div><div class="l">Accuracy</div></div>
+          <div class="hud-chip"><div class="v" id="stChars">0</div><div class="l">Chars</div></div>
+        </div>
+
+        <div style="margin-top:12px" class="track" id="track">
+          <div class="lane"></div>
+          <div class="lane"></div>
+          <div class="lane"></div>
+          <div class="finish" title="Finish line"></div>
+          <div class="car" id="carMe" style="top:16.66%">
+            <div class="emoji">🚗</div>
+            <div class="name" id="meName">You</div>
+            <div class="pct" id="mePct">0%</div>
+          </div>
+          <div class="car" id="carGhost1" style="top:50%">
+            <div class="emoji">🚙</div>
+            <div class="name">Classmate</div>
+            <div class="pct" id="gPct1">—</div>
+          </div>
+          <div class="car" id="carGhost2" style="top:83.33%">
+            <div class="emoji">🚕</div>
+            <div class="name">Classmate</div>
+            <div class="pct" id="gPct2">—</div>
+          </div>
+        </div>
+
+        <div class="helper" style="margin-top:10px">
+          <span><b>Tip:</b> Type the sentence exactly.</span>
+          <span><b>Goal:</b> Highest WPM + Accuracy.</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="fk" style="font-size:18px;margin-bottom:10px">⌨️ The sentence</h3>
+        <div class="prompt" id="prompt">Press “Start Race”.</div>
+        <div class="inputRow">
+          <input id="typed" class="typedBox" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Type here..." oninput="onType(this.value)" />
+          <button class="btn" type="button" onclick="restart()">🔄 Restart</button>
+        </div>
+        <div class="helper">
+          <span><b>Difficulty:</b> <span id="diffLabel">Medium</span></span>
+          <span><b>Status:</b> <span id="statusLabel">Ready</span></span>
+        </div>
+        <div style="margin-top:10px;color:#334155;font-weight:800;font-size:12px;line-height:1.5">
+          Teachers: assign this activity to a class, then open the <b>Track Progress</b> tab to see who is winning (best WPM and accuracy).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="resultCard">
+      <div class="stars" id="stars">⭐️⭐️⭐️</div>
+      <h2 class="fk" id="rTitle" style="font-size:22px">Race finished!</h2>
+      <div class="note" id="rNote"></div>
+      <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:12px">
+        <div class="hud-chip" style="min-width:140px"><div class="v" id="rWpm">0</div><div class="l">WPM</div></div>
+        <div class="hud-chip" style="min-width:140px"><div class="v" id="rAcc">0%</div><div class="l">Accuracy</div></div>
+        <div class="hud-chip" style="min-width:140px"><div class="v" id="rTime">1:00</div><div class="l">Time</div></div>
+        <div class="hud-chip" style="min-width:140px"><div class="v" id="rChars">0</div><div class="l">Chars</div></div>
+      </div>
+      <div class="sendRow">
+        <button class="btn" type="button" onclick="startRace()">🔄 Race again</button>
+        <button class="toggle" type="button" onclick="sendToTeacher(true)">📤 Send again</button>
+      </div>
+      <div class="sendStatus" id="sendStatus"></div>
+    </div>
+  </div>
+
+  <script>
+    // -------------------- tracker integration --------------------
+    const qs = new URLSearchParams(window.location.search);
+    const ASSIGNMENT_ID = qs.get('assignment_id') || '';
+    const OPENED_FROM_TRACKER = !!ASSIGNMENT_ID;
+    const PENDING_KEY = 'typing_speed_result_pending';
+
+    // -------------------- settings --------------------
+    const ROUND_SECONDS = 60;
+    const TRACK_DISTANCE_CHARS = 260; // purely visual "finish line"
+
+    const sentences = {
+      easy: [
+        "the cat can run",
+        "i like to read a book",
+        "we can play in the sun",
+        "my dog is very happy",
+        "today is a good day"
+      ],
+      medium: [
+        "Practice every day and your typing will get faster.",
+        "Keep your eyes on the screen and use the correct fingers.",
+        "Typing is a skill that helps you learn faster at school.",
+        "Small improvements add up when you keep trying."
+      ],
+      hard: [
+        "Wonderful learners practice carefully, improve accuracy, and build speed with patience.",
+        "Education becomes easier when you type confidently and focus on every letter.",
+        "Remember to stay calm, correct mistakes, and keep the rhythm of your typing."
+      ]
+    };
+
+    let difficulty = (localStorage.getItem('class_race_difficulty') || 'medium').toLowerCase();
+    let soundEnabled = (localStorage.getItem('class_race_sound') || 'on') === 'on';
+
+    const state = {
+      running:false,
+      startAt:0,
+      endAt:0,
+      text:'',
+      typed:'',
+      totalKeystrokes:0,
+      correctChars:0,
+      errors:0,
+      lastResult:null,
+      resultSent:false,
+      raf:0
+    };
+
+    function $(id){ return document.getElementById(id); }
+    function clamp(n,a,b){ return Math.max(a, Math.min(b,n)); }
+    function formatTime(sec){
+      sec = Math.max(0, Math.floor(sec));
+      const m = Math.floor(sec/60);
+      const s = String(sec%60).padStart(2,'0');
+      return `${m}:${s}`;
+    }
+    function remainingSec(){
+      if(!state.running) return ROUND_SECONDS;
+      return Math.max(0, (state.endAt - Date.now())/1000);
+    }
+
+    // -------------------- simple sound --------------------
+    let audioCtx = null;
+    function beep(freq=740, dur=0.05, type='sine', vol=0.05){
+      if(!soundEnabled) return;
+      try{
+        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.type = type;
+        o.frequency.value = freq;
+        g.gain.value = vol;
+        o.connect(g); g.connect(audioCtx.destination);
+        o.start();
+        o.stop(audioCtx.currentTime + dur);
+      }catch(e){}
+    }
+
+    function syncSound(){
+      $('soundBtn').textContent = soundEnabled ? '🔊 Sound On' : '🔇 Sound Off';
+    }
+    function toggleSound(){
+      soundEnabled = !soundEnabled;
+      try{ localStorage.setItem('class_race_sound', soundEnabled ? 'on' : 'off'); }catch(e){}
+      syncSound();
+    }
+
+    function syncDifficulty(){
+      const sel = $('difficulty');
+      if(!sel) return;
+      const v = (difficulty==='easy' || difficulty==='hard') ? difficulty : 'medium';
+      sel.value = v;
+      $('diffLabel').textContent = v.charAt(0).toUpperCase()+v.slice(1);
+    }
+    function setDifficulty(v){
+      const next = String(v||'').toLowerCase();
+      difficulty = (next==='easy' || next==='hard') ? next : 'medium';
+      try{ localStorage.setItem('class_race_difficulty', difficulty); }catch(e){}
+      syncDifficulty();
+      if(!state.running) pickSentence();
+    }
+
+    function pickSentence(){
+      const pool = sentences[difficulty] || sentences.medium;
+      const t = pool[Math.floor(Math.random()*pool.length)];
+      state.text = String(t || '').trim();
+      state.typed = '';
+      $('typed').value = '';
+      renderPrompt();
+      updateHud();
+    }
+
+    function renderPrompt(){
+      const target = state.text || '';
+      const typed = state.typed || '';
+      const parts = [];
+      for(let i=0; i<target.length; i++){
+        const ch = target[i];
+        const t = typed[i];
+        if(t === undefined){
+          parts.push(`<span>${escapeHtml(ch)}</span>`);
+        }else if(t === ch){
+          parts.push(`<span class="ok">${escapeHtml(ch)}</span>`);
+        }else{
+          parts.push(`<span class="bad">${escapeHtml(ch)}</span>`);
+        }
+      }
+      const curIdx = typed.length;
+      if(curIdx < target.length){
+        // highlight current expected char (approx)
+        parts[curIdx] = `<span class="cur">${parts[curIdx].replace(/<[^>]+>/g,'')}</span>`;
+      }
+      $('prompt').innerHTML = parts.join('');
+    }
+
+    function escapeHtml(s){
+      return String(s||'')
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/\"/g,'&quot;')
+        .replace(/\'/g,'&#39;');
+    }
+
+    function updateHud(){
+      const tLeft = remainingSec();
+      $('stTime').textContent = formatTime(tLeft);
+      $('stChars').textContent = String(state.typed.length || 0);
+      const wpm = calcWpm();
+      const acc = calcAcc();
+      $('stWpm').textContent = String(wpm);
+      $('stAcc').textContent = String(acc) + '%';
+      updateCars();
+    }
+
+    function calcAcc(){
+      if(state.totalKeystrokes <= 0) return 0;
+      return Math.round((state.correctChars / state.totalKeystrokes) * 100);
+    }
+
+    function calcWpm(){
+      const elapsed = state.running ? ((Date.now() - state.startAt)/1000) : 0;
+      const minutes = Math.max(1/60, elapsed/60);
+      // "words" from correct chars only to discourage random spam
+      const words = (state.correctChars / 5);
+      return Math.round(words / minutes);
+    }
+
+    function updateCars(){
+      const pct = clamp((state.typed.length / TRACK_DISTANCE_CHARS) * 100, 0, 100);
+      $('mePct').textContent = `${Math.round(pct)}%`;
+      const track = $('track');
+      const maxLeft = track.clientWidth - 210; // car width approx
+      const left = 10 + (maxLeft * (pct/100));
+      $('carMe').style.left = left + 'px';
+
+      // ghost cars: purely visual placeholders until we add realtime leaderboard
+      $('gPct1').textContent = state.running ? '…' : '—';
+      $('gPct2').textContent = state.running ? '…' : '—';
+    }
+
+    function setStatus(s){
+      $('statusLabel').textContent = s;
+    }
+
+    // Track keystrokes for accuracy
+    function onType(val){
+      if(!state.running) return;
+      const next = String(val || '');
+      // Only count newly typed chars
+      const prev = state.typed || '';
+      if(next.length < prev.length){
+        // backspace is allowed but doesn't change accuracy counters (simple)
+        state.typed = next;
+        renderPrompt();
+        updateHud();
+        return;
+      }
+      const added = next.slice(prev.length);
+      for(let i=0; i<added.length; i++){
+        const idx = prev.length + i;
+        const got = added[i];
+        const expected = state.text[idx] || '';
+        state.totalKeystrokes += 1;
+        if(got === expected) state.correctChars += 1;
+        else state.errors += 1;
+        if(got === expected) beep(880, 0.03, 'sine', 0.03);
+        else beep(220, 0.06, 'sawtooth', 0.04);
+      }
+      state.typed = next;
+      renderPrompt();
+      updateHud();
+    }
+
+    function loop(){
+      if(!state.running) return;
+      updateHud();
+      if(remainingSec() <= 0){
+        finishRace();
+        return;
+      }
+      state.raf = requestAnimationFrame(loop);
+    }
+
+    function startRace(){
+      restart(true);
+    }
+
+    function restart(keepOpen=false){
+      if(state.raf) cancelAnimationFrame(state.raf);
+      state.running = false;
+      state.startAt = 0;
+      state.endAt = 0;
+      state.totalKeystrokes = 0;
+      state.correctChars = 0;
+      state.errors = 0;
+      state.lastResult = null;
+      state.resultSent = false;
+      if(!keepOpen) $('overlay').classList.remove('show');
+      pickSentence();
+      begin();
+    }
+
+    function begin(){
+      state.running = true;
+      state.startAt = Date.now();
+      state.endAt = state.startAt + (ROUND_SECONDS*1000);
+      setStatus('Racing…');
+      $('typed').focus();
+      loop();
+    }
+
+    function finishRace(){
+      if(!state.running) return;
+      state.running = false;
+      if(state.raf) cancelAnimationFrame(state.raf);
+      setStatus('Finished');
+
+      const durationSec = ROUND_SECONDS;
+      const wpm = calcWpm();
+      const acc = calcAcc();
+      const chars = state.typed.length || 0;
+
+      const stars = (acc >= 92 && wpm >= 25) ? 3 : (acc >= 85 && wpm >= 15) ? 2 : 1;
+      $('stars').textContent = stars===3 ? '⭐️⭐️⭐️' : stars===2 ? '⭐️⭐️' : '⭐️';
+      $('rWpm').textContent = String(clamp(wpm,0,999));
+      $('rAcc').textContent = String(clamp(acc,0,100)) + '%';
+      $('rTime').textContent = formatTime(ROUND_SECONDS);
+      $('rChars').textContent = String(chars);
+      $('rNote').textContent = OPENED_FROM_TRACKER
+        ? 'Your mark will be sent to the teacher automatically.'
+        : 'Open this race from LearnWorld to send marks automatically.';
+
+      state.lastResult = {
+        type: 'typing_speed_result',
+        assignment_id: ASSIGNMENT_ID,
+        wpm: clamp(wpm, 0, 999),
+        accuracy: clamp(acc, 0, 100),
+        typed_chars: chars,
+        errors: state.errors,
+        duration_sec: durationSec,
+        activity_title: 'Class Typing Race',
+        stars,
+        time_label: formatTime(ROUND_SECONDS),
+        result_summary: `Class Typing Race — Difficulty: ${difficulty}, WPM: ${clamp(wpm,0,999)}, Accuracy: ${clamp(acc,0,100)}%, Chars: ${chars}, Time: ${ROUND_SECONDS}s, Stars: ${stars}/3`
+      };
+
+      $('overlay').classList.add('show');
+      if(!state.resultSent) setTimeout(()=>sendToTeacher(false), 350);
+    }
+
+    function sendToTeacher(showPopup=false){
+      const st = $('sendStatus');
+      if(!OPENED_FROM_TRACKER){
+        st.textContent = 'This race was not opened from LearnWorld (no assignment id).';
+        return;
+      }
+      if(!state.lastResult){
+        st.textContent = 'No result to send yet.';
+        return;
+      }
+      const payload = state.lastResult;
+      try{
+        if(window.opener){
+          window.opener.postMessage(payload, window.location.origin);
+          state.resultSent = true;
+          st.textContent = '✓ Sent to teacher.';
+          if(showPopup) alert('Sent to teacher.');
+          return;
+        }
+      }catch(e){}
+      try{
+        localStorage.setItem(PENDING_KEY, JSON.stringify(payload));
+        state.resultSent = true;
+        st.textContent = '✓ Sent to teacher.';
+        if(showPopup) alert('Sent to teacher.');
+      }catch(e){
+        st.textContent = 'Could not send (blocked by browser).';
+        if(showPopup) alert('Could not send the result. Please ask the teacher for help.');
+      }
+    }
+
+    // init
+    (function init(){
+      syncDifficulty();
+      syncSound();
+      try{
+        const name = qs.get('learner') || qs.get('name') || '';
+        if(name) $('meName').textContent = String(name).slice(0, 28);
+      }catch(e){}
+      pickSentence();
+      updateHud();
+    })();
+  </script>
+</body>
+</html>
+

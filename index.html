@@ -187,6 +187,28 @@ const BUILTIN_LEARNWORLD_RESOURCES = [
     description:'Timed word builder round (10 words in 60 seconds).',
     uploaded_by:'System',
     builtin:true
+  },
+  {
+    id:'builtin-type-a-balloon',
+    title:'Type a Balloon',
+    type:'link',
+    url:'./type-a-balloon.html',
+    subject:'Typing',
+    grade_range:'Grade R - 3',
+    description:'Foundation Phase typing game (60 seconds) with difficulty levels. Records WPM, accuracy, and time.',
+    uploaded_by:'System',
+    builtin:true
+  },
+  {
+    id:'builtin-class-typing-race',
+    title:'Class Typing Race',
+    type:'link',
+    url:'./class-typing-race.html',
+    subject:'Typing',
+    grade_range:'Grade 1 - 7',
+    description:'NitroType-style typing race for whole classes. Timed with difficulty levels; sends WPM and accuracy to the teacher automatically.',
+    uploaded_by:'System',
+    builtin:true
   }
 ];
 const normalizeResourceUrl = (url) => {
@@ -6561,12 +6583,24 @@ function LearnerPortalView(){
       }
       setAssignmentsLoading(true);
       try{
-        const q = [
-          `class_name=eq.${encodeURIComponent(String(learnerAuth.class_name||''))}`,
-          `surname=eq.${encodeURIComponent(String(learnerAuth.surname||''))}`,
-          `firstname=eq.${encodeURIComponent(String(learnerAuth.firstname||''))}`,
-          'order=created_at.desc'
-        ].join('&');
+        const cls = encodeURIComponent(String(learnerAuth.class_name||''));
+        const curS = encodeURIComponent(String(learnerAuth.surname||''));
+        const curF = encodeURIComponent(String(learnerAuth.firstname||''));
+        const origS = encodeURIComponent(String(learnerAuth.original_surname || learnerAuth.surname || ''));
+        const origF = encodeURIComponent(String(learnerAuth.original_firstname || learnerAuth.firstname || ''));
+        const useOr = (origS !== curS) || (origF !== curF);
+        const q = useOr
+          ? [
+              `class_name=eq.${cls}`,
+              `or=(and(surname.eq.${curS},firstname.eq.${curF}),and(surname.eq.${origS},firstname.eq.${origF}))`,
+              'order=created_at.desc'
+            ].join('&')
+          : [
+              `class_name=eq.${cls}`,
+              `surname=eq.${curS}`,
+              `firstname=eq.${curF}`,
+              'order=created_at.desc'
+            ].join('&');
         const asn = await db.get('carissa_resource_assignments', q);
         setAssignments(asn||[]);
       }catch(e){
@@ -11518,6 +11552,14 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
     }
 
     if(/grade\s*r\b/i.test(raw)) push('Grade R');
+    const mRRange = lower.match(/grade\s*r\s*-\s*(\d+)/i) || lower.match(/grade\s*r\s*to\s*(\d+)/i);
+    if(mRRange){
+      const to = parseInt(mRRange[1],10);
+      if(Number.isFinite(to)){
+        for(let g=1; g<=to; g++) push(`Grade ${g}`);
+      }
+      return out.length ? out : (raw ? [raw] : []);
+    }
     const mRange = lower.match(/grade\s*(\d+)\s*-\s*(\d+)/i) || lower.match(/grade\s*(\d+)\s*to\s*(\d+)/i);
     if(mRange){
       const a = parseInt(mRange[1],10);
