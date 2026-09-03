@@ -9993,6 +9993,165 @@ function TeacherDisciplineTab({ teacherAuth, defaultClass, showMsg, onAudit }){
     return { bg:'#eef2ff', color:'#4f46e5', label:`${pts} pts` };
   };
 
+  const disciplineReportFileName = (learner={}) => {
+    const safe = (s='') => String(s||'').trim().replace(/[^a-z0-9]+/gi,'_').replace(/^_+|_+$/g,'');
+    const date = new Date();
+    const y = String(date.getFullYear());
+    const m = String(date.getMonth()+1).padStart(2,'0');
+    const d = String(date.getDate()).padStart(2,'0');
+    return `discipline-report_${safe(learner.surname)}_${safe(learner.firstname)}_${safe(learner.class_name || '')}_${y}${m}${d}.html`;
+  };
+
+  const exportTeacherDisciplineReport = (learner, { mode='view' } = {}) => {
+    if(!learner) return;
+    const cls = learner.class_name || selGrade;
+    const key = mkKey(cls, learner.surname, learner.firstname);
+    const recs = (rows || [])
+      .map(r=>{
+        const d = parseDiscipline(r.user_agent);
+        if(!d || !d.learner) return null;
+        const rcls = d.learner.class_name || r.class_name || '';
+        const k = mkKey(rcls, d.learner.surname, d.learner.firstname);
+        if(k !== key) return null;
+        return { row:r, discipline:d };
+      })
+      .filter(Boolean);
+
+    const t = totals[key] || { points: 0, merits: 0, demerits: 0, lastAt: null };
+    const statusColor = t.points <= -10 ? '#b91c1c' : t.points <= -5 ? '#a16207' : '#166534';
+    const generatedAt = new Date().toLocaleString('en-ZA',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    const esc = (s='') => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const fileName = disciplineReportFileName({surname: learner.surname, firstname: learner.firstname, class_name: cls});
+
+    const rowsHtml = recs.map((x, idx)=>{
+      const d = x.discipline || {};
+      const dt = x.row?.created_at ? new Date(x.row.created_at).toLocaleDateString('en-ZA',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
+      return `<tr>
+        <td>${idx+1}</td>
+        <td>${dt}</td>
+        <td>${esc(d.type==='demerit' ? 'Demerit' : 'Merit')}</td>
+        <td>${Number(d.delta||0)}</td>
+        <td>${esc(d.behaviour || '—')}</td>
+        <td>${esc(d.action_taken || '—')}</td>
+        <td>${esc(d.comment || '—')}</td>
+        <td>${esc(x.row?.teacher_name || x.row?.teacher_email || '—')}</td>
+      </tr>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"/>
+<title>Discipline Report — ${esc(learner.firstname)} ${esc(learner.surname)}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#eef2ff;padding:16px;color:#1f2937;line-height:1.45;}
+.controls{max-width:980px;margin:0 auto 10px;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;}
+.controls button{padding:10px 18px;border:none;border-radius:24px;font-weight:800;cursor:pointer;font-size:13px;}
+.btn-print{background:#4f46e5;color:#fff;}
+.btn-download{background:#16a34a;color:#fff;}
+.btn-close{background:#6b7280;color:#fff;}
+.page{max-width:980px;margin:0 auto;background:#fff;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,0.12);padding:26px 28px;}
+header{display:flex;align-items:center;gap:16px;border-bottom:3px solid #4f46e5;padding-bottom:14px;margin-bottom:18px;}
+header img{height:66px;width:66px;object-fit:contain;border-radius:10px;background:#fff;}
+.hcopy h1{font-size:22px;color:#312e81;margin-bottom:4px;}
+.hcopy p{font-size:13px;color:#6b7280;}
+.meta{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
+.meta .card{background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;}
+.meta .label{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;}
+.meta .value{font-size:14px;font-weight:900;color:#111827;}
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0 16px;}
+.summary .box{border:1px solid #e5e7eb;border-radius:12px;padding:12px;background:#f8fafc;}
+.summary .label{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px;}
+.summary .big{font-size:24px;font-weight:900;color:#111827;}
+.summary .sub{font-size:12px;color:#4b5563;margin-top:3px;line-height:1.4;}
+h2{font-size:14px;color:#312e81;margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid #e5e7eb;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th,td{border:1px solid #e5e7eb;padding:7px 8px;text-align:left;vertical-align:top;}
+th{background:#f8fafc;color:#374151;font-weight:800;}
+.note{margin-top:14px;padding:12px 14px;background:#eff6ff;border-left:4px solid #3b82f6;border-radius:8px;font-size:12px;color:#1e3a8a;}
+footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:10px;color:#6b7280;text-align:center;}
+@page { size:A4 portrait; margin:0.8cm; }
+@media print{
+ body{background:#fff;padding:0;}
+ .controls{display:none !important;}
+ .page{box-shadow:none;border-radius:0;max-width:100%;padding:0;}
+}
+@media(max-width:760px){
+ body{padding:10px;}
+ .page{padding:18px 16px;}
+ .meta,.summary{grid-template-columns:repeat(2,1fr);}
+}
+</style></head>
+<body>
+<div class="controls">
+  <button class="btn-print" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <button class="btn-download" onclick="downloadReport()">⬇ Download</button>
+  <button class="btn-close" onclick="window.close()">✕ Close</button>
+</div>
+<div class="page">
+  <header>
+    <img src="${LOGO}" alt="Carissa Primary"/>
+    <div class="hcopy">
+      <h1>Carissa Primary School</h1>
+      <p>Learner Discipline Report</p>
+    </div>
+  </header>
+
+  <div class="meta">
+    <div class="card"><div class="label">Learner</div><div class="value">${esc(learner.firstname)} ${esc(learner.surname)}</div></div>
+    <div class="card"><div class="label">Class</div><div class="value">${esc(cls || '—')}</div></div>
+    <div class="card"><div class="label">Generated</div><div class="value">${esc(generatedAt)}</div></div>
+    <div class="card"><div class="label">Prepared by</div><div class="value">${esc(teacherName || teacherEmail || 'Teacher')}</div></div>
+  </div>
+
+  <div class="summary">
+    <div class="box"><div class="label">Net points</div><div class="big" style="color:${statusColor}">${t.points}</div><div class="sub">${t.merits} merits / ${t.demerits} demerits</div></div>
+    <div class="box"><div class="label">Records</div><div class="big">${recs.length}</div><div class="sub">Discipline entries</div></div>
+    <div class="box"><div class="label">Latest update</div><div class="sub" style="font-weight:900;color:#111827;">${t.lastAt ? new Date(t.lastAt).toLocaleDateString('en-ZA') : '—'}</div><div class="sub">Teacher dashboard</div></div>
+    <div class="box"><div class="label">Notes</div><div class="sub">Use Print to save as PDF.</div><div class="sub">Keep for school records.</div></div>
+  </div>
+
+  <h2>Discipline records</h2>
+  <table>
+    <thead><tr><th>#</th><th>Date</th><th>Type</th><th>Points</th><th>Behaviour</th><th>Action taken</th><th>Comment</th><th>Recorded by</th></tr></thead>
+    <tbody>${rowsHtml || `<tr><td colspan="8">No discipline records found.</td></tr>`}</tbody>
+  </table>
+
+  <div class="note">
+    This report is generated from the Carissa Primary School discipline system for accountability and school record purposes.
+  </div>
+
+  <footer>
+    Carissa Primary School Discipline Report · Generated from the teacher dashboard
+  </footer>
+</div>
+<script>
+function downloadReport(){
+  try{
+    const html = document.documentElement.outerHTML;
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = ${JSON.stringify(fileName)};
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 1200);
+  }catch(e){
+    alert('Could not download. Please use Print / Save as PDF instead.');
+  }
+}
+</script>
+</body></html>`;
+
+    const w = window.open('', '_blank');
+    if(!w){ alert('Please allow pop-ups to open the report.'); return; }
+    w.document.open(); w.document.write(html); w.document.close();
+    if(mode === 'print'){
+      setTimeout(()=>{ try{ w.print(); }catch(e){} }, 350);
+    }
+  };
+
   return (
     <div style={card}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:'10px',marginBottom:'10px'}}>
@@ -10042,9 +10201,17 @@ function TeacherDisciplineTab({ teacherAuth, defaultClass, showMsg, onAudit }){
                     {t.merits} merits / {t.demerits} demerits
                   </td>
                   <td style={{padding:'10px'}}>
-                    <button style={{...sbtn,background:'#10b981',fontSize:'12px',padding:'6px 10px'}} onClick={()=>openModal(l)}>
-                      + Add record
-                    </button>
+                    <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+                      <button style={{...sbtn,background:'#10b981',fontSize:'12px',padding:'6px 10px'}} onClick={()=>openModal(l)}>
+                        + Add record
+                      </button>
+                      <button
+                        style={{...sbtn,background:'#0ea5e9',fontSize:'12px',padding:'6px 10px'}}
+                        onClick={()=>exportTeacherDisciplineReport({ ...l, class_name: cls }, { mode: 'view' })}
+                      >
+                        View report
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
