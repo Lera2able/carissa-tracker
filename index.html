@@ -5375,6 +5375,19 @@ function DisciplineAdminTab({adminUser}){
     });
   }, [selectedAdminHistory, historyActionFilter, historyFrom, historyTo]);
 
+  const viewLearner = (key)=>{
+    setSelectedKey(key);
+    // Reset inline edit state when switching learners
+    setEditingId(null);
+    setEditForm(null);
+    setTimeout(()=>{
+      try{
+        const el = document.getElementById('discipline-details');
+        el && el.scrollIntoView({ behavior:'smooth', block:'start' });
+      }catch(_e){}
+    }, 80);
+  };
+
   const downloadHtml = (html, fileName) => {
     try{
       const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
@@ -5752,7 +5765,7 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
             <table style={{width:'100%',borderCollapse:'collapse',fontSize:'13px'}}>
               <thead>
                 <tr style={{background:'#f8f9fa',borderBottom:'2px solid #eee',textAlign:'left'}}>
-                  {['Learner','Class','Points','Records','Last update'].map(h=>(
+                  {['Learner','Class','Points','Records','Last update','View'].map(h=>(
                     <th key={h} style={{padding:'10px',color:'#666',fontWeight:600,whiteSpace:'nowrap'}}>{h}</th>
                   ))}
                 </tr>
@@ -5767,7 +5780,7 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
                       : {bg:'#eef2ff',fg:'#4f46e5',txt:`${t.points}`};
                   return (
                     <tr key={t.key} style={{borderBottom:'1px solid #f0f0f0',background:rowBg,cursor:'pointer'}}
-                      onClick={()=>setSelectedKey(t.key)}>
+                      onClick={()=>viewLearner(t.key)}>
                       <td style={{padding:'10px',fontWeight:800}}>{t.surname}, {t.firstname}</td>
                       <td style={{padding:'10px'}}>{t.class_name}</td>
                       <td style={{padding:'10px'}}>
@@ -5779,6 +5792,15 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
                       <td style={{padding:'10px',whiteSpace:'nowrap',color:'#666'}}>
                         {t.lastAt ? `${new Date(t.lastAt).toLocaleDateString('en-ZA')} · ${t.lastTeacher||'—'}` : '—'}
                       </td>
+                      <td style={{padding:'10px',whiteSpace:'nowrap'}}>
+                        <button
+                          onClick={(e)=>{ e.preventDefault(); e.stopPropagation(); viewLearner(t.key); }}
+                          style={{...sbtn,background:'#0ea5e9',fontSize:'12px',padding:'6px 10px'}}
+                          title="View this learner's discipline record"
+                        >
+                          View
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -5787,11 +5809,12 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
           </div>
 
           {selectedKey && (
-            <div style={{border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',background:'#fff'}}>
+            <div id="discipline-details" style={{border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',background:'#fff'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',marginBottom:'10px'}}>
                 <div style={{fontWeight:900,color:'#333'}}>Records for: {selectedHeaderRecord?.discipline?.learner?.surname}, {selectedHeaderRecord?.discipline?.learner?.firstname} ({selectedHeaderRecord?.discipline?.learner?.class_name})</div>
                 <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
-                  <button onClick={()=>exportLearnerDisciplineReport({mode:'print'})} style={{...sbtn,background:'#4f46e5',fontSize:'12px',padding:'6px 10px'}}>🖨 Professional report</button>
+                  <button onClick={()=>exportLearnerDisciplineReport({mode:'print'})} style={{...sbtn,background:'#4f46e5',fontSize:'12px',padding:'6px 10px'}}>🖨 Print / Save as PDF</button>
+                  <button onClick={()=>exportLearnerDisciplineReport({mode:'download'})} style={{...sbtn,background:'#16a34a',fontSize:'12px',padding:'6px 10px'}}>⬇ Download</button>
                   <button onClick={()=>setSelectedKey(null)} style={{...sbtn,background:'#6c757d',fontSize:'12px',padding:'6px 10px'}}>Close</button>
                 </div>
               </div>
