@@ -7288,9 +7288,12 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
         ? apiRequest(`/learner-results/teacher${selClass ? `?class_name=${encodeURIComponent(selClass)}` : ''}`)
             .catch((e)=>{ showMsg(`Could not load learner marks: ${e?.message || 'Unknown error'}. Please log out and log in again.`); return {results:[]}; })
         : Promise.resolve({results:[]});
+      const asnQuery = selClass
+        ? `class_name=eq.${encodeURIComponent(selClass)}&order=created_at.desc&limit=20000`
+        : 'order=created_at.desc&limit=20000';
       const [a, asn, lresResp, r, rdg, ints, adminCfg] = await Promise.all([
         db.get('carissa_elearning_assessments','order=created_at.desc'),
-        db.get('carissa_resource_assignments','order=created_at.desc'),
+        db.get('carissa_resource_assignments', asnQuery),
         lresPromise,
         db.get('carissa_resources','order=created_at.desc'),
         db.get('carissa_reading_assessments','order=created_at.desc').catch(()=>[]),
