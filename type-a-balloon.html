@@ -216,12 +216,12 @@
 
       <div class="inputLine">
         <div class="inputLabel">Type:</div>
-        <input id="typed" class="typedBox" placeholder="Start typing the balloon word..." autocomplete="off" />
+        <input id="typed" class="typedBox" placeholder="Start typing the balloon target..." autocomplete="off" />
         <button class="toggle" type="button" onclick="clearTyped()">Clear</button>
       </div>
 
       <div class="hint" id="hint">
-        <span><b>Tip:</b> Type the word on the balloon. When it pops, you get a point.</span>
+        <span><b>Tip:</b> On Easy, type letters. On Medium and Hard, type the whole word.</span>
         <span id="activeHint">No active balloon yet.</span>
       </div>
 
@@ -256,6 +256,7 @@
     // -------------------- settings --------------------
     const ROUND_SECONDS = 60;
     const MAX_LIVES = 3;
+    const letterBank = 'abcdefghijklmnopqrstuvwxyz'.split('');
     const wordBank = [
       "cat","dog","sun","hat","run","fun","box","pen","red","bed","cup","map","pig","rat","sit","zip","jam","key","day","top",
       "tree","milk","book","rain","fish","play","ball","cake","bird","frog","duck","home","school","class","learn","write",
@@ -298,7 +299,7 @@
     }
 
     function preset(){
-      if(difficulty === 'easy') return {min:3,max:4,speed:34,spawn:1400,font:20};
+      if(difficulty === 'easy') return {min:1,max:1,speed:32,spawn:1350,font:28};
       if(difficulty === 'hard') return {min:6,max:9,speed:52,spawn:900,font:26};
       return {min:4,max:6,speed:42,spawn:1100,font:23};
     }
@@ -346,6 +347,9 @@
     // -------------------- game mechanics --------------------
     function randomWord(){
       const p = preset();
+      if(difficulty === 'easy'){
+        return letterBank[Math.floor(Math.random()*letterBank.length)];
+      }
       const pool = (difficulty==='hard') ? [...wordBank, ...extraHard] : wordBank;
       const min = p.min;
       const max = p.max;
@@ -669,4 +673,3 @@
   </script>
 </body>
 </html>
-
