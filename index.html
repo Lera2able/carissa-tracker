@@ -10084,7 +10084,7 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
 <body>
 <div class="controls">
   <button class="btn-print" onclick="window.print()">🖨 Print / Save as PDF</button>
-  <button class="btn-download" onclick="downloadReport()">⬇ Download</button>
+  <button class="btn-download" onclick='(function(){try{var html=document.documentElement.outerHTML;var blob=new Blob([html],{type:"text/html;charset=utf-8"});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download=${JSON.stringify(fileName)};document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},1200);}catch(e){alert("Could not download. Please use Print / Save as PDF instead.");}})()'>⬇ Download</button>
   <button class="btn-close" onclick="window.close()">✕ Close</button>
 </div>
 <div class="page">
@@ -10124,24 +10124,6 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
     Carissa Primary School Discipline Report · Generated from the teacher dashboard
   </footer>
 </div>
-<script>
-function downloadReport(){
-  try{
-    const html = document.documentElement.outerHTML;
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = ${JSON.stringify(fileName)};
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url), 1200);
-  }catch(e){
-    alert('Could not download. Please use Print / Save as PDF instead.');
-  }
-}
-</script>
 </body></html>`;
 
     const w = window.open('', '_blank');
