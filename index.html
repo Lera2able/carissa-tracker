@@ -5570,7 +5570,6 @@ function DisciplineAdminTab({adminUser}){
         ? `${latestAdmin.action==='delete' ? 'Moved to recycle bin' : latestAdmin.action==='restore' ? 'Restored report' : 'Edited report'} · ${latestAdmin.details?.edited_by?.by_name || latestAdmin.details?.deleted_by?.by_name || latestAdmin.details?.restored_by?.by_name || latestAdmin.row?.teacher_name || latestAdmin.row?.teacher_email || 'Admin'}`
         : 'No admin actions yet',
     };
-    const statusLabel = summary.points <= -10 ? 'Action required' : summary.points <= -5 ? 'Flagged for review' : 'In good standing';
     const statusColor = summary.points <= -10 ? '#b91c1c' : summary.points <= -5 ? '#a16207' : '#166534';
     const generatedAt = new Date().toLocaleString('en-ZA',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
     const activeRows = active.map((x, idx)=>{
@@ -5633,9 +5632,6 @@ header img{height:66px;width:66px;object-fit:contain;border-radius:10px;backgrou
 .summary .label{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px;}
 .summary .big{font-size:24px;font-weight:900;color:#111827;}
 .summary .sub{font-size:12px;color:#4b5563;margin-top:3px;line-height:1.4;}
-.status{margin-bottom:16px;padding:12px 14px;border-radius:12px;background:#faf5ff;border-left:4px solid ${statusColor};}
-.status .title{font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
-.status .value{font-size:18px;font-weight:900;color:${statusColor};}
 h2{font-size:14px;color:#312e81;margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid #e5e7eb;}
 table{width:100%;border-collapse:collapse;font-size:12px;}
 th,td{border:1px solid #e5e7eb;padding:7px 8px;text-align:left;vertical-align:top;}
@@ -5675,11 +5671,6 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
     <div class="box"><div class="label">Active records</div><div class="big">${summary.activeRecords}</div><div class="sub">Current visible reports</div></div>
     <div class="box"><div class="label">Archived records</div><div class="big">${summary.archivedRecords}</div><div class="sub">Recycle bin reports</div></div>
     <div class="box"><div class="label">Latest teacher activity</div><div class="sub" style="font-weight:800;color:#111827;">${esc(summary.latestTeacher)}</div><div class="sub">${esc(summary.latestAdminAction)}</div></div>
-  </div>
-
-  <div class="status">
-    <div class="title">Status</div>
-    <div class="value">${esc(statusLabel)}</div>
   </div>
 
   <h2>Active discipline records</h2>
