@@ -336,7 +336,19 @@ const CONTENT = {
 };
 /* ============ STATE ============ */
 const qs = new URLSearchParams(location.search);
-const ASSIGNMENT_ID = qs.get("assignment_id") || "";
+const CONTEXT_KEY = "carissa_active_assignment_context_v1";
+function getAssignmentId(){
+  const fromQs = qs.get("assignment_id");
+  if(fromQs) return String(fromQs);
+  try{
+    const ctx = JSON.parse(localStorage.getItem(CONTEXT_KEY) || "null");
+    if(ctx && ctx.assignment_id && (Date.now() - Number(ctx.ts || 0)) < 10*60*1000){
+      return String(ctx.assignment_id);
+    }
+  }catch(_e){}
+  return "";
+}
+const ASSIGNMENT_ID = getAssignmentId();
 const AUTO_GRADE = Number(qs.get("grade") || 0) || null;
 const OPENED_FROM_TRACKER = !!ASSIGNMENT_ID;
 const $ = s => document.querySelector(s);

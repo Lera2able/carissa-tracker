@@ -6788,6 +6788,20 @@ function LearnerPortalView(){
         url = u.toString();
       }catch(e){}
     }
+    // Store an "active assignment context" so games can still send marks even if
+    // an LMS/webview strips query parameters (assignment_id) from the URL.
+    if(resourceType === 'typing'){
+      try{
+        localStorage.setItem('carissa_active_assignment_context_v1', JSON.stringify({
+          assignment_id: assignment.id,
+          resource_id: assignment.resource_id,
+          class_name: assignment.class_name,
+          surname: assignment.surname,
+          firstname: assignment.firstname,
+          ts: Date.now()
+        }));
+      }catch(_e){}
+    }
     try{
       await db.patch('carissa_resource_assignments',`id=eq.${assignment.id}`,{status:'in_progress',updated_at:new Date().toISOString()});
       setAssignments(prev=>prev.map(a=>a.id===assignment.id?{...a,status:'in_progress'}:a));
