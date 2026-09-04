@@ -856,15 +856,30 @@ async function handlePaymentsSet(request, env, corsOrigin) {
   };
 
   let saved;
-  if (existing?.id) {
-    const rows = await supabasePatch(env, "carissa_learner_payments", { id: `eq.${existing.id}` }, payload);
-    saved = Array.isArray(rows) ? rows[0] : null;
-  } else {
-    const rows = await supabasePost(env, "carissa_learner_payments", {
-      ...payload,
-      created_at: new Date().toISOString(),
-    });
-    saved = Array.isArray(rows) ? rows[0] : null;
+  try {
+    if (existing?.id) {
+      const rows = await supabasePatch(env, "carissa_learner_payments", { id: `eq.${existing.id}` }, payload);
+      saved = Array.isArray(rows) ? rows[0] : null;
+    } else {
+      const rows = await supabasePost(env, "carissa_learner_payments", {
+        ...payload,
+        created_at: new Date().toISOString(),
+      });
+      saved = Array.isArray(rows) ? rows[0] : null;
+    }
+  } catch (e) {
+    const msg = String(e?.message || "");
+    if (msg.includes("carissa_learner_payments_paid_to_check") || msg.toLowerCase().includes("paid_to")) {
+      return jsonResponse(
+        {
+          error:
+            "EFT is not enabled in the database yet. Please run the Supabase SQL patch 'learner_payments_add_eft.sql' once, then try again.",
+        },
+        400,
+        corsOrigin
+      );
+    }
+    throw e;
   }
 
   return jsonResponse({ ok: true, payment: saved || payload }, 200, corsOrigin);

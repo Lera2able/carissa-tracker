@@ -14,7 +14,7 @@ create table if not exists public.carissa_learner_payments (
   firstname text not null,
 
   amount integer not null default 50,
-  paid_to text not null check (paid_to in ('office','lerato')),
+  paid_to text not null check (paid_to in ('office','lerato','eft')),
   paid_at timestamptz not null default now(),
 
   created_at timestamptz not null default now(),
@@ -37,4 +37,3 @@ revoke all on table public.carissa_learner_payments from authenticated;
 
 -- Do NOT create policies for anon/authenticated.
 -- All reads/writes should go through the Worker.
-
