@@ -1866,7 +1866,8 @@ function LearnersAdminTab({overrides,setOverrides,setAssessments}){
     const total = list.reduce((s,p)=>s + (Number(p.amount)||50), 0);
     const office = list.filter(p=>String(p.paid_to||'').toLowerCase()==='office').reduce((s,p)=>s+(Number(p.amount)||50),0);
     const lerato = list.filter(p=>String(p.paid_to||'').toLowerCase()==='lerato').reduce((s,p)=>s+(Number(p.amount)||50),0);
-    return {count:list.length,total,office,lerato};
+    const eft = list.filter(p=>String(p.paid_to||'').toLowerCase()==='eft').reduce((s,p)=>s+(Number(p.amount)||50),0);
+    return {count:list.length,total,office,lerato,eft};
   },[allPayments]);
 
   async function refreshPayments(){
@@ -2160,6 +2161,10 @@ function LearnersAdminTab({overrides,setOverrides,setAssessments}){
             <div style={{fontSize:'12px',color:'#64748b'}}>Lerato</div>
             <div style={{fontSize:'18px',fontWeight:900,color:'#0f172a'}}>R{totalsAll.lerato}</div>
           </div>
+          <div style={{background:'white',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px'}}>
+            <div style={{fontSize:'12px',color:'#64748b'}}>EFT</div>
+            <div style={{fontSize:'18px',fontWeight:900,color:'#0f172a'}}>R{totalsAll.eft}</div>
+          </div>
         </div>
         {payMsg && <div style={{marginTop:'10px',fontSize:'13px',color:payMsg.startsWith('✓')?'#166534':'#b91c1c'}}>{payMsg}</div>}
       </div>
@@ -2210,6 +2215,12 @@ function LearnersAdminTab({overrides,setOverrides,setAssessments}){
                             onChange={()=>setPayment(L,true,'lerato')}
                             style={{width:16,height:16}}/>
                           Lerato
+                        </label>
+                        <label style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'12px',color:'#0f172a',cursor:(busy||!isPaid)?'not-allowed':'pointer'}}>
+                          <input type="checkbox" checked={paidTo==='eft'} disabled={busy||!isPaid}
+                            onChange={()=>setPayment(L,true,'eft')}
+                            style={{width:16,height:16}}/>
+                          EFT
                         </label>
                       </div>
                     </div>

@@ -809,14 +809,21 @@ async function handlePaymentsSet(request, env, corsOrigin) {
   const firstname = String(body?.firstname || "").trim();
   const amount = Number(body?.amount || 50) || 50;
   const paidToRaw = String(body?.paid_to || "").trim().toLowerCase();
-  const paidTo = paidToRaw === "lerato" ? "lerato" : (paidToRaw === "office" ? "office" : "");
+  const paidTo =
+    paidToRaw === "lerato"
+      ? "lerato"
+      : paidToRaw === "office"
+        ? "office"
+        : paidToRaw === "eft"
+          ? "eft"
+          : "";
   const paid = body?.paid === false ? false : true;
 
   if (!className || !learnerNumber || !surname || !firstname) {
     return jsonResponse({ error: "Missing class_name, learner_number, surname, or firstname." }, 400, corsOrigin);
   }
   if (paid && !paidTo) {
-    return jsonResponse({ error: "Choose where the payment was made (office or lerato)." }, 400, corsOrigin);
+    return jsonResponse({ error: "Choose where the payment was made (office, lerato, or eft)." }, 400, corsOrigin);
   }
 
   const username = learnerUsernameFor(className, learnerNumber);
@@ -888,6 +895,9 @@ async function handlePaymentsReportPdf(request, env, corsOrigin) {
     .reduce((s, p) => s + (Number(p.amount) || 50), 0);
   const totalLerato = payments
     .filter((p) => String(p.paid_to || "").toLowerCase() === "lerato")
+    .reduce((s, p) => s + (Number(p.amount) || 50), 0);
+  const totalEft = payments
+    .filter((p) => String(p.paid_to || "").toLowerCase() === "eft")
     .reduce((s, p) => s + (Number(p.amount) || 50), 0);
 
   const byGrade = {};
@@ -1023,6 +1033,7 @@ async function handlePaymentsReportPdf(request, env, corsOrigin) {
       ["Total collected", money(totalAll)],
       ["Office collected", money(totalOffice)],
       ["Lerato collected", money(totalLerato)],
+      ["EFT collected", money(totalEft)],
     ];
     page.drawText("Summary", { x: M, y, size: 13, font: fontBold, color: rgb(0.17, 0.27, 0.41) });
     y -= 18;
