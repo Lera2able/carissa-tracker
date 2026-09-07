@@ -3031,6 +3031,137 @@ function exportAssessmentReport(a){
   // Small helper to keep injected strings safe
   function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
+  // ── Term 3: Typing Assessment report (WPM + Accuracy + Observation/sign-in) ──
+  if (String(a?.term || '').trim() === 'Term 3') {
+    const c = String(a?.comments || '');
+    const getNum = (re) => {
+      const m = c.match(re);
+      return m ? Number(m[1]) : null;
+    };
+    const wpm = getNum(/WPM\s*=\s*([0-9]+)/i) ?? getNum(/WPM[:\s]+([0-9]+)/i);
+    const acc = getNum(/ACC\s*=\s*([0-9]+)/i) ?? getNum(/Accuracy[:\s]+([0-9]+)/i);
+    const obs = (c.match(/OBS\s*=\s*([^\n]+)/i)?.[1] || '✓ Signed in').trim();
+
+    const fn = esc(a.firstname);
+    const pct = Math.round((a.grand_total/20)*100);
+    const dateStr = new Date(a.date_assessed).toLocaleDateString('en-ZA',{day:'numeric',month:'long',year:'numeric'});
+    const teacherText = (a.comments && a.comments.trim()) ? esc(a.comments.trim()) : teacherSay(a.grand_total, fn);
+
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"/>
+<title>Typing Assessment Report — ${fn} ${esc(a.surname)}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f2ff;padding:10px;color:#222;line-height:1.55;}
+.page{max-width:850px;margin:0 auto;background:white;padding:18px 24px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);min-height:calc(100vh - 20px);display:flex;flex-direction:column;}
+.controls{max-width:850px;margin:0 auto 10px;display:flex;justify-content:flex-end;gap:10px;}
+.controls button{padding:9px 18px;border:none;border-radius:22px;font-weight:600;cursor:pointer;font-size:13px;}
+.btn-print{background:#667eea;color:white;}
+.btn-close{background:#6c757d;color:white;}
+header{display:flex;align-items:center;gap:14px;border-bottom:3px solid #667eea;padding-bottom:10px;margin-bottom:14px;}
+header img{height:56px;width:56px;object-fit:contain;border-radius:8px;}
+header .h-text h1{color:#667eea;font-size:19px;margin-bottom:3px;}
+header .h-text p{color:#666;font-size:12px;}
+.meta{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;background:#f8f9fa;padding:11px 14px;border-radius:8px;margin-bottom:14px;font-size:12px;}
+.meta div span{color:#888;font-size:9.5px;display:block;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;}
+.meta div strong{color:#333;font-size:13px;}
+.totalbox{background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:12px 18px;border-radius:10px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+.totalbox .label{font-size:12.5px;opacity:0.9;}
+.totalbox .sublabel{font-size:11px;opacity:0.85;margin-top:2px;}
+.totalbox .score{font-size:28px;font-weight:700;line-height:1.1;}
+.totalbox .pct{font-size:13.5px;opacity:0.9;margin-top:2px;}
+h2{color:#667eea;font-size:13.5px;margin:14px 0 6px;border-bottom:1px solid #eee;padding-bottom:3px;}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:4px;}
+table td{padding:7px 10px;border-bottom:1px solid #f0f0f0;vertical-align:top;line-height:1.45;}
+table td.mk{text-align:center;width:92px;font-weight:700;color:#333;white-space:nowrap;}
+.teacher-comment{background:#eaf3ff;border-left:4px solid #3b82f6;padding:12px 16px;border-radius:6px;margin:26px 0 8px;font-size:12px;color:#1e3a5f;line-height:1.65;}
+.teacher-comment .lbl{color:#2563eb;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:5px;display:block;}
+.teacher-comment .signed{font-size:11px;color:#1e3a5f;font-style:italic;margin-top:6px;text-align:right;}
+.sigs{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:18px;align-items:end;}
+.sigblock{text-align:center;}
+.sigblock img{max-height:32px;max-width:70%;object-fit:contain;}
+.sigblock .role{font-size:11px;color:#666;font-weight:600;margin-top:6px;}
+footer{margin-top:auto;padding-top:14px;border-top:2px solid #d8dbe6;text-align:center;}
+footer .footer-msg{font-size:11.5px;color:#3a3a3a;line-height:1.65;padding:8px 6px 4px;}
+footer .footer-msg .url{font-size:14px;font-weight:700;color:#5847c4;letter-spacing:0.2px;}
+footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px;text-transform:uppercase;}
+@page { size: A4; margin: 0.5cm; }
+@media print {.controls{display:none !important;} body{background:white;padding:0;} .page{box-shadow:none;border-radius:0;padding:0;max-width:100%;}}
+</style></head>
+<body>
+<div class="controls no-print">
+  <button class="btn-print" onclick="window.print()">🖨 Print / Save as PDF</button>
+  <button class="btn-close" onclick="window.close()">✕ Close</button>
+</div>
+<div class="page">
+  <header>
+    <img src="${LOGO}" alt="Carissa Primary"/>
+    <div class="h-text">
+      <h1>Carissa Primary School</h1>
+      <p>Typing Assessment Report — Term 3, ${a.year}</p>
+    </div>
+  </header>
+
+  <div class="meta">
+    <div><span>Learner</span><strong>${fn} ${esc(a.surname)}</strong></div>
+    <div><span>Class</span><strong>${esc(a.class_name)}</strong></div>
+    <div><span>Phase</span><strong>${a.phase==='foundation'?'Foundation (Gr 1-3)':'Intermediate (Gr 4-7)'}</strong></div>
+    <div><span>Date assessed</span><strong>${dateStr}</strong></div>
+  </div>
+
+  <div class="totalbox">
+    <div>
+      <div class="label">Total</div>
+      <div class="sublabel">WPM + Accuracy + Observation</div>
+    </div>
+    <div style="text-align:right">
+      <div class="score">${a.grand_total}/20</div>
+      <div class="pct">${pct}%</div>
+    </div>
+  </div>
+
+  <h2>Marks</h2>
+  <table>
+    <tbody>
+      <tr><td>Typing Speed (WPM)</td><td class="mk">${wpm==null?'-':esc(String(wpm))}</td><td class="mk">${a.oral_total}/5</td></tr>
+      <tr><td>Accuracy (%)</td><td class="mk">${acc==null?'-':esc(String(acc))}%</td><td class="mk">${a.prac1_total}/5</td></tr>
+      <tr><td>Observation (eLearning Sign-in)</td><td class="mk">${esc(obs)}</td><td class="mk">${a.prac2_total}/10</td></tr>
+    </tbody>
+  </table>
+
+  <div class="teacher-comment">
+    <span class="lbl">Teacher's Comment</span>
+    ${teacherText}
+    <div class="signed">— Ms L Mogajane, Computer Teacher</div>
+  </div>
+
+  <div class="sigs">
+    <div class="sigblock">
+      <img src="${SIG_PRINCIPAL}" alt="Principal's signature"/>
+      <div class="role">Ms V Sibande — Principal</div>
+    </div>
+    <div class="sigblock">
+      <img src="${SIG_TEACHER}" alt="Computer Teacher signature"/>
+      <div class="role">Ms L Mogajane — Computer Teacher</div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-msg">Carissa Primary School remains committed to building a strong eLearning programme that prepares every learner for a digital future. We thank parents and guardians for their continued support and invite you to visit <span class="url">carissaprimary.co.za</span> to follow our progress.</div>
+    <div class="footer-meta">Carissa Primary School · Generated ${new Date().toLocaleDateString('en-ZA')}</div>
+  </footer>
+</div>
+</body></html>`;
+
+    const w = window.open('', '_blank');
+    if(!w){ alert('Please allow pop-ups to view the report.'); return; }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    return;
+  }
+
   // Per-section auto comments
   function commentA(score, fn){
     if(score === 5) return `${fn} has done excellently and shows a strong understanding of the basic Microsoft Word controls.`;
@@ -7665,6 +7796,24 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
     if(showLoader) setLoading(false);
   },[teacherAuth, selClass]);
 
+  // Term 3 uses the Typing Assessment rubric. If marks were captured via typing games before the sync
+  // logic existed, they won't show in the Term 3 table until we backfill them. For admins, do this
+  // automatically as soon as Term 3 is opened for a class.
+  useEffect(()=>{
+    (async()=>{
+      if(!adminAccess) return;
+      if(!teacherAuth) return;
+      if(!selClass) return;
+      if(assessmentTermView !== 'Term 3') return;
+      try{
+        await apiRequest(`/assessments/term3/sync?class_name=${encodeURIComponent(selClass)}`, {method:'POST', body:{}});
+        loadLearnWorldData();
+      }catch(e){
+        showMsg(`Could not sync Term 3 marks: ${e?.message || 'Unknown error'}`);
+      }
+    })();
+  },[assessmentTermView, selClass, adminAccess, teacherAuth, loadLearnWorldData]);
+
   const resetMark = async(assignmentId)=>{
     if(!teacherAuth) return;
     if(!window.confirm('Reset this learner mark? This will remove the saved score and set the activity back to waiting for the learner.')) return;
@@ -8209,14 +8358,17 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
                 <p style={{color:'#999',textAlign:'center',padding:'30px'}}>
                   {assessmentTermView==='Term 2'
                     ? 'No Term 2 eLearning assessments have been done for this class yet. Once an admin captures them in the Assessments tab they will appear here.'
-                    : 'Term 3 is blank at the moment, so no assessment marks are shown yet.'}
+                    : 'No Term 3 typing assessment marks have been synced for this class yet.'}
                 </p>
               ) : (
                 <div style={{overflowX:'auto',border:'1px solid #e2e8f0',borderRadius:'12px',padding:'12px',background:'#fff'}}>
                   <table style={{width:'100%',borderCollapse:'collapse',fontSize:'13px'}}>
                     <thead>
                       <tr style={{borderBottom:'2px solid #eee',background:'#f8f9fa'}}>
-                        {['Learner','Date','Oral /5','Prac 1 /5','Prac 2 /10','Total /20','%','Report'].map(h=>(
+                        {(assessmentTermView==='Term 3'
+                          ? ['Learner','Date','WPM /5','Accuracy /5','Observation /10','Total /20','%','Report']
+                          : ['Learner','Date','Oral /5','Prac 1 /5','Prac 2 /10','Total /20','%','Report']
+                        ).map(h=>(
                           <th key={h} style={{textAlign:'left',padding:'10px',color:'#666',fontWeight:600,whiteSpace:'nowrap'}}>{h}</th>
                         ))}
                       </tr>

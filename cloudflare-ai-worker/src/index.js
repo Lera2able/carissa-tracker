@@ -639,6 +639,94 @@ async function handleLearnerResultUpsert(request, env, corsOrigin) {
       updated_at: new Date().toISOString(),
     });
   } catch (_e) {}
+
+  // Term 3 auto-sync (Typing Assessments → Admin "Term 3 assessment" table).
+  // We store WPM (/5), Accuracy (/5), and Observation/sign-in (/10) in carissa_elearning_assessments.
+  try {
+    if (resultStatus === "completed") {
+      const resourceId = assignment.resource_id || null;
+      let resource = null;
+      if (resourceId != null) {
+        const resourceRows = await supabaseGet(env, "carissa_resources", {
+          id: `eq.${resourceId}`,
+          select: "title,url",
+          limit: "1",
+        });
+        resource = Array.isArray(resourceRows) ? resourceRows[0] : null;
+      }
+      const title = String(resource?.title || "").toLowerCase();
+      const url = String(resource?.url || "").toLowerCase();
+      const isTypingAssessment = title.includes("typing assessment") || (title.includes("assessment") && url.includes("assessment"));
+
+      if (isTypingAssessment) {
+        const notes = String(payload.learner_notes || "");
+        const matchNum = (re) => {
+          const m = notes.match(re);
+          return m ? Number(m[1]) : null;
+        };
+        const wpm = matchNum(/avg\s*wpm\s*:\s*([0-9]+)/i) ?? matchNum(/wpm\s*:\s*([0-9]+)/i);
+        const acc = matchNum(/avg\s*accuracy\s*:\s*([0-9]+)/i) ?? matchNum(/accuracy\s*:\s*([0-9]+)/i) ?? score;
+
+        const wpmScore = (wpm != null && wpm > 15) ? 5 : (wpm != null && wpm >= 10) ? 4 : 3;
+        const accScore = (acc >= 90) ? 5 : (acc >= 85) ? 4 : 3;
+        const obsScore = 10; // default: learner was able to sign in and complete the assessment
+
+        const term = "Term 3";
+        const year = new Date().getFullYear();
+        const className = String(session.class_name || "").trim();
+        const gradeMatch = className.match(/(\d+)/);
+        const gradeNum = gradeMatch ? Number(gradeMatch[1]) : null;
+        const phase = (gradeNum != null && gradeNum <= 3) ? "foundation" : "intermediate";
+        const dateAssessed = String(payload.submitted_at || new Date().toISOString()).split("T")[0];
+
+        const comments =
+          `[AUTO_TYPING_ASSESSMENT]\n` +
+          `WPM=${wpm == null ? "" : String(wpm)}\n` +
+          `ACC=${String(acc)}\n` +
+          `OBS=✓ Signed in\n` +
+          `Bands: WPM (<10=3/5, 10–15=4/5, >15=5/5); Accuracy (<85=3/5, 85–90=4/5, 90–100=5/5).`;
+
+        const assessPayload = {
+          surname: session.surname,
+          firstname: session.firstname,
+          class_name: className,
+          term,
+          year,
+          phase,
+          date_assessed: dateAssessed,
+          assessed_by: "System (Typing Assessment)",
+          oral_scores: null,
+          oral_total: wpmScore,
+          prac1_scores: null,
+          prac1_total: accScore,
+          prac2_scores: null,
+          prac2_total: obsScore,
+          grand_total: wpmScore + accScore + obsScore,
+          comments,
+          updated_at: new Date().toISOString(),
+        };
+
+        const existingAssessRows = await supabaseGet(env, "carissa_elearning_assessments", {
+          class_name: `eq.${className}`,
+          surname: `eq.${session.surname}`,
+          firstname: `eq.${session.firstname}`,
+          term: `eq.${term}`,
+          year: `eq.${year}`,
+          limit: "1",
+        });
+        const existingAssess = Array.isArray(existingAssessRows) ? existingAssessRows[0] : null;
+        if (existingAssess?.id) {
+          await supabasePatch(env, "carissa_elearning_assessments", { id: `eq.${existingAssess.id}` }, assessPayload);
+        } else {
+          await supabasePost(env, "carissa_elearning_assessments", {
+            ...assessPayload,
+            created_at: new Date().toISOString(),
+          });
+        }
+      }
+    }
+  } catch (_e) {}
+
   return jsonResponse({ result }, 200, corsOrigin);
 }
 
@@ -810,6 +898,151 @@ async function requireAdminTeacher(request, env, corsOrigin) {
     return { ok: false, res: jsonResponse({ error: "Admin access required." }, 403, corsOrigin) };
   }
   return { ok: true, session };
+}
+
+function wpmBandScore(wpm) {
+  if (wpm != null && wpm > 15) return 5;
+  if (wpm != null && wpm >= 10) return 4;
+  return 3;
+}
+function accBandScore(acc) {
+  if (acc >= 90) return 5;
+  if (acc >= 85) return 4;
+  return 3;
+}
+function parseWpmFromNotes(notes) {
+  const s = String(notes || "");
+  const m = s.match(/avg\s*wpm\s*:\s*([0-9]+)/i) || s.match(/wpm\s*:\s*([0-9]+)/i);
+  return m ? Number(m[1]) : null;
+}
+function parseAccFromNotes(notes) {
+  const s = String(notes || "");
+  const m = s.match(/avg\s*accuracy\s*:\s*([0-9]+)/i) || s.match(/accuracy\s*:\s*([0-9]+)/i);
+  return m ? Number(m[1]) : null;
+}
+function phaseFromClassName(className) {
+  const m = String(className || "").match(/(\d+)/);
+  const g = m ? Number(m[1]) : null;
+  return g != null && g <= 3 ? "foundation" : "intermediate";
+}
+
+async function handleTerm3TypingSync(request, env, corsOrigin) {
+  const auth = await requireAdminTeacher(request, env, corsOrigin);
+  if (!auth.ok) return auth.res;
+  const url = new URL(request.url);
+  const className = String(url.searchParams.get("class_name") || "").trim();
+  if (!className) return jsonResponse({ error: "Missing class_name." }, 400, corsOrigin);
+
+  const year = new Date().getFullYear();
+  const term = "Term 3";
+
+  // 1) Find all assignments for this class.
+  const asnRows = await supabaseGet(env, "carissa_resource_assignments", {
+    class_name: `eq.${className}`,
+    select: "id,resource_id,class_name,surname,firstname",
+    limit: "20000",
+  });
+  const asn = Array.isArray(asnRows) ? asnRows : [];
+  if (!asn.length) return jsonResponse({ ok: true, scanned: 0, inserted: 0, updated: 0 }, 200, corsOrigin);
+
+  // 2) Find which resource_ids are typing assessments.
+  const resourceIds = [...new Set(asn.map((r) => r.resource_id).filter((x) => x != null))];
+  let typingResourceIds = new Set();
+  for (let i = 0; i < resourceIds.length; i += 80) {
+    const chunk = resourceIds.slice(i, i + 80);
+    const resRows = await supabaseGet(env, "carissa_resources", {
+      id: `in.(${chunk.join(",")})`,
+      select: "id,title,url",
+      limit: "20000",
+    });
+    (Array.isArray(resRows) ? resRows : []).forEach((r) => {
+      const t = String(r?.title || "").toLowerCase();
+      const u = String(r?.url || "").toLowerCase();
+      if (t.includes("typing assessment") || (t.includes("assessment") && u.includes("assessment"))) {
+        typingResourceIds.add(r.id);
+      }
+    });
+  }
+
+  const typingAssignments = asn.filter((r) => r.resource_id != null && typingResourceIds.has(r.resource_id));
+  if (!typingAssignments.length) {
+    return jsonResponse({ ok: true, scanned: 0, inserted: 0, updated: 0 }, 200, corsOrigin);
+  }
+
+  // 3) Pull completed results for those assignments.
+  let scanned = 0;
+  let inserted = 0;
+  let updated = 0;
+  const obsScore = 10; // default (sign-in observation)
+
+  for (let i = 0; i < typingAssignments.length; i += 80) {
+    const chunk = typingAssignments.slice(i, i + 80);
+    const ids = chunk.map((r) => r.id).join(",");
+    const resRows = await supabaseGet(env, "carissa_learner_activity_results", {
+      assignment_id: `in.(${ids})`,
+      result_status: "eq.completed",
+      select: "assignment_id,class_name,surname,firstname,score,learner_notes,submitted_at",
+      limit: "20000",
+    });
+    const results = Array.isArray(resRows) ? resRows : [];
+    for (const r of results) {
+      scanned++;
+      const wpm = parseWpmFromNotes(r.learner_notes);
+      const acc = parseAccFromNotes(r.learner_notes) ?? Number(r.score || 0);
+      const wpmScore = wpmBandScore(wpm);
+      const accScore = accBandScore(acc);
+      const dateAssessed = String(r.submitted_at || new Date().toISOString()).split("T")[0];
+      const comments =
+        `[AUTO_TYPING_ASSESSMENT]\n` +
+        `WPM=${wpm == null ? "" : String(wpm)}\n` +
+        `ACC=${String(acc)}\n` +
+        `OBS=✓ Signed in\n` +
+        `Bands: WPM (<10=3/5, 10–15=4/5, >15=5/5); Accuracy (<85=3/5, 85–90=4/5, 90–100=5/5).`;
+
+      const assessPayload = {
+        surname: r.surname,
+        firstname: r.firstname,
+        class_name: className,
+        term,
+        year,
+        phase: phaseFromClassName(className),
+        date_assessed: dateAssessed,
+        assessed_by: "System (Typing Assessment)",
+        oral_scores: null,
+        oral_total: wpmScore,
+        prac1_scores: null,
+        prac1_total: accScore,
+        prac2_scores: null,
+        prac2_total: obsScore,
+        grand_total: wpmScore + accScore + obsScore,
+        comments,
+        updated_at: new Date().toISOString(),
+      };
+
+      const existingAssessRows = await supabaseGet(env, "carissa_elearning_assessments", {
+        class_name: `eq.${className}`,
+        surname: `eq.${String(r.surname || "").trim()}`,
+        firstname: `eq.${String(r.firstname || "").trim()}`,
+        term: `eq.${term}`,
+        year: `eq.${year}`,
+        select: "id",
+        limit: "1",
+      });
+      const existingAssess = Array.isArray(existingAssessRows) ? existingAssessRows[0] : null;
+      if (existingAssess?.id) {
+        await supabasePatch(env, "carissa_elearning_assessments", { id: `eq.${existingAssess.id}` }, assessPayload);
+        updated++;
+      } else {
+        await supabasePost(env, "carissa_elearning_assessments", {
+          ...assessPayload,
+          created_at: new Date().toISOString(),
+        });
+        inserted++;
+      }
+    }
+  }
+
+  return jsonResponse({ ok: true, scanned, inserted, updated }, 200, corsOrigin);
 }
 
 function learnerUsernameFor(className, learnerNumber) {
@@ -1676,6 +1909,14 @@ export default {
         return await handlePaymentsReportPdf(request, env, corsOrigin);
       } catch (error) {
         return jsonResponse({ error: error?.message || "Payments PDF failed" }, 500, corsOrigin);
+      }
+    }
+    if (url.pathname === "/api/assessments/term3/sync") {
+      if (request.method !== "POST" && request.method !== "GET") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handleTerm3TypingSync(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Term 3 sync failed" }, 500, corsOrigin);
       }
     }
     if (url.pathname === "/api/learner-results/reset") {
