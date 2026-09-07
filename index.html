@@ -2907,9 +2907,10 @@ function AssessmentModal({learner,className,phase,activeTerm,onClose,onSaved,onD
           phase,
           date_assessed: existing?.date_assessed || new Date().toISOString().split('T')[0],
           assessed_by: existing?.assessed_by || 'Admin',
-          oral_scores: null, oral_total: t3WpmScore,
-          prac1_scores: null, prac1_total: t3AccScore,
-          prac2_scores: null, prac2_total: t3ObsScore,
+          // DB expects JSON columns to be non-null
+          oral_scores: {}, oral_total: t3WpmScore,
+          prac1_scores: {}, prac1_total: t3AccScore,
+          prac2_scores: {}, prac2_total: t3ObsScore,
           grand_total: t3Grand,
           comments: builtComments,
           updated_at: new Date().toISOString()
