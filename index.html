@@ -7059,6 +7059,26 @@ function LearnerPortalView(){
     return r.type || 'link';
   };
   const resUrl   = id => resources.find(r=>r.id===id)?.url || '#';
+  const resIsAssessment = useCallback((resourceId)=>{
+    const r = resources.find(x=>x.id===resourceId);
+    const t = String(r?.title || '');
+    const u = String(r?.url || '');
+    return /assessment/i.test(t) || /assessment/i.test(u);
+  },[resources]);
+
+  // Assessments should always be easy to spot: put them at the top of the learner’s activity list.
+  const sortedAssignments = useMemo(()=>{
+    const list = Array.isArray(myAssignments) ? [...myAssignments] : [];
+    list.sort((a,b)=>{
+      const aa = resIsAssessment(a.resource_id) ? 1 : 0;
+      const bb = resIsAssessment(b.resource_id) ? 1 : 0;
+      if(aa !== bb) return bb - aa; // assessments first
+      const ta = resTitle(a.resource_id);
+      const tb = resTitle(b.resource_id);
+      return String(ta||'').localeCompare(String(tb||''));
+    });
+    return list;
+  },[myAssignments, resIsAssessment, resTitle]);
 
   // Learner progress overview (completed marks + typing average across attempts)
   const completedItems = useMemo(()=>{
@@ -7300,17 +7320,25 @@ function LearnerPortalView(){
             <div style={card}><p style={{color:'#64748b',textAlign:'center',padding:'24px',fontWeight:800}}>Loading your activities…</p></div>
           ) : myAssignments.length===0 ? (
             <div style={card}><p style={{color:'#999',textAlign:'center',padding:'30px'}}>No activities have been assigned to this learner yet.</p></div>
-          ) : myAssignments.map(a=>{
+          ) : sortedAssignments.map(a=>{
             const result = resultByAssignment.get(a.id);
             const autoTracked = resType(a.resource_id)==='typing';
             const savedScoreLabel = result ? `Saved score: ${result.score || 0}/${result.max_score || 100}` : '';
             const submittedLabel = formatDateTimeZA(result?.submitted_at);
             const displayStatus = result ? 'completed' : (a.status==='in_progress' ? 'in_progress' : 'assigned');
+            const isAssessment = resIsAssessment(a.resource_id);
             return (
               <div key={a.id} style={{...card,marginBottom:'12px'}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'10px',flexWrap:'wrap',marginBottom:'10px'}}>
                   <div>
-                    <div style={{fontWeight:800,color:'#1f2937',fontSize:'16px'}}>{resTitle(a.resource_id)}</div>
+                    <div style={{display:'flex',gap:'8px',alignItems:'center',flexWrap:'wrap'}}>
+                      <div style={{fontWeight:800,color:'#1f2937',fontSize:'16px'}}>{resTitle(a.resource_id)}</div>
+                      {isAssessment && (
+                        <span style={{background:'#ede9fe',color:'#5b21b6',padding:'3px 10px',borderRadius:'999px',fontSize:'11px',fontWeight:900,letterSpacing:'0.4px'}}>
+                          📝 ASSESSMENT
+                        </span>
+                      )}
+                    </div>
                     <div style={{fontSize:'12px',color:'#64748b',marginTop:'4px'}}>Status: <strong>{formatStatusLabel(displayStatus)}</strong></div>
                   </div>
                   <StatusBadge status={displayStatus}/>
@@ -12109,12 +12137,19 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
     return out.length ? out : ['General'];
   },[isTypingGame]);
 
+  const isAssessmentGame = useCallback((r)=>{
+    const t = String(r?.title || '');
+    const u = String(r?.url || '');
+    return /assessment/i.test(t) || /assessment/i.test(u);
+  },[]);
+
   const foldersForResource = useCallback((r)=>{
     const folders = [];
+    if(isAssessmentGame(r)) folders.push('📝 Assessments');
     if(isTypingGame(r)) folders.push('Typing Games');
     gradeFoldersForResource(r).forEach(f=>folders.push(f));
     return [...new Set(folders.filter(Boolean))];
-  },[gradeFoldersForResource, isTypingGame]);
+  },[gradeFoldersForResource, isTypingGame, isAssessmentGame]);
 
   const grouped = filtered.reduce((acc,r)=>{
     foldersForResource(r).forEach(folder=>{
@@ -12129,6 +12164,8 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
       return m ? parseInt(m[1],10) : null;
     };
     return Object.keys(grouped).sort((a,b)=>{
+      if(String(a)==='📝 Assessments') return -1;
+      if(String(b)==='📝 Assessments') return 1;
       if(String(a)==='Typing Games') return -1;
       if(String(b)==='Typing Games') return 1;
       const ga = parseGrade(a); const gb = parseGrade(b);
