@@ -200,6 +200,17 @@ const BUILTIN_LEARNWORLD_RESOURCES = [
     builtin:true
   },
   {
+    id:'builtin-grade2-typing-assessment',
+    title:'Grade 2 Typing Assessment',
+    type:'link',
+    url:'./grade2-typing-assessment.html',
+    subject:'Typing',
+    grade_range:'Grade 2',
+    description:'4-in-1 assessment: Word Sprouts + Sentence Seeds + Type a Balloon (Easy) + Typing Striker (Easy). Sends the final average automatically.',
+    uploaded_by:'System',
+    builtin:true
+  },
+  {
     id:'builtin-word-builder-intermediate',
     title:'Intermediate Word Builder',
     type:'link',
@@ -1179,6 +1190,10 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
     ()=> CLASS_NAMES.filter(c=>/^Grade\s*3(\b|\.)/i.test(String(c||''))),
     []
   );
+  const grade2Classes = useMemo(
+    ()=> CLASS_NAMES.filter(c=>/^Grade\s*2(\b|\.)/i.test(String(c||''))),
+    []
+  );
 
   const bulkAssignGrade4TypingAssessment = async () => {
     if(busy) return;
@@ -1289,6 +1304,64 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
         }
       }
       showMsg(`✓ Grade 3 Typing Assessment assigned to ${inserted} learner(s).${skipped?` (Skipped ${skipped} already assigned)`:''}`);
+    }catch(e){
+      alert('Error: '+e.message);
+    }
+    setBusy(false);
+    setBusyLabel('');
+  };
+
+  const bulkAssignGrade2TypingAssessment = async () => {
+    if(busy) return;
+    const grade2Count = grade2Classes.length;
+    if(!grade2Count){ alert('No Grade 2 classes were found.'); return; }
+    if(!confirm(`Assign "Grade 2 Typing Assessment" to ALL learners across ${grade2Count} Grade 2 class(es)?\n\nThis will NOT remove any existing activities.`)) return;
+    setBusy(true);
+    setBusyLabel('Preparing Grade 2 assessment...');
+    try{
+      const resourceId = await resolveBuiltInResourceId('builtin-grade2-typing-assessment', resources);
+      let inserted = 0;
+      let skipped = 0;
+      const chunkSize = 120;
+      for(const cls of grade2Classes){
+        const learners = (CLASS_DATA[cls] || []).map(l=>({surname:l.surname, firstname:l.firstname}));
+        if(!learners.length) continue;
+
+        // Skip learners who already have this assessment assigned (additive only).
+        let existingSet = new Set();
+        try{
+          const q = `class_name=eq.${encodeURIComponent(cls)}&resource_id=eq.${encodeURIComponent(resourceId)}&select=surname,firstname&limit=20000`;
+          const existing = await db.get('carissa_resource_assignments', q);
+          (Array.isArray(existing) ? existing : []).forEach(r=>{
+            const k = `${String(r.surname||'').trim().toLowerCase()}|${String(r.firstname||'').trim().toLowerCase()}`;
+            existingSet.add(k);
+          });
+        }catch(_e){}
+
+        const targets = learners.filter(l=>{
+          const k = `${String(l.surname||'').trim().toLowerCase()}|${String(l.firstname||'').trim().toLowerCase()}`;
+          return !existingSet.has(k);
+        });
+        skipped += Math.max(0, learners.length - targets.length);
+        if(!targets.length) continue;
+
+        setBusyLabel(`Assigning Grade 2 assessment in ${cls}...`);
+        const base = {
+          resource_id: resourceId,
+          class_name: cls,
+          assign_type: 'class',
+          assigned_by: 'Admin',
+          due_date: null,
+          notes: 'Grade 2 Typing Assessment (auto-assigned)'
+        };
+        for(let i=0; i<targets.length; i+=chunkSize){
+          const chunk = targets.slice(i, i + chunkSize);
+          const payload = chunk.map(t=>({...base, surname:t.surname, firstname:t.firstname}));
+          await db.post('carissa_resource_assignments', payload, 'return=minimal');
+          inserted += chunk.length;
+        }
+      }
+      showMsg(`✓ Grade 2 Typing Assessment assigned to ${inserted} learner(s).${skipped?` (Skipped ${skipped} already assigned)`:''}`);
     }catch(e){
       alert('Error: '+e.message);
     }
@@ -1419,6 +1492,9 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
       <div style={card}>
         <h3 style={ctitle}>Assign Activity to Learners</h3>
         <div style={{display:'flex',gap:'8px',flexWrap:'wrap',margin:'-4px 0 12px'}}>
+          <button type="button" style={{...sbtn,background:'#22c55e'}} disabled={busy} onClick={bulkAssignGrade2TypingAssessment}>
+            ⚡ Assign Grade 2 Typing Assessment (All Grade 2 classes)
+          </button>
           <button type="button" style={{...sbtn,background:'#0ea5e9'}} disabled={busy} onClick={bulkAssignGrade3TypingAssessment}>
             ⚡ Assign Grade 3 Typing Assessment (All Grade 3 classes)
           </button>
