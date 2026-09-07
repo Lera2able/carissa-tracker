@@ -250,6 +250,11 @@
     // -------------------- tracker integration (same as other typing games) --------------------
     const qs = new URLSearchParams(window.location.search);
     const CONTEXT_KEY = 'carissa_active_assignment_context_v1';
+    const ASSESSMENT_MODE = String(qs.get('assessment') || '') === '1';
+    const ASSESSMENT_STEP = String(qs.get('step') || '').trim();
+    const NEXT_URL = qs.get('next') ? String(qs.get('next')) : '';
+    const AUTO_START = String(qs.get('autostart') || '') === '1';
+    const ASSESSMENT_KEY = String(qs.get('akey') || 'carissa_g4_typing_assessment_v1').trim();
     function getAssignmentId(){
       const fromQs = qs.get('assignment_id');
       if(fromQs) return String(fromQs);
@@ -280,6 +285,15 @@
 
     let difficulty = (localStorage.getItem('balloon_difficulty') || 'medium').toLowerCase();
     let soundEnabled = (localStorage.getItem('balloon_sound') || 'on') === 'on';
+
+    // Allow the assessment controller to force difficulty (e.g. easy)
+    (function applyDifficultyFromQuery(){
+      const qd = String(qs.get('difficulty') || '').toLowerCase();
+      if(qd === 'easy' || qd === 'medium' || qd === 'hard'){
+        difficulty = qd;
+        try{ localStorage.setItem('balloon_difficulty', difficulty); }catch(e){}
+      }
+    })();
 
     const state = {
       running:false,
@@ -608,6 +622,33 @@
 
       $('overlay').classList.add('show');
 
+      // Assessment mode: store step results and move on immediately.
+      if(ASSESSMENT_MODE){
+        try{
+          const key = `${ASSESSMENT_KEY}:${String(ASSIGNMENT_ID||'local')}`;
+          const existing = JSON.parse(localStorage.getItem(key) || "{}");
+          existing[ASSESSMENT_STEP || "balloon"] = {
+            wpm: state.lastResult.wpm,
+            accuracy: state.lastResult.accuracy,
+            duration_sec: state.lastResult.duration_sec,
+            errors: state.lastResult.errors,
+            typed_chars: state.lastResult.typed_chars,
+            activity_title: "Type a Balloon",
+            stars: state.lastResult.stars
+          };
+          localStorage.setItem(key, JSON.stringify(existing));
+        }catch(_e){}
+        try{
+          const row = document.querySelector('.sendRow');
+          if(row) row.style.display = 'none';
+        }catch(_e){}
+        try{ $('sendStatus').textContent = ''; }catch(_e){}
+        if(NEXT_URL){
+          setTimeout(()=>{ try{ location.href = decodeURIComponent(NEXT_URL); }catch(_e){ location.href = NEXT_URL; } }, 900);
+        }
+        return;
+      }
+
       // Auto-send if opened from tracker
       if(!state.resultSent) setTimeout(()=>sendToTeacher(false), 300);
     }
@@ -678,10 +719,22 @@
     // init
     syncDifficulty();
     syncSound();
+    if(ASSESSMENT_MODE){
+      try{
+        // Lock the difficulty picker during an assessment step.
+        const sel = $('difficulty');
+        if(sel) sel.disabled = true;
+      }catch(_e){}
+    }
     $('typed').addEventListener('input', handleTypingInput);
     window.addEventListener('keydown', onKeydown);
     // Focus typing box when clicking inside game
     $('shell').addEventListener('click', ()=>{ try{ $('typed').focus(); }catch(e){} });
+
+    // Auto-start for assessment flow.
+    if(ASSESSMENT_MODE && AUTO_START){
+      setTimeout(()=>{ try{ startGame(); }catch(_e){} }, 220);
+    }
   </script>
 </body>
 </html>

@@ -469,6 +469,7 @@ const CONTEXT_KEY = "carissa_active_assignment_context_v1";
 const ASSESSMENT_MODE = String(qs.get("assessment") || "") === "1";
 const ASSESSMENT_STEP = String(qs.get("step") || "typerix").trim();
 const NEXT_URL = qs.get("next") ? String(qs.get("next")) : "";
+const ASSESSMENT_KEY = String(qs.get("akey") || "carissa_g4_typing_assessment_v1").trim();
 function getAssignmentId(){
   const fromQs = qs.get("assignment_id");
   if(fromQs) return String(fromQs);
@@ -1201,7 +1202,7 @@ function endGame() {
   document.getElementById('gameover-screen').classList.remove('hidden');
   if (ASSESSMENT_MODE) {
     try{
-      const key = `carissa_g4_typing_assessment_v1:${String(ASSIGNMENT_ID||'local')}`;
+      const key = `${ASSESSMENT_KEY}:${String(ASSIGNMENT_ID||'local')}`;
       const existing = JSON.parse(localStorage.getItem(key) || "{}");
       existing[ASSESSMENT_STEP || "typerix"] = {
         wpm,

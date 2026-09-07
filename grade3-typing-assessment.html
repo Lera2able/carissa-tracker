@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Grade 4 Typing Assessment — LearnWorld</title>
+  <title>Grade 3 Typing Assessment — LearnWorld</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
@@ -27,7 +27,7 @@
       border:2px solid rgba(21,122,140,.10);
     }
     .hero{
-      background:linear-gradient(135deg,#2563eb,#7c3aed);
+      background:linear-gradient(135deg,#0ea5e9,#22c55e);
       color:#fff;border:none;
     }
     .hero h1{font-size:clamp(22px,3.6vw,32px);line-height:1.05}
@@ -59,12 +59,6 @@
       margin-top:12px;font-size:13px;color:#475569;font-weight:800;line-height:1.5
     }
     .small{font-size:12px;color:#64748b;font-weight:800}
-    .center{ text-align:center }
-    .done{
-      margin-top:12px;
-      background:#ecfdf5;border:2px solid #bbf7d0;border-radius:16px;padding:14px;
-      color:#166534;font-weight:900
-    }
     .err{
       margin-top:12px;
       background:#fef2f2;border:2px solid #fecaca;border-radius:16px;padding:14px;
@@ -82,27 +76,27 @@
 <body>
   <div class="wrap">
     <div class="card hero">
-      <h1>Grade 4 Typing Assessment</h1>
+      <h1>Grade 3 Typing Assessment</h1>
       <p>4 activities · 1 try · Marks send automatically</p>
-      <div class="pill">✅ Word Sprouts → ✅ Sentence Seeds → ✅ Typing Striker (Easy) → ✅ Typerix (Easy)</div>
+      <div class="pill">✅ Word Sprouts → ✅ Sentence Seeds → ✅ Type a Balloon (Easy) → ✅ Typing Striker (Easy)</div>
     </div>
 
     <div class="card" style="margin-top:14px">
       <div class="grid">
         <div class="step">
           <div><span class="n" style="background:#2FA9BC">1</span><span class="t">Typing Quest: Word Sprouts</span></div>
-          <div class="d">Words (Grade 4)</div>
+          <div class="d">Words (Grade 3)</div>
         </div>
         <div class="step">
           <div><span class="n" style="background:#9B7EDE">2</span><span class="t">Typing Quest: Sentence Seeds</span></div>
-          <div class="d">Sentences (Grade 4)</div>
+          <div class="d">Sentences (Grade 3)</div>
         </div>
         <div class="step">
-          <div><span class="n" style="background:#FF6B6B">3</span><span class="t">Typing Striker</span></div>
+          <div><span class="n" style="background:#F97316">3</span><span class="t">Type a Balloon</span></div>
           <div class="d">Easy mode</div>
         </div>
         <div class="step">
-          <div><span class="n" style="background:#3BB273">4</span><span class="t">Typerix</span></div>
+          <div><span class="n" style="background:#FF6B6B">4</span><span class="t">Typing Striker</span></div>
           <div class="d">Easy mode</div>
         </div>
       </div>
@@ -124,6 +118,7 @@
 <script>
   const qs = new URLSearchParams(location.search);
   const CONTEXT_KEY = "carissa_active_assignment_context_v1";
+
   function getAssignmentId(){
     const fromQs = qs.get("assignment_id");
     if(fromQs) return String(fromQs);
@@ -137,7 +132,7 @@
   }
 
   const ASSIGNMENT_ID = getAssignmentId();
-  const ASSESSMENT_KEY = String(qs.get('akey') || 'carissa_g4_typing_assessment_v1').trim();
+  const ASSESSMENT_KEY = String(qs.get("akey") || "carissa_g3_typing_assessment_v1").trim();
   const STORAGE_KEY = `${ASSESSMENT_KEY}:${String(ASSIGNMENT_ID||'local')}`;
   const DONE_FLAG_KEY = `${ASSESSMENT_KEY}:submitted:${String(ASSIGNMENT_ID||'local')}`;
 
@@ -156,27 +151,27 @@
 
   function buildStepUrls(){
     const base = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/');
-    const assessmentReturn = base + 'grade4-typing-assessment.html'
+    const assessmentReturn = base + 'grade3-typing-assessment.html'
       + (ASSIGNMENT_ID ? `?assignment_id=${enc(ASSIGNMENT_ID)}&done=1` : `?done=1`)
       + `&akey=${enc(ASSESSMENT_KEY)}`;
 
-    const step4 = base + 'typerix-game.html'
-      + `?assessment=1&step=typerix&difficulty=easy&grade=4&akey=${enc(ASSESSMENT_KEY)}`
+    const step4 = base + 'typing-striker-v2.html'
+      + `?assessment=1&step=striker&difficulty=easy&grade=3&akey=${enc(ASSESSMENT_KEY)}`
       + (ASSIGNMENT_ID ? `&assignment_id=${enc(ASSIGNMENT_ID)}` : '')
       + `&next=${enc(assessmentReturn)}`;
 
-    const step3 = base + 'typing-striker-v2.html'
-      + `?assessment=1&step=striker&difficulty=easy&grade=4&akey=${enc(ASSESSMENT_KEY)}`
+    const step3 = base + 'type-a-balloon.html'
+      + `?assessment=1&step=balloon&difficulty=easy&grade=3&autostart=1&akey=${enc(ASSESSMENT_KEY)}`
       + (ASSIGNMENT_ID ? `&assignment_id=${enc(ASSIGNMENT_ID)}` : '')
       + `&next=${enc(step4)}`;
 
     const step2 = base + 'typing-speed-quest.html'
-      + `?assessment=1&step=sentences&grade=4&activity=sentences&autostart=1&akey=${enc(ASSESSMENT_KEY)}`
+      + `?assessment=1&step=sentences&grade=3&activity=sentences&autostart=1&akey=${enc(ASSESSMENT_KEY)}`
       + (ASSIGNMENT_ID ? `&assignment_id=${enc(ASSIGNMENT_ID)}` : '')
       + `&next=${enc(step3)}`;
 
     const step1 = base + 'typing-speed-quest.html'
-      + `?assessment=1&step=words&grade=4&activity=words&autostart=1&akey=${enc(ASSESSMENT_KEY)}`
+      + `?assessment=1&step=words&grade=3&activity=words&autostart=1&akey=${enc(ASSESSMENT_KEY)}`
       + (ASSIGNMENT_ID ? `&assignment_id=${enc(ASSIGNMENT_ID)}` : '')
       + `&next=${enc(step2)}`;
 
@@ -197,15 +192,14 @@
       assignment_id: ASSIGNMENT_ID,
       wpm: final.avgWpm,
       accuracy: final.avgAcc,
-      // Tell the learner dashboard to calculate score using BOTH WPM + accuracy.
       score_mode: 'wpm_accuracy_avg',
       target_wpm: 16,
       typed_chars: final.totalChars,
       errors: final.totalErrors,
       duration_sec: final.totalSec,
-      activity_title: 'Grade 4 Typing Assessment (Average)',
+      activity_title: 'Grade 3 Typing Assessment (Average)',
       stars: final.stars,
-      grade: 4,
+      grade: 3,
       time_label: `${final.totalSec}s`,
       result_summary: final.summary
     };
@@ -241,7 +235,7 @@
 
   function computeFinal(){
     const data = safeRead();
-    const steps = ['words','sentences','striker','typerix'];
+    const steps = ['words','sentences','balloon','striker'];
     const missing = steps.filter(s => !data[s] || !Number.isFinite(Number(data[s].wpm)) || !Number.isFinite(Number(data[s].accuracy)));
     if(missing.length){
       return { ok:false, error:`Missing results for: ${missing.join(', ')}` };
@@ -253,11 +247,11 @@
     const totalChars = steps.reduce((sum,s)=>sum + Number(data[s].typed_chars||0),0);
     const stars = starsFor(avgWpm, avgAcc);
     const summary =
-      `Grade 4 Typing Assessment (Average) — Avg WPM: ${avgWpm}, Avg Accuracy: ${avgAcc}%, Stars: ${stars}/3. ` +
+      `Grade 3 Typing Assessment (Average) — Avg WPM: ${avgWpm}, Avg Accuracy: ${avgAcc}%, Stars: ${stars}/3. ` +
       `Breakdown: Word Sprouts ${data.words.wpm}wpm/${data.words.accuracy}%, ` +
       `Sentence Seeds ${data.sentences.wpm}wpm/${data.sentences.accuracy}%, ` +
-      `Typing Striker (Easy) ${data.striker.wpm}wpm/${data.striker.accuracy}%, ` +
-      `Typerix (Easy) ${data.typerix.wpm}wpm/${data.typerix.accuracy}%.`;
+      `Type a Balloon (Easy) ${data.balloon.wpm}wpm/${data.balloon.accuracy}%, ` +
+      `Typing Striker (Easy) ${data.striker.wpm}wpm/${data.striker.accuracy}%.`;
 
     return { ok:true, avgWpm, avgAcc, totalSec, totalErrors, totalChars, stars, summary };
   }
@@ -297,7 +291,6 @@
       setBox('err', 'This assessment must be opened from the Learner Dashboard so the teacher can receive your mark.');
       return;
     }
-    // Clear any previous attempt data before starting (teacher reset support).
     clearAttempt();
     safeWrite({});
     const { step1 } = buildStepUrls();
@@ -306,3 +299,4 @@
 </script>
 </body>
 </html>
+
