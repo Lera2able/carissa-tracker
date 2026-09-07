@@ -2660,6 +2660,7 @@ function AssessmentsTab({assessments,setAssessments,exportReport,exportClassSumm
   const [termView,setTermView]=useState('Term 2');
   const [msg,setMsg]=useState('');
   const showMsg = m => {setMsg(m);setTimeout(()=>setMsg(''),5000);};
+  const lastSyncedRef = useRef({}); // { [className]: timestamp }
 
   const classLearners = selClass ? (CLASS_DATA[selClass]||[]) : [];
   const filtered = search.trim()
@@ -2675,6 +2676,27 @@ function AssessmentsTab({assessments,setAssessments,exportReport,exportClassSumm
   const assessmentFor = (cls, surname, firstname) => assessments.find(a =>
     a.class_name===cls && a.surname===surname && a.firstname===firstname && a.term===termView
   );
+
+  // Term 3: Typing assessments are auto-synced from LearnWorld results into carissa_elearning_assessments.
+  // If learners completed the typing assessment before the sync logic existed, the Term 3 list will look blank.
+  // Auto-backfill when Term 3 is opened for a class so marks appear here immediately.
+  useEffect(()=>{
+    (async()=>{
+      if(termView !== 'Term 3') return;
+      if(!selClass) return;
+      const now = Date.now();
+      const last = lastSyncedRef.current[selClass] || 0;
+      if(now - last < 60 * 1000) return; // avoid spamming if user clicks around
+      lastSyncedRef.current[selClass] = now;
+      try{
+        await apiRequest(`/assessments/term3/sync?class_name=${encodeURIComponent(selClass)}`, {method:'POST', body:{}});
+        const asm = await db.get('carissa_elearning_assessments','order=created_at.desc').catch(()=>[]);
+        setAssessments(Array.isArray(asm)?asm:[]);
+      }catch(e){
+        showMsg(`Could not sync Term 3 marks: ${e?.message || 'Unknown error'}`);
+      }
+    })();
+  },[termView, selClass]);
 
   return (
     <div>
