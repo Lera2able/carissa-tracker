@@ -2662,6 +2662,26 @@ function AssessmentsTab({assessments,setAssessments,exportReport,exportClassSumm
   const showMsg = m => {setMsg(m);setTimeout(()=>setMsg(''),5000);};
   const lastSyncedRef = useRef({}); // { [className]: timestamp }
 
+  // Term 3 is now the Typing Assessment rubric (WPM + Accuracy + Observation/sign-in).
+  // Hide any legacy Term 3 records so the folder only shows the new aligned marks.
+  const isTerm3Typing = useCallback((a)=>{
+    if(String(a?.term||'').trim() !== 'Term 3') return true; // only filter Term 3
+    const by = String(a?.assessed_by || '').toLowerCase();
+    const c  = String(a?.comments || '');
+    return (
+      by.includes('typing') ||
+      c.includes('[AUTO_TYPING_ASSESSMENT]') ||
+      /WPM\s*=/.test(c) ||
+      /ACC\s*=/.test(c)
+    );
+  },[]);
+
+  const termAssessments = useMemo(()=>{
+    return termView === 'Term 3'
+      ? (assessments || []).filter(isTerm3Typing)
+      : (assessments || []);
+  },[assessments, termView, isTerm3Typing]);
+
   const classLearners = selClass ? (CLASS_DATA[selClass]||[]) : [];
   const filtered = search.trim()
     ? classLearners.filter(l => (`${l.surname} ${l.firstname}`).toLowerCase().includes(search.toLowerCase()))
@@ -2669,11 +2689,11 @@ function AssessmentsTab({assessments,setAssessments,exportReport,exportClassSumm
 
   // Pre-compute assessments for the selected class and chosen term
   const classAssessments = selClass
-    ? assessments.filter(a => a.class_name===selClass && a.term===termView)
+    ? termAssessments.filter(a => a.class_name===selClass && a.term===termView)
     : [];
 
   // Quick lookup: which learners in this class already have an assessment for the chosen term
-  const assessmentFor = (cls, surname, firstname) => assessments.find(a =>
+  const assessmentFor = (cls, surname, firstname) => termAssessments.find(a =>
     a.class_name===cls && a.surname===surname && a.firstname===firstname && a.term===termView
   );
 
@@ -2820,6 +2840,7 @@ function AssessmentsTab({assessments,setAssessments,exportReport,exportClassSumm
 function AssessmentModal({learner,className,phase,activeTerm,onClose,onSaved,onDelete}){
   const existing = learner.existing;
   const isUpdate = !!existing;
+  const term = existing?.term || activeTerm || 'Term 2';
 
   /* Initial state — column names kept for DB compat; meaning is per the new rubric:
      prac1_*  → Section A (Window controls)
@@ -2837,6 +2858,19 @@ function AssessmentModal({learner,className,phase,activeTerm,onClose,onSaved,onD
   const [comments,setComments]=useState(existing?.comments || '');
   const [busy,setBusy]=useState(false);
 
+  // ────────────────────────────────────────────────────────────────
+  // TERM 3: Typing assessment rubric (WPM + Accuracy + Observation)
+  // ────────────────────────────────────────────────────────────────
+  const parseFromComments = (k) => {
+    const s = String(existing?.comments || '');
+    const m = s.match(new RegExp(`${k}\\s*=\\s*([^\\n]+)`, 'i'));
+    return m ? String(m[1]).trim() : '';
+  };
+  const [t3wpm,setT3wpm]=useState(()=>{ const v=parseFromComments('WPM'); return v ? Number(v) : ''; });
+  const [t3acc,setT3acc]=useState(()=>{ const v=parseFromComments('ACC'); return v ? Number(v) : ''; });
+  const [t3obs,setT3obs]=useState(()=>{ const v=parseFromComments('OBS'); return v || '✓ Signed in'; });
+  const [t3obsScore,setT3obsScore]=useState(()=> Number.isFinite(existing?.prac2_total) ? (Number(existing?.prac2_total)||10) : 10);
+
   const secBItems = getSecBItems(phase);
   const secCItems = getSecCItems(phase);
 
@@ -2845,31 +2879,78 @@ function AssessmentModal({learner,className,phase,activeTerm,onClose,onSaved,onD
   const prac2Total = secCItems.reduce((s,it) => s + (parseInt(prac2[it.k],10)||0), 0);
   const grand = prac1Total + oralTotal + prac2Total;
 
+  const t3WpmScore = (t3wpm!=='' && Number(t3wpm) > 15) ? 5 : (t3wpm!=='' && Number(t3wpm) >= 10) ? 4 : 3;
+  const t3AccScore = (t3acc!=='' && Number(t3acc) >= 90) ? 5 : (t3acc!=='' && Number(t3acc) >= 85) ? 4 : 3;
+  const t3ObsScore = Math.max(0, Math.min(10, Number(t3obsScore)||0));
+  const t3Grand = t3WpmScore + t3AccScore + t3ObsScore;
+
   const handleSave = async () => {
     setBusy(true);
     try{
-      const payload = {
-        surname: learner.surname,
-        firstname: learner.firstname,
-        class_name: className,
-        term: existing?.term || activeTerm || 'Term 2',
-        year: new Date().getFullYear(),
-        phase,
-        date_assessed: existing?.date_assessed || new Date().toISOString().split('T')[0],
-        assessed_by: existing?.assessed_by || 'Admin',
-        oral_scores: oral, oral_total: oralTotal,
-        prac1_scores: prac1, prac1_total: prac1Total,
-        prac2_scores: prac2, prac2_total: prac2Total,
-        grand_total: grand,
-        comments: comments.trim() || null,
-        updated_at: new Date().toISOString()
-      };
+      let payload;
+      if(term === 'Term 3'){
+        const rawWpm = (t3wpm === '' || t3wpm == null) ? '' : String(Math.max(0, Math.round(Number(t3wpm)||0)));
+        const rawAcc = (t3acc === '' || t3acc == null) ? '' : String(Math.max(0, Math.min(100, Math.round(Number(t3acc)||0))));
+        const obsTxt = String(t3obs || '✓ Signed in').trim();
+        const builtComments =
+          `[AUTO_TYPING_ASSESSMENT]\n` +
+          `WPM=${rawWpm}\n` +
+          `ACC=${rawAcc}\n` +
+          `OBS=${obsTxt}\n` +
+          `Bands: WPM (<10=3/5, 10–15=4/5, >15=5/5); Accuracy (<85=3/5, 85–90=4/5, 90–100=5/5).`;
+        payload = {
+          surname: learner.surname,
+          firstname: learner.firstname,
+          class_name: className,
+          term,
+          year: new Date().getFullYear(),
+          phase,
+          date_assessed: existing?.date_assessed || new Date().toISOString().split('T')[0],
+          assessed_by: existing?.assessed_by || 'Admin',
+          oral_scores: null, oral_total: t3WpmScore,
+          prac1_scores: null, prac1_total: t3AccScore,
+          prac2_scores: null, prac2_total: t3ObsScore,
+          grand_total: t3Grand,
+          comments: builtComments,
+          updated_at: new Date().toISOString()
+        };
+      } else {
+        payload = {
+          surname: learner.surname,
+          firstname: learner.firstname,
+          class_name: className,
+          term,
+          year: new Date().getFullYear(),
+          phase,
+          date_assessed: existing?.date_assessed || new Date().toISOString().split('T')[0],
+          assessed_by: existing?.assessed_by || 'Admin',
+          oral_scores: oral, oral_total: oralTotal,
+          prac1_scores: prac1, prac1_total: prac1Total,
+          prac2_scores: prac2, prac2_total: prac2Total,
+          grand_total: grand,
+          comments: comments.trim() || null,
+          updated_at: new Date().toISOString()
+        };
+      }
       if(isUpdate){
         const rows = await db.patch('carissa_elearning_assessments',`id=eq.${existing.id}`,payload);
         onSaved(rows[0], true);
       } else {
-        const rows = await db.post('carissa_elearning_assessments',payload);
-        onSaved(rows[0], false);
+        // Avoid duplicates: if a legacy Term 3 row exists, overwrite it instead of inserting a new one.
+        if(term === 'Term 3'){
+          const yr = new Date().getFullYear();
+          const legacy = await db.get('carissa_elearning_assessments',`class_name=eq.${encodeURIComponent(className)}&surname=eq.${encodeURIComponent(learner.surname)}&firstname=eq.${encodeURIComponent(learner.firstname)}&term=eq.${encodeURIComponent(term)}&year=eq.${encodeURIComponent(yr)}&order=created_at.desc&limit=1`).catch(()=>[]);
+          if(Array.isArray(legacy) && legacy[0]?.id){
+            const rows = await db.patch('carissa_elearning_assessments',`id=eq.${legacy[0].id}`,payload);
+            onSaved(rows[0], true);
+          }else{
+            const rows = await db.post('carissa_elearning_assessments',payload);
+            onSaved(rows[0], false);
+          }
+        }else{
+          const rows = await db.post('carissa_elearning_assessments',payload);
+          onSaved(rows[0], false);
+        }
       }
     }catch(e){ alert('Error: '+e.message); }
     setBusy(false);
@@ -2894,13 +2975,77 @@ function AssessmentModal({learner,className,phase,activeTerm,onClose,onSaved,onD
             <p style={{color:'#333',fontSize:'14px'}}>
               <strong>{learner.surname}, {learner.firstname}</strong> — {className} ({phase === 'foundation' ? 'Foundation Phase' : 'Intermediate Phase'})
             </p>
-            <p style={{color:'#667eea',fontSize:'13px',fontWeight:700}}>{existing?.term || activeTerm || 'Term 2'}</p>
+            <p style={{color:'#667eea',fontSize:'13px',fontWeight:700}}>{term}</p>
           </div>
           <div style={{background:'#667eea22',color:'#667eea',padding:'10px 16px',borderRadius:'12px',fontWeight:700,fontSize:'18px'}}>
-            {grand}/20
+            {(term==='Term 3' ? t3Grand : grand)}/20
           </div>
         </div>
 
+        {term==='Term 3' ? (
+          <>
+            <div style={{background:'#f8f9fa',padding:'14px',borderRadius:'10px',marginBottom:'12px'}}>
+              <h4 style={{color:'#667eea',fontSize:'15px',marginBottom:'10px'}}>Term 3 — Typing Assessment</h4>
+              <p style={{color:'#475569',fontSize:'13px',lineHeight:1.55,marginBottom:'12px'}}>
+                This Term 3 assessment is aligned to the typing assessments: <strong>WPM</strong> and <strong>Accuracy</strong>, plus <strong>Observation (eLearning sign-in)</strong>.
+              </p>
+
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))',gap:'12px'}}>
+                <div style={{background:'white',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'12px'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:'10px',marginBottom:'6px'}}>
+                    <div style={{fontWeight:800,color:'#0f172a'}}>Typing Speed (WPM)</div>
+                    <div style={{fontWeight:800,color:'#667eea'}}>{t3WpmScore}/5</div>
+                  </div>
+                  <input style={inp} type="number" min="0" placeholder="Enter WPM..." value={t3wpm}
+                    onChange={e=>setT3wpm(e.target.value===''?'':Number(e.target.value))}/>
+                  <div style={{fontSize:'12px',color:'#64748b',marginTop:'6px'}}>
+                    10–15 WPM = 4/5 · &lt;10 = 3/5 · &gt;15 = 5/5
+                  </div>
+                </div>
+
+                <div style={{background:'white',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'12px'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:'10px',marginBottom:'6px'}}>
+                    <div style={{fontWeight:800,color:'#0f172a'}}>Accuracy (%)</div>
+                    <div style={{fontWeight:800,color:'#667eea'}}>{t3AccScore}/5</div>
+                  </div>
+                  <input style={inp} type="number" min="0" max="100" placeholder="Enter accuracy..." value={t3acc}
+                    onChange={e=>setT3acc(e.target.value===''?'':Number(e.target.value))}/>
+                  <div style={{fontSize:'12px',color:'#64748b',marginTop:'6px'}}>
+                    85–90% = 4/5 · &lt;85% = 3/5 · 90–100% = 5/5
+                  </div>
+                </div>
+              </div>
+
+              <div style={{background:'white',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'12px',marginTop:'12px'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:'10px',marginBottom:'6px'}}>
+                  <div style={{fontWeight:800,color:'#0f172a'}}>Observation (eLearning sign-in)</div>
+                  <div style={{fontWeight:800,color:'#667eea'}}>{t3ObsScore}/10</div>
+                </div>
+                <select style={inp} value={t3obs} onChange={e=>setT3obs(e.target.value)}>
+                  <option value="✓ Signed in">✓ Signed in</option>
+                  <option value="Needs support">Needs support</option>
+                  <option value="Not signed in">Not signed in</option>
+                </select>
+                <div style={{fontSize:'12px',color:'#64748b',marginTop:'6px'}}>
+                  This list will be replaced with your official observation list once you send it.
+                </div>
+              </div>
+            </div>
+
+            <div style={{display:'flex',gap:'10px',flexWrap:'wrap'}}>
+              <button style={btn} onClick={handleSave} disabled={busy}>
+                {busy ? 'Saving...' : (isUpdate ? '💾 Update Term 3 Mark' : '💾 Save Term 3 Mark')}
+              </button>
+              {isUpdate && (
+                <button style={{...btn,background:'#dc3545'}} onClick={handleDelete} disabled={busy}>
+                  🗑 Delete
+                </button>
+              )}
+              <button style={{...btn,background:'#6c757d'}} onClick={onClose}>Cancel</button>
+            </div>
+          </>
+        ) : (
+          <>
         {/* ── SECTION A: Window Controls (was Section B) ─────── */}
         <div style={{background:'#f8f9fa',padding:'14px',borderRadius:'10px',marginBottom:'12px'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px'}}>
@@ -2984,6 +3129,8 @@ function AssessmentModal({learner,className,phase,activeTerm,onClose,onSaved,onD
           )}
           <button style={{...btn,background:'#6c757d'}} onClick={onClose}>Cancel</button>
         </div>
+          </>
+        )}
       </div>
     </div>
   );
