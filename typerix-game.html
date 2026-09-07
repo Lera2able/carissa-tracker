@@ -465,7 +465,22 @@ const EXTRA_WORDS = [
 const WORD_BANK_ALL = Array.from(new Set([...WORD_BANK, ...EXTRA_WORDS]));
 
 const qs = new URLSearchParams(window.location.search);
-const ASSIGNMENT_ID = qs.get('assignment_id') || '';
+const CONTEXT_KEY = "carissa_active_assignment_context_v1";
+const ASSESSMENT_MODE = String(qs.get("assessment") || "") === "1";
+const ASSESSMENT_STEP = String(qs.get("step") || "typerix").trim();
+const NEXT_URL = qs.get("next") ? String(qs.get("next")) : "";
+function getAssignmentId(){
+  const fromQs = qs.get("assignment_id");
+  if(fromQs) return String(fromQs);
+  try{
+    const ctx = JSON.parse(localStorage.getItem(CONTEXT_KEY) || "null");
+    if(ctx && ctx.assignment_id && (Date.now() - Number(ctx.ts || 0)) < 10*60*1000){
+      return String(ctx.assignment_id);
+    }
+  }catch(_e){}
+  return "";
+}
+const ASSIGNMENT_ID = getAssignmentId();
 const AUTO_GRADE = Number(qs.get('grade') || 0) || null;
 const OPENED_FROM_TRACKER = !!ASSIGNMENT_ID;
 
@@ -490,6 +505,13 @@ let lastClearTime = 0;
 let frozenRowsTriggered = new Set();
 let soundEnabled = true;
 let difficulty = (localStorage.getItem('typerix_difficulty') || 'medium').toLowerCase();
+try{
+  const qd = String(qs.get("difficulty") || "").toLowerCase();
+  if(qd === "easy" || qd === "medium" || qd === "hard"){
+    difficulty = qd;
+    localStorage.setItem('typerix_difficulty', difficulty);
+  }
+}catch(_e){}
 let gameStartTime = 0;
 let totalKeystrokes = 0;
 let correctChars = 0;
@@ -1177,10 +1199,31 @@ function endGame() {
   document.getElementById('final-wpm').textContent = wpm;
   document.getElementById('final-accuracy').textContent = accuracy + '%';
   document.getElementById('gameover-screen').classList.remove('hidden');
-  document.getElementById('send-wrap').style.display = OPENED_FROM_TRACKER ? 'block' : 'none';
-  if (OPENED_FROM_TRACKER) {
-    setSendStatus('Sending result back to the learner portal...');
-    if (!resultSent) setTimeout(() => sendToTeacher(false), 180);
+  if (ASSESSMENT_MODE) {
+    try{
+      const key = `carissa_g4_typing_assessment_v1:${String(ASSIGNMENT_ID||'local')}`;
+      const existing = JSON.parse(localStorage.getItem(key) || "{}");
+      existing[ASSESSMENT_STEP || "typerix"] = {
+        wpm,
+        accuracy,
+        duration_sec: durationSec,
+        errors,
+        activity_title: "Typerix Typing Game",
+        stars
+      };
+      localStorage.setItem(key, JSON.stringify(existing));
+    }catch(_e){}
+    // In assessment mode, the controller sends the final average.
+    document.getElementById('send-wrap').style.display = 'none';
+    if (NEXT_URL) {
+      setTimeout(()=>{ try{ location.href = decodeURIComponent(NEXT_URL); }catch(_e){ location.href = NEXT_URL; } }, 900);
+    }
+  } else {
+    document.getElementById('send-wrap').style.display = OPENED_FROM_TRACKER ? 'block' : 'none';
+    if (OPENED_FROM_TRACKER) {
+      setSendStatus('Sending result back to the learner portal...');
+      if (!resultSent) setTimeout(() => sendToTeacher(false), 180);
+    }
   }
   sndWin();
 }

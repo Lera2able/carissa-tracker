@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grade 4 Typing Assessment — LearnWorld</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --navy:#1E4E5E; --teal:#2FA9BC; --teal-dark:#157A8C; --cream:#FBF4E4;
+      --sun:#FFC93C; --coral:#FF6B6B; --green:#3BB273; --purple:#9B7EDE; --ink:#23414d;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    body{
+      font-family:'Nunito',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+      color:var(--ink);
+      min-height:100vh;
+      background:linear-gradient(180deg,#EAF7F5 0%,var(--cream) 60%,#FDF8EC 100%);
+    }
+    h1,h2,.fk{font-family:'Fredoka',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif}
+    .wrap{max-width:980px;margin:0 auto;padding:18px 16px 56px}
+    .card{
+      background:#fff;border-radius:22px;padding:18px 16px;
+      box-shadow:0 6px 0 rgba(30,78,94,.12),0 14px 26px rgba(30,78,94,.10);
+      border:2px solid rgba(21,122,140,.10);
+    }
+    .hero{
+      background:linear-gradient(135deg,#2563eb,#7c3aed);
+      color:#fff;border:none;
+    }
+    .hero h1{font-size:clamp(22px,3.6vw,32px);line-height:1.05}
+    .hero p{opacity:.95;font-weight:800;margin-top:6px;font-size:14px}
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;
+      background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25);
+      padding:8px 12px;border-radius:999px;margin-top:12px;font-weight:900;font-size:12px
+    }
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:14px}
+    .step{
+      border:2px solid #e2e8f0;border-radius:16px;padding:12px 12px;
+      background:#f8fafc;
+    }
+    .step .t{font-weight:900;color:#0f172a}
+    .step .d{font-size:12px;color:#64748b;font-weight:800;margin-top:2px}
+    .step .n{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:10px;margin-right:10px;font-weight:900;color:#fff}
+    .btn{
+      border:none;border-radius:14px;padding:12px 14px;font-weight:900;cursor:pointer;
+      background:linear-gradient(135deg,var(--sun),#ffb703);
+      color:#1f2937;width:100%;font-size:15px;
+      box-shadow:0 6px 0 rgba(180,83,9,.18);
+    }
+    .btn:active{transform:translateY(1px)}
+    .btn.secondary{
+      background:#0f172a;color:#fff;box-shadow:none;
+    }
+    .note{
+      margin-top:12px;font-size:13px;color:#475569;font-weight:800;line-height:1.5
+    }
+    .small{font-size:12px;color:#64748b;font-weight:800}
+    .center{ text-align:center }
+    .done{
+      margin-top:12px;
+      background:#ecfdf5;border:2px solid #bbf7d0;border-radius:16px;padding:14px;
+      color:#166534;font-weight:900
+    }
+    .err{
+      margin-top:12px;
+      background:#fef2f2;border:2px solid #fecaca;border-radius:16px;padding:14px;
+      color:#b91c1c;font-weight:900
+    }
+    .thanks{
+      margin-top:14px;
+      background:linear-gradient(135deg,#10b981,#22c55e);
+      color:#fff;border-radius:18px;padding:16px;text-align:center
+    }
+    .thanks h2{font-size:22px;margin-bottom:6px}
+    .thanks p{font-weight:900;opacity:.95}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card hero">
+      <h1>Grade 4 Typing Assessment</h1>
+      <p>4 activities · 1 try · Marks send automatically</p>
+      <div class="pill">✅ Word Sprouts → ✅ Sentence Seeds → ✅ Typing Striker (Easy) → ✅ Typerix (Easy)</div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <div class="grid">
+        <div class="step">
+          <div><span class="n" style="background:#2FA9BC">1</span><span class="t">Typing Quest: Word Sprouts</span></div>
+          <div class="d">Words (Grade 4)</div>
+        </div>
+        <div class="step">
+          <div><span class="n" style="background:#9B7EDE">2</span><span class="t">Typing Quest: Sentence Seeds</span></div>
+          <div class="d">Sentences (Grade 4)</div>
+        </div>
+        <div class="step">
+          <div><span class="n" style="background:#FF6B6B">3</span><span class="t">Typing Striker</span></div>
+          <div class="d">Easy mode</div>
+        </div>
+        <div class="step">
+          <div><span class="n" style="background:#3BB273">4</span><span class="t">Typerix</span></div>
+          <div class="d">Easy mode</div>
+        </div>
+      </div>
+
+      <div id="status" class="note">
+        Click <strong>Start Assessment</strong> to begin. When you finish the last activity, your average WPM and accuracy will be sent to the teacher automatically.
+      </div>
+      <div id="msg"></div>
+      <div style="margin-top:14px;display:grid;grid-template-columns:1fr;gap:10px">
+        <button class="btn" id="startBtn" type="button">Start Assessment</button>
+        <button class="btn secondary" id="closeBtn" type="button" style="display:none">Close</button>
+      </div>
+      <div class="small" style="margin-top:12px">
+        Tip: Don’t close this tab during the assessment.
+      </div>
+    </div>
+  </div>
+
+<script>
+  const qs = new URLSearchParams(location.search);
+  const CONTEXT_KEY = "carissa_active_assignment_context_v1";
+  function getAssignmentId(){
+    const fromQs = qs.get("assignment_id");
+    if(fromQs) return String(fromQs);
+    try{
+      const ctx = JSON.parse(localStorage.getItem(CONTEXT_KEY) || "null");
+      if(ctx && ctx.assignment_id && (Date.now() - Number(ctx.ts || 0)) < 10*60*1000){
+        return String(ctx.assignment_id);
+      }
+    }catch(_e){}
+    return "";
+  }
+
+  const ASSIGNMENT_ID = getAssignmentId();
+  const STORAGE_KEY = `carissa_g4_typing_assessment_v1:${String(ASSIGNMENT_ID||'local')}`;
+  const DONE_FLAG_KEY = `carissa_g4_typing_assessment_submitted_v1:${String(ASSIGNMENT_ID||'local')}`;
+
+  function safeRead(){
+    try{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }catch(_e){ return {}; }
+  }
+  function safeWrite(obj){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(obj || {})); }catch(_e){}
+  }
+  function clearAttempt(){
+    try{ localStorage.removeItem(STORAGE_KEY); }catch(_e){}
+    try{ localStorage.removeItem(DONE_FLAG_KEY); }catch(_e){}
+  }
+
+  function enc(u){ return encodeURIComponent(u); }
+
+  function buildStepUrls(){
+    const base = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/');
+    const assessmentReturn = base + 'grade4-typing-assessment.html' + (ASSIGNMENT_ID ? `?assignment_id=${enc(ASSIGNMENT_ID)}&done=1` : `?done=1`);
+
+    const step4 = base + 'typerix-game.html'
+      + `?assessment=1&step=typerix&difficulty=easy&grade=4`
+      + (ASSIGNMENT_ID ? `&assignment_id=${enc(ASSIGNMENT_ID)}` : '')
+      + `&next=${enc(assessmentReturn)}`;
+
+    const step3 = base + 'typing-striker-v2.html'
+      + `?assessment=1&step=striker&difficulty=easy&grade=4`
+      + (ASSIGNMENT_ID ? `&assignment_id=${enc(ASSIGNMENT_ID)}` : '')
+      + `&next=${enc(step4)}`;
+
+    const step2 = base + 'typing-speed-quest.html'
+      + `?assessment=1&step=sentences&grade=4&activity=sentences&autostart=1`
+      + (ASSIGNMENT_ID ? `&assignment_id=${enc(ASSIGNMENT_ID)}` : '')
+      + `&next=${enc(step3)}`;
+
+    const step1 = base + 'typing-speed-quest.html'
+      + `?assessment=1&step=words&grade=4&activity=words&autostart=1`
+      + (ASSIGNMENT_ID ? `&assignment_id=${enc(ASSIGNMENT_ID)}` : '')
+      + `&next=${enc(step2)}`;
+
+    return { step1, step2, step3, step4, assessmentReturn };
+  }
+
+  function starsFor(avgWpm, avgAcc){
+    const targetWpm = 16;
+    let stars = 1;
+    if(avgAcc >= 90) stars++;
+    if(avgWpm >= targetWpm) stars++;
+    return Math.max(1, Math.min(3, stars));
+  }
+
+  function sendFinalToTeacher(final){
+    const payload = {
+      type: 'typing_speed_result',
+      assignment_id: ASSIGNMENT_ID,
+      wpm: final.avgWpm,
+      accuracy: final.avgAcc,
+      // Tell the learner dashboard to calculate score using BOTH WPM + accuracy.
+      score_mode: 'wpm_accuracy_avg',
+      target_wpm: 16,
+      typed_chars: final.totalChars,
+      errors: final.totalErrors,
+      duration_sec: final.totalSec,
+      activity_title: 'Grade 4 Typing Assessment (Average)',
+      stars: final.stars,
+      grade: 4,
+      time_label: `${final.totalSec}s`,
+      result_summary: final.summary
+    };
+    try{
+      if(window.opener){
+        window.opener.postMessage(payload, window.location.origin);
+      }
+    }catch(_e){}
+    try{
+      localStorage.setItem('typing_speed_result_pending', JSON.stringify(payload));
+    }catch(_e){}
+  }
+
+  function setBox(kind, html){
+    const el = document.getElementById('msg');
+    if(!html){ el.innerHTML=''; return; }
+    el.innerHTML = `<div class="${kind}">${html}</div>`;
+  }
+
+  function showThankYou(final){
+    document.getElementById('startBtn').style.display = 'none';
+    const closeBtn = document.getElementById('closeBtn');
+    closeBtn.style.display = 'block';
+    closeBtn.onclick = ()=>{ try{ window.close(); }catch(_e){} };
+
+    setBox('thanks', `
+      <h2>Thank you!</h2>
+      <p>You have completed today’s typing assessment.</p>
+      <p style="margin-top:10px;font-weight:900">Average: ${final.avgWpm} WPM · ${final.avgAcc}% Accuracy</p>
+      <p style="margin-top:8px;font-weight:900;opacity:.95">Your mark has been sent to the teacher.</p>
+    `);
+  }
+
+  function computeFinal(){
+    const data = safeRead();
+    const steps = ['words','sentences','striker','typerix'];
+    const missing = steps.filter(s => !data[s] || !Number.isFinite(Number(data[s].wpm)) || !Number.isFinite(Number(data[s].accuracy)));
+    if(missing.length){
+      return { ok:false, error:`Missing results for: ${missing.join(', ')}` };
+    }
+    const avgWpm = Math.round(steps.reduce((sum,s)=>sum + Number(data[s].wpm||0),0)/steps.length);
+    const avgAcc = Math.round(steps.reduce((sum,s)=>sum + Number(data[s].accuracy||0),0)/steps.length);
+    const totalSec = steps.reduce((sum,s)=>sum + Number(data[s].duration_sec||0),0);
+    const totalErrors = steps.reduce((sum,s)=>sum + Number(data[s].errors||0),0);
+    const totalChars = steps.reduce((sum,s)=>sum + Number(data[s].typed_chars||0),0);
+    const stars = starsFor(avgWpm, avgAcc);
+    const summary =
+      `Grade 4 Typing Assessment (Average) — Avg WPM: ${avgWpm}, Avg Accuracy: ${avgAcc}%, Stars: ${stars}/3. ` +
+      `Breakdown: Word Sprouts ${data.words.wpm}wpm/${data.words.accuracy}%, ` +
+      `Sentence Seeds ${data.sentences.wpm}wpm/${data.sentences.accuracy}%, ` +
+      `Typing Striker (Easy) ${data.striker.wpm}wpm/${data.striker.accuracy}%, ` +
+      `Typerix (Easy) ${data.typerix.wpm}wpm/${data.typerix.accuracy}%.`;
+
+    return { ok:true, avgWpm, avgAcc, totalSec, totalErrors, totalChars, stars, summary };
+  }
+
+  // If we're returning after the last step, submit and thank the learner.
+  const done = String(qs.get('done')||'') === '1';
+  if(done){
+    const final = computeFinal();
+    if(!final.ok){
+      setBox('err', `Could not finalise your assessment yet. ${final.error}<br/><br/>Please ask your teacher for help.`);
+    }else{
+      sendFinalToTeacher(final);
+      try{ localStorage.setItem(DONE_FLAG_KEY, String(Date.now())); }catch(_e){}
+      showThankYou(final);
+    }
+  }
+
+  async function checkServerAttemptLock(){
+    if(!ASSIGNMENT_ID || done) return;
+    try{
+      const res = await fetch('/api/learner-results/me', { credentials: 'include' });
+      if(!res.ok) return;
+      const data = await res.json();
+      const rows = Array.isArray(data?.results) ? data.results : [];
+      const existing = rows.find(r=>String(r.assignment_id)===String(ASSIGNMENT_ID));
+      const completed = existing && String(existing.result_status||'').toLowerCase()==='completed';
+      if(completed){
+        document.getElementById('startBtn').style.display = 'none';
+        setBox('err', 'You have already completed this assessment.<br/><br/>If you need another try, please ask your teacher to reset your mark.');
+      }
+    }catch(_e){}
+  }
+  checkServerAttemptLock();
+
+  document.getElementById('startBtn').onclick = ()=>{
+    if(!ASSIGNMENT_ID){
+      setBox('err', 'This assessment must be opened from the Learner Dashboard so the teacher can receive your mark.');
+      return;
+    }
+    // Clear any previous attempt data before starting (teacher reset support).
+    clearAttempt();
+    safeWrite({});
+    const { step1 } = buildStepUrls();
+    location.href = step1;
+  };
+</script>
+</body>
+</html>

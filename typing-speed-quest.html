@@ -337,6 +337,11 @@ const CONTENT = {
 /* ============ STATE ============ */
 const qs = new URLSearchParams(location.search);
 const CONTEXT_KEY = "carissa_active_assignment_context_v1";
+const ASSESSMENT_MODE = String(qs.get("assessment") || "") === "1";
+const ASSESSMENT_STEP = String(qs.get("step") || qs.get("activity") || "").trim();
+const AUTO_ACTIVITY = String(qs.get("activity") || "").trim();
+const AUTO_START = String(qs.get("autostart") || "") === "1";
+const NEXT_URL = qs.get("next") ? String(qs.get("next")) : "";
 function getAssignmentId(){
   const fromQs = qs.get("assignment_id");
   if(fromQs) return String(fromQs);
@@ -532,6 +537,34 @@ function finish(){
   const spans=document.querySelectorAll("#stars span");
   spans.forEach(s=>s.classList.remove("on"));
   for(let i=0;i<stars;i++) setTimeout(()=>{spans[i].classList.add("on"); sndStar(i);}, 400+i*450);
+  if(ASSESSMENT_MODE){
+    try{
+      // Store step result so the assessment controller can compute averages.
+      const key = `carissa_g4_typing_assessment_v1:${String(ASSIGNMENT_ID||'local')}`;
+      const existing = JSON.parse(localStorage.getItem(key) || "{}");
+      existing[ASSESSMENT_STEP || state.activity || "step"] = {
+        wpm: w,
+        accuracy: a,
+        duration_sec: state.lastResult.duration_sec,
+        errors: state.lastResult.errors,
+        typed_chars: state.lastResult.typed_chars,
+        activity_title: state.lastResult.activity_title,
+        stars
+      };
+      localStorage.setItem(key, JSON.stringify(existing));
+    }catch(_e){}
+    // Hide teacher-send UI in assessment mode; the controller sends the final average.
+    try{ $("#sendWrap").style.display = "none"; }catch(_e){}
+    try{
+      const rbtns = document.querySelector(".rbtns");
+      if(rbtns) rbtns.style.display = "none";
+    }catch(_e){}
+    // Move on immediately.
+    if(NEXT_URL){
+      setTimeout(()=>{ try{ location.href = decodeURIComponent(NEXT_URL); }catch(_e){ location.href = NEXT_URL; } }, 900);
+    }
+    return;
+  }
   if(OPENED_FROM_TRACKER){
     $("#sendWrap").style.display = "block";
     $("#sendStatus").textContent = "Sending result back to the learner portal...";
@@ -683,6 +716,10 @@ if(AUTO_GRADE && GRADES[AUTO_GRADE]){
   state.grade = AUTO_GRADE;
   renderActivities();
   show("#screen-activities");
+}
+if((AUTO_GRADE && GRADES[AUTO_GRADE]) && AUTO_ACTIVITY && ACT_META[AUTO_ACTIVITY]){
+  state.activity = AUTO_ACTIVITY;
+  if(AUTO_START) setTimeout(()=>startGame(true), 200);
 }
 </script>
 </body>

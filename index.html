@@ -178,6 +178,17 @@ const BUILTIN_LEARNWORLD_RESOURCES = [
     builtin:true
   },
   {
+    id:'builtin-grade4-typing-assessment',
+    title:'Grade 4 Typing Assessment',
+    type:'link',
+    url:'./grade4-typing-assessment.html',
+    subject:'Typing',
+    grade_range:'Grade 4',
+    description:'4-in-1 assessment: Word Sprouts + Sentence Seeds + Typing Striker (Easy) + Typerix (Easy). Sends the final average automatically.',
+    uploaded_by:'System',
+    builtin:true
+  },
+  {
     id:'builtin-word-builder-intermediate',
     title:'Intermediate Word Builder',
     type:'link',
@@ -1149,6 +1160,69 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
     return true;
   });
 
+  const grade4Classes = useMemo(
+    ()=> CLASS_NAMES.filter(c=>/^Grade\s*4(\b|\.)/i.test(String(c||''))),
+    []
+  );
+
+  const bulkAssignGrade4TypingAssessment = async () => {
+    if(busy) return;
+    const grade4Count = grade4Classes.length;
+    if(!grade4Count){ alert('No Grade 4 classes were found.'); return; }
+    if(!confirm(`Assign "Grade 4 Typing Assessment" to ALL learners across ${grade4Count} Grade 4 class(es)?\n\nThis will NOT remove any existing activities.`)) return;
+    setBusy(true);
+    setBusyLabel('Preparing Grade 4 assessment...');
+    try{
+      const resourceId = await resolveBuiltInResourceId('builtin-grade4-typing-assessment', resources);
+      let inserted = 0;
+      let skipped = 0;
+      const chunkSize = 120;
+      for(const cls of grade4Classes){
+        const learners = (CLASS_DATA[cls] || []).map(l=>({surname:l.surname, firstname:l.firstname}));
+        if(!learners.length) continue;
+
+        // Skip learners who already have this assessment assigned (additive only).
+        let existingSet = new Set();
+        try{
+          const q = `class_name=eq.${encodeURIComponent(cls)}&resource_id=eq.${encodeURIComponent(resourceId)}&select=surname,firstname&limit=20000`;
+          const existing = await db.get('carissa_resource_assignments', q);
+          (Array.isArray(existing) ? existing : []).forEach(r=>{
+            const k = `${String(r.surname||'').trim().toLowerCase()}|${String(r.firstname||'').trim().toLowerCase()}`;
+            existingSet.add(k);
+          });
+        }catch(_e){}
+
+        const targets = learners.filter(l=>{
+          const k = `${String(l.surname||'').trim().toLowerCase()}|${String(l.firstname||'').trim().toLowerCase()}`;
+          return !existingSet.has(k);
+        });
+        skipped += Math.max(0, learners.length - targets.length);
+        if(!targets.length) continue;
+
+        setBusyLabel(`Assigning Grade 4 assessment in ${cls}...`);
+        const base = {
+          resource_id: resourceId,
+          class_name: cls,
+          assign_type: 'class',
+          assigned_by: 'Admin',
+          due_date: null,
+          notes: 'Grade 4 Typing Assessment (auto-assigned)'
+        };
+        for(let i=0; i<targets.length; i+=chunkSize){
+          const chunk = targets.slice(i, i + chunkSize);
+          const payload = chunk.map(t=>({...base, surname:t.surname, firstname:t.firstname}));
+          await db.post('carissa_resource_assignments', payload, 'return=minimal');
+          inserted += chunk.length;
+        }
+      }
+      showMsg(`✓ Grade 4 Typing Assessment assigned to ${inserted} learner(s).${skipped?` (Skipped ${skipped} already assigned)`:''}`);
+    }catch(e){
+      alert('Error: '+e.message);
+    }
+    setBusy(false);
+    setBusyLabel('');
+  };
+
   const handleAssign = async () => {
     const isAllClasses = form.assign_type==='interventions_all' || form.assign_type==='classlist_all';
     if(!form.resource_id || (!isAllClasses && !form.class_name)){
@@ -1271,6 +1345,14 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
       {msg && <div style={succ}>{msg}</div>}
       <div style={card}>
         <h3 style={ctitle}>Assign Activity to Learners</h3>
+        <div style={{display:'flex',gap:'8px',flexWrap:'wrap',margin:'-4px 0 12px'}}>
+          <button type="button" style={{...sbtn,background:'#2563eb'}} disabled={busy} onClick={bulkAssignGrade4TypingAssessment}>
+            ⚡ Assign Grade 4 Typing Assessment (All Grade 4 classes)
+          </button>
+          <span style={{fontSize:'12px',color:'#64748b',alignSelf:'center'}}>
+            This adds the assessment; it does not remove any existing learner activities.
+          </span>
+        </div>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:'12px',marginBottom:'12px'}}>
           <div>
             <label style={lbl}>Resource / Activity *</label>
@@ -6669,7 +6751,7 @@ function LearnerPortalView(){
         const d = ev.data || {};
         if(!TRACKED_ACTIVITY_RESULT_TYPES.includes(String(d.type||''))) return;
         if(!d.assignment_id) return;
-        submitTypingGameResult(d.assignment_id, d.wpm, d.accuracy, d.typed_chars, d.errors, d.duration_sec, d.activity_title, d.stars, d.time_label, d.result_summary);
+        submitTypingGameResult(d.assignment_id, d.wpm, d.accuracy, d.typed_chars, d.errors, d.duration_sec, d.activity_title, d.stars, d.time_label, d.result_summary, d.score_mode, d.target_wpm);
       }catch(e){}
     };
     const storageHandler = (ev)=>{
@@ -6679,7 +6761,7 @@ function LearnerPortalView(){
         const d = JSON.parse(ev.newValue);
         if(!d || !TRACKED_ACTIVITY_RESULT_TYPES.includes(String(d.type||''))) return;
         TRACKED_ACTIVITY_STORAGE_KEYS.forEach(k=>localStorage.removeItem(k));
-        submitTypingGameResult(d.assignment_id, d.wpm, d.accuracy, d.typed_chars, d.errors, d.duration_sec, d.activity_title, d.stars, d.time_label, d.result_summary);
+        submitTypingGameResult(d.assignment_id, d.wpm, d.accuracy, d.typed_chars, d.errors, d.duration_sec, d.activity_title, d.stars, d.time_label, d.result_summary, d.score_mode, d.target_wpm);
       }catch(e){}
     };
     window.addEventListener('message', handler);
@@ -6842,7 +6924,7 @@ function LearnerPortalView(){
     }
   };
 
-  const submitTypingGameResult = async(assignmentId, wpm, accuracy, typedChars, errors, durationSec, activityTitle, stars, timeLabel, resultSummary)=>{
+  const submitTypingGameResult = async(assignmentId, wpm, accuracy, typedChars, errors, durationSec, activityTitle, stars, timeLabel, resultSummary, scoreMode, targetWpm)=>{
     if(!learnerAuth) return;
     const assignment = assignments.find(a=>String(a.id)===String(assignmentId));
     if(!assignment) return;
@@ -6851,16 +6933,22 @@ function LearnerPortalView(){
       const existing = resultByAssignment.get(assignment.id);
       const acc = Math.max(0, Math.min(100, Number(accuracy||0)));
       const w = Math.max(0, Number(wpm||0));
+      const mode = String(scoreMode || '').trim().toLowerCase();
+      const target = Math.max(1, Number(targetWpm||0) || 16);
+      const wpmPct = Math.max(0, Math.min(100, Math.round((w / target) * 100)));
+      const computedScore = mode === 'wpm_accuracy_avg'
+        ? Math.round((acc + wpmPct) / 2)
+        : Math.round(acc);
       const activityLabel = activityTitle || 'Typing Speed Quest';
       const timeText = timeLabel || `${Number(durationSec||0)}s`;
       const starText = Number(stars||0) > 0 ? `, Stars: ${Number(stars)}/3` : '';
       const summary = String(resultSummary || '').trim();
       const payload = {
         assignment_id: assignment.id,
-        score: Math.round(acc),
+        score: computedScore,
         max_score: 100,
         result_status: 'completed',
-        learner_notes: summary || `${activityLabel} — WPM: ${Math.round(w)}, Accuracy: ${Math.round(acc)}%, Errors: ${Number(errors||0)}, Chars: ${Number(typedChars||0)}, Time: ${timeText}${starText}`,
+        learner_notes: summary || `${activityLabel} — WPM: ${Math.round(w)}, Accuracy: ${Math.round(acc)}%,${mode==='wpm_accuracy_avg'?` WPM Score: ${wpmPct}%, Final Score: ${computedScore}%.`:''} Errors: ${Number(errors||0)}, Chars: ${Number(typedChars||0)}, Time: ${timeText}${starText}`,
         submitted_at: new Date().toISOString(),
       };
       const data = await apiRequest('/learner-results/upsert', {method:'POST', body: payload});

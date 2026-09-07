@@ -589,6 +589,38 @@ async function handleLearnerResultUpsert(request, env, corsOrigin) {
     limit: "1",
   });
   const existing = Array.isArray(existingRows) ? existingRows[0] : null;
+
+  // One-attempt enforcement (assessments only):
+  // For assessment-style activities we block re-submission after completion; the only way to allow
+  // another try is for the teacher to reset the mark (deletes result + sets assignment to assigned).
+  if (existing?.id && String(existing.result_status || "").trim().toLowerCase() === "completed") {
+    let isAssessment = false;
+    try {
+      const resourceId = assignment.resource_id || null;
+      if (resourceId != null) {
+        const resourceRows = await supabaseGet(env, "carissa_resources", {
+          id: `eq.${resourceId}`,
+          select: "title,url",
+          limit: "1",
+        });
+        const resource = Array.isArray(resourceRows) ? resourceRows[0] : null;
+        const t = String(resource?.title || "").toLowerCase();
+        const u = String(resource?.url || "").toLowerCase();
+        isAssessment = t.includes("assessment") || u.includes("assessment");
+      }
+    } catch (_e) {}
+    if (isAssessment) {
+      return jsonResponse(
+        {
+          error:
+            "This assessment has already been submitted. If you need another try, please ask your teacher to reset your mark.",
+        },
+        409,
+        corsOrigin
+      );
+    }
+  }
+
   let savedRows;
   if (existing?.id) {
     savedRows = await supabasePatch(env, "carissa_learner_activity_results", { id: `eq.${existing.id}` }, payload);
