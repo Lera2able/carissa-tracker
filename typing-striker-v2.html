@@ -1326,7 +1326,9 @@ function endGame() {
     }catch(_e){}
     document.getElementById('send-wrap').style.display = 'none';
     if (NEXT_URL) {
-      setTimeout(()=>{ try{ location.href = decodeURIComponent(NEXT_URL); }catch(_e){ location.href = NEXT_URL; } }, 900);
+      // IMPORTANT: `NEXT_URL` is already decoded by URLSearchParams and may contain nested
+      // percent-encoded query strings (e.g. a `next=` inside the next step). Do NOT decode again.
+      setTimeout(()=>{ location.href = NEXT_URL; }, 900);
     }
   } else {
     document.getElementById('send-wrap').style.display = OPENED_FROM_TRACKER ? 'block' : 'none';
