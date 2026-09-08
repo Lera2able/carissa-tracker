@@ -4204,6 +4204,7 @@ function SasamsAdminSubmissionsTab({adminUser}){
   const [criteria,setCriteria] = useState([]);
   const [marks,setMarks] = useState([]);
   const [statusFilter,setStatusFilter] = useState('SUBMITTED');
+  const [hodFilter,setHodFilter] = useState('ALL');
   const [search,setSearch] = useState('');
   const [loading,setLoading] = useState(true);
   const [detailLoading,setDetailLoading] = useState(false);
@@ -4245,11 +4246,32 @@ function SasamsAdminSubmissionsTab({adminUser}){
     return map;
   },[subjects]);
 
+  const hodOptions = useMemo(()=>{
+    const set = new Set();
+    (batches||[]).forEach(row=>{
+      const hod = String(row?.hod_name || '').trim().toLowerCase();
+      if(hod) set.add(hod);
+    });
+    return Array.from(set).sort((a,b)=>a.localeCompare(b));
+  },[batches]);
+
+  useEffect(()=>{
+    // Default HOD filter to the current admin email if it matches any "sent to" HOD value.
+    const email = String(adminUser?.email || '').trim().toLowerCase();
+    if(!email) return;
+    if(hodFilter !== 'ALL') return;
+    if(hodOptions.includes(email)){
+      setHodFilter(email);
+    }
+  },[adminUser?.email, hodOptions.join('|')]);
+
   const filteredBatches = useMemo(()=>{
     const q = String(search || '').trim().toLowerCase();
     return (batches||[]).filter(row=>{
       const statusOk = statusFilter === 'ALL' ? true : String(row.status || '').toUpperCase() === statusFilter;
       if(!statusOk) return false;
+      const hodOk = hodFilter === 'ALL' ? true : String(row.hod_name || '').trim().toLowerCase() === hodFilter;
+      if(!hodOk) return false;
       if(!q) return true;
       const subjectName = subjectMap[String(row.official_subject_id)]?.name_english || '';
       const hay = [
@@ -4257,11 +4279,12 @@ function SasamsAdminSubmissionsTab({adminUser}){
         row.teacher_name,
         row.teacher_email,
         subjectName,
-        row.status
+        row.status,
+        row.hod_name
       ].join(' ').toLowerCase();
       return hay.includes(q);
     });
-  },[batches, search, statusFilter, subjectMap]);
+  },[batches, search, statusFilter, hodFilter, subjectMap]);
 
   const selectedBatch = useMemo(()=>{
     return (batches||[]).find(row=>String(row.id)===String(selectedBatchId)) || null;
@@ -4646,11 +4669,12 @@ function SasamsAdminSubmissionsTab({adminUser}){
       const now = new Date().toISOString();
       const reviewerName = `${adminUser?.first_name || ''} ${adminUser?.surname || ''}`.trim() || adminUser?.email || 'Admin';
       const trimmedReviewNote = String(reviewNote || '').trim();
+      const noteHeader = `Reviewed by: ${reviewerName} • ${new Date().toLocaleString('en-ZA')}`;
+      const finalNote = trimmedReviewNote ? `${noteHeader}\n\n${trimmedReviewNote}` : noteHeader;
       const patchPayload = {
         status:nextStatus,
         updated_at:now,
-        hod_name: reviewerName,
-        hod_note: trimmedReviewNote
+        hod_note: finalNote
       };
       if(nextStatus === 'APPROVED'){
         patchPayload.approved_at = now;
@@ -4706,6 +4730,15 @@ function SasamsAdminSubmissionsTab({adminUser}){
           </select>
         </div>
         <div>
+          <label style={lbl}>HOD filter</label>
+          <select style={inp} value={hodFilter} onChange={e=>setHodFilter(e.target.value)}>
+            <option value="ALL">All HODs</option>
+            {hodOptions.map(h=>(
+              <option key={h} value={h}>{h}</option>
+            ))}
+          </select>
+        </div>
+        <div>
           <label style={lbl}>Search</label>
           <input style={inp} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Class, subject, teacher..." />
         </div>
@@ -4752,7 +4785,9 @@ function SasamsAdminSubmissionsTab({adminUser}){
                     </span>
                   </div>
                   <div style={{fontSize:'13px',color:'#334155',marginBottom:'3px'}}>{subjectName}</div>
-                  <div style={{fontSize:'12px',color:'#64748b'}}>{row.teacher_name || row.teacher_email || 'Teacher'} • Term {row.term_no} • {row.academic_year}</div>
+                  <div style={{fontSize:'12px',color:'#64748b'}}>
+                    {row.teacher_name || row.teacher_email || 'Teacher'} • Term {row.term_no} • {row.academic_year} • To {row.hod_name || '—'}
+                  </div>
                 </button>
               );
             }) : (
@@ -4774,6 +4809,7 @@ function SasamsAdminSubmissionsTab({adminUser}){
                     <div style={{fontSize:'20px',fontWeight:900,color:'#111827',marginBottom:'4px'}}>{selectedBatch.class_name} • {activeSubject?.name_english || `Subject ${selectedBatch.official_subject_id}`}</div>
                     <div style={{fontSize:'13px',color:'#64748b',lineHeight:1.55}}>
                       Teacher: <strong>{selectedBatch.teacher_name || selectedBatch.teacher_email || 'Teacher'}</strong><br/>
+                      Sent to HOD: <strong>{selectedBatch.hod_name || '—'}</strong><br/>
                       Term {selectedBatch.term_no} • {selectedBatch.academic_year} • Submitted {selectedBatch.submitted_at ? new Date(selectedBatch.submitted_at).toLocaleString('en-ZA') : 'Not yet submitted'}
                     </div>
                   </div>
@@ -8683,6 +8719,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
             <TeacherSasamsMarksTab
               teacherAuth={teacherAuth}
               selClass={selClass}
+              sharedAdminEmails={sharedAdminEmails}
               showMsg={showMsg}
               onOpenLearnerReports={()=>setTab('sasams_reports')}
               onAudit={(evt)=>logTeacherAudit(evt, selClass)}
@@ -8872,7 +8909,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
   );
 }
 
-function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit, onOpenLearnerReports }){
+function TeacherSasamsMarksTab({ teacherAuth, selClass, sharedAdminEmails, showMsg, onAudit, onOpenLearnerReports }){
   const sasamsPatchVersion = '26.1.1';
   const academicYear = new Date().getFullYear();
   const teacherEmail = String(teacherAuth?.email || '').trim().toLowerCase();
@@ -8897,6 +8934,55 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit, onOpen
   const [teacherCanScrollRight,setTeacherCanScrollRight] = useState(false);
   const [showLearnerReports,setShowLearnerReports] = useState(false);
   const [learnerComments,setLearnerComments] = useState({});
+
+  // HOD routing (uses the admin access list as the HOD list)
+  const hodEmails = useMemo(()=>{
+    return (Array.isArray(sharedAdminEmails) ? sharedAdminEmails : [])
+      .map(v=>String(v||'').trim().toLowerCase())
+      .filter(Boolean);
+  },[sharedAdminEmails]);
+  const [selectedHodEmail,setSelectedHodEmail] = useState('');
+  const [hodNameMap,setHodNameMap] = useState({});
+
+  useEffect(()=>{
+    if(selectedHodEmail) return;
+    if(!hodEmails.length) return;
+    setSelectedHodEmail(hodEmails[0]);
+  },[hodEmails.join('|')]);
+
+  useEffect(()=>{
+    let alive = true;
+    if(!hodEmails.length){
+      setHodNameMap({});
+      return;
+    }
+    (async()=>{
+      try{
+        // Fetch names for display in the dropdown.
+        const qs = `select=email,first_name,surname&email=in.(${hodEmails.map(e=>encodeURIComponent(e)).join(',')})`;
+        const rows = await db.get('carissa_teacher_registrations', qs).catch(()=>[]);
+        if(!alive) return;
+        const map = {};
+        (rows||[]).forEach(r=>{
+          const em = String(r.email||'').trim().toLowerCase();
+          const nm = `${r.first_name||''} ${r.surname||''}`.trim();
+          if(em) map[em] = nm || em;
+        });
+        setHodNameMap(map);
+      }catch(_e){
+        if(!alive) return;
+        setHodNameMap({});
+      }
+    })();
+    return ()=>{ alive = false; };
+  },[hodEmails.join('|')]);
+
+  const hodOptions = useMemo(()=>{
+    return hodEmails.map(email=>({
+      email,
+      label: hodNameMap[email] ? `${hodNameMap[email]} (${email})` : email
+    }));
+  },[hodEmails, hodNameMap]);
 
   const clearSaveTimer = (key)=>{
     if(saveTimersRef.current[key]){
@@ -9687,6 +9773,10 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit, onOpen
       showMsg('This batch has already been submitted for admin review.');
       return;
     }
+    if(!selectedHodEmail){
+      showMsg('Please select the correct HOD to send this submission to.');
+      return;
+    }
     if(!criteria.length){
       showMsg('Load the SASAMS criteria first before submitting.');
       return;
@@ -9708,13 +9798,13 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit, onOpen
       const rows = await db.patch(
         'carissa_sasams_batches',
         `id=eq.${savedBatch.id}`,
-        {status:'SUBMITTED', submitted_at:now, updated_at:now}
+        {status:'SUBMITTED', submitted_at:now, updated_at:now, hod_name:selectedHodEmail}
       );
       await db.patch('carissa_sasams_marks', `batch_id=eq.${savedBatch.id}`, {status:'SUBMITTED', updated_at:now});
       const updated = Array.isArray(rows) ? rows[0] : rows;
       setBatch(updated || {...savedBatch,status:'SUBMITTED',submitted_at:now,updated_at:now});
-      setStatus('Submitted for admin review.');
-      showMsg('✓ SASAMS marks submitted for admin review.');
+      setStatus(`Submitted to HOD: ${selectedHodEmail}`);
+      showMsg(`✓ SASAMS marks submitted to the selected HOD: ${selectedHodEmail}`);
       onAudit && onAudit('sasams_submit_admin');
     }catch(err){
       setStatus(sasamsFriendlyError(err, 'Could not submit this batch for admin review.'));
@@ -9755,6 +9845,25 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, showMsg, onAudit, onOpen
               </option>
             ))}
           </select>
+        </div>
+        <div>
+          <label style={lbl}>Send to HOD</label>
+          <select
+            style={inp}
+            value={selectedHodEmail}
+            onChange={e=>setSelectedHodEmail(e.target.value)}
+            disabled={isLocked || !hodOptions.length}
+          >
+            {!hodOptions.length
+              ? <option value="">No HODs available</option>
+              : hodOptions.map(opt=>(
+                  <option key={opt.email} value={opt.email}>{opt.label}</option>
+                ))
+            }
+          </select>
+          <div style={{fontSize:'11px',color:'#64748b',marginTop:'6px',lineHeight:1.4}}>
+            Choose the correct HOD before submitting marks for review.
+          </div>
         </div>
         <div style={{display:'flex',flexDirection:'column',justifyContent:'flex-end'}}>
           <div style={{fontSize:'12px',fontWeight:800,color:'#334155',marginBottom:'6px'}}>Completeness</div>
