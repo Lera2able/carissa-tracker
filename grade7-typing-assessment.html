@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Grade 5 Typing Assessment — LearnWorld</title>
+  <title>Grade 7 Typing Assessment — LearnWorld</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
@@ -27,7 +27,7 @@
       border:2px solid rgba(21,122,140,.10);
     }
     .hero{
-      background:linear-gradient(135deg,#7c3aed,#0ea5e9);
+      background:linear-gradient(135deg,#ef4444,#7c3aed);
       color:#fff;border:none;
     }
     .hero h1{font-size:clamp(22px,3.6vw,32px);line-height:1.05}
@@ -76,16 +76,16 @@
 <body>
   <div class="wrap">
     <div class="card hero">
-      <h1>Grade 5 Typing Assessment</h1>
-      <p>4 activities · 1 try · Marks send automatically</p>
-      <div class="pill">✅ Typing Quest (Grade 5) → ✅ Type a Balloon (Easy) → ✅ Typing Striker (Easy) → ✅ Typerix (Easy)</div>
+      <h1>Grade 7 Typing Assessment</h1>
+      <p>4 activities + bonus · 1 try · Marks send automatically</p>
+      <div class="pill">✅ Typing Quest (Paragraphs) → ✅ Type a Balloon (Easy) → ✅ Typing Striker (Easy) → ✅ Typerix (Easy) → ⭐ Bonus: Word Builder (Intermediate)</div>
     </div>
 
     <div class="card" style="margin-top:14px">
       <div class="grid">
         <div class="step">
-          <div><span class="n" style="background:#9B7EDE">1</span><span class="t">Typing Quest</span></div>
-          <div class="d">Sentence Seeds (Grade 5)</div>
+          <div><span class="n" style="background:#7c3aed">1</span><span class="t">Typing Quest</span></div>
+          <div class="d">Paragraph Path (Grade 7)</div>
         </div>
         <div class="step">
           <div><span class="n" style="background:#F97316">2</span><span class="t">Type a Balloon</span></div>
@@ -98,6 +98,10 @@
         <div class="step">
           <div><span class="n" style="background:#3BB273">4</span><span class="t">Typerix</span></div>
           <div class="d">Easy mode</div>
+        </div>
+        <div class="step">
+          <div><span class="n" style="background:#0ea5e9">5</span><span class="t">Word Builder</span></div>
+          <div class="d">Bonus round (Intermediate)</div>
         </div>
       </div>
 
@@ -131,7 +135,7 @@
   }
 
   const ASSIGNMENT_ID = getAssignmentId();
-  const ASSESSMENT_KEY = String(qs.get('akey') || 'carissa_g5_typing_assessment_v1').trim();
+  const ASSESSMENT_KEY = String(qs.get('akey') || 'carissa_g7_typing_assessment_v1').trim();
   const STORAGE_KEY = `${ASSESSMENT_KEY}:${String(ASSIGNMENT_ID||'local')}`;
   const DONE_FLAG_KEY = `${ASSESSMENT_KEY}:submitted:${String(ASSIGNMENT_ID||'local')}`;
   const REQUIRED_PIN = '112233';
@@ -147,35 +151,40 @@
   function enc(u){ return encodeURIComponent(u); }
   function buildStepUrls(){
     const base = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/');
-    const assessmentReturn = base + 'grade5-typing-assessment.html'
+    const assessmentReturn = base + 'grade7-typing-assessment.html'
       + (ASSIGNMENT_ID ? `?assignment_id=${enc(ASSIGNMENT_ID)}&done=1` : `?done=1`)
       + `&akey=${enc(ASSESSMENT_KEY)}`;
 
-    const step4 = base + 'typerix-game.html'
-      + `?assessment=1&step=typerix&difficulty=easy&grade=5&akey=${enc(ASSESSMENT_KEY)}`
+    const step5 = base + 'word-builder-intermediate.html'
+      + `?assessment=1&step=wordbuilder&mode=medium&autostart=1&grade=7&akey=${enc(ASSESSMENT_KEY)}`
       + (ASSIGNMENT_ID ? `&assignment_id=${enc(ASSIGNMENT_ID)}` : '')
       + `&next=${enc(assessmentReturn)}`;
 
+    const step4 = base + 'typerix-game.html'
+      + `?assessment=1&step=typerix&difficulty=easy&grade=7&akey=${enc(ASSESSMENT_KEY)}`
+      + (ASSIGNMENT_ID ? `&assignment_id=${enc(ASSIGNMENT_ID)}` : '')
+      + `&next=${enc(step5)}`;
+
     const step3 = base + 'typing-striker-v2.html'
-      + `?assessment=1&step=striker&difficulty=easy&grade=5&akey=${enc(ASSESSMENT_KEY)}`
+      + `?assessment=1&step=striker&difficulty=easy&grade=7&akey=${enc(ASSESSMENT_KEY)}`
       + (ASSIGNMENT_ID ? `&assignment_id=${enc(ASSIGNMENT_ID)}` : '')
       + `&next=${enc(step4)}`;
 
     const step2 = base + 'type-a-balloon.html'
-      + `?assessment=1&step=balloon&difficulty=easy&grade=5&autostart=1&akey=${enc(ASSESSMENT_KEY)}`
+      + `?assessment=1&step=balloon&difficulty=easy&grade=7&autostart=1&akey=${enc(ASSESSMENT_KEY)}`
       + (ASSIGNMENT_ID ? `&assignment_id=${enc(ASSIGNMENT_ID)}` : '')
       + `&next=${enc(step3)}`;
 
     const step1 = base + 'typing-speed-quest.html'
-      + `?assessment=1&step=sentences&grade=5&activity=sentences&autostart=1&akey=${enc(ASSESSMENT_KEY)}`
+      + `?assessment=1&step=paragraphs&grade=7&activity=paragraphs&autostart=1&akey=${enc(ASSESSMENT_KEY)}`
       + (ASSIGNMENT_ID ? `&assignment_id=${enc(ASSIGNMENT_ID)}` : '')
       + `&next=${enc(step2)}`;
 
-    return { step1, step2, step3, step4, assessmentReturn };
+    return { step1, step2, step3, step4, step5, assessmentReturn };
   }
 
   function starsFor(avgWpm, avgAcc){
-    const targetWpm = 20; // Grade 5 baseline
+    const targetWpm = 30; // Grade 7 baseline
     let stars = 1;
     if(avgAcc >= 90) stars++;
     if(avgWpm >= targetWpm) stars++;
@@ -189,13 +198,13 @@
       wpm: final.avgWpm,
       accuracy: final.avgAcc,
       score_mode: 'wpm_accuracy_avg',
-      target_wpm: 20,
+      target_wpm: 30,
       typed_chars: final.totalChars,
       errors: final.totalErrors,
       duration_sec: final.totalSec,
-      activity_title: 'Grade 5 Typing Assessment (Average)',
+      activity_title: 'Grade 7 Typing Assessment (Average)',
       stars: final.stars,
-      grade: 5,
+      grade: 7,
       time_label: `${final.totalSec}s`,
       result_summary: final.summary
     };
@@ -209,22 +218,6 @@
     const el = document.getElementById('msg');
     if(!html){ el.innerHTML=''; return; }
     el.innerHTML = `<div class="${kind}">${html}</div>`;
-  }
-
-  function ensurePin(){
-    if(sessionStorage.getItem(PIN_OK_KEY)==='1') return true;
-    const fromUrl = String(qs.get('pin') || '').trim();
-    if(fromUrl === REQUIRED_PIN){
-      try{ sessionStorage.setItem(PIN_OK_KEY,'1'); }catch(_e){}
-      return true;
-    }
-    const entered = prompt('Enter assessment PIN:');
-    if(String(entered||'').trim() === REQUIRED_PIN){
-      try{ sessionStorage.setItem(PIN_OK_KEY,'1'); }catch(_e){}
-      return true;
-    }
-    setBox('err','Incorrect PIN. Please ask your teacher for help.');
-    return false;
   }
 
   function showThankYou(final){
@@ -242,24 +235,47 @@
 
   function computeFinal(){
     const data = safeRead();
-    const steps = ['sentences','balloon','striker','typerix'];
-    const missing = steps.filter(s => !data[s] || !Number.isFinite(Number(data[s].wpm)) || !Number.isFinite(Number(data[s].accuracy)));
+    const mainSteps = ['paragraphs','balloon','striker','typerix'];
+    const missing = mainSteps.filter(s => !data[s] || !Number.isFinite(Number(data[s].wpm)) || !Number.isFinite(Number(data[s].accuracy)));
     if(missing.length){
       return { ok:false, error:`Missing results for: ${missing.join(', ')}` };
     }
-    const avgWpm = Math.round(steps.reduce((sum,s)=>sum + Number(data[s].wpm||0),0)/steps.length);
-    const avgAcc = Math.round(steps.reduce((sum,s)=>sum + Number(data[s].accuracy||0),0)/steps.length);
-    const totalSec = steps.reduce((sum,s)=>sum + Number(data[s].duration_sec||0),0);
-    const totalErrors = steps.reduce((sum,s)=>sum + Number(data[s].errors||0),0);
-    const totalChars = steps.reduce((sum,s)=>sum + Number(data[s].typed_chars||0),0);
+    const avgWpm = Math.round(mainSteps.reduce((sum,s)=>sum + Number(data[s].wpm||0),0)/mainSteps.length);
+    const avgAcc = Math.round(mainSteps.reduce((sum,s)=>sum + Number(data[s].accuracy||0),0)/mainSteps.length);
+    const totalSec = mainSteps.reduce((sum,s)=>sum + Number(data[s].duration_sec||0),0);
+    const totalErrors = mainSteps.reduce((sum,s)=>sum + Number(data[s].errors||0),0);
+    const totalChars = mainSteps.reduce((sum,s)=>sum + Number(data[s].typed_chars||0),0);
     const stars = starsFor(avgWpm, avgAcc);
+
+    const bonus = data.wordbuilder && Number.isFinite(Number(data.wordbuilder.wpm)) && Number.isFinite(Number(data.wordbuilder.accuracy))
+      ? ` Bonus: Word Builder ${data.wordbuilder.wpm}/100 · ${data.wordbuilder.accuracy}%`
+      : '';
+
     const summary =
-      `Grade 5 Typing Assessment (Average) — Avg WPM: ${avgWpm}, Avg Accuracy: ${avgAcc}%, Stars: ${stars}/3. ` +
-      `Breakdown: Sentence Seeds ${data.sentences.wpm}wpm/${data.sentences.accuracy}%, ` +
+      `Grade 7 Typing Assessment (Average) — Avg WPM: ${avgWpm}, Avg Accuracy: ${avgAcc}%, Stars: ${stars}/3. ` +
+      `Breakdown: Paragraph Path ${data.paragraphs.wpm}wpm/${data.paragraphs.accuracy}%, ` +
       `Type a Balloon (Easy) ${data.balloon.wpm}wpm/${data.balloon.accuracy}%, ` +
       `Typing Striker (Easy) ${data.striker.wpm}wpm/${data.striker.accuracy}%, ` +
-      `Typerix (Easy) ${data.typerix.wpm}wpm/${data.typerix.accuracy}%.`;
+      `Typerix (Easy) ${data.typerix.wpm}wpm/${data.typerix.accuracy}%.` +
+      bonus;
+
     return { ok:true, avgWpm, avgAcc, totalSec, totalErrors, totalChars, stars, summary };
+  }
+
+  function ensurePin(){
+    if(sessionStorage.getItem(PIN_OK_KEY)==='1') return true;
+    const fromUrl = String(qs.get('pin') || '').trim();
+    if(fromUrl === REQUIRED_PIN){
+      try{ sessionStorage.setItem(PIN_OK_KEY,'1'); }catch(_e){}
+      return true;
+    }
+    const entered = prompt('Enter assessment PIN:');
+    if(String(entered||'').trim() === REQUIRED_PIN){
+      try{ sessionStorage.setItem(PIN_OK_KEY,'1'); }catch(_e){}
+      return true;
+    }
+    setBox('err','Incorrect PIN. Please ask your teacher for help.');
+    return false;
   }
 
   const done = String(qs.get('done')||'') === '1';
@@ -305,3 +321,4 @@
 </script>
 </body>
 </html>
+

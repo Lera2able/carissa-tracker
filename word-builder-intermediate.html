@@ -211,8 +211,26 @@ footer{text-align:center;margin-top:34px;color:#8aa6ad;font-weight:700;font-size
 
 <script>
 const qs = new URLSearchParams(location.search);
-const ASSIGNMENT_ID = qs.get("assignment_id") || "";
+const CONTEXT_KEY = "carissa_active_assignment_context_v1";
+function getAssignmentId(){
+  const fromQs = qs.get("assignment_id");
+  if(fromQs) return String(fromQs);
+  try{
+    const ctx = JSON.parse(localStorage.getItem(CONTEXT_KEY) || "null");
+    if(ctx && ctx.assignment_id && (Date.now() - Number(ctx.ts || 0)) < 10*60*1000){
+      return String(ctx.assignment_id);
+    }
+  }catch(_e){}
+  return "";
+}
+const ASSIGNMENT_ID = getAssignmentId();
 const OPENED_FROM_TRACKER = !!ASSIGNMENT_ID;
+const ASSESSMENT_MODE = String(qs.get("assessment") || "") === "1";
+const ASSESSMENT_STEP = String(qs.get("step") || "wordbuilder").trim();
+const NEXT_URL = qs.get("next") ? String(qs.get("next")) : "";
+const ASSESSMENT_KEY = String(qs.get("akey") || "carissa_g4_typing_assessment_v1").trim();
+const AUTO_START = String(qs.get("autostart") || "") === "1";
+const AUTO_MODE = String(qs.get("mode") || "medium").trim().toLowerCase();
 const $ = s => document.querySelector(s);
 
 const WORD_SETS = {
@@ -489,6 +507,25 @@ function finish(){
     result_summary: `Intermediate Word Builder — 10 words / 60s, Score: ${score}/100, Accuracy: ${acc}%, Correct: ${state.correct}/${state.asked}, Level: ${state.level}, Lives left: ${state.lives}, Time: ${timeLabel}`
   };
 
+  // In assessment mode: store the result for the controller to include in its final summary,
+  // then auto-advance to the next step (the controller will send the final average).
+  if(ASSESSMENT_MODE){
+    try{
+      const key = `${ASSESSMENT_KEY}:${String(ASSIGNMENT_ID||'local')}`;
+      const existing = JSON.parse(localStorage.getItem(key) || "{}");
+      existing[ASSESSMENT_STEP || "wordbuilder"] = {
+        wpm: score, // treated as a "bonus score" by the controller (not used in WPM average)
+        accuracy: acc,
+        duration_sec: state.lastResult.duration_sec,
+        errors: state.lastResult.wrong,
+        typed_chars: state.lastResult.correct,
+        activity_title: "Intermediate Word Builder",
+        stars
+      };
+      localStorage.setItem(key, JSON.stringify(existing));
+    }catch(_e){}
+  }
+
   const bestKey = `carissa_word_builder_intermediate_${state.mode}`;
   const prev = JSON.parse(localStorage.getItem(bestKey) || 'null');
   if(!prev || score > prev.score || (score === prev.score && acc > prev.acc)){
@@ -498,7 +535,14 @@ function finish(){
   show('#screen-results');
   sndWin();
   launchConfetti();
-  if(OPENED_FROM_TRACKER){
+  if(ASSESSMENT_MODE){
+    $('#sendWrap').style.display = 'none';
+    if(NEXT_URL){
+      // IMPORTANT: `NEXT_URL` is already decoded by URLSearchParams and may contain nested
+      // percent-encoded query strings (e.g. a `next=` inside the next step). Do NOT decode again.
+      setTimeout(()=>{ location.href = NEXT_URL; }, 1100);
+    }
+  }else if(OPENED_FROM_TRACKER){
     $('#sendWrap').style.display = 'block';
     $('#sendStatus').textContent = 'Sending result back to the learner portal...';
     setTimeout(()=>sendToTeacher(false), 200);
@@ -614,6 +658,11 @@ window.addEventListener('resize', ()=>{ const c = $('#confetti'); c.width = inne
 $('#submitBtn').addEventListener('click', submitAnswer);
 $('#answerInput').addEventListener('keydown', e=>{ if(e.key === 'Enter') submitAnswer(); });
 renderModes();
+
+if(AUTO_START){
+  const mode = (AUTO_MODE === 'easy' || AUTO_MODE === 'hard' || AUTO_MODE === 'medium') ? AUTO_MODE : 'medium';
+  startMode(mode);
+}
 </script>
 </body>
 </html>

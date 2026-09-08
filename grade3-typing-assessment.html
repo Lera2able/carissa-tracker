@@ -135,6 +135,8 @@
   const ASSESSMENT_KEY = String(qs.get("akey") || "carissa_g3_typing_assessment_v1").trim();
   const STORAGE_KEY = `${ASSESSMENT_KEY}:${String(ASSIGNMENT_ID||'local')}`;
   const DONE_FLAG_KEY = `${ASSESSMENT_KEY}:submitted:${String(ASSIGNMENT_ID||'local')}`;
+  const REQUIRED_PIN = '112233';
+  const PIN_OK_KEY = `${ASSESSMENT_KEY}:pin_ok:${String(ASSIGNMENT_ID||'local')}`;
 
   function safeRead(){
     try{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }catch(_e){ return {}; }
@@ -219,6 +221,22 @@
     el.innerHTML = `<div class="${kind}">${html}</div>`;
   }
 
+  function ensurePin(){
+    if(sessionStorage.getItem(PIN_OK_KEY)==='1') return true;
+    const fromUrl = String(qs.get('pin') || '').trim();
+    if(fromUrl === REQUIRED_PIN){
+      try{ sessionStorage.setItem(PIN_OK_KEY,'1'); }catch(_e){}
+      return true;
+    }
+    const entered = prompt('Enter assessment PIN:');
+    if(String(entered||'').trim() === REQUIRED_PIN){
+      try{ sessionStorage.setItem(PIN_OK_KEY,'1'); }catch(_e){}
+      return true;
+    }
+    setBox('err','Incorrect PIN. Please ask your teacher for help.');
+    return false;
+  }
+
   function showThankYou(final){
     document.getElementById('startBtn').style.display = 'none';
     const closeBtn = document.getElementById('closeBtn');
@@ -291,6 +309,7 @@
       setBox('err', 'This assessment must be opened from the Learner Dashboard so the teacher can receive your mark.');
       return;
     }
+    if(!ensurePin()) return;
     clearAttempt();
     safeWrite({});
     const { step1 } = buildStepUrls();
@@ -299,4 +318,3 @@
 </script>
 </body>
 </html>
-
