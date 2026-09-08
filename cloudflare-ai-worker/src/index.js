@@ -901,6 +901,93 @@ async function requireAdminTeacher(request, env, corsOrigin) {
   return { ok: true, session };
 }
 
+async function handleLearnWorldPurgeRemovedGames(request, env, corsOrigin) {
+  const auth = await requireAdminTeacher(request, env, corsOrigin);
+  if (!auth.ok) return auth.res;
+
+  const DEFAULT_TITLES = [
+    "maths quest (grade 1)",
+    "blend detective (grade 1)",
+    "word maker (grade 1)",
+    "sight word safari (grade 1)",
+    "letter hunt (grade 1)",
+  ];
+
+  const body = await readJsonBody(request);
+  const titlesRaw = Array.isArray(body?.titles) ? body.titles : DEFAULT_TITLES;
+  const titles = [...new Set(titlesRaw.map((t) => String(t || "").trim().toLowerCase()).filter(Boolean))];
+  if (!titles.length) return jsonResponse({ error: "No titles provided." }, 400, corsOrigin);
+
+  // 1) Resolve resource ids by title (case-insensitive)
+  const or = titles.map((t) => `title.ilike.${t}`).join(",");
+  const resourceRows = await supabaseGet(env, "carissa_resources", {
+    or: `(${or})`,
+    select: "id,title",
+    limit: "20000",
+  });
+  const resources = Array.isArray(resourceRows) ? resourceRows : [];
+  const resourceIds = [...new Set(resources.map((r) => r?.id).filter((x) => x != null))];
+  if (!resourceIds.length) {
+    return jsonResponse({ ok: true, titles, resources_found: 0, assignments_found: 0, results_deleted: 0, assignments_deleted: 0 }, 200, corsOrigin);
+  }
+
+  // 2) Find all existing assignments for those resources.
+  const asnRows = await supabaseGet(env, "carissa_resource_assignments", {
+    resource_id: `in.(${resourceIds.join(",")})`,
+    select: "id",
+    limit: "20000",
+  });
+  const assignmentIds = (Array.isArray(asnRows) ? asnRows : [])
+    .map((r) => r?.id)
+    .filter((x) => x != null);
+  if (!assignmentIds.length) {
+    return jsonResponse(
+      { ok: true, titles, resources_found: resourceIds.length, assignments_found: 0, results_deleted: 0, assignments_deleted: 0, resource_ids: resourceIds },
+      200,
+      corsOrigin
+    );
+  }
+
+  // 3) Delete linked results first (chunked).
+  let resultsDeleted = 0;
+  for (let i = 0; i < assignmentIds.length; i += 80) {
+    const chunk = assignmentIds.slice(i, i + 80);
+    // Count results so we can report what changed.
+    const resRows = await supabaseGet(env, "carissa_learner_activity_results", {
+      assignment_id: `in.(${chunk.join(",")})`,
+      select: "id",
+      limit: "20000",
+    });
+    resultsDeleted += Array.isArray(resRows) ? resRows.length : 0;
+
+    await supabaseDelete(env, "carissa_learner_activity_results", {
+      assignment_id: `in.(${chunk.join(",")})`,
+    }, "return=minimal");
+  }
+
+  // 4) Delete the assignments.
+  for (let i = 0; i < assignmentIds.length; i += 80) {
+    const chunk = assignmentIds.slice(i, i + 80);
+    await supabaseDelete(env, "carissa_resource_assignments", {
+      id: `in.(${chunk.join(",")})`,
+    }, "return=minimal");
+  }
+
+  return jsonResponse(
+    {
+      ok: true,
+      titles,
+      resources_found: resourceIds.length,
+      assignments_found: assignmentIds.length,
+      results_deleted: resultsDeleted,
+      assignments_deleted: assignmentIds.length,
+      resource_ids: resourceIds,
+    },
+    200,
+    corsOrigin
+  );
+}
+
 function wpmBandScore(wpm) {
   if (wpm != null && wpm > 15) return 5;
   if (wpm != null && wpm >= 10) return 4;
@@ -1927,6 +2014,14 @@ export default {
         return await handleTeacherResultReset(request, env, corsOrigin);
       } catch (error) {
         return jsonResponse({ error: error?.message || "Result reset failed" }, 500, corsOrigin);
+      }
+    }
+    if (url.pathname === "/api/learnworld/purge-removed") {
+      if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handleLearnWorldPurgeRemovedGames(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "LearnWorld purge failed" }, 500, corsOrigin);
       }
     }
     if (url.pathname !== "/api/ai") {

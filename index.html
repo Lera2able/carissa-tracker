@@ -8431,6 +8431,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
               resources={resources}
               selClass={selClass}
               teacherAuth={teacherAuth}
+              adminAccess={adminAccess}
               interventions={classInterventions}
               setAssignments={setAssignments}
               showMsg={showMsg}
@@ -8828,7 +8829,18 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
           )}
 
           {/* ── LearnWorld games tab ───────────────── */}
-          {tab==='learnworld_games' && <LearnWorldGamesLibrary resources={resources} onAudit={(type,r)=>logTeacherAudit(`${type}:${String(r?.title||'').slice(0,40)}`, selClass)}/>}
+          {tab==='learnworld_games' && (
+            <LearnWorldGamesLibrary
+              resources={resources}
+              selClass={selClass}
+              teacherAuth={teacherAuth}
+              adminAccess={adminAccess}
+              interventions={classInterventions}
+              setAssignments={setAssignments}
+              showMsg={showMsg}
+              onAudit={(type,r)=>logTeacherAudit(`${type}:${String(r?.title||'').slice(0,40)}`, selClass)}
+            />
+          )}
 
           {/* ── Resources tab ─────────────────────── */}
           {tab==='resources' && <ResourcesLibrary resources={resources} onAudit={(type,r)=>logTeacherAudit(`${type}:${String(r?.title||'').slice(0,40)}`, selClass)}/>}
@@ -12461,10 +12473,11 @@ function TeacherClassListTab({selClass, teacherAuth, interventions, setIntervent
 }
 
 /* ── Resources Library (read-only, shared by LearnWorld) ──── */
-function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, interventions=[], setAssignments, showMsg, onAudit}){
+function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, adminAccess=false, interventions=[], setAssignments, showMsg, onAudit}){
   const [search,setSearch]=useState('');
   const [assignFor,setAssignFor]=useState(null);
   const [assignBusy,setAssignBusy]=useState(false);
+  const [purgeBusy,setPurgeBusy]=useState(false);
   const [assignForm,setAssignForm]=useState({assign_type:'classlist_class',surname:'',firstname:'',due_date:'',notes:''});
   const [openFolders,setOpenFolders]=useState({});
   // Removed from LearnWorld (keep in DB, just hide from the LearnWorld games list)
@@ -12666,6 +12679,35 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
     }
   };
 
+  const purgeRemovedGames = async()=>{
+    if(!adminAccess){
+      alert('Admin access required.');
+      return;
+    }
+    if(purgeBusy) return;
+    const titles = Array.from(REMOVED_LEARNWORLD_TITLES || []);
+    if(!titles.length){
+      alert('No removed game titles are configured.');
+      return;
+    }
+    if(!confirm(`Remove these LearnWorld games from learners who were already assigned?\n\n• ${titles.join('\n• ')}\n\nThis will delete learner assignments and any linked marks for these games.`)) return;
+    setPurgeBusy(true);
+    try{
+      const res = await apiRequest('/learnworld/purge-removed', { method:'POST', body:{ titles } });
+      const asn = Number(res?.assignments_deleted || res?.assignments_found || 0);
+      const marks = Number(res?.results_deleted || 0);
+      showMsg && showMsg(`✓ Removed ${asn} assignment(s) and ${marks} mark(s) for the hidden LearnWorld games.`);
+      try{ onAudit && onAudit('learnworld_purge_removed', { titles }); }catch(e){}
+      if(setAssignments && Array.isArray(res?.resource_ids) && res.resource_ids.length){
+        const set = new Set(res.resource_ids.map(String));
+        setAssignments(p=> Array.isArray(p) ? p.filter(a=>!set.has(String(a.resource_id))) : p);
+      }
+    }catch(e){
+      alert('Error: ' + (e?.message || 'Could not remove assignments.'));
+    }
+    setPurgeBusy(false);
+  };
+
   return (
     <div style={card}>
       <h3 style={ctitle}>🎮 LearnWorld</h3>
@@ -12687,6 +12729,18 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
             ⌨️ {typingGamesCount} typing game{typingGamesCount===1?'':'s'}
           </div>
         </div>
+        {adminAccess && (
+          <div style={{display:'flex',alignItems:'end'}}>
+            <button
+              style={{...sbtn,background:'#dc2626',width:'100%',opacity:purgeBusy?0.7:1}}
+              disabled={purgeBusy}
+              onClick={purgeRemovedGames}
+              title="Remove the hidden games from learners who were already assigned"
+            >
+              {purgeBusy ? 'Removing…' : '🧹 Remove from learners'}
+            </button>
+          </div>
+        )}
       </div>
 
       {filtered.length===0 ? (
