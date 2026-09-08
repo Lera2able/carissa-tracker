@@ -8935,12 +8935,36 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, sharedAdminEmails, showM
   const [showLearnerReports,setShowLearnerReports] = useState(false);
   const [learnerComments,setLearnerComments] = useState({});
 
-  // HOD routing (uses the admin access list as the HOD list)
+  // HOD routing
+  // Foundation Phase (Grade R–3): Thandi + Simbie
+  // Intermediate (Grade 4–7): Rosether, Lewela, Faith, Martha, Rivaldo
+  //
+  // NOTE: We store the "send to" HOD as an email address so filtering is unambiguous.
+  const FOUNDATION_HOD_EMAILS = useMemo(()=>[
+    'thandimkhonza.ts@gmail.com',
+    'simbietzivona@gmail.com',
+  ],[]);
+  const INTERMEDIATE_HOD_EMAILS = useMemo(()=>[
+    'rosetherduma1070@gmail.com',
+    'mosesmakgato1967@gmail.com',
+    'faithngomane1920@gmail.com',
+    'moyo.martha@yahoo.com',
+    'rivaldom2000@gmail.com',
+  ],[]);
   const hodEmails = useMemo(()=>{
-    return (Array.isArray(sharedAdminEmails) ? sharedAdminEmails : [])
+    const all = (Array.isArray(sharedAdminEmails) ? sharedAdminEmails : [])
       .map(v=>String(v||'').trim().toLowerCase())
       .filter(Boolean);
-  },[sharedAdminEmails]);
+    const set = new Set(all);
+    if(gradeNo!==null && gradeNo<=3){
+      return FOUNDATION_HOD_EMAILS.filter(e=>set.has(e));
+    }
+    if(gradeNo!==null && gradeNo>=4){
+      return INTERMEDIATE_HOD_EMAILS.filter(e=>set.has(e));
+    }
+    // Fallback: show all available HODs if the grade can't be detected.
+    return all;
+  },[sharedAdminEmails, gradeNo, FOUNDATION_HOD_EMAILS, INTERMEDIATE_HOD_EMAILS]);
   const [selectedHodEmail,setSelectedHodEmail] = useState('');
   const [hodNameMap,setHodNameMap] = useState({});
 
