@@ -12467,7 +12467,18 @@ function LearnWorldGamesLibrary({resources, selClass='', teacherAuth=null, inter
   const [assignBusy,setAssignBusy]=useState(false);
   const [assignForm,setAssignForm]=useState({assign_type:'classlist_class',surname:'',firstname:'',due_date:'',notes:''});
   const [openFolders,setOpenFolders]=useState({});
-  const games = resources.filter(isLearnWorldGameResource);
+  // Removed from LearnWorld (keep in DB, just hide from the LearnWorld games list)
+  // as requested by the teacher.
+  const REMOVED_LEARNWORLD_TITLES = useMemo(()=> new Set([
+    'maths quest (grade 1)',
+    'blend detective (grade 1)',
+    'word maker (grade 1)',
+    'sight word safari (grade 1)',
+    'letter hunt (grade 1)'
+  ]),[]);
+  const games = resources
+    .filter(isLearnWorldGameResource)
+    .filter(r => !REMOVED_LEARNWORLD_TITLES.has(String(r?.title||'').trim().toLowerCase()));
   const isTypingGame = useCallback((r)=>{
     const title = String(r?.title || '').toLowerCase();
     const subject = String(r?.subject || '').toLowerCase();
