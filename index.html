@@ -4210,6 +4210,7 @@ function SasamsAdminSubmissionsTab({adminUser}){
   const [detailLoading,setDetailLoading] = useState(false);
   const [statusMsg,setStatusMsg] = useState('');
   const [reviewNote,setReviewNote] = useState('');
+  const CAPTURER_EMAIL = 'nkakindeagp@gmail.com'; // Ayanda (capturing)
   const adminTableScrollerRef = useRef(null);
   const [adminCanScrollLeft,setAdminCanScrollLeft] = useState(false);
   const [adminCanScrollRight,setAdminCanScrollRight] = useState(false);
@@ -4706,6 +4707,37 @@ function SasamsAdminSubmissionsTab({adminUser}){
     }
   };
 
+  const sendForCapturing = async()=>{
+    if(!selectedBatch?.id) return;
+    try{
+      const now = new Date().toISOString();
+      const reviewerName = `${adminUser?.first_name || ''} ${adminUser?.surname || ''}`.trim() || adminUser?.email || 'Admin';
+      const trimmedReviewNote = String(reviewNote || '').trim();
+      const noteHeader = `Sent for capturing to: ${CAPTURER_EMAIL} • by ${reviewerName} • ${new Date().toLocaleString('en-ZA')}`;
+      const finalNote = trimmedReviewNote ? `${noteHeader}\n\n${trimmedReviewNote}` : noteHeader;
+
+      // Forward to Ayanda and lock as approved (ready for capturing).
+      const patchPayload = {
+        status:'APPROVED',
+        hod_name: CAPTURER_EMAIL,
+        hod_note: finalNote,
+        updated_at: now,
+        approved_at: selectedBatch.approved_at || now,
+        rejected_at: null
+      };
+
+      const rows = await db.patch('carissa_sasams_batches', `id=eq.${selectedBatch.id}`, patchPayload);
+      await db.patch('carissa_sasams_marks', `batch_id=eq.${selectedBatch.id}`, {status:'APPROVED', updated_at:now});
+      const updated = Array.isArray(rows) ? rows[0] : rows;
+      setBatches(prev=>prev.map(row=>String(row.id)===String(selectedBatch.id) ? {...row, ...(updated || patchPayload)} : row));
+      if(statusFilter !== 'ALL' && statusFilter !== 'APPROVED') setStatusFilter('APPROVED');
+      setStatusMsg(`Sent for capturing to ${CAPTURER_EMAIL}.`);
+    }catch(err){
+      console.error(err);
+      setStatusMsg(`Could not send for capturing: ${err?.message || 'Unknown error'}`);
+    }
+  };
+
   return (
     <div style={card}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'12px',flexWrap:'wrap',marginBottom:'14px'}}>
@@ -4841,6 +4873,7 @@ function SasamsAdminSubmissionsTab({adminUser}){
                   <button onClick={exportCsv} disabled={!criteria.length} style={{...sbtn,background:'#0f766e',opacity:!criteria.length?0.7:1}}>⬇ Download CSV</button>
                   <button onClick={exportPdf} disabled={!criteria.length} style={{...sbtn,background:'#334155',opacity:!criteria.length?0.7:1}}>🖨 Print / Save as PDF</button>
                   <button onClick={()=>updateBatchStatus('APPROVED')} style={{...sbtn,background:'#15803d'}}>✓ Approve</button>
+                  <button onClick={sendForCapturing} style={{...sbtn,background:'#f59e0b'}}>📩 Send for capturing</button>
                   <button onClick={()=>updateBatchStatus('REJECTED')} style={{...sbtn,background:'#b91c1c'}}>↩ Send back to teacher</button>
                   <button onClick={()=>updateBatchStatus('DRAFT')} style={{...sbtn,background:'#6b7280'}}>Reset to draft</button>
                 </div>
