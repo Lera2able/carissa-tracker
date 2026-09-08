@@ -75,12 +75,16 @@ const ADMIN_DISCIPLINE_SEEN_KEY = 'carissa_admin_last_seen_discipline_at';
 const ADMIN_AUDIT_POLL_MS = 30000;
 const safeJsonParse = (s, fallback=null) => { try { return JSON.parse(s || '{}'); } catch { return fallback; } };
 const parseAdminConfigValue = (raw) => {
-  const fallback = { pin: '', shared_admin_teachers: [] };
+  const fallback = { pin: '', shared_admin_teachers: [], superusers: [] };
   if(raw == null) return fallback;
   try{
     const parsed = JSON.parse(raw || '{}');
     if(Array.isArray(parsed)){
-      return { pin: '', shared_admin_teachers: parsed.map(v=>String(v||'').trim().toLowerCase()).filter(Boolean) };
+      return {
+        pin: '',
+        shared_admin_teachers: parsed.map(v=>String(v||'').trim().toLowerCase()).filter(Boolean),
+        superusers: []
+      };
     }
     if(parsed && typeof parsed === 'object'){
       return {
@@ -88,10 +92,13 @@ const parseAdminConfigValue = (raw) => {
         shared_admin_teachers: Array.isArray(parsed.shared_admin_teachers)
           ? parsed.shared_admin_teachers.map(v=>String(v||'').trim().toLowerCase()).filter(Boolean)
           : [],
+        superusers: Array.isArray(parsed.superusers)
+          ? parsed.superusers.map(v=>String(v||'').trim().toLowerCase()).filter(Boolean)
+          : [],
       };
     }
   }catch(_e){
-    return { pin: String(raw || '').trim(), shared_admin_teachers: [] };
+    return { pin: String(raw || '').trim(), shared_admin_teachers: [], superusers: [] };
   }
   return fallback;
 };
@@ -4211,20 +4218,29 @@ function SasamsAdminSubmissionsTab({adminUser}){
   const [statusMsg,setStatusMsg] = useState('');
   const [reviewNote,setReviewNote] = useState('');
   const CAPTURER_EMAIL = 'nkakindeagp@gmail.com'; // Ayanda (capturing)
+  const [superuserEmails,setSuperuserEmails] = useState([]);
   const adminTableScrollerRef = useRef(null);
   const [adminCanScrollLeft,setAdminCanScrollLeft] = useState(false);
   const [adminCanScrollRight,setAdminCanScrollRight] = useState(false);
 
+  const isSuperuser = useMemo(()=>{
+    const email = String(adminUser?.email || '').trim().toLowerCase();
+    return !!(email && (superuserEmails || []).includes(email));
+  },[adminUser?.email, superuserEmails]);
+
   const loadBatches = useCallback(async(selectedId='')=>{
     setLoading(true);
     try{
-      const [batchRows, subjectRows] = await Promise.all([
+      const [batchRows, subjectRows, cfgRows] = await Promise.all([
         db.get('carissa_sasams_batches','order=updated_at.desc,submitted_at.desc'),
-        db.get('carissa_sasams_subjects','order=name_english.asc').catch(()=>[])
+        db.get('carissa_sasams_subjects','order=name_english.asc').catch(()=>[]),
+        db.get('carissa_config','key=eq.admin_pin').catch(()=>[])
       ]);
       const nextBatches = Array.isArray(batchRows) ? batchRows : [];
       setBatches(nextBatches);
       setSubjects(Array.isArray(subjectRows) ? subjectRows : []);
+      const parsedCfg = parseAdminConfigValue(cfgRows?.[0]?.value || '{}');
+      setSuperuserEmails([...new Set(parsedCfg.superusers || [])]);
       setSelectedBatchId(prev=>{
         const preferred = selectedId || prev;
         if(preferred && nextBatches.some(row=>String(row.id)===String(preferred))) return String(preferred);
@@ -4738,6 +4754,74 @@ function SasamsAdminSubmissionsTab({adminUser}){
     }
   };
 
+  const resetBatchCompletely = async(batchId, label='batch', ask=true)=>{
+    if(!batchId) return;
+    if(ask && !window.confirm(`Reset this ${label}? This will CLEAR all captured marks and reopen it for capturing.`)) return;
+    try{
+      const now = new Date().toISOString();
+      await db.patch('carissa_sasams_batches', `id=eq.${batchId}`, {
+        status: 'DRAFT',
+        submitted_at: null,
+        approved_at: null,
+        rejected_at: null,
+        hod_name: null,
+        hod_note: null,
+        updated_at: now
+      });
+      await db.patch('carissa_sasams_marks', `batch_id=eq.${batchId}`, {
+        status: 'PENDING',
+        raw_mark_entered: null,
+        mark_percent: null,
+        weighted_sba_pct: null,
+        comment: null,
+        updated_at: now
+      });
+      setStatusMsg(`Reset completed: ${label} cleared and reopened.`);
+      loadBatches(String(batchId));
+    }catch(err){
+      console.error(err);
+      setStatusMsg(`Could not reset this ${label}: ${err?.message || 'Unknown error'}`);
+    }
+  };
+
+  const resetSelectedBatch = async()=>{
+    if(!isSuperuser){
+      setStatusMsg('Only superusers can reset captured marks.');
+      return;
+    }
+    if(!selectedBatch?.id) return;
+    await resetBatchCompletely(selectedBatch.id, 'batch', true);
+  };
+
+  const resetSelectedClassForTerm = async()=>{
+    if(!isSuperuser){
+      setStatusMsg('Only superusers can reset captured marks.');
+      return;
+    }
+    if(!selectedBatch?.class_name) return;
+    if(!window.confirm(`Reset ALL submissions for ${selectedBatch.class_name} (Term ${selectedBatch.term_no})? This will CLEAR all captured marks for that class + term.`)) return;
+    try{
+      const className = encodeURIComponent(selectedBatch.class_name);
+      const rows = await db.get(
+        'carissa_sasams_batches',
+        `academic_year=eq.${selectedBatch.academic_year}&term_no=eq.${selectedBatch.term_no}&class_name=eq.${className}&order=updated_at.desc`
+      ).catch(()=>[]);
+      const ids = (rows||[]).map(r=>r.id).filter(Boolean);
+      if(!ids.length){
+        setStatusMsg('No batches found for that class and term.');
+        return;
+      }
+      for(const id of ids){
+        await resetBatchCompletely(id, `${selectedBatch.class_name} batch`, false);
+      }
+      setStatusMsg(`Reset completed for ${selectedBatch.class_name} (Term ${selectedBatch.term_no}).`);
+      loadBatches();
+    }catch(err){
+      console.error(err);
+      setStatusMsg(`Could not reset the class: ${err?.message || 'Unknown error'}`);
+    }
+  };
+
   return (
     <div style={card}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'12px',flexWrap:'wrap',marginBottom:'14px'}}>
@@ -4876,6 +4960,12 @@ function SasamsAdminSubmissionsTab({adminUser}){
                   <button onClick={sendForCapturing} style={{...sbtn,background:'#f59e0b'}}>📩 Send for capturing</button>
                   <button onClick={()=>updateBatchStatus('REJECTED')} style={{...sbtn,background:'#b91c1c'}}>↩ Send back to teacher</button>
                   <button onClick={()=>updateBatchStatus('DRAFT')} style={{...sbtn,background:'#6b7280'}}>Reset to draft</button>
+                  {isSuperuser && (
+                    <>
+                      <button onClick={resetSelectedBatch} style={{...sbtn,background:'#0f172a'}}>🧹 Reset marks (superuser)</button>
+                      <button onClick={resetSelectedClassForTerm} style={{...sbtn,background:'#111827'}}>🧹 Reset class (superuser)</button>
+                    </>
+                  )}
                 </div>
 
                 {!criteria.length ? (
