@@ -8935,6 +8935,14 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, sharedAdminEmails, showM
   const [showLearnerReports,setShowLearnerReports] = useState(false);
   const [learnerComments,setLearnerComments] = useState({});
 
+  // Keep teacher comments aligned to the correct learner by keying with both number + name.
+  // This prevents mixups when class lists are edited or learner numbers shift.
+  const sasamsLearnerCommentKey = useCallback((learner, learnerNo)=>{
+    const sn = String(learner?.surname || '').trim().toLowerCase();
+    const fn = String(learner?.firstname || '').trim().toLowerCase();
+    return `${String(learnerNo||'').trim()}|${sn}|${fn}`;
+  },[]);
+
   // HOD routing
   // Foundation Phase (Grade R–3): Thandi + Simbie
   // Intermediate (Grade 4–7): Rosether, Lewela, Faith, Martha, Rivaldo
@@ -10101,7 +10109,8 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, sharedAdminEmails, showM
               </div>
               <div style={{display:'grid',gap:'12px'}}>
                 {learnerReportRows.map(({learner, learnerNo, summary})=>{
-                  const comment = learnerComments[learnerNo] || buildSasamsLearnerComment(learner, learnerNo, summary);
+                  const ckey = sasamsLearnerCommentKey(learner, learnerNo);
+                  const comment = learnerComments[ckey] || buildSasamsLearnerComment(learner, learnerNo, summary);
                   return (
                     <details key={`sasams_report_${learnerNo}`} style={{background:'#fff',border:'1px solid #ddd6fe',borderRadius:'12px',overflow:'hidden'}} open>
                       <summary style={{cursor:'pointer',padding:'14px 16px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',fontWeight:800,color:'#111827',listStyle:'none'}}>
@@ -10154,13 +10163,13 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, sharedAdminEmails, showM
                           <textarea
                             rows={3}
                             value={comment}
-                            onChange={e=>setLearnerComments(prev=>({...prev,[learnerNo]:e.target.value}))}
+                            onChange={e=>setLearnerComments(prev=>({...prev,[ckey]:e.target.value}))}
                             placeholder="Write a short encouraging comment for this learner..."
                             style={{...inp,resize:'vertical',minHeight:'88px'}}
                           />
                           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',marginTop:'8px'}}>
                             <div style={{fontSize:'12px',color:'#64748b'}}>Use short, simple, encouraging feedback written in the learner&apos;s name.</div>
-                            <button type="button" onClick={()=>setLearnerComments(prev=>({...prev,[learnerNo]:buildSasamsLearnerComment(learner, learnerNo, summary)}))} style={{...sbtn,background:'#8b5cf6',padding:'8px 12px',fontSize:'12px'}}>
+                            <button type="button" onClick={()=>setLearnerComments(prev=>({...prev,[ckey]:buildSasamsLearnerComment(learner, learnerNo, summary)}))} style={{...sbtn,background:'#8b5cf6',padding:'8px 12px',fontSize:'12px'}}>
                               Use suggested comment
                             </button>
                           </div>
@@ -10195,6 +10204,14 @@ function TeacherSasamsLearnerReportsTab({ teacherAuth, selClass, showMsg, onAudi
   const [loading,setLoading] = useState(false);
   const [status,setStatus] = useState('');
   const [error,setError] = useState('');
+
+  // Use a stable per-learner key (number + name) to avoid comments drifting
+  // onto the wrong learner when class lists are edited.
+  const overallCommentKey = useCallback((learner, learnerNo)=>{
+    const sn = String(learner?.surname || '').trim().toLowerCase();
+    const fn = String(learner?.firstname || '').trim().toLowerCase();
+    return `${String(learnerNo||'').trim()}|${sn}|${fn}`;
+  },[]);
 
   useEffect(()=>{
     let alive = true;
@@ -10246,7 +10263,7 @@ function TeacherSasamsLearnerReportsTab({ teacherAuth, selClass, showMsg, onAudi
   },[academicYear, gradeNo, selClass, teacherEmail, termNo]);
 
   const overallReportStorageKey = useMemo(
-    ()=>`carissa_sasams_overall_comments_v1|${academicYear}|${termNo}|${selClass}`,
+    ()=>`carissa_sasams_overall_comments_v2|${academicYear}|${termNo}|${selClass}`,
     [academicYear, termNo, selClass]
   );
   const subjectMap = useMemo(()=>{
@@ -10439,11 +10456,27 @@ function TeacherSasamsLearnerReportsTab({ teacherAuth, selClass, showMsg, onAudi
       stored = {};
     }
     const next = {};
+    const migrated = {...stored};
     overallLearnerReports.forEach(report=>{
-      const savedComment = String(stored?.[report.learnerNo] || '').trim();
-      next[report.learnerNo] = savedComment || buildOverallLearnerComment(report);
+      const learner = report?.learner || {};
+      const key = overallCommentKey(learner, report.learnerNo);
+      const savedByKey = String(stored?.[key] || '').trim();
+      // Legacy fallback (older versions keyed only by learner number). Only use it if it
+      // clearly belongs to the current learner name, otherwise ignore to prevent mismatches.
+      const legacy = String(stored?.[report.learnerNo] || '').trim();
+      const firstName = String(learner?.firstname || '').trim().split(/\s+/)[0] || '';
+      const legacyOk = legacy && firstName && legacy.toLowerCase().includes(firstName.toLowerCase());
+      const finalComment = savedByKey || (legacyOk ? legacy : '') || buildOverallLearnerComment(report);
+      next[key] = finalComment;
+      if(!savedByKey && legacyOk){
+        migrated[key] = legacy;
+      }
     });
     setLearnerComments(next);
+    // Persist any safe migration for future loads.
+    try{
+      localStorage.setItem(overallReportStorageKey, JSON.stringify(migrated));
+    }catch(_e){}
   },[buildOverallLearnerComment, overallLearnerReports, overallReportStorageKey]);
   useEffect(()=>{
     try{
@@ -10463,7 +10496,8 @@ function TeacherSasamsLearnerReportsTab({ teacherAuth, selClass, showMsg, onAudi
     const generatedAt = new Date().toLocaleString('en-ZA');
     const reportCards = reportsToPrint.map(report=>{
       const learner = report.learner || {};
-      const comment = learnerComments[report.learnerNo] || buildOverallLearnerComment(report);
+      const ckey = overallCommentKey(learner, report.learnerNo);
+      const comment = learnerComments[ckey] || buildOverallLearnerComment(report);
       const rowsHtml = report.subjectSummaries.map(subject=>`
         <tr>
           <td>${String(subject.subjectName || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</td>
@@ -10718,14 +10752,18 @@ function TeacherSasamsLearnerReportsTab({ teacherAuth, selClass, showMsg, onAudi
                   <label style={lbl}>Teacher comment</label>
                   <textarea
                     rows={3}
-                    value={learnerComments[selectedLearnerReport.learnerNo] || buildOverallLearnerComment(selectedLearnerReport)}
-                    onChange={e=>setLearnerComments(prev=>({...prev,[selectedLearnerReport.learnerNo]:e.target.value}))}
+                    value={learnerComments[overallCommentKey(selectedLearnerReport.learner, selectedLearnerReport.learnerNo)] || buildOverallLearnerComment(selectedLearnerReport)}
+                    onChange={e=>setLearnerComments(prev=>({...prev,[overallCommentKey(selectedLearnerReport.learner, selectedLearnerReport.learnerNo)]:e.target.value}))}
                     placeholder="Write a short encouraging comment for this learner..."
                     style={{...inp,resize:'vertical',minHeight:'88px'}}
                   />
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'10px',flexWrap:'wrap',marginTop:'8px'}}>
                     <div style={{fontSize:'12px',color:'#64748b'}}>This comment now reflects the learner&apos;s overall achievement across all subjects.</div>
-                    <button type="button" onClick={()=>setLearnerComments(prev=>({...prev,[selectedLearnerReport.learnerNo]:buildOverallLearnerComment(selectedLearnerReport)}))} style={{...sbtn,background:'#8b5cf6',padding:'8px 12px',fontSize:'12px'}}>
+                    <button
+                      type="button"
+                      onClick={()=>setLearnerComments(prev=>({...prev,[overallCommentKey(selectedLearnerReport.learner, selectedLearnerReport.learnerNo)]:buildOverallLearnerComment(selectedLearnerReport)}))}
+                      style={{...sbtn,background:'#8b5cf6',padding:'8px 12px',fontSize:'12px'}}
+                    >
                       Use suggested comment
                     </button>
                   </div>
