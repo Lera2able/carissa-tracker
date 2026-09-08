@@ -178,6 +178,17 @@ const BUILTIN_LEARNWORLD_RESOURCES = [
     builtin:true
   },
   {
+    id:'builtin-grade5-typing-assessment',
+    title:'Grade 5 Typing Assessment',
+    type:'link',
+    url:'./grade5-typing-assessment.html',
+    subject:'Typing',
+    grade_range:'Grade 5',
+    description:'4-in-1 assessment: Typing Quest (Grade 5) + Type a Balloon (Easy) + Typing Striker (Easy) + Typerix (Easy). Sends the final average automatically.',
+    uploaded_by:'System',
+    builtin:true
+  },
+  {
     id:'builtin-grade4-typing-assessment',
     title:'Grade 4 Typing Assessment',
     type:'link',
@@ -1197,6 +1208,10 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
     ()=> CLASS_NAMES.filter(c=>/^Grade\s*4(\b|\.)/i.test(String(c||''))),
     []
   );
+  const grade5Classes = useMemo(
+    ()=> CLASS_NAMES.filter(c=>/^Grade\s*5(\b|\.)/i.test(String(c||''))),
+    []
+  );
   const grade3Classes = useMemo(
     ()=> CLASS_NAMES.filter(c=>/^Grade\s*3(\b|\.)/i.test(String(c||''))),
     []
@@ -1209,6 +1224,64 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
     ()=> CLASS_NAMES.filter(c=>/^Grade\s*1(\b|\.)/i.test(String(c||''))),
     []
   );
+
+  const bulkAssignGrade5TypingAssessment = async () => {
+    if(busy) return;
+    const grade5Count = grade5Classes.length;
+    if(!grade5Count){ alert('No Grade 5 classes were found.'); return; }
+    if(!confirm(`Assign "Grade 5 Typing Assessment" to ALL learners across ${grade5Count} Grade 5 class(es)?\n\nThis will NOT remove any existing activities.`)) return;
+    setBusy(true);
+    setBusyLabel('Preparing Grade 5 assessment...');
+    try{
+      const resourceId = await resolveBuiltInResourceId('builtin-grade5-typing-assessment', resources);
+      let inserted = 0;
+      let skipped = 0;
+      const chunkSize = 120;
+      for(const cls of grade5Classes){
+        const learners = (CLASS_DATA[cls] || []).map(l=>({surname:l.surname, firstname:l.firstname}));
+        if(!learners.length) continue;
+
+        // Skip learners who already have this assessment assigned (additive only).
+        let existingSet = new Set();
+        try{
+          const q = `class_name=eq.${encodeURIComponent(cls)}&resource_id=eq.${encodeURIComponent(resourceId)}&select=surname,firstname&limit=20000`;
+          const existing = await db.get('carissa_resource_assignments', q);
+          (Array.isArray(existing) ? existing : []).forEach(r=>{
+            const k = `${String(r.surname||'').trim().toLowerCase()}|${String(r.firstname||'').trim().toLowerCase()}`;
+            existingSet.add(k);
+          });
+        }catch(_e){}
+
+        const targets = learners.filter(l=>{
+          const k = `${String(l.surname||'').trim().toLowerCase()}|${String(l.firstname||'').trim().toLowerCase()}`;
+          return !existingSet.has(k);
+        });
+        skipped += Math.max(0, learners.length - targets.length);
+        if(!targets.length) continue;
+
+        setBusyLabel(`Assigning Grade 5 assessment in ${cls}...`);
+        const base = {
+          resource_id: resourceId,
+          class_name: cls,
+          assign_type: 'class',
+          assigned_by: 'Admin',
+          due_date: null,
+          notes: 'Grade 5 Typing Assessment (auto-assigned)'
+        };
+        for(let i=0; i<targets.length; i+=chunkSize){
+          const chunk = targets.slice(i, i + chunkSize);
+          const payload = chunk.map(t=>({...base, surname:t.surname, firstname:t.firstname}));
+          await db.post('carissa_resource_assignments', payload, 'return=minimal');
+          inserted += chunk.length;
+        }
+      }
+      showMsg(`✓ Grade 5 Typing Assessment assigned to ${inserted} learner(s).${skipped?` (Skipped ${skipped} already assigned)`:''}`);
+    }catch(e){
+      alert('Error: '+e.message);
+    }
+    setBusy(false);
+    setBusyLabel('');
+  };
 
   const bulkAssignGrade4TypingAssessment = async () => {
     if(busy) return;
@@ -1565,6 +1638,9 @@ function AssignmentsTab({interventions,resources,assignments,setAssignments}){
       <div style={card}>
         <h3 style={ctitle}>Assign Activity to Learners</h3>
         <div style={{display:'flex',gap:'8px',flexWrap:'wrap',margin:'-4px 0 12px'}}>
+          <button type="button" style={{...sbtn,background:'#7c3aed'}} disabled={busy} onClick={bulkAssignGrade5TypingAssessment}>
+            ⚡ Assign Grade 5 Typing Assessment (All Grade 5 classes)
+          </button>
           <button type="button" style={{...sbtn,background:'#f59e0b'}} disabled={busy} onClick={bulkAssignGrade1TypingAssessment}>
             ⚡ Assign Grade 1 Typing Assessment (All Grade 1 classes)
           </button>
