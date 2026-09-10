@@ -481,7 +481,8 @@ const findLearnerByCredentials = (username, pin) => {
   }
   return null;
 };
-const learnerActivityKey = row => `${String(row.class_name||'').trim().toLowerCase()}|${String(row.surname||'').trim().toLowerCase()}|${String(row.firstname||'').trim().toLowerCase()}`;
+const learnerKeyPart = v => String(v||'').trim().toLowerCase().replace(/\s+/g,' ');
+const learnerActivityKey = row => `${learnerKeyPart(row.class_name)}|${learnerKeyPart(row.surname)}|${learnerKeyPart(row.firstname)}`;
 // Assessment-eligible classes (no Grade R per Lerato)
 const ASSESS_CLASS_NAMES = CLASS_NAMES.filter(n => !n.startsWith("Grade R"));
 // Determine phase from class name: Gr 1-3 = foundation, Gr 4-7 = intermediate
@@ -7477,23 +7478,24 @@ function LearnerPortalView(){
       setAssignmentsLoading(true);
       try{
         const cls = encodeURIComponent(String(learnerAuth.class_name||''));
-        const curS = encodeURIComponent(String(learnerAuth.surname||''));
-        const curF = encodeURIComponent(String(learnerAuth.firstname||''));
-        const origS = encodeURIComponent(String(learnerAuth.original_surname || learnerAuth.surname || ''));
-        const origF = encodeURIComponent(String(learnerAuth.original_firstname || learnerAuth.firstname || ''));
-        const useOr = (origS !== curS) || (origF !== curF);
+        // Use wildcard patterns to tolerate trailing spaces / middle names in stored assignments.
+        const curSPat = encodeURIComponent(`%${String(learnerAuth.surname||'').trim()}%`);
+        const curFPat = encodeURIComponent(`%${String(learnerAuth.firstname||'').trim()}%`);
+        const origSPat = encodeURIComponent(`%${String(learnerAuth.original_surname || learnerAuth.surname || '').trim()}%`);
+        const origFPat = encodeURIComponent(`%${String(learnerAuth.original_firstname || learnerAuth.firstname || '').trim()}%`);
+        const useOr = (origSPat !== curSPat) || (origFPat !== curFPat);
         // Use case-insensitive matching for learner name fields because some class lists
         // store surnames in uppercase (e.g. "MAPARA") while learner profiles may be mixed case.
         const q = useOr
           ? [
               `class_name=eq.${cls}`,
-              `or=(and(surname.ilike.${curS},firstname.ilike.${curF}),and(surname.ilike.${origS},firstname.ilike.${origF}))`,
+              `or=(and(surname.ilike.${curSPat},firstname.ilike.${curFPat}),and(surname.ilike.${origSPat},firstname.ilike.${origFPat}))`,
               'order=created_at.desc'
             ].join('&')
           : [
               `class_name=eq.${cls}`,
-              `surname=ilike.${curS}`,
-              `firstname=ilike.${curF}`,
+              `surname=ilike.${curSPat}`,
+              `firstname=ilike.${curFPat}`,
               'order=created_at.desc'
             ].join('&');
         const asn = await db.get('carissa_resource_assignments', q);
