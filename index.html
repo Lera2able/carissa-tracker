@@ -7482,16 +7482,18 @@ function LearnerPortalView(){
         const origS = encodeURIComponent(String(learnerAuth.original_surname || learnerAuth.surname || ''));
         const origF = encodeURIComponent(String(learnerAuth.original_firstname || learnerAuth.firstname || ''));
         const useOr = (origS !== curS) || (origF !== curF);
+        // Use case-insensitive matching for learner name fields because some class lists
+        // store surnames in uppercase (e.g. "MAPARA") while learner profiles may be mixed case.
         const q = useOr
           ? [
               `class_name=eq.${cls}`,
-              `or=(and(surname.eq.${curS},firstname.eq.${curF}),and(surname.eq.${origS},firstname.eq.${origF}))`,
+              `or=(and(surname.ilike.${curS},firstname.ilike.${curF}),and(surname.ilike.${origS},firstname.ilike.${origF}))`,
               'order=created_at.desc'
             ].join('&')
           : [
               `class_name=eq.${cls}`,
-              `surname=eq.${curS}`,
-              `firstname=eq.${curF}`,
+              `surname=ilike.${curS}`,
+              `firstname=ilike.${curF}`,
               'order=created_at.desc'
             ].join('&');
         const asn = await db.get('carissa_resource_assignments', q);
