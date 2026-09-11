@@ -892,8 +892,55 @@ async function getAdminAllowedEmails(env) {
 }
 
 const CLASS_RACE_CONFIG_PREFIX = "class_race_progress::";
+const CLASS_RACE_LOBBY_PREFIX = "class_race_lobby::";
 function classRaceConfigKey(roomId, clientId) {
   return `${CLASS_RACE_CONFIG_PREFIX}${String(roomId || "").trim()}::${String(clientId || "").trim()}`;
+}
+function classRaceLobbyKey(roomId) {
+  return `${CLASS_RACE_LOBBY_PREFIX}${String(roomId || "").trim()}`;
+}
+
+async function getClassRaceLobby(env, roomId) {
+  const lobbyKey = classRaceLobbyKey(roomId);
+  const rows = await supabaseGet(env, "carissa_config", {
+    key: `eq.${lobbyKey}`,
+    select: "value",
+    limit: "1",
+  }).catch(() => []);
+  const raw = Array.isArray(rows) && rows.length ? rows[0]?.value : null;
+  return safeJsonParse(String(raw || "{}"), null);
+}
+
+async function upsertClassRaceLobby(env, roomId, patch = {}) {
+  const lobbyKey = classRaceLobbyKey(roomId);
+  const current = (await getClassRaceLobby(env, roomId)) || {};
+  const next = {
+    room_id: roomId,
+    status: "waiting",
+    admin_client_id: "",
+    admin_name: "",
+    round_id: "",
+    countdown_started_at: null,
+    go_at: null,
+    difficulty: "easy",
+    ...current,
+    ...patch,
+    room_id: roomId,
+    updated_at: new Date().toISOString(),
+  };
+
+  const exists = await supabaseGet(env, "carissa_config", {
+    key: `eq.${lobbyKey}`,
+    select: "key",
+    limit: "1",
+  }).catch(() => []);
+
+  if (Array.isArray(exists) && exists.length) {
+    await supabasePatch(env, "carissa_config", { key: `eq.${lobbyKey}` }, { value: JSON.stringify(next) });
+  } else {
+    await supabasePost(env, "carissa_config", { key: lobbyKey, value: JSON.stringify(next) }, "return=minimal");
+  }
+  return next;
 }
 
 async function handleClassRaceHeartbeat(request, env, corsOrigin) {
@@ -929,7 +976,19 @@ async function handleClassRaceHeartbeat(request, env, corsOrigin) {
   } else {
     await supabasePost(env, "carissa_config", { key: rowKey, value: JSON.stringify(payload) }, "return=minimal");
   }
-  return jsonResponse({ ok: true }, 200, corsOrigin);
+
+  const lobby = await getClassRaceLobby(env, roomId);
+  let nextLobby = lobby;
+  if (!lobby || !String(lobby.admin_client_id || "").trim()) {
+    nextLobby = await upsertClassRaceLobby(env, roomId, {
+      admin_client_id: clientId,
+      admin_name: racerName || "Learner",
+      difficulty: String(body?.difficulty || "easy").trim().toLowerCase() || "easy",
+      status: "waiting",
+    });
+  }
+
+  return jsonResponse({ ok: true, lobby: nextLobby || null }, 200, corsOrigin);
 }
 
 async function handleClassRaceRoom(request, env, corsOrigin) {
@@ -955,7 +1014,67 @@ async function handleClassRaceRoom(request, env, corsOrigin) {
     .sort((a, b) => Number(b.progress || 0) - Number(a.progress || 0))
     .slice(0, 25);
 
-  return jsonResponse({ rows: liveRows }, 200, corsOrigin);
+  let lobby = await getClassRaceLobby(env, roomId);
+  const adminId = String(lobby?.admin_client_id || "").trim();
+  const adminStillLive = !!(adminId && liveRows.some((row) => String(row?.client_id || "") === adminId));
+  const lobbyGoAt = Date.parse(String(lobby?.go_at || ""));
+  const countdownExpired = Number.isFinite(lobbyGoAt) ? lobbyGoAt < (Date.now() - 10000) : true;
+  if ((!lobby || !adminId) && liveRows.length) {
+    const first = liveRows[0];
+    lobby = await upsertClassRaceLobby(env, roomId, {
+      admin_client_id: String(first?.client_id || "").trim(),
+      admin_name: String(first?.racer_name || "Learner").trim().slice(0, 40),
+      difficulty: String(first?.difficulty || "easy").trim().toLowerCase() || "easy",
+      status: "waiting",
+    });
+  } else if (lobby && !adminStillLive && countdownExpired && liveRows.length) {
+    const first = liveRows[0];
+    lobby = await upsertClassRaceLobby(env, roomId, {
+      admin_client_id: String(first?.client_id || "").trim(),
+      admin_name: String(first?.racer_name || "Learner").trim().slice(0, 40),
+      difficulty: String(first?.difficulty || lobby?.difficulty || "easy").trim().toLowerCase() || "easy",
+      status: "waiting",
+    });
+  }
+
+  return jsonResponse({ rows: liveRows, lobby: lobby || null }, 200, corsOrigin);
+}
+
+async function handleClassRaceLobbyStart(request, env, corsOrigin) {
+  const body = await readJsonBody(request);
+  const roomId = String(body?.room_id || "").trim();
+  const clientId = String(body?.client_id || "").trim();
+  const racerName = String(body?.racer_name || "Learner").trim().slice(0, 40);
+  const difficulty = String(body?.difficulty || "easy").trim().toLowerCase() || "easy";
+  if (!roomId || !clientId) {
+    return jsonResponse({ error: "Missing room_id or client_id." }, 400, corsOrigin);
+  }
+
+  let lobby = await getClassRaceLobby(env, roomId);
+  if (!lobby || !String(lobby.admin_client_id || "").trim()) {
+    lobby = await upsertClassRaceLobby(env, roomId, {
+      admin_client_id: clientId,
+      admin_name: racerName || "Learner",
+      difficulty,
+      status: "waiting",
+    });
+  }
+
+  if (String(lobby.admin_client_id || "").trim() !== clientId) {
+    return jsonResponse({ error: "Only the room admin can start the race.", lobby }, 403, corsOrigin);
+  }
+
+  const now = Date.now();
+  const nextLobby = await upsertClassRaceLobby(env, roomId, {
+    admin_client_id: clientId,
+    admin_name: racerName || "Learner",
+    difficulty,
+    status: "countdown",
+    round_id: `r_${now.toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+    countdown_started_at: new Date(now).toISOString(),
+    go_at: new Date(now + 3200).toISOString(),
+  });
+  return jsonResponse({ ok: true, lobby: nextLobby }, 200, corsOrigin);
 }
 
 async function requireAdminTeacher(request, env, corsOrigin) {
@@ -2097,6 +2216,14 @@ export default {
         return await handleClassRaceRoom(request, env, corsOrigin);
       } catch (error) {
         return jsonResponse({ error: error?.message || "Class race room failed" }, 500, corsOrigin);
+      }
+    }
+    if (url.pathname === "/api/class-race/lobby/start") {
+      if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handleClassRaceLobbyStart(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Class race lobby start failed" }, 500, corsOrigin);
       }
     }
     if (url.pathname === "/api/learnworld/purge-removed") {

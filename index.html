@@ -7673,13 +7673,27 @@ function LearnerPortalView(){
     return { avgAcc, avgWpm, accCount: accVals.length, wpmCount: wpmVals.length };
   },[completedItems, parseWpmFromNotes]);
 
+  const buildShortRaceCode = (className='')=>{
+    const raw = String(className || '').trim();
+    const m = raw.match(/grade\s*(\d+)(?:\s*[.\-]\s*(\d+))?/i);
+    if(m){
+      return `g${m[1]}${m[2] || ''}`.toLowerCase();
+    }
+    const fallback = raw
+      .toLowerCase()
+      .replace(/^grade\s*/i,'g')
+      .replace(/[^a-z0-9]+/g,'')
+      .slice(0, 8);
+    return fallback || 'race';
+  };
+
   const startActivity = async(assignment)=>{
     const resourceType = resType(assignment.resource_id);
     let url = resUrl(assignment.resource_id);
     if(resourceType === 'typing' && learnerAuth){
       const m = String(learnerAuth.class_name||'').match(/Grade\s+(\d)/i);
       const grade = m ? m[1] : '';
-      const raceRoomBase = `class-${String(assignment.class_name||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')}-${String(assignment.resource_id||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')}`;
+      const raceRoomBase = buildShortRaceCode(assignment.class_name);
       try{
         const u = new URL(url, window.location.href);
         u.searchParams.set('assignment_id', assignment.id);
@@ -7722,7 +7736,7 @@ function LearnerPortalView(){
         setTimeout(()=>{
           try{
             if(!w || w.closed) return;
-            const raceRoomBase = `class-${String(assignment.class_name||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')}-${String(assignment.resource_id||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')}`;
+            const raceRoomBase = buildShortRaceCode(assignment.class_name);
             w.postMessage({
               type: 'carissa_supabase_config',
               sb_url: SB,

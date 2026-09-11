@@ -885,16 +885,17 @@
 
           <div class="field">
             <label for="room-code">Race code</label>
-            <input id="room-code" class="player-input" type="text" placeholder="grade-2-2-nitro" maxlength="60" autocomplete="off" />
+            <input id="room-code" class="player-input" type="text" placeholder="g22" maxlength="24" autocomplete="off" />
             <div class="helper-copy" style="margin-top:8px">
-              Learners must use the same race code and difficulty to compete in the same live race. When this opens from LearnWorld, the class race code loads automatically.
+              Learners must use the same race code and difficulty to compete in the same live race. When this opens from LearnWorld, a short class code such as `g22` loads automatically.
             </div>
           </div>
 
           <div class="start-actions">
-            <button class="main-btn" id="start-btn" onclick="beginRaceFlow()">▶ Start Race</button>
+            <button class="main-btn" id="start-btn" type="button" onclick="beginRaceFlow()">▶ Join Room</button>
             <button class="small-btn" id="soundBtn" type="button" onclick="toggleSound()">🔊 Sound On</button>
           </div>
+          <div class="helper-copy" id="lobbyStatus" style="margin-top:10px"></div>
 
           <div class="helper-copy">
             The race uses a countdown, a shared live room for classmates, AI fallback racers when nobody else is connected, a nitro meter, and a live finishing table. When opened from LearnWorld, the final WPM, accuracy, time, and score are sent to the teacher automatically.
@@ -1140,7 +1141,13 @@
       roomBase:RACE_ROOM_BASE_QS,
       roomId:'',
       clientId:'',
-      realtimeReady:false
+      realtimeReady:false,
+      joinedLobby:false,
+      joinedSignature:'',
+      isRoomAdmin:false,
+      roomAdminName:'',
+      seenRoundId:'',
+      activeRoundId:''
     };
 
     function $(id){ return document.getElementById(id); }
@@ -1270,6 +1277,44 @@
       return !!state.roomId;
     }
 
+    function currentJoinSignature(){
+      return `${state.roomId}|${slugifyRoomPart(state.playerName || '')}`;
+    }
+
+    function setLobbyMessage(msg=''){
+      const el = $('lobbyStatus');
+      if(el) el.textContent = String(msg || '');
+    }
+
+    function resetLobbyMembership(){
+      if(state.pollTimer) clearInterval(state.pollTimer);
+      if(state.pushTimer) clearInterval(state.pushTimer);
+      state.joinedLobby = false;
+      state.joinedSignature = '';
+      state.isRoomAdmin = false;
+      state.roomAdminName = '';
+      state.seenRoundId = '';
+      state.activeRoundId = '';
+      updateStartButton();
+    }
+
+    function updateStartButton(){
+      const btn = $('start-btn');
+      if(!btn) return;
+      if(!state.joinedLobby){
+        btn.textContent = '▶ Join Room';
+        btn.disabled = false;
+        return;
+      }
+      if(state.isRoomAdmin){
+        btn.textContent = '▶ Start For Everyone';
+        btn.disabled = false;
+        return;
+      }
+      btn.textContent = '⏳ Waiting For Admin';
+      btn.disabled = false;
+    }
+
     async function apiJson(path, options={}){
       const headers = {'Content-Type':'application/json', ...(options.headers || {})};
       const res = await fetch(path, {
@@ -1310,12 +1355,15 @@
     }
 
     async function sbFetchRoom(){
-      if(!realtimeEnabled()) return [];
+      if(!realtimeEnabled()) return { rows: [], lobby: null };
       try{
         const data = await apiJson(`/api/class-race/room?room_id=${encodeURIComponent(state.roomId)}`);
-        return Array.isArray(data?.rows) ? data.rows : [];
+        return {
+          rows: Array.isArray(data?.rows) ? data.rows : [],
+          lobby: (data?.lobby && typeof data.lobby === 'object') ? data.lobby : null
+        };
       }catch(_e){
-        return [];
+        return { rows: [], lobby: null };
       }
     }
 
@@ -1364,12 +1412,103 @@
       updatePositions();
     }
 
+    function launchSharedRound(roundId, goAtMs){
+      if(!state.playerName) return;
+      if(state.activeRoundId === roundId && (state.raceActive || state.countdownTimer)) return;
+      state.activeRoundId = roundId;
+      pickRaceText();
+      setupRacers();
+      renderTrack();
+      renderRaceText();
+      resetRaceUI();
+      showScreen('race');
+      $('statusLabel').textContent = 'Waiting for GO…';
+      startCountdown(goAtMs);
+    }
+
+    function applyLobbyState(lobby, rows=[]){
+      const data = lobby && typeof lobby === 'object' ? lobby : null;
+      if(!data){
+        updateStartButton();
+        return;
+      }
+      const adminId = String(data.admin_client_id || '').trim();
+      const adminName = String(data.admin_name || '').trim();
+      state.isRoomAdmin = !!(adminId && adminId === String(state.clientId || ''));
+      state.roomAdminName = adminName || 'Room admin';
+      updateStartButton();
+
+      if(state.joinedLobby && !state.raceActive && !state.raceFinished){
+        const liveCount = Array.isArray(rows) ? rows.length : 0;
+        if(state.isRoomAdmin){
+          setLobbyMessage(`You are the room admin. ${liveCount} player${liveCount===1?'':'s'} joined. Press Start For Everyone when the class is ready.`);
+        }else{
+          setLobbyMessage(`${state.roomAdminName} is the room admin. Wait here until the admin starts the race for everyone.`);
+        }
+      }
+
+      const nextRoundId = String(data.round_id || '').trim();
+      const status = String(data.status || '').trim().toLowerCase();
+      const goAtMs = Date.parse(String(data.go_at || ''));
+      if(state.joinedLobby && nextRoundId && nextRoundId !== state.seenRoundId && status === 'countdown'){
+        state.seenRoundId = nextRoundId;
+        launchSharedRound(nextRoundId, Number.isFinite(goAtMs) ? goAtMs : (Date.now() + 3200));
+      }
+    }
+
+    function applyRoomSnapshot(snapshot){
+      const rows = Array.isArray(snapshot?.rows) ? snapshot.rows : [];
+      applyRoomRows(rows);
+      applyLobbyState(snapshot?.lobby || null, rows);
+    }
+
+    async function joinRoomLobby(){
+      if(!state.playerName) return false;
+      state.joinedLobby = true;
+      state.joinedSignature = currentJoinSignature();
+      state.isRoomAdmin = false;
+      state.roomAdminName = '';
+      updateStartButton();
+      setLobbyMessage('Joining room…');
+      await sbUpsertProgress({ progress: 0, wpm: 0, accuracy: 100, status: 'ready' });
+      startRoomPolling();
+      startRoomPush();
+      const snapshot = await sbFetchRoom();
+      applyRoomSnapshot(snapshot);
+      if(!state.isRoomAdmin && !state.raceActive && !state.raceFinished){
+        setLobbyMessage(`${state.roomAdminName || 'The room admin'} will start the race for everyone.`);
+      }
+      return true;
+    }
+
+    async function requestSharedStart(){
+      if(!state.isRoomAdmin){
+        setLobbyMessage(`${state.roomAdminName || 'The room admin'} will start the race for everyone.`);
+        return;
+      }
+      setLobbyMessage('Starting race for everyone…');
+      const data = await apiJson('/api/class-race/lobby/start', {
+        method: 'POST',
+        body: {
+          room_id: state.roomId,
+          client_id: state.clientId,
+          racer_name: state.playerName || 'Learner',
+          difficulty: state.difficulty
+        }
+      });
+      const snapshot = await sbFetchRoom();
+      applyRoomSnapshot({
+        rows: Array.isArray(snapshot?.rows) ? snapshot.rows : [],
+        lobby: (data?.lobby && typeof data.lobby === 'object') ? data.lobby : snapshot?.lobby || null
+      });
+    }
+
     async function startRoomPolling(){
       if(state.pollTimer) clearInterval(state.pollTimer);
       if(!realtimeEnabled()) return;
       state.pollTimer = setInterval(async()=>{
-        const rows = await sbFetchRoom();
-        applyRoomRows(rows);
+        const snapshot = await sbFetchRoom();
+        applyRoomSnapshot(snapshot);
       }, 1000);
     }
 
@@ -1435,7 +1574,7 @@
       )).join('');
     }
 
-    function beginRaceFlow(){
+    async function beginRaceFlow(){
       const name = String(($('player-name').value || '').trim());
       if(!name){
         alert('Please enter your racer name.');
@@ -1445,13 +1584,20 @@
       state.roomBase = getRoomBaseFromInput();
       syncRoomUi();
       state.playerName = name;
-      pickRaceText();
-      setupRacers();
-      renderTrack();
-      renderRaceText();
-      resetRaceUI();
-      showScreen('race');
-      startCountdown();
+      const nextSignature = currentJoinSignature();
+      if(state.joinedSignature && state.joinedSignature !== nextSignature){
+        resetLobbyMembership();
+      }
+      try{
+        if(!state.joinedLobby){
+          await joinRoomLobby();
+          return;
+        }
+        await requestSharedStart();
+      }catch(err){
+        console.error(err);
+        setLobbyMessage(err?.message || 'Could not join the shared race.');
+      }
     }
 
     function pickRaceText(){
@@ -1580,25 +1726,33 @@
       }
     }
 
-    function startCountdown(){
+    function startCountdown(goAtMs){
       const overlay = $('countdown-overlay');
-      let count = 3;
+      const targetGo = Number.isFinite(goAtMs) ? goAtMs : (Date.now() + 3200);
+      let lastShown = null;
       overlay.classList.add('active');
-      overlay.textContent = count;
+      overlay.textContent = '3';
       state.countdownTimer = setInterval(()=>{
-        count--;
-        if(count > 0){
-          overlay.textContent = count;
-          beep(720, 0.06, 'triangle', 0.05);
-        }else if(count === 0){
-          overlay.textContent = 'GO!';
-          beep(920, 0.10, 'triangle', 0.06);
+        const remainingMs = targetGo - Date.now();
+        if(remainingMs > 0){
+          const shown = Math.max(1, Math.ceil(remainingMs / 1000));
+          if(lastShown !== shown){
+            overlay.textContent = shown;
+            beep(720, 0.06, 'triangle', 0.05);
+            lastShown = shown;
+          }
+        }else if(remainingMs > -450){
+          if(lastShown !== 'GO'){
+            overlay.textContent = 'GO!';
+            beep(920, 0.10, 'triangle', 0.06);
+            lastShown = 'GO';
+          }
         }else{
           clearInterval(state.countdownTimer);
           overlay.classList.remove('active');
           startRace();
         }
-      }, 820);
+      }, 90);
     }
 
     function startRace(){
@@ -1607,6 +1761,7 @@
       $('typing-input').disabled = false;
       $('typing-input').focus();
       $('statusLabel').textContent = 'Racing…';
+      setLobbyMessage('');
       updateNitroBar();
       state.aiInterval = setInterval(()=>{
         if(!state.raceActive) return;
@@ -1902,6 +2057,7 @@
       syncSound();
       renderLeaderboard();
       renderStartPreview();
+      updateStartButton();
       $('room-code').value = state.roomBase || 'class-race';
       syncRoomUi();
       const learnerName = qs.get('learner') || qs.get('name') || '';
@@ -1910,8 +2066,14 @@
       }
       state.clientId = getOrCreateClientId();
       $('room-code').addEventListener('input', ()=>{
+        resetLobbyMembership();
         state.roomBase = getRoomBaseFromInput();
         syncRoomUi();
+        setLobbyMessage('');
+      });
+      $('player-name').addEventListener('input', ()=>{
+        resetLobbyMembership();
+        setLobbyMessage('');
       });
       $('typing-input').addEventListener('input', handleInput);
       $('race-screen').addEventListener('click', ()=>{
