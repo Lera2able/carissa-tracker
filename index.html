@@ -2246,6 +2246,45 @@ function applyLearnerOverridesToClassData(overrides){
   });
 }
 
+async function renameLearnerEverywhereViaApi({ className, learner, learnerNo='', newSurname, newFirstname, setOverrides }){
+  const safeClass = String(className || '').trim();
+  const originalSurname = String(learner?._origSurname ?? learner?.surname ?? '').trim();
+  const originalFirstname = String(learner?._origFirstname ?? learner?.firstname ?? '').trim();
+  const oldDisplaySurname = String(learner?.surname || '').trim();
+  const oldDisplayFirstname = String(learner?.firstname || '').trim();
+  const safeNewSurname = String(newSurname || '').trim();
+  const safeNewFirstname = String(newFirstname || '').trim();
+  const learnerUsername = String(learner?.username || learner?.learner_username || '').trim().toLowerCase();
+  if(!safeClass || !originalSurname || !originalFirstname || !safeNewSurname || !safeNewFirstname){
+    throw new Error('Missing learner rename details.');
+  }
+  const data = await apiRequest('/learner/name/update', {
+    method:'POST',
+    body:{
+      class_name: safeClass,
+      learner_no: String(learnerNo || '').trim(),
+      learner_username: learnerUsername,
+      original_surname: originalSurname,
+      original_firstname: originalFirstname,
+      old_surname: oldDisplaySurname,
+      old_firstname: oldDisplayFirstname,
+      new_surname: safeNewSurname,
+      new_firstname: safeNewFirstname,
+    }
+  });
+  const refreshedOverrides = await fetchLearnerOverrides();
+  applyLearnerOverridesToClassData(refreshedOverrides);
+  if(typeof setOverrides === 'function') setOverrides(refreshedOverrides);
+  return {
+    apiResult: data?.result || null,
+    originalSurname,
+    originalFirstname,
+    oldDisplaySurname,
+    oldDisplayFirstname,
+    refreshedOverrides,
+  };
+}
+
 /* ── The admin tab UI ─────────────────────────────────────────── */
 function LearnersAdminTab({overrides,setOverrides,setAssessments}){
   const [selClass,setSelClass] = useState(ASSESS_CLASS_NAMES[0]||CLASS_NAMES[0]);
@@ -8867,6 +8906,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
               teacherAuth={teacherAuth}
               selClass={selClass}
               sharedAdminEmails={sharedAdminEmails}
+              setOverrides={setOverrides}
               showMsg={showMsg}
               onOpenLearnerReports={()=>setTab('sasams_reports')}
               onAudit={(evt)=>logTeacherAudit(evt, selClass)}
@@ -9056,7 +9096,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
   );
 }
 
-function TeacherSasamsMarksTab({ teacherAuth, selClass, sharedAdminEmails, showMsg, onAudit, onOpenLearnerReports }){
+function TeacherSasamsMarksTab({ teacherAuth, selClass, sharedAdminEmails, showMsg, onAudit, onOpenLearnerReports, setOverrides }){
   const sasamsPatchVersion = '26.1.1';
   const sasamsPatchNote = 'Validated against SA-SAMS v26.1.1. Reference-only subjects such as Pre Gr R and O:/TO: rows are excluded from teacher capture totals.';
   const academicYear = new Date().getFullYear();
@@ -9082,6 +9122,8 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, sharedAdminEmails, showM
   const [teacherCanScrollRight,setTeacherCanScrollRight] = useState(false);
   const [showLearnerReports,setShowLearnerReports] = useState(false);
   const [learnerComments,setLearnerComments] = useState({});
+  const [editingLearner,setEditingLearner] = useState(null);
+  const [renameBusy,setRenameBusy] = useState(false);
 
   // Keep teacher comments aligned to the correct learner by keying with both number + name.
   // This prevents mixups when class lists are edited or learner numbers shift.
@@ -9169,6 +9211,49 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, sharedAdminEmails, showM
       clearTimeout(saveTimersRef.current[key]);
       delete saveTimersRef.current[key];
     }
+  };
+
+  const openLearnerRename = (learner, learnerNo)=>{
+    setEditingLearner({ learner, learnerNo: String(learnerNo || '').trim() });
+  };
+
+  const saveLearnerRename = async(newSurname, newFirstname)=>{
+    if(!editingLearner) return;
+    setRenameBusy(true);
+    try{
+      const learner = editingLearner.learner;
+      const learnerNo = String(editingLearner.learnerNo || '').trim();
+      const oldDisplay = `${learner.firstname} ${learner.surname}`.trim();
+      const { oldDisplaySurname, oldDisplayFirstname } = await renameLearnerEverywhereViaApi({
+        className: selClass,
+        learner,
+        learnerNo,
+        newSurname,
+        newFirstname,
+        setOverrides,
+      });
+      const oldKey = sasamsLearnerCommentKey(learner, learnerNo);
+      const renamedLearner = { ...learner, surname:newSurname, firstname:newFirstname };
+      const newKey = sasamsLearnerCommentKey(renamedLearner, learnerNo);
+      if(oldKey !== newKey){
+        setLearnerComments(prev=>{
+          if(!Object.prototype.hasOwnProperty.call(prev, oldKey)) return prev;
+          const next = {...prev, [newKey]: prev[oldKey]};
+          delete next[oldKey];
+          return next;
+        });
+      }
+      setEditingLearner(null);
+      setStatus(`Learner name updated: ${oldDisplayFirstname} ${oldDisplaySurname} → ${newFirstname} ${newSurname}`);
+      showMsg && showMsg(`✓ Updated learner name across the learner records: ${oldDisplay} → ${newFirstname} ${newSurname}`);
+      onAudit && onAudit({
+        action:'sasams_learner_name_updated',
+        detail:`${selClass} • learner ${learnerNo || '?'} • ${oldDisplayFirstname} ${oldDisplaySurname} → ${newFirstname} ${newSurname}`
+      });
+    }catch(e){
+      alert('Could not update this learner name across the database: ' + (e?.message || e));
+    }
+    setRenameBusy(false);
   };
 
   useEffect(()=>()=>Object.values(saveTimersRef.current).forEach(clearTimeout),[]);
@@ -10156,6 +10241,14 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, sharedAdminEmails, showM
                       <td style={{padding:'10px',position:'sticky',left:0,background:'#fff',zIndex:1}}>
                         <div style={{fontWeight:800,color:'#111827'}}>{learner.surname}, {learner.firstname}</div>
                         <div style={{fontSize:'11px',color:'#64748b'}}>No. {learnerNo}</div>
+                        <button
+                          type="button"
+                          onClick={()=>openLearnerRename(learner, learnerNo)}
+                          disabled={renameBusy}
+                          style={{...sbtn,background:'#f59e0b',padding:'5px 9px',fontSize:'11px',marginTop:'6px',opacity:renameBusy?0.7:1}}
+                        >
+                          {renameBusy && editingLearner?.learnerNo===learnerNo ? 'Saving...' : '✏️ Edit'}
+                        </button>
                       </td>
                       {criteria.map(criterion=>{
                         const cellKey = sasamsCellKey(learnerNo, String(criterion.off_criterion_id));
@@ -10331,6 +10424,14 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, sharedAdminEmails, showM
             </div>
           )}
         </>
+      )}
+      {editingLearner && (
+        <EditNameModal
+          surname={editingLearner.learner?.surname || ''}
+          firstname={editingLearner.learner?.firstname || ''}
+          onClose={()=>!renameBusy && setEditingLearner(null)}
+          onSave={saveLearnerRename}
+        />
       )}
     </div>
   );
