@@ -7560,7 +7560,7 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
       ["learnworld", "\u{1F310} LearnWorld"],
       ["learner", "\u{1F466} Learner"],
       ["admin", "\u{1F510} Admin Dashboard"]
-    ]).map(([k, l]) => /* @__PURE__ */ React.createElement("button", { key: k, onClick: () => switchTo(k), style: { padding: "12px 18px", borderRadius: "8px", border: "none", cursor: "pointer", fontSize: "15px", fontWeight: 600, flex: "1 1 auto", minWidth: "160px", background: mode === k ? "linear-gradient(135deg,#667eea,#764ba2)" : "transparent", color: mode === k ? "white" : "#666" } }, l)))), /* @__PURE__ */ React.createElement("div", { style: { maxWidth: "1300px", margin: "14px auto", padding: "0 16px 50px" } }, mode === "teacher" && /* @__PURE__ */ React.createElement(TeacherView, { onEditName: (r, cb) => setEditTarget({ row: r, onSave: cb }) }), mode === "coordinator" && /* @__PURE__ */ React.createElement(CoordinatorView, { onEditName: (r, cb) => setEditTarget({ row: r, onSave: cb }) }), mode === "learnworld" && /* @__PURE__ */ React.createElement(LearnWorldView, { exportReport: exportAssessmentReport, exportClassSummary, adminAccess: isAdmin, requestAdminAccess }), mode === "learner" && /* @__PURE__ */ React.createElement(LearnerPortalView, null), mode === "admin" && isAdmin && /* @__PURE__ */ React.createElement(AdminDashboard, { onBack: TEACHER_SESSION ? () => setMode("learnworld") : null, adminUser })), showLogin && /* @__PURE__ */ React.createElement(
+    ]).map(([k, l]) => /* @__PURE__ */ React.createElement("button", { key: k, onClick: () => switchTo(k), style: { padding: "12px 18px", borderRadius: "8px", border: "none", cursor: "pointer", fontSize: "15px", fontWeight: 600, flex: "1 1 auto", minWidth: "160px", background: mode === k ? "linear-gradient(135deg,#667eea,#764ba2)" : "transparent", color: mode === k ? "white" : "#666" } }, l)))), /* @__PURE__ */ React.createElement("div", { style: { maxWidth: "1300px", margin: "14px auto", padding: "0 16px 50px" } }, mode === "teacher" && /* @__PURE__ */ React.createElement(TeacherView, { onEditName: (r, cb) => setEditTarget({ row: r, onSave: cb }) }), mode === "coordinator" && /* @__PURE__ */ React.createElement(CoordinatorView, { onEditName: (r, cb) => setEditTarget({ row: r, onSave: cb }) }), mode === "learnworld" && /* @__PURE__ */ React.createElement(LearnWorldView, { exportReport: exportAssessmentReport, exportClassSummary, adminAccess: isAdmin, requestAdminAccess, setOverrides }), mode === "learner" && /* @__PURE__ */ React.createElement(LearnerPortalView, null), mode === "admin" && isAdmin && /* @__PURE__ */ React.createElement(AdminDashboard, { onBack: TEACHER_SESSION ? () => setMode("learnworld") : null, adminUser })), showLogin && /* @__PURE__ */ React.createElement(
       AdminLoginModal,
       {
         prefillEmail: adminPrefillEmail,
@@ -7592,7 +7592,7 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
   }
   const root = ReactDOM.createRoot(document.getElementById("root"));
   root.render(/* @__PURE__ */ React.createElement(App, null));
-  function LearnWorldView({ exportReport, exportClassSummary: exportClassSummary2, adminAccess, requestAdminAccess }) {
+  function LearnWorldView({ exportReport, exportClassSummary: exportClassSummary2, adminAccess, requestAdminAccess, setOverrides: setOverrides2 }) {
     const [selClass, setSelClass] = useState(TEACHER_SESSION ? TEACHER_SESSION.active_class_name || TEACHER_SESSION.class_name : "");
     const [teacherAuth, setTeacherAuth] = useState(TEACHER_SESSION);
     const [loginEmail, setLoginEmail] = useState(PREFILLED_TEACHER_EMAIL);
@@ -8125,7 +8125,7 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
         teacherAuth,
         selClass,
         sharedAdminEmails,
-        setOverrides,
+        setOverrides: setOverrides2,
         showMsg,
         onOpenLearnerReports: () => setTab("sasams_reports"),
         onAudit: (evt) => logTeacherAudit(evt, selClass)
