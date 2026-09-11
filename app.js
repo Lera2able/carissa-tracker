@@ -1653,7 +1653,7 @@ This will NOT remove any existing activities.`)) return;
       }
     });
   }
-  async function renameLearnerEverywhereViaApi({ className, learner, learnerNo = "", newSurname, newFirstname, setOverrides: setOverrides2 }) {
+  async function renameLearnerEverywhereViaApi({ className, learner, learnerNo = "", newSurname, newFirstname, setOverrides }) {
     var _a, _b, _c, _d;
     const safeClass = String(className || "").trim();
     const originalSurname = String((_b = (_a = learner == null ? void 0 : learner._origSurname) != null ? _a : learner == null ? void 0 : learner.surname) != null ? _b : "").trim();
@@ -1682,7 +1682,7 @@ This will NOT remove any existing activities.`)) return;
     });
     const refreshedOverrides = await fetchLearnerOverrides();
     applyLearnerOverridesToClassData(refreshedOverrides);
-    if (typeof setOverrides2 === "function") setOverrides2(refreshedOverrides);
+    if (typeof setOverrides === "function") setOverrides(refreshedOverrides);
     return {
       apiResult: (data == null ? void 0 : data.result) || null,
       originalSurname,
@@ -1692,7 +1692,7 @@ This will NOT remove any existing activities.`)) return;
       refreshedOverrides
     };
   }
-  function LearnersAdminTab({ overrides, setOverrides: setOverrides2, setAssessments }) {
+  function LearnersAdminTab({ overrides, setOverrides, setAssessments }) {
     const [selClass, setSelClass] = useState(ASSESS_CLASS_NAMES[0] || CLASS_NAMES[0]);
     const [editing, setEditing] = useState(null);
     const [saving, setSaving] = useState(false);
@@ -1890,7 +1890,7 @@ This will NOT remove any existing activities.`)) return;
           hit.firstname = newFn;
         }
         if (savedRow) {
-          setOverrides2((prev) => {
+          setOverrides((prev) => {
             const others = (prev || []).filter((o) => o.id !== savedRow.id);
             return [savedRow, ...others];
           });
@@ -1923,7 +1923,7 @@ This will also rename matching assessment records back.`)) return;
         );
         if (existingOverride) {
           await db.del("carissa_learner_overrides", `id=eq.${existingOverride.id}`);
-          setOverrides2((prev) => (prev || []).filter((o) => o.id !== existingOverride.id));
+          setOverrides((prev) => (prev || []).filter((o) => o.id !== existingOverride.id));
         }
         const q = `class_name=eq.${encodeURIComponent(selClass)}&surname=eq.${encodeURIComponent(oldDisplaySurname)}&firstname=eq.${encodeURIComponent(oldDisplayFirstname)}`;
         await db.patch("carissa_elearning_assessments", q, {
@@ -6847,7 +6847,7 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
     const [reading, setReading] = useState([]);
     const [chats, setChats] = useState([]);
     const [auditEvents, setAuditEvents] = useState([]);
-    const [overrides, setOverrides2] = useState([]);
+    const [overrides, setOverrides] = useState([]);
     const [loading, setLoading] = useState(true);
     const [projectMode, setProjectMode] = useState(null);
     const [lastSeenDisciplineAt, setLastSeenDisciplineAt] = useState(() => getStoredDisciplineSeenAt());
@@ -6868,7 +6868,7 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
           setResources(await ensureBuiltinLearnWorldResources(res));
           setAssignments(asn);
           setAssessments(asm);
-          setOverrides2(ovr);
+          setOverrides(ovr);
           setReading(rdg);
           setChats(ch);
           setAuditEvents(aud);
@@ -6927,7 +6927,7 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
         exportClassSummary,
         onProjectTest: (phase) => setProjectMode({ phase })
       }
-    ), subTab === "sasams_submits" && /* @__PURE__ */ React.createElement(SasamsAdminSubmissionsTab, { adminUser }), subTab === "reading" && /* @__PURE__ */ React.createElement(ReadingResultsTab, { reading }), subTab === "discipline" && /* @__PURE__ */ React.createElement(DisciplineAdminTab, { adminUser }), subTab === "learners" && /* @__PURE__ */ React.createElement(LearnersAdminTab, { overrides, setOverrides: setOverrides2, setAssessments }), subTab === "moderation" && /* @__PURE__ */ React.createElement(ModerationToolsTab, { adminAccess: true }), subTab === "registrations" && /* @__PURE__ */ React.createElement(TeacherRegistrationsTab, null), subTab === "teacher_audit" && /* @__PURE__ */ React.createElement(TeacherAuditTab, { events: auditEvents, setEvents: setAuditEvents }), subTab === "assistant" && /* @__PURE__ */ React.createElement(TraeAssistantTab, null), subTab === "chats" && /* @__PURE__ */ React.createElement(ChatsAdminTab, { chats, setChats }), subTab === "audit" && /* @__PURE__ */ React.createElement(AuditAdminTab, null), projectMode && /* @__PURE__ */ React.createElement(
+    ), subTab === "sasams_submits" && /* @__PURE__ */ React.createElement(SasamsAdminSubmissionsTab, { adminUser }), subTab === "reading" && /* @__PURE__ */ React.createElement(ReadingResultsTab, { reading }), subTab === "discipline" && /* @__PURE__ */ React.createElement(DisciplineAdminTab, { adminUser }), subTab === "learners" && /* @__PURE__ */ React.createElement(LearnersAdminTab, { overrides, setOverrides, setAssessments }), subTab === "moderation" && /* @__PURE__ */ React.createElement(ModerationToolsTab, { adminAccess: true }), subTab === "registrations" && /* @__PURE__ */ React.createElement(TeacherRegistrationsTab, null), subTab === "teacher_audit" && /* @__PURE__ */ React.createElement(TeacherAuditTab, { events: auditEvents, setEvents: setAuditEvents }), subTab === "assistant" && /* @__PURE__ */ React.createElement(TraeAssistantTab, null), subTab === "chats" && /* @__PURE__ */ React.createElement(ChatsAdminTab, { chats, setChats }), subTab === "audit" && /* @__PURE__ */ React.createElement(AuditAdminTab, null), projectMode && /* @__PURE__ */ React.createElement(
       ProjectTestView,
       {
         initialPhase: projectMode.phase,
@@ -7524,11 +7524,13 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
     const [adminUser, setAdminUser] = useState(null);
     const [adminPrefillEmail, setAdminPrefillEmail] = useState("");
     const [editTarget, setEditTarget] = useState(null);
+    const [overrides, setOverrides] = useState([]);
     const [overridesReady, setOverridesReady] = useState(false);
     useEffect(() => {
       (async () => {
         const ovr = await fetchLearnerOverrides();
         applyLearnerOverridesToClassData(ovr);
+        setOverrides(ovr);
         setOverridesReady(true);
       })();
     }, []);
@@ -7592,7 +7594,7 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
   }
   const root = ReactDOM.createRoot(document.getElementById("root"));
   root.render(/* @__PURE__ */ React.createElement(App, null));
-  function LearnWorldView({ exportReport, exportClassSummary: exportClassSummary2, adminAccess, requestAdminAccess, setOverrides: setOverrides2 }) {
+  function LearnWorldView({ exportReport, exportClassSummary: exportClassSummary2, adminAccess, requestAdminAccess, setOverrides }) {
     const [selClass, setSelClass] = useState(TEACHER_SESSION ? TEACHER_SESSION.active_class_name || TEACHER_SESSION.class_name : "");
     const [teacherAuth, setTeacherAuth] = useState(TEACHER_SESSION);
     const [loginEmail, setLoginEmail] = useState(PREFILLED_TEACHER_EMAIL);
@@ -8125,7 +8127,7 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
         teacherAuth,
         selClass,
         sharedAdminEmails,
-        setOverrides: setOverrides2,
+        setOverrides,
         showMsg,
         onOpenLearnerReports: () => setTab("sasams_reports"),
         onAudit: (evt) => logTeacherAudit(evt, selClass)
@@ -8176,7 +8178,7 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
       }
     ), tab === "resources" && /* @__PURE__ */ React.createElement(ResourcesLibrary, { resources, onAudit: (type, r) => logTeacherAudit(`${type}:${String((r == null ? void 0 : r.title) || "").slice(0, 40)}`, selClass) })));
   }
-  function TeacherSasamsMarksTab({ teacherAuth, selClass, sharedAdminEmails, showMsg, onAudit, onOpenLearnerReports, setOverrides: setOverrides2 }) {
+  function TeacherSasamsMarksTab({ teacherAuth, selClass, sharedAdminEmails, showMsg, onAudit, onOpenLearnerReports, setOverrides }) {
     var _a, _b;
     const sasamsPatchVersion = "26.1.1";
     const sasamsPatchNote = "Validated against SA-SAMS v26.1.1. Reference-only subjects such as Pre Gr R and O:/TO: rows are excluded from teacher capture totals.";
@@ -8294,7 +8296,7 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
           learnerNo,
           newSurname,
           newFirstname,
-          setOverrides: setOverrides2
+          setOverrides
         });
         const oldKey = sasamsLearnerCommentKey(learner, learnerNo);
         const renamedLearner = { ...learner, surname: newSurname, firstname: newFirstname };
