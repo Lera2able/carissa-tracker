@@ -4369,6 +4369,7 @@ function SasamsAdminSubmissionsTab({adminUser}){
   const completenessPct = expectedCells ? Math.round((capturedCells / expectedCells) * 100) : 0;
   const activeSubject = selectedBatch ? subjectMap[String(selectedBatch.official_subject_id)] : null;
   const sasamsPatchVersion = '26.1.1';
+  const sasamsPatchNote = 'Validated against SA-SAMS v26.1.1. Reference-only subjects such as Pre Gr R and O:/TO: rows are excluded from admin review totals.';
   const updateAdminScrollButtons = useCallback(()=>{
     const el = adminTableScrollerRef.current;
     if(!el){
@@ -4937,6 +4938,8 @@ function SasamsAdminSubmissionsTab({adminUser}){
                     <div style={{fontSize:'13px',color:'#475569'}}>Completeness: <strong>{completenessPct}%</strong></div>
                     <div style={{fontSize:'13px',color:'#475569'}}>Class avg term %: <strong>{adminClassSummary.averageTermPercent ?? '—'}</strong></div>
                     <div style={{fontSize:'13px',color:'#475569'}}>Common level: <strong>{adminClassSummary.dominantLevel || '—'}</strong></div>
+                    <div style={{fontSize:'11px',color:'#6366f1',marginTop:'6px'}}>SA-SAMS patch {sasamsPatchVersion}</div>
+                    <div style={{fontSize:'11px',color:'#475569',marginTop:'6px',lineHeight:1.45,maxWidth:'320px'}}>{sasamsPatchNote}</div>
                   </div>
                 </div>
 
@@ -9055,6 +9058,7 @@ function LearnWorldView({exportReport, exportClassSummary, adminAccess, requestA
 
 function TeacherSasamsMarksTab({ teacherAuth, selClass, sharedAdminEmails, showMsg, onAudit, onOpenLearnerReports }){
   const sasamsPatchVersion = '26.1.1';
+  const sasamsPatchNote = 'Validated against SA-SAMS v26.1.1. Reference-only subjects such as Pre Gr R and O:/TO: rows are excluded from teacher capture totals.';
   const academicYear = new Date().getFullYear();
   const teacherEmail = String(teacherAuth?.email || '').trim().toLowerCase();
   const teacherName = `${teacherAuth?.first_name || ''} ${teacherAuth?.surname || ''}`.trim() || teacherEmail || 'Teacher';
@@ -10002,6 +10006,7 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, sharedAdminEmails, showM
           <div style={{fontSize:'14px',fontWeight:700,color:'#312e81'}}>{teacherName}</div>
           <div style={{fontSize:'12px',color:'#6366f1',marginTop:'4px'}}>{selClass} • {activeSubject?.name_english || 'Choose a subject'}</div>
           <div style={{fontSize:'11px',color:'#6366f1',marginTop:'4px'}}>SA-SAMS patch {sasamsPatchVersion}</div>
+          <div style={{fontSize:'11px',color:'#475569',marginTop:'6px',lineHeight:1.45,maxWidth:'340px'}}>{sasamsPatchNote}</div>
         </div>
       </div>
 
@@ -10333,6 +10338,7 @@ function TeacherSasamsMarksTab({ teacherAuth, selClass, sharedAdminEmails, showM
 
 function TeacherSasamsLearnerReportsTab({ teacherAuth, selClass, showMsg, onAudit }){
   const sasamsPatchVersion = '26.1.1';
+  const sasamsPatchNote = 'Validated against SA-SAMS v26.1.1. Reference-only subjects such as Pre Gr R and O:/TO: rows are excluded from learner report totals.';
   const academicYear = new Date().getFullYear();
   const teacherEmail = String(teacherAuth?.email || '').trim().toLowerCase();
   const teacherName = `${teacherAuth?.first_name || ''} ${teacherAuth?.surname || ''}`.trim() || teacherEmail || 'Teacher';
@@ -10751,6 +10757,7 @@ function TeacherSasamsLearnerReportsTab({ teacherAuth, selClass, showMsg, onAudi
           <div style={{fontSize:'14px',fontWeight:700,color:'#312e81'}}>{selClass}</div>
           <div style={{fontSize:'12px',color:'#6366f1',marginTop:'4px'}}>Teacher: {teacherName}</div>
           <div style={{fontSize:'11px',color:'#6366f1',marginTop:'4px'}}>SA-SAMS patch {sasamsPatchVersion}</div>
+          <div style={{fontSize:'11px',color:'#475569',marginTop:'6px',lineHeight:1.45,maxWidth:'340px'}}>{sasamsPatchNote}</div>
         </div>
       </div>
 
