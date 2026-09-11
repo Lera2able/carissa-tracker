@@ -237,6 +237,22 @@
       font-weight:700;
       line-height:1.55;
     }
+    .admin-badge{
+      display:none;
+      align-items:center;
+      gap:8px;
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius:14px;
+      background:linear-gradient(135deg, rgba(255,213,74,.20), rgba(255,140,66,.16));
+      border:1px solid rgba(255,140,66,.24);
+      color:#9a3412;
+      font-size:13px;
+      font-weight:900;
+      line-height:1.45;
+    }
+    .admin-badge.visible{display:inline-flex}
+    .admin-badge .icon{font-size:16px}
     .preview-card{
       background:linear-gradient(180deg, rgba(8,17,32,.94), rgba(18,31,54,.94));
       color:#fff;
@@ -585,6 +601,19 @@
       color:#e2e8f0;
       font-weight:900;
     }
+    .live-admin-badge{
+      display:none;
+      margin-bottom:10px;
+      padding:9px 11px;
+      border-radius:14px;
+      background:rgba(255,213,74,.16);
+      border:1px solid rgba(255,213,74,.24);
+      color:#fef3c7;
+      font-size:13px;
+      font-weight:900;
+      line-height:1.45;
+    }
+    .live-admin-badge.visible{display:block}
     .live-row{
       display:grid;
       grid-template-columns:44px 1fr 70px 74px;
@@ -895,6 +924,7 @@
             <button class="main-btn" id="start-btn" type="button" onclick="beginRaceFlow()">▶ Join Room</button>
             <button class="small-btn" id="soundBtn" type="button" onclick="toggleSound()">🔊 Sound On</button>
           </div>
+          <div class="admin-badge" id="roomAdminBadge"></div>
           <div class="helper-copy" id="lobbyStatus" style="margin-top:10px"></div>
 
           <div class="helper-copy">
@@ -940,6 +970,7 @@
 
           <div class="live-panel" id="livePanel" style="display:none">
             <h4>Live class race</h4>
+            <div class="live-admin-badge" id="liveAdminBadge"></div>
             <div id="liveBoard"></div>
             <div class="live-hint" id="liveHint">If this shows only you, it means other learners are not currently racing, are using a different race code or difficulty, or the race-room table hasn’t been created in Supabase yet.</div>
           </div>
@@ -1145,6 +1176,7 @@
       joinedLobby:false,
       joinedSignature:'',
       isRoomAdmin:false,
+      roomAdminClientId:'',
       roomAdminName:'',
       seenRoundId:'',
       activeRoundId:''
@@ -1286,15 +1318,30 @@
       if(el) el.textContent = String(msg || '');
     }
 
+    function setAdminBadge(name='', isMe=false){
+      const safeName = String(name || '').trim();
+      const msg = safeName
+        ? (isMe ? `👑 You are the room leader. Your Start button begins the race for everyone.` : `👑 Room leader: ${safeName}. Wait for that learner to press Start.`)
+        : '';
+      ['roomAdminBadge','liveAdminBadge'].forEach(id=>{
+        const el = $(id);
+        if(!el) return;
+        el.textContent = msg;
+        el.classList.toggle('visible', !!msg);
+      });
+    }
+
     function resetLobbyMembership(){
       if(state.pollTimer) clearInterval(state.pollTimer);
       if(state.pushTimer) clearInterval(state.pushTimer);
       state.joinedLobby = false;
       state.joinedSignature = '';
       state.isRoomAdmin = false;
+      state.roomAdminClientId = '';
       state.roomAdminName = '';
       state.seenRoundId = '';
       state.activeRoundId = '';
+      setAdminBadge('');
       updateStartButton();
     }
 
@@ -1382,9 +1429,10 @@
         const w = Math.round(Number(r.wpm||0));
         const a = Math.round(Number(r.accuracy||100));
         const me = String(r.client_id||'') === String(state.clientId||'');
+        const isLeader = String(r.client_id||'') === String(state.roomAdminClientId||'');
         return `<div class="live-row" style="${me ? 'border-color:rgba(255,213,74,.35);background:rgba(255,213,74,.10);' : ''}">
           <span class="live-rank">#${i+1}</span>
-          <span>${me ? '⭐ ' : ''}${name}</span>
+          <span>${isLeader ? '👑 ' : ''}${me ? '⭐ ' : ''}${name}</span>
           <span class="live-wpm">${w} wpm</span>
           <span class="live-acc">${a}%</span>
         </div>`;
@@ -1435,15 +1483,17 @@
       const adminId = String(data.admin_client_id || '').trim();
       const adminName = String(data.admin_name || '').trim();
       state.isRoomAdmin = !!(adminId && adminId === String(state.clientId || ''));
+      state.roomAdminClientId = adminId;
       state.roomAdminName = adminName || 'Room admin';
+      setAdminBadge(state.roomAdminName, state.isRoomAdmin);
       updateStartButton();
 
       if(state.joinedLobby && !state.raceActive && !state.raceFinished){
         const liveCount = Array.isArray(rows) ? rows.length : 0;
         if(state.isRoomAdmin){
-          setLobbyMessage(`You are the room admin. ${liveCount} player${liveCount===1?'':'s'} joined. Press Start For Everyone when the class is ready.`);
+          setLobbyMessage(`${liveCount} player${liveCount===1?'':'s'} ready. Press Start For Everyone when the class is ready.`);
         }else{
-          setLobbyMessage(`${state.roomAdminName} is the room admin. Wait here until the admin starts the race for everyone.`);
+          setLobbyMessage(`You are in the room. Wait for ${state.roomAdminName} to press Start and the race will begin for everyone.`);
         }
       }
 
