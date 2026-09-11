@@ -883,13 +883,21 @@
             </div>
           </div>
 
+          <div class="field">
+            <label for="room-code">Race code</label>
+            <input id="room-code" class="player-input" type="text" placeholder="grade-2-2-nitro" maxlength="60" autocomplete="off" />
+            <div class="helper-copy" style="margin-top:8px">
+              Learners must use the same race code and difficulty to compete in the same live race. When this opens from LearnWorld, the class race code loads automatically.
+            </div>
+          </div>
+
           <div class="start-actions">
             <button class="main-btn" id="start-btn" onclick="beginRaceFlow()">▶ Start Race</button>
             <button class="small-btn" id="soundBtn" type="button" onclick="toggleSound()">🔊 Sound On</button>
           </div>
 
           <div class="helper-copy">
-            The race uses a countdown, AI classmates, a nitro meter, and a live finishing table. When opened from LearnWorld, the final WPM, accuracy, time, and score are sent to the teacher automatically.
+            The race uses a countdown, a shared live room for classmates, AI fallback racers when nobody else is connected, a nitro meter, and a live finishing table. When opened from LearnWorld, the final WPM, accuracy, time, and score are sent to the teacher automatically.
           </div>
         </div>
 
@@ -932,7 +940,7 @@
           <div class="live-panel" id="livePanel" style="display:none">
             <h4>Live class race</h4>
             <div id="liveBoard"></div>
-            <div class="live-hint">If this shows only you, it means other learners are not currently racing, or the race-room table hasn’t been created in Supabase yet.</div>
+            <div class="live-hint" id="liveHint">If this shows only you, it means other learners are not currently racing, are using a different race code or difficulty, or the race-room table hasn’t been created in Supabase yet.</div>
           </div>
         </div>
 
@@ -1032,7 +1040,8 @@
             <ul>
               <li>Type the text as fast and accurately as you can.</li>
               <li>Your car moves forward with every correct character.</li>
-              <li>AI classmates race beside you with different speeds.</li>
+              <li>Classmates using the same race code and difficulty appear live in the same race.</li>
+              <li>AI racers fill empty lanes when not enough classmates are connected.</li>
               <li>The race ends when you finish the text or the timer runs out.</li>
             </ul>
           </div>
@@ -1074,7 +1083,7 @@
     const OPENED_FROM_TRACKER = !!ASSIGNMENT_ID;
     const PENDING_KEY = 'typing_speed_result_pending';
     const LOCAL_LB_KEY = 'class_typing_race_local_scores_v2';
-    const RACE_ROOM_QS = qs.get('race_room') || (ASSIGNMENT_ID ? `race:${ASSIGNMENT_ID}` : '');
+    const RACE_ROOM_BASE_QS = qs.get('race_room_base') || qs.get('race_room') || (ASSIGNMENT_ID ? `assignment-${ASSIGNMENT_ID}` : '');
     const RACE_TABLE = 'carissa_class_race_progress';
 
     const ROUND_LIMIT_SEC = 60;
@@ -1128,9 +1137,8 @@
       resultSent:false,
       lastResult:null,
       audioCtx:null,
-      sbUrl:'',
-      sbKey:'',
-      roomId:RACE_ROOM_QS,
+      roomBase:RACE_ROOM_BASE_QS,
+      roomId:'',
       clientId:'',
       realtimeReady:false
     };
@@ -1152,6 +1160,41 @@
       return `${m}:${s}`;
     }
     function nowISO(){ return new Date().toISOString(); }
+    function slugifyRoomPart(v){
+      return String(v||'')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g,'-')
+        .replace(/^-+|-+$/g,'')
+        .slice(0, 60);
+    }
+    function hashString(str){
+      let h = 0;
+      const s = String(str||'');
+      for(let i=0;i<s.length;i++) h = ((h << 5) - h) + s.charCodeAt(i);
+      return Math.abs(h);
+    }
+    function getRoomBaseFromInput(){
+      const input = $('room-code');
+      return slugifyRoomPart(input?.value || state.roomBase || '') || 'class-race';
+    }
+    function getRoomIdForDifficulty(diff=state.difficulty){
+      const safeBase = getRoomBaseFromInput();
+      const safeDiff = slugifyRoomPart(diff || 'easy') || 'easy';
+      return `race:${safeBase}:${safeDiff}`;
+    }
+    function syncRoomUi(){
+      const input = $('room-code');
+      if(input){
+        const nextBase = state.roomBase || getRoomBaseFromInput() || 'class-race';
+        if(input.value !== nextBase) input.value = nextBase;
+      }
+      state.roomId = getRoomIdForDifficulty(state.difficulty);
+      const hint = $('liveHint');
+      if(hint){
+        hint.textContent = `Live room: ${state.roomId}. If this shows only you, other learners are not currently racing or are using a different race code or difficulty.`;
+      }
+    }
 
     function showScreen(name){
       document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -1166,6 +1209,7 @@
       try{ localStorage.setItem('class_race_difficulty', state.difficulty); }catch(e){}
       document.querySelectorAll('.diff-btn').forEach(b=>b.classList.toggle('selected', b.dataset.diff===state.difficulty));
       $('diffLabel').textContent = capitalize(state.difficulty);
+      syncRoomUi();
     }
 
     function capitalize(s){
@@ -1223,39 +1267,43 @@
     }
 
     function realtimeEnabled(){
-      return !!(state.sbUrl && state.sbKey && state.roomId);
+      return !!state.roomId;
     }
 
-    function sbHeaders(extra={}){
-      const key = state.sbKey;
-      return {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-        'Content-Type': 'application/json',
-        ...extra
-      };
+    async function apiJson(path, options={}){
+      const headers = {'Content-Type':'application/json', ...(options.headers || {})};
+      const res = await fetch(path, {
+        method: options.method || 'GET',
+        headers,
+        body: options.body === undefined ? undefined : JSON.stringify(options.body),
+        credentials: 'include'
+      });
+      const text = await res.text().catch(()=> '');
+      let data = null;
+      try{ data = text ? JSON.parse(text) : null; }catch(_e){ data = text; }
+      if(!res.ok){
+        throw new Error(data?.error || data?.message || text || `Request failed (${res.status})`);
+      }
+      return data;
     }
 
     async function sbUpsertProgress(payload){
       if(!realtimeEnabled()) return false;
-      const url = `${state.sbUrl}/rest/v1/${RACE_TABLE}?on_conflict=room_id,client_id`;
-      const body = [{
-        room_id: state.roomId,
-        client_id: state.clientId,
-        racer_name: state.playerName || payload.racer_name || 'Learner',
-        progress: Number(payload.progress ?? 0),
-        wpm: Math.round(Number(payload.wpm ?? 0)),
-        accuracy: Math.round(Number(payload.accuracy ?? 100)),
-        status: String(payload.status || 'racing'),
-        updated_at: new Date().toISOString()
-      }];
       try{
-        const res = await fetch(url, {
+        await apiJson('/api/class-race/heartbeat', {
           method: 'POST',
-          headers: sbHeaders({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
-          body: JSON.stringify(body)
+          body: {
+            room_id: state.roomId,
+            client_id: state.clientId,
+            racer_name: state.playerName || payload.racer_name || 'Learner',
+            progress: Number(payload.progress ?? 0),
+            wpm: Math.round(Number(payload.wpm ?? 0)),
+            accuracy: Math.round(Number(payload.accuracy ?? 100)),
+            status: String(payload.status || 'racing'),
+            difficulty: state.difficulty
+          }
         });
-        return res.ok;
+        return true;
       }catch(_e){
         return false;
       }
@@ -1263,19 +1311,9 @@
 
     async function sbFetchRoom(){
       if(!realtimeEnabled()) return [];
-      const since = new Date(Date.now() - 120000).toISOString(); // 2 minutes
-      const q = [
-        `room_id=eq.${encodeURIComponent(state.roomId)}`,
-        `updated_at=gte.${encodeURIComponent(since)}`,
-        `select=client_id,racer_name,progress,wpm,accuracy,status,updated_at`,
-        `order=progress.desc`,
-        `limit=25`
-      ].join('&');
       try{
-        const res = await fetch(`${state.sbUrl}/rest/v1/${RACE_TABLE}?${q}`, { headers: sbHeaders() });
-        if(!res.ok) return [];
-        const data = await res.json();
-        return Array.isArray(data) ? data : [];
+        const data = await apiJson(`/api/class-race/room?room_id=${encodeURIComponent(state.roomId)}`);
+        return Array.isArray(data?.rows) ? data.rows : [];
       }catch(_e){
         return [];
       }
@@ -1404,6 +1442,8 @@
         $('player-name').focus();
         return;
       }
+      state.roomBase = getRoomBaseFromInput();
+      syncRoomUi();
       state.playerName = name;
       pickRaceText();
       setupRacers();
@@ -1416,7 +1456,8 @@
 
     function pickRaceText(){
       const pool = RACE_TEXTS[state.difficulty] || RACE_TEXTS.easy;
-      state.raceText = String(pool[Math.floor(Math.random()*pool.length)] || '').trim();
+      const idx = hashString(`${state.roomId || state.roomBase || 'solo'}|${state.difficulty}`) % Math.max(1, pool.length);
+      state.raceText = String(pool[idx] || pool[0] || '').trim();
       state.raceChars = state.raceText.split('');
     }
 
@@ -1861,11 +1902,17 @@
       syncSound();
       renderLeaderboard();
       renderStartPreview();
+      $('room-code').value = state.roomBase || 'class-race';
+      syncRoomUi();
       const learnerName = qs.get('learner') || qs.get('name') || '';
       if(learnerName){
         $('player-name').value = String(learnerName).slice(0,22);
       }
       state.clientId = getOrCreateClientId();
+      $('room-code').addEventListener('input', ()=>{
+        state.roomBase = getRoomBaseFromInput();
+        syncRoomUi();
+      });
       $('typing-input').addEventListener('input', handleInput);
       $('race-screen').addEventListener('click', ()=>{
         if(state.raceActive) $('typing-input').focus();
@@ -1879,20 +1926,19 @@
 
     init();
 
-    // Receive Supabase config from the LearnWorld opener (more secure than URL params)
+    // Receive class-race room info from the LearnWorld opener.
     window.addEventListener('message', (ev)=>{
       try{
         const d = ev?.data;
         if(!d || d.type !== 'carissa_supabase_config') return;
-        if(d.sb_url && d.sb_key){
-          state.sbUrl = String(d.sb_url);
-          state.sbKey = String(d.sb_key);
-          if(d.race_room) state.roomId = String(d.race_room);
-          state.realtimeReady = true;
-          // Start polling immediately (it will show once there are rows)
-          startRoomPolling();
-          startRoomPush();
+        if(d.race_room_base || d.race_room){
+          state.roomBase = slugifyRoomPart(String(d.race_room_base || d.race_room || '')) || state.roomBase;
+          syncRoomUi();
         }
+        state.realtimeReady = true;
+        // Start polling immediately (it will show once there are rows)
+        startRoomPolling();
+        startRoomPush();
       }catch(_e){}
     });
   </script>

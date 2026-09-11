@@ -891,6 +891,73 @@ async function getAdminAllowedEmails(env) {
   }
 }
 
+const CLASS_RACE_CONFIG_PREFIX = "class_race_progress::";
+function classRaceConfigKey(roomId, clientId) {
+  return `${CLASS_RACE_CONFIG_PREFIX}${String(roomId || "").trim()}::${String(clientId || "").trim()}`;
+}
+
+async function handleClassRaceHeartbeat(request, env, corsOrigin) {
+  const body = await readJsonBody(request);
+  const roomId = String(body?.room_id || "").trim();
+  const clientId = String(body?.client_id || "").trim();
+  const racerName = String(body?.racer_name || "Learner").trim().slice(0, 40);
+  if (!roomId || !clientId) {
+    return jsonResponse({ error: "Missing room_id or client_id." }, 400, corsOrigin);
+  }
+
+  const rowKey = classRaceConfigKey(roomId, clientId);
+  const payload = {
+    room_id: roomId,
+    client_id: clientId,
+    racer_name: racerName || "Learner",
+    progress: Math.max(0, Math.min(100, Number(body?.progress || 0))),
+    wpm: Math.max(0, Math.min(300, Math.round(Number(body?.wpm || 0)))),
+    accuracy: Math.max(0, Math.min(100, Math.round(Number(body?.accuracy || 100)))),
+    status: String(body?.status || "racing").trim().toLowerCase(),
+    difficulty: String(body?.difficulty || "easy").trim().toLowerCase(),
+    updated_at: new Date().toISOString(),
+  };
+
+  const existing = await supabaseGet(env, "carissa_config", {
+    key: `eq.${rowKey}`,
+    select: "key",
+    limit: "1",
+  });
+
+  if (Array.isArray(existing) && existing.length) {
+    await supabasePatch(env, "carissa_config", { key: `eq.${rowKey}` }, { value: JSON.stringify(payload) });
+  } else {
+    await supabasePost(env, "carissa_config", { key: rowKey, value: JSON.stringify(payload) }, "return=minimal");
+  }
+  return jsonResponse({ ok: true }, 200, corsOrigin);
+}
+
+async function handleClassRaceRoom(request, env, corsOrigin) {
+  const url = new URL(request.url);
+  const roomId = String(url.searchParams.get("room_id") || "").trim();
+  if (!roomId) return jsonResponse({ error: "Missing room_id." }, 400, corsOrigin);
+
+  const prefix = classRaceConfigKey(roomId, "");
+  const rows = await supabaseGet(env, "carissa_config", {
+    key: `like.${prefix}*`,
+    select: "key,value",
+    limit: "60",
+  }).catch(() => []);
+
+  const minTs = Date.now() - (2 * 60 * 1000);
+  const liveRows = (Array.isArray(rows) ? rows : [])
+    .map((row) => safeJsonParse(String(row?.value || "{}"), null))
+    .filter((row) => row && String(row.room_id || "") === roomId)
+    .filter((row) => {
+      const ts = Date.parse(String(row.updated_at || ""));
+      return Number.isFinite(ts) && ts >= minTs;
+    })
+    .sort((a, b) => Number(b.progress || 0) - Number(a.progress || 0))
+    .slice(0, 25);
+
+  return jsonResponse({ rows: liveRows }, 200, corsOrigin);
+}
+
 async function requireAdminTeacher(request, env, corsOrigin) {
   const session = await getTeacherSession(request, env);
   if (!session) return { ok: false, res: jsonResponse({ error: "Teacher session required." }, 401, corsOrigin) };
@@ -2014,6 +2081,22 @@ export default {
         return await handleTeacherResultReset(request, env, corsOrigin);
       } catch (error) {
         return jsonResponse({ error: error?.message || "Result reset failed" }, 500, corsOrigin);
+      }
+    }
+    if (url.pathname === "/api/class-race/heartbeat") {
+      if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handleClassRaceHeartbeat(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Class race heartbeat failed" }, 500, corsOrigin);
+      }
+    }
+    if (url.pathname === "/api/class-race/room") {
+      if (request.method !== "GET") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handleClassRaceRoom(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Class race room failed" }, 500, corsOrigin);
       }
     }
     if (url.pathname === "/api/learnworld/purge-removed") {

@@ -7679,6 +7679,7 @@ function LearnerPortalView(){
     if(resourceType === 'typing' && learnerAuth){
       const m = String(learnerAuth.class_name||'').match(/Grade\s+(\d)/i);
       const grade = m ? m[1] : '';
+      const raceRoomBase = `class-${String(assignment.class_name||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')}-${String(assignment.resource_id||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')}`;
       try{
         const u = new URL(url, window.location.href);
         u.searchParams.set('assignment_id', assignment.id);
@@ -7687,7 +7688,8 @@ function LearnerPortalView(){
         const learnerLabel = [learnerAuth.firstname, learnerAuth.surname].filter(Boolean).join(' ').trim();
         if(learnerLabel) u.searchParams.set('learner', learnerLabel);
         // For the "live class race" room (only used by class-typing-race.html; ignored by other games)
-        u.searchParams.set('race_room', `race:${assignment.id}`);
+        // Use a CLASS-based room, not the learner assignment id, so classmates join the same race.
+        u.searchParams.set('race_room_base', raceRoomBase);
         url = u.toString();
       }catch(e){}
     }
@@ -7720,11 +7722,12 @@ function LearnerPortalView(){
         setTimeout(()=>{
           try{
             if(!w || w.closed) return;
+            const raceRoomBase = `class-${String(assignment.class_name||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')}-${String(assignment.resource_id||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')}`;
             w.postMessage({
               type: 'carissa_supabase_config',
               sb_url: SB,
               sb_key: KEY,
-              race_room: `race:${assignment.id}`
+              race_room_base: raceRoomBase
             }, origin);
           }catch(_e){}
         }, 400);
