@@ -5997,6 +5997,7 @@ This cannot be undone.`)) return;
     const [historyFrom, setHistoryFrom] = useState("");
     const [historyTo, setHistoryTo] = useState("");
     const [selectedKey, setSelectedKey] = useState(null);
+    const [selectedKeys, setSelectedKeys] = useState([]);
     const [editingId, setEditingId] = useState(null);
     const [editForm, setEditForm] = useState(null);
     const safeParse = (s) => {
@@ -6094,6 +6095,34 @@ This cannot be undone.`)) return;
         return hay.includes(s);
       });
     }, [totalsArr, search, onlyFlagged]);
+    useEffect(() => {
+      const available = new Set(totalsArr.map((t) => t.key));
+      setSelectedKeys((prev) => prev.filter((key) => available.has(key)));
+    }, [totalsArr]);
+    const selectedLearners = useMemo(() => {
+      const picked = new Set(selectedKeys);
+      return totalsArr.filter((t) => picked.has(t.key));
+    }, [totalsArr, selectedKeys]);
+    const selectedVisibleLearners = useMemo(() => {
+      const picked = new Set(selectedKeys);
+      return filtered.filter((t) => picked.has(t.key));
+    }, [filtered, selectedKeys]);
+    const allFilteredSelected = filtered.length > 0 && filtered.every((t) => selectedKeys.includes(t.key));
+    const toggleSelectedKey = (key) => {
+      setSelectedKeys((prev) => prev.includes(key) ? prev.filter((x) => x !== key) : [...prev, key]);
+    };
+    const toggleSelectAllFiltered = () => {
+      if (allFilteredSelected) {
+        setSelectedKeys((prev) => prev.filter((key) => !filtered.some((t) => t.key === key)));
+        return;
+      }
+      setSelectedKeys((prev) => {
+        const next = new Set(prev);
+        filtered.forEach((t) => next.add(t.key));
+        return Array.from(next);
+      });
+    };
+    const clearSelectedKeys = () => setSelectedKeys([]);
     const selectedRecords = selectedKey ? recordsByKey[selectedKey] || [] : [];
     const selectedArchivedRecords = selectedKey ? archivedRecordsByKey[selectedKey] || [] : [];
     const selectedAdminHistory = selectedKey ? adminHistoryByKey[selectedKey] || [] : [];
@@ -6158,6 +6187,162 @@ This cannot be undone.`)) return;
       const d = String(date.getDate()).padStart(2, "0");
       return `discipline-report_${safe(learner.surname)}_${safe(learner.firstname)}_${safe(learner.class_name || "")}_${y}${m}${d}.html`;
     };
+    const disciplineBulkReportFileName = (count = 0) => {
+      const date = /* @__PURE__ */ new Date();
+      const y = String(date.getFullYear());
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `discipline-reports_${count || 0}_learners_${y}${m}${d}.html`;
+    };
+    const esc = (s = "") => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+    const getDisciplineReportData = (useKey) => {
+      var _a2, _b2, _c2, _d2, _e2, _f2, _g, _h, _i, _j, _k, _l;
+      const active = useKey ? recordsByKey[useKey] || [] : [];
+      const archived = useKey ? archivedRecordsByKey[useKey] || [] : [];
+      const history = useKey ? adminHistoryByKey[useKey] || [] : [];
+      const header = active[0] || archived[0] || null;
+      const learner = ((_a2 = header == null ? void 0 : header.discipline) == null ? void 0 : _a2.learner) || null;
+      if (!learner) return null;
+      const base = useKey ? totalsArr.find((t) => t.key === useKey) || null : null;
+      const latestAdmin = history[0] || null;
+      return {
+        learner,
+        active,
+        archived,
+        history,
+        summary: {
+          points: (_b2 = base == null ? void 0 : base.points) != null ? _b2 : 0,
+          merits: (_c2 = base == null ? void 0 : base.merits) != null ? _c2 : 0,
+          demerits: (_d2 = base == null ? void 0 : base.demerits) != null ? _d2 : 0,
+          activeRecords: active.length,
+          archivedRecords: archived.length,
+          latestTeacher: (base == null ? void 0 : base.lastTeacher) || "\u2014",
+          latestAdminAction: latestAdmin ? `${latestAdmin.action === "delete" ? "Moved to recycle bin" : latestAdmin.action === "restore" ? "Restored report" : "Edited report"} \xB7 ${((_f2 = (_e2 = latestAdmin.details) == null ? void 0 : _e2.edited_by) == null ? void 0 : _f2.by_name) || ((_h = (_g = latestAdmin.details) == null ? void 0 : _g.deleted_by) == null ? void 0 : _h.by_name) || ((_j = (_i = latestAdmin.details) == null ? void 0 : _i.restored_by) == null ? void 0 : _j.by_name) || ((_k = latestAdmin.row) == null ? void 0 : _k.teacher_name) || ((_l = latestAdmin.row) == null ? void 0 : _l.teacher_email) || "Admin"}` : "No admin actions yet"
+        },
+        generatedAt: (/* @__PURE__ */ new Date()).toLocaleString("en-ZA", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })
+      };
+    };
+    const buildDisciplineReportSection = (report) => {
+      const { learner, active, summary, generatedAt } = report;
+      const activeRows = active.map((x, idx) => {
+        var _a2, _b2, _c2;
+        const d = x.discipline || {};
+        const dt = ((_a2 = x.row) == null ? void 0 : _a2.created_at) ? new Date(x.row.created_at).toLocaleDateString("en-ZA", { day: "2-digit", month: "2-digit", year: "numeric" }) : "\u2014";
+        return `<tr>
+        <td>${idx + 1}</td>
+        <td>${dt}</td>
+        <td>${esc(d.type === "demerit" ? "Demerit" : "Merit")}</td>
+        <td>${Number(d.delta || 0)}</td>
+        <td>${esc(d.behaviour || "\u2014")}</td>
+        <td>${esc(d.action_taken || "\u2014")}</td>
+        <td>${esc(d.comment || "\u2014")}</td>
+        <td>${esc(((_b2 = x.row) == null ? void 0 : _b2.teacher_name) || ((_c2 = x.row) == null ? void 0 : _c2.teacher_email) || "\u2014")}</td>
+      </tr>`;
+      }).join("");
+      return `
+<section class="page report-card">
+  <header>
+    <img src="${LOGO}" alt="Carissa Primary"/>
+    <div class="hcopy">
+      <h1>Carissa Primary School</h1>
+      <p>Professional Learner Discipline Report</p>
+    </div>
+  </header>
+
+  <div class="meta">
+    <div class="card"><div class="label">Learner</div><div class="value">${esc(learner.firstname)} ${esc(learner.surname)}</div></div>
+    <div class="card"><div class="label">Class</div><div class="value">${esc(learner.class_name || "\u2014")}</div></div>
+    <div class="card"><div class="label">Generated</div><div class="value">${esc(generatedAt)}</div></div>
+    <div class="card"><div class="label">Prepared by</div><div class="value">${esc((adminUser == null ? void 0 : adminUser.first_name) || (adminUser == null ? void 0 : adminUser.email) || "Admin")}</div></div>
+  </div>
+
+  <div class="summary">
+    <div class="box"><div class="label">Net points</div><div class="big">${summary.points}</div><div class="sub">${summary.merits} merits / ${summary.demerits} demerits</div></div>
+    <div class="box"><div class="label">Active records</div><div class="big">${summary.activeRecords}</div><div class="sub">Current visible reports</div></div>
+    <div class="box"><div class="label">Latest teacher activity</div><div class="sub" style="font-weight:800;color:#111827;">${esc(summary.latestTeacher)}</div><div class="sub">${esc(summary.latestAdminAction)}</div></div>
+  </div>
+
+  <h2>Active discipline records</h2>
+  <table>
+    <thead><tr><th>#</th><th>Date</th><th>Type</th><th>Points</th><th>Behaviour</th><th>Action taken</th><th>Comment</th><th>Recorded by</th></tr></thead>
+    <tbody>${activeRows || `<tr><td colspan="8">No active discipline records.</td></tr>`}</tbody>
+  </table>
+
+  <div class="signatures">
+    <div class="sig-row">
+      <div>
+        <div class="sig-line"></div>
+        <div class="sig-label">Principal signature: Ms V.N Sibande</div>
+      </div>
+      <div>
+        <div class="sig-line"></div>
+        <div class="sig-label">Class Teacher signature</div>
+      </div>
+    </div>
+    <div class="comment-wrap">
+      <div class="comment-label">Comment box</div>
+      <div class="comment-box"></div>
+    </div>
+  </div>
+
+  <footer>
+    Carissa Primary School Discipline Report \xB7 Generated from the admin dashboard
+  </footer>
+</section>`;
+    };
+    const buildDisciplineReportDocument = (sectionsHtml, title = "Discipline Report", closeButton = true) => `<!DOCTYPE html>
+<html><head><meta charset="utf-8"/>
+<title>${esc(title)}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#eef2ff;padding:16px;color:#1f2937;line-height:1.45;}
+.controls{max-width:980px;margin:0 auto 10px;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;}
+.controls button{padding:10px 18px;border:none;border-radius:24px;font-weight:700;cursor:pointer;font-size:13px;}
+.btn-print{background:#4f46e5;color:#fff;}
+.btn-close{background:#6b7280;color:#fff;}
+.page{max-width:980px;margin:0 auto 16px;background:#fff;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,0.12);padding:26px 28px;}
+.report-card{page-break-after:always;}
+.report-card:last-child{page-break-after:auto;}
+header{display:flex;align-items:center;gap:16px;border-bottom:3px solid #4f46e5;padding-bottom:14px;margin-bottom:18px;}
+header img{height:66px;width:66px;object-fit:contain;border-radius:10px;background:#fff;}
+.hcopy h1{font-size:22px;color:#312e81;margin-bottom:4px;}
+.hcopy p{font-size:13px;color:#6b7280;}
+.meta{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
+.meta .card{background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;}
+.meta .label{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;}
+.meta .value{font-size:14px;font-weight:800;color:#111827;}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0 16px;}
+.summary .box{border:1px solid #e5e7eb;border-radius:12px;padding:12px;background:#f8fafc;}
+.summary .label{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px;}
+.summary .big{font-size:24px;font-weight:900;color:#111827;}
+.summary .sub{font-size:12px;color:#4b5563;margin-top:3px;line-height:1.4;}
+h2{font-size:14px;color:#312e81;margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid #e5e7eb;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th,td{border:1px solid #e5e7eb;padding:7px 8px;text-align:left;vertical-align:top;}
+th{background:#f8fafc;color:#374151;font-weight:800;}
+.signatures{margin-top:14px;break-inside:avoid;page-break-inside:avoid;}
+.sig-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:10px;}
+.sig-line{border-bottom:2px solid #111827;height:28px;}
+.sig-label{margin-top:6px;font-size:12px;color:#374151;font-weight:700;}
+.comment-wrap{margin-top:14px;}
+.comment-label{font-size:12px;color:#374151;font-weight:800;margin-bottom:6px;}
+.comment-box{border:2px solid #111827;border-radius:10px;height:70px;}
+footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:10px;color:#6b7280;text-align:center;}
+@page { size:A4 portrait; margin:0.8cm; }
+@media print{
+ body{background:#fff;padding:0;}
+ .controls{display:none !important;}
+ .page{box-shadow:none;border-radius:0;max-width:100%;padding:0;margin:0 0 12px;}
+ .comment-box{height:60px;}
+}
+</style></head>
+<body>
+<div class="controls">
+  <button class="btn-print" onclick="window.print()">\u{1F5A8} Print / Save as PDF</button>
+  ${closeButton ? '<button class="btn-close" onclick="window.close()">\u2715 Close</button>' : ""}
+</div>
+${sectionsHtml}
+</body></html>`;
     const startEdit = (row, discipline) => {
       setEditingId((row == null ? void 0 : row.id) || null);
       setEditForm({
@@ -6298,361 +6483,19 @@ This cannot be undone.`)) return;
       }
     };
     const exportLearnerDisciplineReport = ({ key, mode } = {}) => {
-      var _a2, _b2, _c2, _d2, _e2, _f2, _g, _h, _i, _j, _k, _l;
       const useKey = key || selectedKey || null;
-      const active = useKey ? recordsByKey[useKey] || [] : [];
-      const archived = useKey ? archivedRecordsByKey[useKey] || [] : [];
-      const history = useKey ? adminHistoryByKey[useKey] || [] : [];
-      const header = active[0] || archived[0] || null;
-      const learner = ((_a2 = header == null ? void 0 : header.discipline) == null ? void 0 : _a2.learner) || null;
-      if (!learner) {
+      const report = getDisciplineReportData(useKey);
+      if (!report) {
         alert("Please select a learner first.");
         return;
       }
-      const esc = (s = "") => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-      const base = useKey ? totalsArr.find((t) => t.key === useKey) || null : null;
-      const latestAdmin = history[0] || null;
-      const summary = {
-        points: (_b2 = base == null ? void 0 : base.points) != null ? _b2 : 0,
-        merits: (_c2 = base == null ? void 0 : base.merits) != null ? _c2 : 0,
-        demerits: (_d2 = base == null ? void 0 : base.demerits) != null ? _d2 : 0,
-        activeRecords: active.length,
-        archivedRecords: archived.length,
-        latestTeacher: (base == null ? void 0 : base.lastTeacher) || "\u2014",
-        latestAdminAction: latestAdmin ? `${latestAdmin.action === "delete" ? "Moved to recycle bin" : latestAdmin.action === "restore" ? "Restored report" : "Edited report"} \xB7 ${((_f2 = (_e2 = latestAdmin.details) == null ? void 0 : _e2.edited_by) == null ? void 0 : _f2.by_name) || ((_h = (_g = latestAdmin.details) == null ? void 0 : _g.deleted_by) == null ? void 0 : _h.by_name) || ((_j = (_i = latestAdmin.details) == null ? void 0 : _i.restored_by) == null ? void 0 : _j.by_name) || ((_k = latestAdmin.row) == null ? void 0 : _k.teacher_name) || ((_l = latestAdmin.row) == null ? void 0 : _l.teacher_email) || "Admin"}` : "No admin actions yet"
-      };
-      const statusColor = summary.points <= -10 ? "#b91c1c" : summary.points <= -5 ? "#a16207" : "#166534";
-      const generatedAt = (/* @__PURE__ */ new Date()).toLocaleString("en-ZA", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
-      const activeRows = active.map((x, idx) => {
-        var _a3, _b3, _c3;
-        const d = x.discipline || {};
-        const dt = ((_a3 = x.row) == null ? void 0 : _a3.created_at) ? new Date(x.row.created_at).toLocaleDateString("en-ZA", { day: "2-digit", month: "2-digit", year: "numeric" }) : "\u2014";
-        return `<tr>
-
-
-        <td>${idx + 1}</td>
-
-
-        <td>${dt}</td>
-
-
-        <td>${esc(d.type === "demerit" ? "Demerit" : "Merit")}</td>
-
-
-        <td>${Number(d.delta || 0)}</td>
-
-
-        <td>${esc(d.behaviour || "\u2014")}</td>
-
-
-        <td>${esc(d.action_taken || "\u2014")}</td>
-
-
-        <td>${esc(d.comment || "\u2014")}</td>
-
-
-        <td>${esc(((_b3 = x.row) == null ? void 0 : _b3.teacher_name) || ((_c3 = x.row) == null ? void 0 : _c3.teacher_email) || "\u2014")}</td>
-
-
-      </tr>`;
-      }).join("");
-      const archivedRows = archived.map((x, idx) => {
-        var _a3, _b3;
-        const d = x.discipline || {};
-        const archivedBy = ((_a3 = x.meta) == null ? void 0 : _a3.archived_by) || {};
-        return `<tr>
-
-
-        <td>${idx + 1}</td>
-
-
-        <td>${((_b3 = x.meta) == null ? void 0 : _b3.archived_at) ? new Date(x.meta.archived_at).toLocaleDateString("en-ZA", { day: "2-digit", month: "2-digit", year: "numeric" }) : "\u2014"}</td>
-
-
-        <td>${esc(d.type === "demerit" ? "Demerit" : "Merit")}</td>
-
-
-        <td>${Number(d.delta || 0)}</td>
-
-
-        <td>${esc(d.comment || "\u2014")}</td>
-
-
-        <td>${esc(archivedBy.by_name || archivedBy.by_email || "Admin")}</td>
-
-
-      </tr>`;
-      }).join("");
-      const historyRows = history.map((h, idx) => {
-        var _a3, _b3, _c3, _d3, _e3, _f3, _g2, _h2;
-        const actor = ((_b3 = (_a3 = h.details) == null ? void 0 : _a3.edited_by) == null ? void 0 : _b3.by_name) || ((_d3 = (_c3 = h.details) == null ? void 0 : _c3.deleted_by) == null ? void 0 : _d3.by_name) || ((_f3 = (_e3 = h.details) == null ? void 0 : _e3.restored_by) == null ? void 0 : _f3.by_name) || ((_g2 = h.row) == null ? void 0 : _g2.teacher_name) || ((_h2 = h.row) == null ? void 0 : _h2.teacher_email) || "Admin";
-        const action = h.action === "delete" ? "Moved to recycle bin" : h.action === "restore" ? "Restored report" : "Edited report";
-        return `<tr>
-
-
-        <td>${idx + 1}</td>
-
-
-        <td>${h.at ? new Date(h.at).toLocaleDateString("en-ZA", { day: "2-digit", month: "2-digit", year: "numeric" }) : "\u2014"}</td>
-
-
-        <td>${esc(action)}</td>
-
-
-        <td>${esc(actor)}</td>
-
-
-      </tr>`;
-      }).join("");
-      const html = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"/>
-
-
-<title>Discipline Report \u2014 ${esc(learner.firstname)} ${esc(learner.surname)}</title>
-
-
-<style>
-
-
-*{box-sizing:border-box;margin:0;padding:0;}
-
-
-body{font-family:'Segoe UI',Tahoma,sans-serif;background:#eef2ff;padding:16px;color:#1f2937;line-height:1.45;}
-
-
-.controls{max-width:980px;margin:0 auto 10px;display:flex;justify-content:flex-end;gap:10px;}
-
-
-.controls button{padding:10px 18px;border:none;border-radius:24px;font-weight:700;cursor:pointer;font-size:13px;}
-
-
-.btn-print{background:#4f46e5;color:#fff;}
-
-
-.btn-close{background:#6b7280;color:#fff;}
-
-
-.page{max-width:980px;margin:0 auto;background:#fff;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,0.12);padding:26px 28px;}
-
-
-header{display:flex;align-items:center;gap:16px;border-bottom:3px solid #4f46e5;padding-bottom:14px;margin-bottom:18px;}
-
-
-header img{height:66px;width:66px;object-fit:contain;border-radius:10px;background:#fff;}
-
-
-.hcopy h1{font-size:22px;color:#312e81;margin-bottom:4px;}
-
-
-.hcopy p{font-size:13px;color:#6b7280;}
-
-
-.meta{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
-
-
-.meta .card{background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;}
-
-
-.meta .label{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;}
-
-
-.meta .value{font-size:14px;font-weight:800;color:#111827;}
-
-
-.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0 16px;}
-.summary .box{border:1px solid #e5e7eb;border-radius:12px;padding:12px;background:#f8fafc;}
-
-
-.summary .label{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px;}
-
-
-.summary .big{font-size:24px;font-weight:900;color:#111827;}
-
-
-.summary .sub{font-size:12px;color:#4b5563;margin-top:3px;line-height:1.4;}
-
-
-h2{font-size:14px;color:#312e81;margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid #e5e7eb;}
-
-
-table{width:100%;border-collapse:collapse;font-size:12px;}
-
-
-th,td{border:1px solid #e5e7eb;padding:7px 8px;text-align:left;vertical-align:top;}
-
-
-th{background:#f8fafc;color:#374151;font-weight:800;}
-
-
-.note{margin-top:14px;padding:12px 14px;background:#eff6ff;border-left:4px solid #3b82f6;border-radius:8px;font-size:12px;color:#1e3a8a;}
-
-
-.signatures{margin-top:14px;}
-.sig-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:10px;}
-.sig-line{border-bottom:2px solid #111827;height:28px;}
-.sig-label{margin-top:6px;font-size:12px;color:#374151;font-weight:700;}
-.comment-wrap{margin-top:14px;}
-.comment-label{font-size:12px;color:#374151;font-weight:800;margin-bottom:6px;}
-.comment-box{border:2px solid #111827;border-radius:10px;height:70px;}
-footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:10px;color:#6b7280;text-align:center;}
-
-
-@page { size:A4 portrait; margin:0.8cm; }
-
-
-@media print{
-
-
- body{background:#fff;padding:0;}
-
-
- .controls{display:none !important;}
-
-
- .page{box-shadow:none;border-radius:0;max-width:100%;padding:0;}
-
-
-  .signatures{break-inside:avoid; page-break-inside:avoid;}
-  .comment-box{height:60px;}
-}
-
-
-</style></head>
-
-
-<body>
-
-
-<div class="controls">
-
-
-  <button class="btn-print" onclick="window.print()">\u{1F5A8} Print / Save as PDF</button>
-
-
-  <button class="btn-close" onclick="window.close()">\u2715 Close</button>
-
-
-</div>
-
-
-<div class="page">
-
-
-  <header>
-
-
-    <img src="${LOGO}" alt="Carissa Primary"/>
-
-
-    <div class="hcopy">
-
-
-      <h1>Carissa Primary School</h1>
-
-
-      <p>Professional Learner Discipline Report</p>
-
-
-    </div>
-
-
-  </header>
-
-
-
-
-
-  <div class="meta">
-
-
-    <div class="card"><div class="label">Learner</div><div class="value">${esc(learner.firstname)} ${esc(learner.surname)}</div></div>
-
-
-    <div class="card"><div class="label">Class</div><div class="value">${esc(learner.class_name || "\u2014")}</div></div>
-
-
-    <div class="card"><div class="label">Generated</div><div class="value">${esc(generatedAt)}</div></div>
-
-
-    <div class="card"><div class="label">Prepared by</div><div class="value">${esc((adminUser == null ? void 0 : adminUser.first_name) || (adminUser == null ? void 0 : adminUser.email) || "Admin")}</div></div>
-
-
-  </div>
-
-
-
-
-
-  <div class="summary">
-
-
-    <div class="box"><div class="label">Net points</div><div class="big">${summary.points}</div><div class="sub">${summary.merits} merits / ${summary.demerits} demerits</div></div>
-
-
-    <div class="box"><div class="label">Active records</div><div class="big">${summary.activeRecords}</div><div class="sub">Current visible reports</div></div>
-
-
-    <div class="box"><div class="label">Latest teacher activity</div><div class="sub" style="font-weight:800;color:#111827;">${esc(summary.latestTeacher)}</div><div class="sub">${esc(summary.latestAdminAction)}</div></div>
-
-
-  </div>
-
-
-
-
-
-  <h2>Active discipline records</h2>
-
-
-  <table>
-
-
-    <thead><tr><th>#</th><th>Date</th><th>Type</th><th>Points</th><th>Behaviour</th><th>Action taken</th><th>Comment</th><th>Recorded by</th></tr></thead>
-
-
-    <tbody>${activeRows || `<tr><td colspan="8">No active discipline records.</td></tr>`}</tbody>
-
-
-  </table>
-
-
-
-
-
-  <div class="signatures">
-    <div class="sig-row">
-      <div>
-        <div class="sig-line"></div>
-        <div class="sig-label">Principal signature: Ms V.N Sibande</div>
-      </div>
-      <div>
-        <div class="sig-line"></div>
-        <div class="sig-label">Class Teacher signature</div>
-      </div>
-    </div>
-    <div class="comment-wrap">
-      <div class="comment-label">Comment box</div>
-      <div class="comment-box"></div>
-    </div>
-  </div>
-
-
-
-  <footer>
-
-
-    Carissa Primary School Discipline Report \xB7 Generated from the admin dashboard
-
-
-  </footer>
-
-
-</div>
-
-
-</body></html>`;
+      const html = buildDisciplineReportDocument(
+        buildDisciplineReportSection(report),
+        `Discipline Report \u2014 ${report.learner.firstname} ${report.learner.surname}`,
+        true
+      );
       if (mode === "download") {
-        downloadHtml(html, disciplineReportFileName(learner));
+        downloadHtml(html, disciplineReportFileName(report.learner));
         return;
       }
       const w = window.open("", "_blank");
@@ -6672,6 +6515,40 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
         }, 350);
       }
     };
+    const exportSelectedDisciplineReports = ({ mode = "print" } = {}) => {
+      if (!selectedLearners.length) {
+        alert("Please select at least one learner first.");
+        return;
+      }
+      const reports = selectedLearners.map((t) => getDisciplineReportData(t.key)).filter(Boolean);
+      if (!reports.length) {
+        alert("No discipline reports could be prepared for the selected learners.");
+        return;
+      }
+      const html = buildDisciplineReportDocument(
+        reports.map(buildDisciplineReportSection).join(""),
+        `Discipline Reports \u2014 ${reports.length} learners`,
+        true
+      );
+      if (mode === "download") {
+        downloadHtml(html, disciplineBulkReportFileName(reports.length));
+        return;
+      }
+      const w = window.open("", "_blank");
+      if (!w) {
+        alert("Please allow pop-ups to open the reports.");
+        return;
+      }
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+      setTimeout(() => {
+        try {
+          w.print();
+        } catch (e) {
+        }
+      }, 350);
+    };
     return /* @__PURE__ */ React.createElement("div", { style: card }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "10px" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h2", { style: { color: "#333", marginBottom: "4px" } }, "\u2696\uFE0F Discipline"), /* @__PURE__ */ React.createElement("p", { style: { color: "#888", fontSize: "13px", margin: 0 } }, "Merits are +1 point, demerits are -1 point. Learners at -5 are flagged (yellow). Learners at -10 require action (red).")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { onClick: refresh, style: { ...sbtn, background: "#667eea", fontSize: "13px" }, disabled: loading }, loading ? "Loading..." : "\u{1F504} Refresh"))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "12px" } }, /* @__PURE__ */ React.createElement(
       "input",
       {
@@ -6680,9 +6557,21 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
         placeholder: "Search learner, class, or teacher...",
         style: { flex: "1 1 320px", padding: "11px 14px", border: "2px solid #e3e6f0", borderRadius: "10px", fontSize: "14px" }
       }
-    ), /* @__PURE__ */ React.createElement("label", { style: { display: "flex", gap: "8px", alignItems: "center", fontSize: "13px", color: "#444" } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: onlyFlagged, onChange: (e) => setOnlyFlagged(e.target.checked) }), "Show flagged only (\u2264 -5)"), /* @__PURE__ */ React.createElement("select", { value: historyActionFilter, onChange: (e) => setHistoryActionFilter(e.target.value), style: { padding: "10px 12px", border: "2px solid #e3e6f0", borderRadius: "10px", fontSize: "13px", background: "#fff" } }, /* @__PURE__ */ React.createElement("option", { value: "all" }, "All admin actions"), /* @__PURE__ */ React.createElement("option", { value: "edit" }, "Edited only"), /* @__PURE__ */ React.createElement("option", { value: "delete" }, "Recycled only"), /* @__PURE__ */ React.createElement("option", { value: "restore" }, "Restored only")), /* @__PURE__ */ React.createElement("input", { type: "date", value: historyFrom, onChange: (e) => setHistoryFrom(e.target.value), style: { padding: "10px 12px", border: "2px solid #e3e6f0", borderRadius: "10px", fontSize: "13px" } }), /* @__PURE__ */ React.createElement("input", { type: "date", value: historyTo, onChange: (e) => setHistoryTo(e.target.value), style: { padding: "10px 12px", border: "2px solid #e3e6f0", borderRadius: "10px", fontSize: "13px" } }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "13px", color: "#666", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "999px", padding: "8px 12px" } }, "Learners: ", /* @__PURE__ */ React.createElement("strong", null, filtered.length))), filtered.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", color: "#999", padding: "30px 0" } }, "No discipline totals found yet.") : /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr", gap: "10px" } }, /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: "12px", background: "#fff" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: "13px" } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "#f8f9fa", borderBottom: "2px solid #eee", textAlign: "left" } }, ["Learner", "Class", "Points", "Records", "Last update", "View"].map((h) => /* @__PURE__ */ React.createElement("th", { key: h, style: { padding: "10px", color: "#666", fontWeight: 600, whiteSpace: "nowrap" } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, filtered.map((t, i) => {
+    ), /* @__PURE__ */ React.createElement("label", { style: { display: "flex", gap: "8px", alignItems: "center", fontSize: "13px", color: "#444" } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: onlyFlagged, onChange: (e) => setOnlyFlagged(e.target.checked) }), "Show flagged only (\u2264 -5)"), /* @__PURE__ */ React.createElement("select", { value: historyActionFilter, onChange: (e) => setHistoryActionFilter(e.target.value), style: { padding: "10px 12px", border: "2px solid #e3e6f0", borderRadius: "10px", fontSize: "13px", background: "#fff" } }, /* @__PURE__ */ React.createElement("option", { value: "all" }, "All admin actions"), /* @__PURE__ */ React.createElement("option", { value: "edit" }, "Edited only"), /* @__PURE__ */ React.createElement("option", { value: "delete" }, "Recycled only"), /* @__PURE__ */ React.createElement("option", { value: "restore" }, "Restored only")), /* @__PURE__ */ React.createElement("input", { type: "date", value: historyFrom, onChange: (e) => setHistoryFrom(e.target.value), style: { padding: "10px 12px", border: "2px solid #e3e6f0", borderRadius: "10px", fontSize: "13px" } }), /* @__PURE__ */ React.createElement("input", { type: "date", value: historyTo, onChange: (e) => setHistoryTo(e.target.value), style: { padding: "10px 12px", border: "2px solid #e3e6f0", borderRadius: "10px", fontSize: "13px" } }), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "13px", color: "#666", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "999px", padding: "8px 12px" } }, "Learners: ", /* @__PURE__ */ React.createElement("strong", null, filtered.length)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "13px", color: "#0f172a", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "999px", padding: "8px 12px" } }, "Selected: ", /* @__PURE__ */ React.createElement("strong", null, selectedLearners.length)), /* @__PURE__ */ React.createElement("button", { onClick: toggleSelectAllFiltered, style: { ...sbtn, background: "#0f766e", fontSize: "12px", padding: "8px 12px" } }, allFilteredSelected ? "Clear filtered selection" : "Select all filtered"), /* @__PURE__ */ React.createElement("button", { onClick: clearSelectedKeys, disabled: !selectedKeys.length, style: { ...sbtn, background: "#64748b", fontSize: "12px", padding: "8px 12px", opacity: selectedKeys.length ? 1 : 0.6 } }, "Clear all"), /* @__PURE__ */ React.createElement("button", { onClick: () => exportSelectedDisciplineReports({ mode: "print" }), disabled: !selectedLearners.length, style: { ...sbtn, background: "#4f46e5", fontSize: "12px", padding: "8px 12px", opacity: selectedLearners.length ? 1 : 0.6 } }, "\u{1F5A8} Print selected reports"), /* @__PURE__ */ React.createElement("button", { onClick: () => exportSelectedDisciplineReports({ mode: "download" }), disabled: !selectedLearners.length, style: { ...sbtn, background: "#16a34a", fontSize: "12px", padding: "8px 12px", opacity: selectedLearners.length ? 1 : 0.6 } }, "\u2B07 Download selected reports")), filtered.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", color: "#999", padding: "30px 0" } }, "No discipline totals found yet.") : /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr", gap: "10px" } }, /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: "12px", background: "#fff" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: "13px" } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "#f8f9fa", borderBottom: "2px solid #eee", textAlign: "left" } }, /* @__PURE__ */ React.createElement("th", { style: { padding: "10px", color: "#666", fontWeight: 600, whiteSpace: "nowrap", width: "44px" } }, /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        type: "checkbox",
+        checked: allFilteredSelected,
+        onChange: (e) => {
+          e.stopPropagation();
+          toggleSelectAllFiltered();
+        },
+        title: allFilteredSelected ? "Clear filtered selection" : "Select all filtered learners"
+      }
+    )), ["Learner", "Class", "Points", "Records", "Last update", "View"].map((h) => /* @__PURE__ */ React.createElement("th", { key: h, style: { padding: "10px", color: "#666", fontWeight: 600, whiteSpace: "nowrap" } }, h)))), /* @__PURE__ */ React.createElement("tbody", null, filtered.map((t, i) => {
       const rowBg = t.points <= -10 ? "#fff1f2" : t.points <= -5 ? "#fffbeb" : i % 2 ? "#fafbff" : "#fff";
       const pill = t.points <= -10 ? { bg: "#fee2e2", fg: "#b91c1c", txt: `${t.points} \u2022 Action` } : t.points <= -5 ? { bg: "#fef9c3", fg: "#a16207", txt: `${t.points} \u2022 Flag` } : { bg: "#eef2ff", fg: "#4f46e5", txt: `${t.points}` };
+      const isSelected = selectedKeys.includes(t.key);
       return /* @__PURE__ */ React.createElement(
         "tr",
         {
@@ -6690,6 +6579,15 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
           style: { borderBottom: "1px solid #f0f0f0", background: rowBg, cursor: "pointer" },
           onClick: () => viewLearner(t.key)
         },
+        /* @__PURE__ */ React.createElement("td", { style: { padding: "10px" }, onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement(
+          "input",
+          {
+            type: "checkbox",
+            checked: isSelected,
+            onChange: () => toggleSelectedKey(t.key),
+            title: `Select ${t.firstname} ${t.surname}`
+          }
+        )),
         /* @__PURE__ */ React.createElement("td", { style: { padding: "10px", fontWeight: 800 } }, t.surname, ", ", t.firstname),
         /* @__PURE__ */ React.createElement("td", { style: { padding: "10px" } }, t.class_name),
         /* @__PURE__ */ React.createElement("td", { style: { padding: "10px" } }, /* @__PURE__ */ React.createElement("span", { style: { background: pill.bg, color: pill.fg, padding: "3px 9px", borderRadius: "999px", fontSize: "12px", fontWeight: 800 } }, pill.txt)),
