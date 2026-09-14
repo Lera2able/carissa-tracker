@@ -1739,14 +1739,14 @@ This will NOT remove any existing activities.`)) return;
     useEffect(() => {
       refreshPayments();
     }, []);
-    async function setPayment(L, paid, paidToOverride) {
+    async function setPayment(L, paid, paidToOverride, amountOverride) {
       const key = `${selClass}||${Number(L.number) || 0}`;
       setPayBusyKey(key);
       setPayMsg("");
       try {
         const existing = paymentsByKey.get(key);
         const paid_to = paidToOverride || (existing == null ? void 0 : existing.paid_to) || "office";
-        const amount = (existing == null ? void 0 : existing.amount) || 50;
+        const amount = Number(amountOverride ?? (existing == null ? void 0 : existing.amount) ?? 50) || 50;
         await apiRequest("/payments/set", {
           method: "POST",
           body: {
@@ -1760,7 +1760,7 @@ This will NOT remove any existing activities.`)) return;
           }
         });
         await refreshPayments();
-        setPayMsg(paid ? "\u2713 Marked as paid." : "\u2713 Mark removed.");
+        setPayMsg(paid ? `\u2713 Marked as paid (R${amount}).` : "\u2713 Mark removed.");
       } catch (e) {
         setPayMsg(`Could not update payment: ${(e == null ? void 0 : e.message) || "Unknown error"}`);
       }
@@ -1970,7 +1970,7 @@ This will also rename matching assessment records back.`)) return;
         placeholder: "Search surname / name\u2026",
         style: { padding: "8px 12px", borderRadius: "6px", border: "1px solid #ccc", fontSize: "14px", minWidth: "240px" }
       }
-    ), savedMsg && /* @__PURE__ */ React.createElement("span", { style: { fontSize: "13px", color: "#16a34a", fontWeight: 600 } }, "\u2713 ", savedMsg)), /* @__PURE__ */ React.createElement("div", { style: { background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "14px", marginBottom: "14px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, color: "#0f172a" } }, "Donations collected (R50)"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#64748b", marginTop: "2px" } }, "Mark a learner as paid, select where it was paid (Office or Lerato), then download the list of paid learners.")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "10px", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(
+    ), savedMsg && /* @__PURE__ */ React.createElement("span", { style: { fontSize: "13px", color: "#16a34a", fontWeight: 600 } }, "\u2713 ", savedMsg)), /* @__PURE__ */ React.createElement("div", { style: { background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "14px", marginBottom: "14px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 800, color: "#0f172a" } }, "Donations collected"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#64748b", marginTop: "2px" } }, "Mark a learner as paid, choose `R20` or `R50`, select where it was paid, then download the list of paid learners.")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "10px", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement(
       "button",
       {
         style: { padding: "10px 16px", borderRadius: "10px", border: "none", background: "#0ea5e9", color: "white", cursor: "pointer", fontWeight: 800 },
@@ -1986,12 +1986,13 @@ This will also rename matching assessment records back.`)) return;
         disabled: !(allPayments == null ? void 0 : allPayments.length)
       },
       "\u2B07 Download PDF report"
-    ))), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: "10px", marginTop: "12px" } }, /* @__PURE__ */ React.createElement("div", { style: { background: "white", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "10px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#64748b" } }, "Paid learners"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "18px", fontWeight: 900, color: "#0f172a" } }, totalsAll.count)), /* @__PURE__ */ React.createElement("div", { style: { background: "white", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "10px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#64748b" } }, "Total collected"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "18px", fontWeight: 900, color: "#16a34a" } }, "R", totalsAll.total)), /* @__PURE__ */ React.createElement("div", { style: { background: "white", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "10px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#64748b" } }, "Office"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "18px", fontWeight: 900, color: "#0f172a" } }, "R", totalsAll.office)), /* @__PURE__ */ React.createElement("div", { style: { background: "white", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "10px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#64748b" } }, "Lerato"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "18px", fontWeight: 900, color: "#0f172a" } }, "R", totalsAll.lerato)), /* @__PURE__ */ React.createElement("div", { style: { background: "white", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "10px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#64748b" } }, "EFT"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "18px", fontWeight: 900, color: "#0f172a" } }, "R", totalsAll.eft))), payMsg && /* @__PURE__ */ React.createElement("div", { style: { marginTop: "10px", fontSize: "13px", color: payMsg.startsWith("\u2713") ? "#166534" : "#b91c1c" } }, payMsg)), /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: "14px" } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "#f8f9fa", textAlign: "left" } }, /* @__PURE__ */ React.createElement("th", { style: { padding: "10px 8px", width: "40px" } }, "#"), /* @__PURE__ */ React.createElement("th", { style: { padding: "10px 8px" } }, "Surname"), /* @__PURE__ */ React.createElement("th", { style: { padding: "10px 8px" } }, "First name"), /* @__PURE__ */ React.createElement("th", { style: { padding: "10px 8px", width: "260px" } }, "Donation (R50)"), /* @__PURE__ */ React.createElement("th", { style: { padding: "10px 8px", width: "180px" } }, "Original (register)"), /* @__PURE__ */ React.createElement("th", { style: { padding: "10px 8px", width: "180px", textAlign: "right" } }, "Actions"))), /* @__PURE__ */ React.createElement("tbody", null, filteredLearners.map((L, i) => {
+    ))), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: "10px", marginTop: "12px" } }, /* @__PURE__ */ React.createElement("div", { style: { background: "white", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "10px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#64748b" } }, "Paid learners"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "18px", fontWeight: 900, color: "#0f172a" } }, totalsAll.count)), /* @__PURE__ */ React.createElement("div", { style: { background: "white", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "10px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#64748b" } }, "Total collected"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "18px", fontWeight: 900, color: "#16a34a" } }, "R", totalsAll.total)), /* @__PURE__ */ React.createElement("div", { style: { background: "white", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "10px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#64748b" } }, "Office"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "18px", fontWeight: 900, color: "#0f172a" } }, "R", totalsAll.office)), /* @__PURE__ */ React.createElement("div", { style: { background: "white", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "10px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#64748b" } }, "Lerato"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "18px", fontWeight: 900, color: "#0f172a" } }, "R", totalsAll.lerato)), /* @__PURE__ */ React.createElement("div", { style: { background: "white", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "10px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#64748b" } }, "EFT"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "18px", fontWeight: 900, color: "#0f172a" } }, "R", totalsAll.eft))), payMsg && /* @__PURE__ */ React.createElement("div", { style: { marginTop: "10px", fontSize: "13px", color: payMsg.startsWith("\u2713") ? "#166534" : "#b91c1c" } }, payMsg)), /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: "14px" } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", { style: { background: "#f8f9fa", textAlign: "left" } }, /* @__PURE__ */ React.createElement("th", { style: { padding: "10px 8px", width: "40px" } }, "#"), /* @__PURE__ */ React.createElement("th", { style: { padding: "10px 8px" } }, "Surname"), /* @__PURE__ */ React.createElement("th", { style: { padding: "10px 8px" } }, "First name"), /* @__PURE__ */ React.createElement("th", { style: { padding: "10px 8px", width: "320px" } }, "Donation"), /* @__PURE__ */ React.createElement("th", { style: { padding: "10px 8px", width: "180px" } }, "Original (register)"), /* @__PURE__ */ React.createElement("th", { style: { padding: "10px 8px", width: "180px", textAlign: "right" } }, "Actions"))), /* @__PURE__ */ React.createElement("tbody", null, filteredLearners.map((L, i) => {
       const isEdited = L.surname !== L._origSurname || L.firstname !== L._origFirstname;
       const payKey = `${selClass}||${Number(L.number) || 0}`;
       const p = paymentsByKey.get(payKey);
       const isPaid = !!(p == null ? void 0 : p.paid_to);
       const paidTo = String((p == null ? void 0 : p.paid_to) || "");
+      const amountValue = Number((p == null ? void 0 : p.amount)) || 50;
       const busy = payBusyKey === payKey;
       return /* @__PURE__ */ React.createElement("tr", { key: `${L._origSurname}|${L._origFirstname}`, style: { borderBottom: "1px solid #eee", background: isEdited ? "#fffbe6" : "transparent" } }, /* @__PURE__ */ React.createElement("td", { style: { padding: "10px 8px", color: "#999" } }, L.number || i + 1), /* @__PURE__ */ React.createElement("td", { style: { padding: "10px 8px", fontWeight: 600, color: "#222" } }, L.surname), /* @__PURE__ */ React.createElement("td", { style: { padding: "10px 8px", color: "#222" } }, L.firstname), /* @__PURE__ */ React.createElement("td", { style: { padding: "10px 8px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", fontWeight: 700, color: isPaid ? "#166534" : "#64748b", cursor: busy ? "not-allowed" : "pointer" } }, /* @__PURE__ */ React.createElement(
         "input",
@@ -1999,16 +2000,16 @@ This will also rename matching assessment records back.`)) return;
           type: "checkbox",
           checked: isPaid,
           disabled: busy,
-          onChange: (e) => setPayment(L, e.target.checked, paidTo || "office"),
+          onChange: (e) => setPayment(L, e.target.checked, paidTo || "office", amountValue),
           style: { width: 18, height: 18 }
         }
-      ), "Paid"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: "13px", fontWeight: 800, color: "#0f172a" } }, "R50"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "10px", background: "#f1f5f9", padding: "6px 10px", borderRadius: "999px" } }, /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#0f172a", cursor: busy || !isPaid ? "not-allowed" : "pointer" } }, /* @__PURE__ */ React.createElement(
+      ), "Paid"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: "13px", fontWeight: 800, color: "#0f172a", background: "#ecfeff", border: "1px solid #a5f3fc", padding: "4px 8px", borderRadius: "999px" } }, "R", amountValue), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "10px", background: "#f8fafc", padding: "6px 10px", borderRadius: "999px", border: "1px solid #e2e8f0" } }, /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#0f172a", cursor: busy ? "not-allowed" : "pointer" } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: isPaid && amountValue === 20, disabled: busy, onChange: () => setPayment(L, true, paidTo || "office", 20), style: { width: 16, height: 16 } }), "R20"), /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#0f172a", cursor: busy ? "not-allowed" : "pointer" } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: isPaid && amountValue === 50, disabled: busy, onChange: () => setPayment(L, true, paidTo || "office", 50), style: { width: 16, height: 16 } }), "R50")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "10px", background: "#f1f5f9", padding: "6px 10px", borderRadius: "999px" } }, /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#0f172a", cursor: busy || !isPaid ? "not-allowed" : "pointer" } }, /* @__PURE__ */ React.createElement(
         "input",
         {
           type: "checkbox",
           checked: paidTo === "office",
           disabled: busy || !isPaid,
-          onChange: () => setPayment(L, true, "office"),
+          onChange: () => setPayment(L, true, "office", amountValue),
           style: { width: 16, height: 16 }
         }
       ), "Office"), /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#0f172a", cursor: busy || !isPaid ? "not-allowed" : "pointer" } }, /* @__PURE__ */ React.createElement(
@@ -2017,7 +2018,7 @@ This will also rename matching assessment records back.`)) return;
           type: "checkbox",
           checked: paidTo === "lerato",
           disabled: busy || !isPaid,
-          onChange: () => setPayment(L, true, "lerato"),
+          onChange: () => setPayment(L, true, "lerato", amountValue),
           style: { width: 16, height: 16 }
         }
       ), "Lerato"), /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#0f172a", cursor: busy || !isPaid ? "not-allowed" : "pointer" } }, /* @__PURE__ */ React.createElement(
@@ -2026,7 +2027,7 @@ This will also rename matching assessment records back.`)) return;
           type: "checkbox",
           checked: paidTo === "eft",
           disabled: busy || !isPaid,
-          onChange: () => setPayment(L, true, "eft"),
+          onChange: () => setPayment(L, true, "eft", amountValue),
           style: { width: 16, height: 16 }
         }
       ), "EFT")))), /* @__PURE__ */ React.createElement("td", { style: { padding: "10px 8px", color: "#999", fontSize: "12px" } }, isEdited ? `${L._origFirstname} ${L._origSurname}` : /* @__PURE__ */ React.createElement("span", { style: { color: "#ccc" } }, "\u2014")), /* @__PURE__ */ React.createElement("td", { style: { padding: "10px 8px", textAlign: "right" } }, /* @__PURE__ */ React.createElement(
