@@ -6493,7 +6493,7 @@ th{background:#f8fafc;color:#374151;font-weight:800;}
 .sig-label{margin-top:6px;font-size:12px;color:#374151;font-weight:700;}
 .comment-wrap{margin-top:14px;}
 .comment-label{font-size:12px;color:#374151;font-weight:800;margin-bottom:6px;}
-.comment-box{border:2px solid #111827;border-radius:10px;height:110px;}
+.comment-box{border:2px solid #111827;border-radius:10px;height:70px;}
 footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:10px;color:#6b7280;text-align:center;}
 
 
@@ -6512,6 +6512,8 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
  .page{box-shadow:none;border-radius:0;max-width:100%;padding:0;}
 
 
+  .signatures{break-inside:avoid; page-break-inside:avoid;}
+  .comment-box{height:60px;}
 }
 
 
