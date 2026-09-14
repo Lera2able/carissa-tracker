@@ -6617,34 +6617,6 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
 
 
 
-  <h2>Admin activity history</h2>
-
-
-  <table>
-
-
-    <thead><tr><th>#</th><th>Date</th><th>Action</th><th>Admin user</th></tr></thead>
-
-
-    <tbody>${historyRows || `<tr><td colspan="4">No admin actions recorded.</td></tr>`}</tbody>
-
-
-  </table>
-
-
-
-
-
-  <div class="note">
-
-
-    This report is generated from the Carissa Primary School discipline system for accountability and school record purposes.
-
-
-  </div>
-
-
-
   <div class="signatures">
     <div class="sig-row">
       <div>
