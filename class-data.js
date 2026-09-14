@@ -1895,6 +1895,11 @@ window.CLASS_DATA = {
       "number": 45,
       "surname": "MANJENGWA",
       "firstname": "Tinotenda"
+    },
+    {
+      "number": 46,
+      "surname": "MTHUNZI",
+      "firstname": "Lethabo"
     }
   ],
   "Grade 3.2": [
