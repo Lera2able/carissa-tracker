@@ -557,10 +557,17 @@ async function handleLearnerResultUpsert(request, env, corsOrigin) {
   if (!assignment) {
     return jsonResponse({ error: "Assignment not found." }, 404, corsOrigin);
   }
-  const sameLearner =
-    String(assignment.class_name || "").trim() === session.class_name &&
-    String(assignment.surname || "").trim().toLowerCase() === String(session.surname || "").trim().toLowerCase() &&
-    String(assignment.firstname || "").trim().toLowerCase() === String(session.firstname || "").trim().toLowerCase();
+  const norm = (v) => String(v || "").trim().toLowerCase().replace(/\s+/g, " ");
+  const classMatch = norm(assignment.class_name) === norm(session.class_name);
+  const currentNameMatch =
+    norm(assignment.surname) === norm(session.surname) &&
+    norm(assignment.firstname) === norm(session.firstname);
+  // Allow submissions even if the learner name was corrected after the assignment was created.
+  // We store original_* in the learner session cookie during login/profile updates.
+  const originalNameMatch =
+    norm(assignment.surname) === norm(session.original_surname || session.surname) &&
+    norm(assignment.firstname) === norm(session.original_firstname || session.firstname);
+  const sameLearner = classMatch && (currentNameMatch || originalNameMatch);
   if (!sameLearner) {
     return jsonResponse({ error: "This assignment does not belong to the current learner." }, 403, corsOrigin);
   }
