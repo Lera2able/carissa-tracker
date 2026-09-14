@@ -6405,8 +6405,6 @@ This cannot be undone.`)) return;
       </tr>`;
       }).join("");
       const html = `<!DOCTYPE html>
-
-
 <html><head><meta charset="utf-8"/>
 
 
@@ -6461,9 +6459,7 @@ header img{height:66px;width:66px;object-fit:contain;border-radius:10px;backgrou
 .meta .value{font-size:14px;font-weight:800;color:#111827;}
 
 
-.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0 16px;}
-
-
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0 16px;}
 .summary .box{border:1px solid #e5e7eb;border-radius:12px;padding:12px;background:#f8fafc;}
 
 
@@ -6491,6 +6487,13 @@ th{background:#f8fafc;color:#374151;font-weight:800;}
 .note{margin-top:14px;padding:12px 14px;background:#eff6ff;border-left:4px solid #3b82f6;border-radius:8px;font-size:12px;color:#1e3a8a;}
 
 
+.signatures{margin-top:14px;}
+.sig-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:10px;}
+.sig-line{border-bottom:2px solid #111827;height:28px;}
+.sig-label{margin-top:6px;font-size:12px;color:#374151;font-weight:700;}
+.comment-wrap{margin-top:14px;}
+.comment-label{font-size:12px;color:#374151;font-weight:800;margin-bottom:6px;}
+.comment-box{border:2px solid #111827;border-radius:10px;height:110px;}
 footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:10px;color:#6b7280;text-align:center;}
 
 
@@ -6587,9 +6590,6 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
     <div class="box"><div class="label">Active records</div><div class="big">${summary.activeRecords}</div><div class="sub">Current visible reports</div></div>
 
 
-    <div class="box"><div class="label">Archived records</div><div class="big">${summary.archivedRecords}</div><div class="sub">Recycle bin reports</div></div>
-
-
     <div class="box"><div class="label">Latest teacher activity</div><div class="sub" style="font-weight:800;color:#111827;">${esc(summary.latestTeacher)}</div><div class="sub">${esc(summary.latestAdminAction)}</div></div>
 
 
@@ -6609,24 +6609,6 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
 
 
     <tbody>${activeRows || `<tr><td colspan="8">No active discipline records.</td></tr>`}</tbody>
-
-
-  </table>
-
-
-
-
-
-  <h2>Archived records</h2>
-
-
-  <table>
-
-
-    <thead><tr><th>#</th><th>Archived date</th><th>Type</th><th>Points</th><th>Comment</th><th>Archived by</th></tr></thead>
-
-
-    <tbody>${archivedRows || `<tr><td colspan="6">No archived records.</td></tr>`}</tbody>
 
 
   </table>
@@ -6662,6 +6644,23 @@ footer{margin-top:18px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:1
   </div>
 
 
+
+  <div class="signatures">
+    <div class="sig-row">
+      <div>
+        <div class="sig-line"></div>
+        <div class="sig-label">Principal signature: Ms V.N Sibande</div>
+      </div>
+      <div>
+        <div class="sig-line"></div>
+        <div class="sig-label">Class Teacher signature</div>
+      </div>
+    </div>
+    <div class="comment-wrap">
+      <div class="comment-label">Comment box</div>
+      <div class="comment-box"></div>
+    </div>
+  </div>
 
 
 
