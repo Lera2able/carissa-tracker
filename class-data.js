@@ -3154,6 +3154,11 @@ window.CLASS_DATA = {
       "firstname": "Patrick Ngoni"
     },
     {
+      "number": 42,
+      "surname": "KHUMALO",
+      "firstname": "Sbonelo"
+    },
+    {
       "number": 43,
       "surname": "ZHOU",
       "firstname": "Kyle Anotida"
