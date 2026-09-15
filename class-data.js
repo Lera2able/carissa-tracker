@@ -3198,7 +3198,7 @@ window.CLASS_DATA = {
     {
       "number": 5,
       "surname": "GAMEDE",
-      "firstname": "Lethokuhle Pearl"
+      "firstname": "Lethokuhle"
     },
     {
       "number": 6,
@@ -3222,8 +3222,8 @@ window.CLASS_DATA = {
     },
     {
       "number": 10,
-      "surname": "HLONGWANE",
-      "firstname": "Kearabilwe Mapula"
+      "surname": "MASHIGO",
+      "firstname": "Reabetswe"
     },
     {
       "number": 11,
@@ -3270,11 +3270,7 @@ window.CLASS_DATA = {
       "surname": "MASHIGO",
       "firstname": "Precious Owethu Noluthando"
     },
-    {
-      "number": 20,
-      "surname": "MASHIGO",
-      "firstname": "Reabetswe Minenhle"
-    },
+    
     {
       "number": 21,
       "surname": "MASHIANE +",
