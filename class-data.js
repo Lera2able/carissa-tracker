@@ -2014,6 +2014,11 @@ window.CLASS_DATA = {
       "firstname": "Sibongumusa Boikano"
     },
     {
+      "number": 24,
+      "surname": "MNISI",
+      "firstname": "Naledi"
+    },
+    {
       "number": 25,
       "surname": "MOHLALA",
       "firstname": "Mogau Princess"
