@@ -3593,9 +3593,14 @@ window.CLASS_DATA = {
       "firstname": "Innocentia Keitumetse Oluhle"
     },
     {
-      "number": 44,
+      "number": 29,
       "surname": "NCONGWANE+",
       "firstname": "Qhawe Okuhlekodwa"
+    },
+    {
+      "number": 43,
+      "surname": "ZWANE",
+      "firstname": "Buhlebenkosi"
     }
   ],
   "Grade 6.1": [
