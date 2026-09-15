@@ -3377,9 +3377,9 @@ window.CLASS_DATA = {
       "firstname": "Mwambi El Dracle"
     },
     {
-      "number": 44,
+      "number": 25,
       "surname": "MKHABELA",
-      "firstname": "Silindokuhle Perceverande"
+      "firstname": "Silindo'okuhle Perceverance"
     },
     {
       "number": 45,
