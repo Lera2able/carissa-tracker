@@ -31,6 +31,17 @@
       return `${SB}/storage/v1/object/public/carissa-resources/${path}`;
     }
   };
+  const learnerNameKey = (surname = "", firstname = "") => `${String(surname || "").trim().toLowerCase()}|${String(firstname || "").trim().toLowerCase()}`;
+  const dedupeLearners = (list = []) => {
+    const seen = /* @__PURE__ */ new Set();
+    return (Array.isArray(list) ? list : []).filter((item) => {
+      const key = learnerNameKey(item == null ? void 0 : item.surname, item == null ? void 0 : item.firstname);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+  const yieldToUi = () => new Promise((resolve) => setTimeout(resolve, 0));
   const API_BASE = "/api";
   const apiRequest = async (path, opts = {}) => {
     const method = (opts.method || "GET").toUpperCase();
@@ -961,6 +972,8 @@
     const [busy, setBusy] = useState(false);
     const [busyLabel, setBusyLabel] = useState("");
     const [resFilter, setResFilter] = useState("all");
+    const [assignSearch, setAssignSearch] = useState("");
+    const [assignClassFilter, setAssignClassFilter] = useState("");
     const showMsg = (m) => {
       setMsg(m);
       setTimeout(() => setMsg(""), 5e3);
@@ -983,6 +996,42 @@
       if (resFilter === "other") return url && !url.includes("splashlearn.com");
       return true;
     });
+    const resTitle = (id) => {
+      var _a;
+      return ((_a = resources.find((r) => r.id === id)) == null ? void 0 : _a.title) || "Unknown resource";
+    };
+    const getExistingAssignmentSet = async (cls, resourceId) => {
+      try {
+        const q = `class_name=eq.${encodeURIComponent(cls)}&resource_id=eq.${encodeURIComponent(resourceId)}&select=surname,firstname&limit=5000`;
+        const existing = await db.get("carissa_resource_assignments", q);
+        return new Set((Array.isArray(existing) ? existing : []).map((r) => learnerNameKey(r.surname, r.firstname)));
+      } catch (_e) {
+        return /* @__PURE__ */ new Set();
+      }
+    };
+    const postAssignmentRows = async (cls, resourceId, base, targets) => {
+      const uniqueTargets = dedupeLearners(targets);
+      if (!uniqueTargets.length) return { insertedCount: 0, skippedCount: 0 };
+      const existingSet = await getExistingAssignmentSet(cls, resourceId);
+      const missing = uniqueTargets.filter((t) => !existingSet.has(learnerNameKey(t.surname, t.firstname)));
+      const skippedCount = Math.max(0, uniqueTargets.length - missing.length);
+      if (!missing.length) return { insertedCount: 0, skippedCount };
+      let insertedCount = 0;
+      const chunkSize = 80;
+      for (let i = 0; i < missing.length; i += chunkSize) {
+        const chunk = missing.slice(i, i + chunkSize);
+        const payload = chunk.map((t) => ({
+          ...base,
+          class_name: cls,
+          surname: t.surname,
+          firstname: t.firstname
+        }));
+        await db.post("carissa_resource_assignments", payload, "return=minimal");
+        insertedCount += chunk.length;
+        await yieldToUi();
+      }
+      return { insertedCount, skippedCount };
+    };
     const grade4Classes = useMemo(
       () => CLASS_NAMES.filter((c) => /^Grade\s*4(\b|\.)/i.test(String(c || ""))),
       []
@@ -1023,22 +1072,6 @@ This will NOT remove any existing activities.`)) return;
         for (const cls of grade5Classes) {
           const learners = (CLASS_DATA[cls] || []).map((l) => ({ surname: l.surname, firstname: l.firstname }));
           if (!learners.length) continue;
-          let existingSet = /* @__PURE__ */ new Set();
-          try {
-            const q = `class_name=eq.${encodeURIComponent(cls)}&resource_id=eq.${encodeURIComponent(resourceId)}&select=surname,firstname&limit=20000`;
-            const existing = await db.get("carissa_resource_assignments", q);
-            (Array.isArray(existing) ? existing : []).forEach((r) => {
-              const k = `${String(r.surname || "").trim().toLowerCase()}|${String(r.firstname || "").trim().toLowerCase()}`;
-              existingSet.add(k);
-            });
-          } catch (_e) {
-          }
-          const targets = learners.filter((l) => {
-            const k = `${String(l.surname || "").trim().toLowerCase()}|${String(l.firstname || "").trim().toLowerCase()}`;
-            return !existingSet.has(k);
-          });
-          skipped += Math.max(0, learners.length - targets.length);
-          if (!targets.length) continue;
           setBusyLabel(`Assigning Grade 5 assessment in ${cls}...`);
           const base = {
             resource_id: resourceId,
@@ -1048,12 +1081,9 @@ This will NOT remove any existing activities.`)) return;
             due_date: null,
             notes: "Grade 5 Typing Assessment (auto-assigned)"
           };
-          for (let i = 0; i < targets.length; i += chunkSize) {
-            const chunk = targets.slice(i, i + chunkSize);
-            const payload = chunk.map((t) => ({ ...base, surname: t.surname, firstname: t.firstname }));
-            await db.post("carissa_resource_assignments", payload, "return=minimal");
-            inserted += chunk.length;
-          }
+          const result = await postAssignmentRows(cls, resourceId, base, learners);
+          inserted += result.insertedCount;
+          skipped += result.skippedCount;
         }
         showMsg(`\u2713 Grade 5 Typing Assessment assigned to ${inserted} learner(s).${skipped ? ` (Skipped ${skipped} already assigned)` : ""}`);
       } catch (e) {
@@ -1078,26 +1108,9 @@ This will NOT remove any existing activities.`)) return;
         const resourceId = await resolveBuiltInResourceId("builtin-grade4-typing-assessment", resources);
         let inserted = 0;
         let skipped = 0;
-        const chunkSize = 120;
         for (const cls of grade4Classes) {
           const learners = (CLASS_DATA[cls] || []).map((l) => ({ surname: l.surname, firstname: l.firstname }));
           if (!learners.length) continue;
-          let existingSet = /* @__PURE__ */ new Set();
-          try {
-            const q = `class_name=eq.${encodeURIComponent(cls)}&resource_id=eq.${encodeURIComponent(resourceId)}&select=surname,firstname&limit=20000`;
-            const existing = await db.get("carissa_resource_assignments", q);
-            (Array.isArray(existing) ? existing : []).forEach((r) => {
-              const k = `${String(r.surname || "").trim().toLowerCase()}|${String(r.firstname || "").trim().toLowerCase()}`;
-              existingSet.add(k);
-            });
-          } catch (_e) {
-          }
-          const targets = learners.filter((l) => {
-            const k = `${String(l.surname || "").trim().toLowerCase()}|${String(l.firstname || "").trim().toLowerCase()}`;
-            return !existingSet.has(k);
-          });
-          skipped += Math.max(0, learners.length - targets.length);
-          if (!targets.length) continue;
           setBusyLabel(`Assigning Grade 4 assessment in ${cls}...`);
           const base = {
             resource_id: resourceId,
@@ -1107,12 +1120,9 @@ This will NOT remove any existing activities.`)) return;
             due_date: null,
             notes: "Grade 4 Typing Assessment (auto-assigned)"
           };
-          for (let i = 0; i < targets.length; i += chunkSize) {
-            const chunk = targets.slice(i, i + chunkSize);
-            const payload = chunk.map((t) => ({ ...base, surname: t.surname, firstname: t.firstname }));
-            await db.post("carissa_resource_assignments", payload, "return=minimal");
-            inserted += chunk.length;
-          }
+          const result = await postAssignmentRows(cls, resourceId, base, learners);
+          inserted += result.insertedCount;
+          skipped += result.skippedCount;
         }
         showMsg(`\u2713 Grade 4 Typing Assessment assigned to ${inserted} learner(s).${skipped ? ` (Skipped ${skipped} already assigned)` : ""}`);
       } catch (e) {
@@ -1137,26 +1147,9 @@ This will NOT remove any existing activities.`)) return;
         const resourceId = await resolveBuiltInResourceId("builtin-grade3-typing-assessment", resources);
         let inserted = 0;
         let skipped = 0;
-        const chunkSize = 120;
         for (const cls of grade3Classes) {
           const learners = (CLASS_DATA[cls] || []).map((l) => ({ surname: l.surname, firstname: l.firstname }));
           if (!learners.length) continue;
-          let existingSet = /* @__PURE__ */ new Set();
-          try {
-            const q = `class_name=eq.${encodeURIComponent(cls)}&resource_id=eq.${encodeURIComponent(resourceId)}&select=surname,firstname&limit=20000`;
-            const existing = await db.get("carissa_resource_assignments", q);
-            (Array.isArray(existing) ? existing : []).forEach((r) => {
-              const k = `${String(r.surname || "").trim().toLowerCase()}|${String(r.firstname || "").trim().toLowerCase()}`;
-              existingSet.add(k);
-            });
-          } catch (_e) {
-          }
-          const targets = learners.filter((l) => {
-            const k = `${String(l.surname || "").trim().toLowerCase()}|${String(l.firstname || "").trim().toLowerCase()}`;
-            return !existingSet.has(k);
-          });
-          skipped += Math.max(0, learners.length - targets.length);
-          if (!targets.length) continue;
           setBusyLabel(`Assigning Grade 3 assessment in ${cls}...`);
           const base = {
             resource_id: resourceId,
@@ -1166,12 +1159,9 @@ This will NOT remove any existing activities.`)) return;
             due_date: null,
             notes: "Grade 3 Typing Assessment (auto-assigned)"
           };
-          for (let i = 0; i < targets.length; i += chunkSize) {
-            const chunk = targets.slice(i, i + chunkSize);
-            const payload = chunk.map((t) => ({ ...base, surname: t.surname, firstname: t.firstname }));
-            await db.post("carissa_resource_assignments", payload, "return=minimal");
-            inserted += chunk.length;
-          }
+          const result = await postAssignmentRows(cls, resourceId, base, learners);
+          inserted += result.insertedCount;
+          skipped += result.skippedCount;
         }
         showMsg(`\u2713 Grade 3 Typing Assessment assigned to ${inserted} learner(s).${skipped ? ` (Skipped ${skipped} already assigned)` : ""}`);
       } catch (e) {
@@ -1196,26 +1186,9 @@ This will NOT remove any existing activities.`)) return;
         const resourceId = await resolveBuiltInResourceId("builtin-grade2-typing-assessment", resources);
         let inserted = 0;
         let skipped = 0;
-        const chunkSize = 120;
         for (const cls of grade2Classes) {
           const learners = (CLASS_DATA[cls] || []).map((l) => ({ surname: l.surname, firstname: l.firstname }));
           if (!learners.length) continue;
-          let existingSet = /* @__PURE__ */ new Set();
-          try {
-            const q = `class_name=eq.${encodeURIComponent(cls)}&resource_id=eq.${encodeURIComponent(resourceId)}&select=surname,firstname&limit=20000`;
-            const existing = await db.get("carissa_resource_assignments", q);
-            (Array.isArray(existing) ? existing : []).forEach((r) => {
-              const k = `${String(r.surname || "").trim().toLowerCase()}|${String(r.firstname || "").trim().toLowerCase()}`;
-              existingSet.add(k);
-            });
-          } catch (_e) {
-          }
-          const targets = learners.filter((l) => {
-            const k = `${String(l.surname || "").trim().toLowerCase()}|${String(l.firstname || "").trim().toLowerCase()}`;
-            return !existingSet.has(k);
-          });
-          skipped += Math.max(0, learners.length - targets.length);
-          if (!targets.length) continue;
           setBusyLabel(`Assigning Grade 2 assessment in ${cls}...`);
           const base = {
             resource_id: resourceId,
@@ -1225,12 +1198,9 @@ This will NOT remove any existing activities.`)) return;
             due_date: null,
             notes: "Grade 2 Typing Assessment (auto-assigned)"
           };
-          for (let i = 0; i < targets.length; i += chunkSize) {
-            const chunk = targets.slice(i, i + chunkSize);
-            const payload = chunk.map((t) => ({ ...base, surname: t.surname, firstname: t.firstname }));
-            await db.post("carissa_resource_assignments", payload, "return=minimal");
-            inserted += chunk.length;
-          }
+          const result = await postAssignmentRows(cls, resourceId, base, learners);
+          inserted += result.insertedCount;
+          skipped += result.skippedCount;
         }
         showMsg(`\u2713 Grade 2 Typing Assessment assigned to ${inserted} learner(s).${skipped ? ` (Skipped ${skipped} already assigned)` : ""}`);
       } catch (e) {
@@ -1255,26 +1225,9 @@ This will NOT remove any existing activities.`)) return;
         const resourceId = await resolveBuiltInResourceId("builtin-grade1-typing-assessment", resources);
         let inserted = 0;
         let skipped = 0;
-        const chunkSize = 120;
         for (const cls of grade1Classes) {
           const learners = (CLASS_DATA[cls] || []).map((l) => ({ surname: l.surname, firstname: l.firstname }));
           if (!learners.length) continue;
-          let existingSet = /* @__PURE__ */ new Set();
-          try {
-            const q = `class_name=eq.${encodeURIComponent(cls)}&resource_id=eq.${encodeURIComponent(resourceId)}&select=surname,firstname&limit=20000`;
-            const existing = await db.get("carissa_resource_assignments", q);
-            (Array.isArray(existing) ? existing : []).forEach((r) => {
-              const k = `${String(r.surname || "").trim().toLowerCase()}|${String(r.firstname || "").trim().toLowerCase()}`;
-              existingSet.add(k);
-            });
-          } catch (_e) {
-          }
-          const targets = learners.filter((l) => {
-            const k = `${String(l.surname || "").trim().toLowerCase()}|${String(l.firstname || "").trim().toLowerCase()}`;
-            return !existingSet.has(k);
-          });
-          skipped += Math.max(0, learners.length - targets.length);
-          if (!targets.length) continue;
           setBusyLabel(`Assigning Grade 1 assessment in ${cls}...`);
           const base = {
             resource_id: resourceId,
@@ -1284,12 +1237,9 @@ This will NOT remove any existing activities.`)) return;
             due_date: null,
             notes: "Grade 1 Typing Assessment (auto-assigned)"
           };
-          for (let i = 0; i < targets.length; i += chunkSize) {
-            const chunk = targets.slice(i, i + chunkSize);
-            const payload = chunk.map((t) => ({ ...base, surname: t.surname, firstname: t.firstname }));
-            await db.post("carissa_resource_assignments", payload, "return=minimal");
-            inserted += chunk.length;
-          }
+          const result = await postAssignmentRows(cls, resourceId, base, learners);
+          inserted += result.insertedCount;
+          skipped += result.skippedCount;
         }
         showMsg(`\u2713 Grade 1 Typing Assessment assigned to ${inserted} learner(s).${skipped ? ` (Skipped ${skipped} already assigned)` : ""}`);
       } catch (e) {
@@ -1317,23 +1267,6 @@ This will NOT remove any existing activities.`)) return;
           due_date: form.due_date || null,
           notes: form.notes.trim() || null
         };
-        const postRows = async (cls, targets) => {
-          if (!targets.length) return 0;
-          let insertedCount2 = 0;
-          const chunkSize = 120;
-          for (let i = 0; i < targets.length; i += chunkSize) {
-            const chunk = targets.slice(i, i + chunkSize);
-            const payload = chunk.map((t) => ({
-              ...base,
-              class_name: cls,
-              surname: t.surname,
-              firstname: t.firstname
-            }));
-            await db.post("carissa_resource_assignments", payload, "return=minimal");
-            insertedCount2 += chunk.length;
-          }
-          return insertedCount2;
-        };
         if (form.assign_type === "learner") {
           if (!form.surname || !form.firstname) {
             alert("Select a learner");
@@ -1341,8 +1274,16 @@ This will NOT remove any existing activities.`)) return;
             return;
           }
           setBusyLabel(`Assigning to ${form.firstname} ${form.surname}...`);
+          const existingSet = await getExistingAssignmentSet(form.class_name, resolvedResourceId);
+          const learnerKey2 = learnerNameKey(form.surname, form.firstname);
+          if (existingSet.has(learnerKey2)) {
+            showMsg(`\u2713 ${form.firstname} ${form.surname} already has this activity.`);
+            setBusy(false);
+            setBusyLabel("");
+            return;
+          }
           const r = await db.post("carissa_resource_assignments", { ...base, surname: form.surname, firstname: form.firstname });
-          setAssignments((p) => [r[0], ...p]);
+          if (r == null ? void 0 : r[0]) setAssignments((p) => [r[0], ...p].slice(0, 400));
           showMsg(`\u2713 Assigned to ${form.firstname} ${form.surname} (${form.class_name})`);
           setForm({ ...blank });
           setBusy(false);
@@ -1364,7 +1305,8 @@ This will NOT remove any existing activities.`)) return;
             return;
           }
           setBusyLabel(`Assigning to ${totalTargets} intervention learner(s)...`);
-          insertedCount += await postRows(form.class_name, targets);
+          const result = await postAssignmentRows(form.class_name, resolvedResourceId, base, targets);
+          insertedCount += result.insertedCount;
         }
         if (form.assign_type === "classlist_class") {
           const targets = rosterLearners.map((l) => ({ surname: l.surname, firstname: l.firstname }));
@@ -1379,7 +1321,8 @@ This will NOT remove any existing activities.`)) return;
             return;
           }
           setBusyLabel(`Assigning to ${totalTargets} learner(s) in ${form.class_name}...`);
-          insertedCount += await postRows(form.class_name, targets);
+          const result = await postAssignmentRows(form.class_name, resolvedResourceId, base, targets);
+          insertedCount += result.insertedCount;
         }
         if (form.assign_type === "interventions_all") {
           const clsWithTargets = CLASS_NAMES.map((cls) => ({
@@ -1397,7 +1340,10 @@ This will NOT remove any existing activities.`)) return;
             return;
           }
           setBusyLabel(`Assigning to ${totalTargets} intervention learner(s) across ${clsWithTargets.length} classes...`);
-          for (const x of clsWithTargets) insertedCount += await postRows(x.cls, x.targets);
+          for (const x of clsWithTargets) {
+            const result = await postAssignmentRows(x.cls, resolvedResourceId, base, x.targets);
+            insertedCount += result.insertedCount;
+          }
         }
         if (form.assign_type === "classlist_all") {
           const clsWithTargets = CLASS_NAMES.map((cls) => ({
@@ -1415,7 +1361,10 @@ This will NOT remove any existing activities.`)) return;
             return;
           }
           setBusyLabel(`Assigning to ${totalTargets} learner(s) across ${clsWithTargets.length} classes...`);
-          for (const x of clsWithTargets) insertedCount += await postRows(x.cls, x.targets);
+          for (const x of clsWithTargets) {
+            const result = await postAssignmentRows(x.cls, resolvedResourceId, base, x.targets);
+            insertedCount += result.insertedCount;
+          }
         }
         showMsg(`\u2713 Assigned to ${insertedCount} learner(s).`);
         setForm({ ...blank });
@@ -1433,16 +1382,22 @@ This will NOT remove any existing activities.`)) return;
         alert("Error: " + e.message);
       }
     };
+    const assignmentList = useMemo(() => {
+      const q = assignSearch.trim().toLowerCase();
+      return assignments.filter((a) => {
+        const classOk = !assignClassFilter || a.class_name === assignClassFilter;
+        if (!classOk) return false;
+        if (!q) return true;
+        return [a.class_name, a.surname, a.firstname, resTitle(a.resource_id)].some((v) => String(v || "").toLowerCase().includes(q));
+      });
+    }, [assignments, assignClassFilter, assignSearch, resources]);
+    const visibleAssignments = assignmentList.slice(0, 200);
     const grouped = {};
-    assignments.forEach((a) => {
+    visibleAssignments.forEach((a) => {
       const key = a.class_name || "Unknown";
       if (!grouped[key]) grouped[key] = [];
       grouped[key].push(a);
     });
-    const resTitle = (id) => {
-      var _a;
-      return ((_a = resources.find((r) => r.id === id)) == null ? void 0 : _a.title) || "Unknown resource";
-    };
     return /* @__PURE__ */ React.createElement("div", null, msg && /* @__PURE__ */ React.createElement("div", { style: succ }, msg), /* @__PURE__ */ React.createElement("div", { style: card }, /* @__PURE__ */ React.createElement("h3", { style: ctitle }, "Assign Activity to Learners"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", margin: "-4px 0 12px" } }, /* @__PURE__ */ React.createElement("button", { type: "button", style: { ...sbtn, background: "#7c3aed" }, disabled: busy, onClick: bulkAssignGrade5TypingAssessment }, "\u26A1 Assign Grade 5 Typing Assessment (All Grade 5 classes)"), /* @__PURE__ */ React.createElement("button", { type: "button", style: { ...sbtn, background: "#f59e0b" }, disabled: busy, onClick: bulkAssignGrade1TypingAssessment }, "\u26A1 Assign Grade 1 Typing Assessment (All Grade 1 classes)"), /* @__PURE__ */ React.createElement("button", { type: "button", style: { ...sbtn, background: "#22c55e" }, disabled: busy, onClick: bulkAssignGrade2TypingAssessment }, "\u26A1 Assign Grade 2 Typing Assessment (All Grade 2 classes)"), /* @__PURE__ */ React.createElement("button", { type: "button", style: { ...sbtn, background: "#0ea5e9" }, disabled: busy, onClick: bulkAssignGrade3TypingAssessment }, "\u26A1 Assign Grade 3 Typing Assessment (All Grade 3 classes)"), /* @__PURE__ */ React.createElement("button", { type: "button", style: { ...sbtn, background: "#2563eb" }, disabled: busy, onClick: bulkAssignGrade4TypingAssessment }, "\u26A1 Assign Grade 4 Typing Assessment (All Grade 4 classes)"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: "12px", color: "#64748b", alignSelf: "center" } }, "This adds the assessment; it does not remove any existing learner activities.")), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: "12px", marginBottom: "12px" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Resource / Activity *"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("select", { style: { ...inp, flex: 1, minWidth: "220px", margin: 0 }, value: form.resource_id, onChange: (e) => f("resource_id", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "" }, "-- Select Resource --"), filteredResources.map((r) => {
       var _a;
       return /* @__PURE__ */ React.createElement("option", { key: r.id, value: r.id }, (_a = RESOURCE_TYPES.find((t) => t.v === r.type)) == null ? void 0 : _a.icon, " ", r.title, r.subject ? ` (${r.subject})` : "");
@@ -1450,7 +1405,7 @@ This will NOT remove any existing activities.`)) return;
       const [s, fn] = e.target.value.split("|");
       f("surname", s);
       f("firstname", fn);
-    }, disabled: !form.class_name }, /* @__PURE__ */ React.createElement("option", { value: "|" }, "-- Select Learner --"), rosterLearners.map((l, i) => /* @__PURE__ */ React.createElement("option", { key: i, value: `${l.surname}|${l.firstname}` }, l.surname, ", ", l.firstname, isOnIntervention(l.surname, l.firstname) ? " (On intervention list)" : ""))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#64748b", marginTop: "6px" } }, !form.class_name ? "Choose a class first, then the learner dropdown will load that class list." : /* @__PURE__ */ React.createElement(React.Fragment, null, "Learners come from the ", /* @__PURE__ */ React.createElement("strong", null, "class list"), ". \u201COn intervention list\u201D is shown when that learner is also in the intervention list."))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Due Date (optional)"), /* @__PURE__ */ React.createElement("input", { style: inp, type: "date", value: form.due_date, onChange: (e) => f("due_date", e.target.value) }))), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: "12px" } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Notes (optional)"), /* @__PURE__ */ React.createElement("textarea", { style: { ...inp, resize: "vertical" }, rows: 2, value: form.notes, onChange: (e) => f("notes", e.target.value), placeholder: "Any instructions or context..." })), /* @__PURE__ */ React.createElement("div", { style: { background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "12px", marginBottom: "12px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "13px", fontWeight: 800, color: "#334155", marginBottom: "8px" } }, "Linked learners preview"), form.assign_type === "interventions_all" || form.assign_type === "classlist_all" ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: "13px", color: "#475569" } }, form.assign_type === "interventions_all" ? /* @__PURE__ */ React.createElement(React.Fragment, null, "This will use the ", /* @__PURE__ */ React.createElement("strong", null, "intervention list across all classes"), ": ", /* @__PURE__ */ React.createElement("strong", null, allInterventionCount), " learner(s).") : /* @__PURE__ */ React.createElement(React.Fragment, null, "This will use the ", /* @__PURE__ */ React.createElement("strong", null, "class lists across all classes"), ": ", /* @__PURE__ */ React.createElement("strong", null, allClasslistCount), " learner(s).")) : !form.class_name ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: "13px", color: "#64748b" } }, "Choose a class to see the linked class list and intervention learners.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "8px" } }, /* @__PURE__ */ React.createElement("span", { style: { background: "#eef2ff", color: "#4f46e5", padding: "6px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 700 } }, "Classlist: ", rosterLearners.length), /* @__PURE__ */ React.createElement("span", { style: { background: "#fff7ed", color: "#f97316", padding: "6px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 700 } }, "Intervention: ", classInterventions.length)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#475569", marginBottom: "8px" } }, form.assign_type === "interventions_class" ? "These are the learners currently linked from the intervention list for this class." : form.assign_type === "classlist_class" ? "These are the learners currently linked from the class list for this class." : "These are the learners available in the class list for individual selection."), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gap: "6px", maxHeight: "130px", overflowY: "auto", paddingRight: "4px" } }, previewLearners.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#94a3b8" } }, "No linked learners found for this selection.") : previewLearners.slice(0, 12).map((l, i) => /* @__PURE__ */ React.createElement("div", { key: `${l.surname}|${l.firstname}|${i}`, style: { display: "flex", justifyContent: "space-between", gap: "10px", background: "white", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "7px 10px", fontSize: "12px", color: "#334155" } }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("strong", null, l.surname), ", ", l.firstname), isOnIntervention(l.surname, l.firstname) && /* @__PURE__ */ React.createElement("span", { style: { color: "#f97316", fontWeight: 700 } }, "Intervention"))), previewLearners.length > 12 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#64748b" } }, "+ ", previewLearners.length - 12, " more learner(s)")))), busy && busyLabel && /* @__PURE__ */ React.createElement("div", { style: { background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "10px", padding: "10px 12px", fontSize: "13px", color: "#1d4ed8", fontWeight: 700, marginBottom: "10px" } }, busyLabel), /* @__PURE__ */ React.createElement("button", { style: { ...btn, opacity: busy || !resources.length ? 0.75 : 1 }, onClick: handleAssign, disabled: busy || !resources.length }, busy ? busyLabel || "Assigning..." : resources.length ? "\u{1F4CB} Assign Activity" : "Add resources first")), /* @__PURE__ */ React.createElement("div", { style: card }, /* @__PURE__ */ React.createElement("h3", { style: ctitle }, "Current Assignments (", assignments.length, ")"), assignments.length === 0 ? /* @__PURE__ */ React.createElement("p", { style: { color: "#999", textAlign: "center", padding: "30px" } }, "No assignments yet.") : Object.entries(grouped).map(([cls, items]) => /* @__PURE__ */ React.createElement("div", { key: cls, style: { marginBottom: "24px" } }, /* @__PURE__ */ React.createElement("h4", { style: { color: "#667eea", marginBottom: "10px", fontSize: "15px", fontWeight: 700 } }, "\u{1F4DA} ", cls, " (", items.length, ")"), items.map((a) => /* @__PURE__ */ React.createElement("div", { key: a.id, style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", background: "#f8f9fa", borderRadius: "8px", marginBottom: "8px", gap: "10px", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: "200px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 600, color: "#333", fontSize: "14px", marginBottom: "2px" } }, a.surname, ", ", a.firstname), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "13px", color: "#667eea" } }, resTitle(a.resource_id)), a.due_date && /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#888", marginTop: "2px" } }, "Due: ", new Date(a.due_date).toLocaleDateString("en-ZA"))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(StatusBadge, { status: a.status }), /* @__PURE__ */ React.createElement("select", { value: a.status, onChange: (e) => handleStatusChange(a.id, e.target.value), style: { padding: "5px 8px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "12px", cursor: "pointer", background: "white" } }, STATUS_OPTS.map((s) => /* @__PURE__ */ React.createElement("option", { key: s.v, value: s.v }, s.l))))))))));
+    }, disabled: !form.class_name }, /* @__PURE__ */ React.createElement("option", { value: "|" }, "-- Select Learner --"), rosterLearners.map((l, i) => /* @__PURE__ */ React.createElement("option", { key: i, value: `${l.surname}|${l.firstname}` }, l.surname, ", ", l.firstname, isOnIntervention(l.surname, l.firstname) ? " (On intervention list)" : ""))), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#64748b", marginTop: "6px" } }, !form.class_name ? "Choose a class first, then the learner dropdown will load that class list." : /* @__PURE__ */ React.createElement(React.Fragment, null, "Learners come from the ", /* @__PURE__ */ React.createElement("strong", null, "class list"), ". \u201COn intervention list\u201D is shown when that learner is also in the intervention list."))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Due Date (optional)"), /* @__PURE__ */ React.createElement("input", { style: inp, type: "date", value: form.due_date, onChange: (e) => f("due_date", e.target.value) }))), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: "12px" } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Notes (optional)"), /* @__PURE__ */ React.createElement("textarea", { style: { ...inp, resize: "vertical" }, rows: 2, value: form.notes, onChange: (e) => f("notes", e.target.value), placeholder: "Any instructions or context..." })), /* @__PURE__ */ React.createElement("div", { style: { background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "12px", marginBottom: "12px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "13px", fontWeight: 800, color: "#334155", marginBottom: "8px" } }, "Linked learners preview"), form.assign_type === "interventions_all" || form.assign_type === "classlist_all" ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: "13px", color: "#475569" } }, form.assign_type === "interventions_all" ? /* @__PURE__ */ React.createElement(React.Fragment, null, "This will use the ", /* @__PURE__ */ React.createElement("strong", null, "intervention list across all classes"), ": ", /* @__PURE__ */ React.createElement("strong", null, allInterventionCount), " learner(s).") : /* @__PURE__ */ React.createElement(React.Fragment, null, "This will use the ", /* @__PURE__ */ React.createElement("strong", null, "class lists across all classes"), ": ", /* @__PURE__ */ React.createElement("strong", null, allClasslistCount), " learner(s).")) : !form.class_name ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: "13px", color: "#64748b" } }, "Choose a class to see the linked class list and intervention learners.") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "8px" } }, /* @__PURE__ */ React.createElement("span", { style: { background: "#eef2ff", color: "#4f46e5", padding: "6px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 700 } }, "Classlist: ", rosterLearners.length), /* @__PURE__ */ React.createElement("span", { style: { background: "#fff7ed", color: "#f97316", padding: "6px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 700 } }, "Intervention: ", classInterventions.length)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#475569", marginBottom: "8px" } }, form.assign_type === "interventions_class" ? "These are the learners currently linked from the intervention list for this class." : form.assign_type === "classlist_class" ? "These are the learners currently linked from the class list for this class." : "These are the learners available in the class list for individual selection."), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gap: "6px", maxHeight: "130px", overflowY: "auto", paddingRight: "4px" } }, previewLearners.length === 0 ? /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#94a3b8" } }, "No linked learners found for this selection.") : previewLearners.slice(0, 12).map((l, i) => /* @__PURE__ */ React.createElement("div", { key: `${l.surname}|${l.firstname}|${i}`, style: { display: "flex", justifyContent: "space-between", gap: "10px", background: "white", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "7px 10px", fontSize: "12px", color: "#334155" } }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("strong", null, l.surname), ", ", l.firstname), isOnIntervention(l.surname, l.firstname) && /* @__PURE__ */ React.createElement("span", { style: { color: "#f97316", fontWeight: 700 } }, "Intervention"))), previewLearners.length > 12 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#64748b" } }, "+ ", previewLearners.length - 12, " more learner(s)")))), busy && busyLabel && /* @__PURE__ */ React.createElement("div", { style: { background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "10px", padding: "10px 12px", fontSize: "13px", color: "#1d4ed8", fontWeight: 700, marginBottom: "10px" } }, busyLabel), /* @__PURE__ */ React.createElement("button", { style: { ...btn, opacity: busy || !resources.length ? 0.75 : 1 }, onClick: handleAssign, disabled: busy || !resources.length }, busy ? busyLabel || "Assigning..." : resources.length ? "\u{1F4CB} Assign Activity" : "Add resources first")), /* @__PURE__ */ React.createElement("div", { style: card }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "16px" } }, /* @__PURE__ */ React.createElement("h3", { style: { ...ctitle, marginBottom: 0 } }, "Current Assignments (", assignments.length, ")"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#64748b" } }, "Showing ", visibleAssignments.length, " of ", assignmentList.length, " matching assignment(s)")), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: "12px", marginBottom: "14px" } }, /* @__PURE__ */ React.createElement("select", { style: inp, value: assignClassFilter, onChange: (e) => setAssignClassFilter(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "" }, "All classes"), CLASS_NAMES.map((n) => /* @__PURE__ */ React.createElement("option", { key: n, value: n }, n))), /* @__PURE__ */ React.createElement("input", { style: inp, value: assignSearch, onChange: (e) => setAssignSearch(e.target.value), placeholder: "Search learner or activity..." })), assignmentList.length === 0 ? /* @__PURE__ */ React.createElement("p", { style: { color: "#999", textAlign: "center", padding: "30px" } }, "No assignments yet.") : Object.entries(grouped).map(([cls, items]) => /* @__PURE__ */ React.createElement("div", { key: cls, style: { marginBottom: "24px" } }, /* @__PURE__ */ React.createElement("h4", { style: { color: "#667eea", marginBottom: "10px", fontSize: "15px", fontWeight: 700 } }, "\u{1F4DA} ", cls, " (", items.length, ")"), items.map((a) => /* @__PURE__ */ React.createElement("div", { key: a.id, style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", background: "#f8f9fa", borderRadius: "8px", marginBottom: "8px", gap: "10px", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: "200px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 600, color: "#333", fontSize: "14px", marginBottom: "2px" } }, a.surname, ", ", a.firstname), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "13px", color: "#667eea" } }, resTitle(a.resource_id)), a.due_date && /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#888", marginTop: "2px" } }, "Due: ", new Date(a.due_date).toLocaleDateString("en-ZA"))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 } }, /* @__PURE__ */ React.createElement(StatusBadge, { status: a.status }), /* @__PURE__ */ React.createElement("select", { value: a.status, onChange: (e) => handleStatusChange(a.id, e.target.value), style: { padding: "5px 8px", border: "1px solid #ddd", borderRadius: "8px", fontSize: "12px", cursor: "pointer", background: "white" } }, STATUS_OPTS.map((s) => /* @__PURE__ */ React.createElement("option", { key: s.v, value: s.v }, s.l)))))))), assignmentList.length > visibleAssignments.length && /* @__PURE__ */ React.createElement("div", { style: { marginTop: "10px", fontSize: "12px", color: "#64748b" } }, "Narrow the list with the class filter or search box to view older assignments without freezing the dashboard.")));
   }
   function ProgressTab({ assignments, setAssignments, resources }) {
     const [filterClass, setFC] = useState("");
@@ -1740,13 +1695,14 @@ This will NOT remove any existing activities.`)) return;
       refreshPayments();
     }, []);
     async function setPayment(L, paid, paidToOverride, amountOverride) {
+      var _a;
       const key = `${selClass}||${Number(L.number) || 0}`;
       setPayBusyKey(key);
       setPayMsg("");
       try {
         const existing = paymentsByKey.get(key);
         const paid_to = paidToOverride || (existing == null ? void 0 : existing.paid_to) || "office";
-        const amount = Number(amountOverride ?? (existing == null ? void 0 : existing.amount) ?? 50) || 50;
+        const amount = Number((_a = amountOverride != null ? amountOverride : existing == null ? void 0 : existing.amount) != null ? _a : 50) || 50;
         await apiRequest("/payments/set", {
           method: "POST",
           body: {
@@ -1992,7 +1948,7 @@ This will also rename matching assessment records back.`)) return;
       const p = paymentsByKey.get(payKey);
       const isPaid = !!(p == null ? void 0 : p.paid_to);
       const paidTo = String((p == null ? void 0 : p.paid_to) || "");
-      const amountValue = Number((p == null ? void 0 : p.amount)) || 50;
+      const amountValue = Number(p == null ? void 0 : p.amount) || 50;
       const busy = payBusyKey === payKey;
       return /* @__PURE__ */ React.createElement("tr", { key: `${L._origSurname}|${L._origFirstname}`, style: { borderBottom: "1px solid #eee", background: isEdited ? "#fffbe6" : "transparent" } }, /* @__PURE__ */ React.createElement("td", { style: { padding: "10px 8px", color: "#999" } }, L.number || i + 1), /* @__PURE__ */ React.createElement("td", { style: { padding: "10px 8px", fontWeight: 600, color: "#222" } }, L.surname), /* @__PURE__ */ React.createElement("td", { style: { padding: "10px 8px", color: "#222" } }, L.firstname), /* @__PURE__ */ React.createElement("td", { style: { padding: "10px 8px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", fontWeight: 700, color: isPaid ? "#166534" : "#64748b", cursor: busy ? "not-allowed" : "pointer" } }, /* @__PURE__ */ React.createElement(
         "input",
@@ -2003,7 +1959,25 @@ This will also rename matching assessment records back.`)) return;
           onChange: (e) => setPayment(L, e.target.checked, paidTo || "office", amountValue),
           style: { width: 18, height: 18 }
         }
-      ), "Paid"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: "13px", fontWeight: 800, color: "#0f172a", background: "#ecfeff", border: "1px solid #a5f3fc", padding: "4px 8px", borderRadius: "999px" } }, "R", amountValue), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "10px", background: "#f8fafc", padding: "6px 10px", borderRadius: "999px", border: "1px solid #e2e8f0" } }, /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#0f172a", cursor: busy ? "not-allowed" : "pointer" } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: isPaid && amountValue === 20, disabled: busy, onChange: () => setPayment(L, true, paidTo || "office", 20), style: { width: 16, height: 16 } }), "R20"), /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#0f172a", cursor: busy ? "not-allowed" : "pointer" } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: isPaid && amountValue === 50, disabled: busy, onChange: () => setPayment(L, true, paidTo || "office", 50), style: { width: 16, height: 16 } }), "R50")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "10px", background: "#f1f5f9", padding: "6px 10px", borderRadius: "999px" } }, /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#0f172a", cursor: busy || !isPaid ? "not-allowed" : "pointer" } }, /* @__PURE__ */ React.createElement(
+      ), "Paid"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: "13px", fontWeight: 800, color: "#0f172a", background: "#ecfeff", border: "1px solid #a5f3fc", padding: "4px 8px", borderRadius: "999px" } }, "R", amountValue), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "10px", background: "#f8fafc", padding: "6px 10px", borderRadius: "999px", border: "1px solid #e2e8f0" } }, /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#0f172a", cursor: busy ? "not-allowed" : "pointer" } }, /* @__PURE__ */ React.createElement(
+        "input",
+        {
+          type: "checkbox",
+          checked: isPaid && amountValue === 20,
+          disabled: busy,
+          onChange: () => setPayment(L, true, paidTo || "office", 20),
+          style: { width: 16, height: 16 }
+        }
+      ), "R20"), /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#0f172a", cursor: busy ? "not-allowed" : "pointer" } }, /* @__PURE__ */ React.createElement(
+        "input",
+        {
+          type: "checkbox",
+          checked: isPaid && amountValue === 50,
+          disabled: busy,
+          onChange: () => setPayment(L, true, paidTo || "office", 50),
+          style: { width: 16, height: 16 }
+        }
+      ), "R50")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "10px", background: "#f1f5f9", padding: "6px 10px", borderRadius: "999px" } }, /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#0f172a", cursor: busy || !isPaid ? "not-allowed" : "pointer" } }, /* @__PURE__ */ React.createElement(
         "input",
         {
           type: "checkbox",
