@@ -6082,6 +6082,10 @@ This cannot be undone.`)) return;
       const picked = new Set(selectedKeys);
       return filtered.filter((t) => picked.has(t.key));
     }, [filtered, selectedKeys]);
+    const selectedRecords = selectedKey ? recordsByKey[selectedKey] || [] : [];
+    const selectedArchivedRecords = selectedKey ? archivedRecordsByKey[selectedKey] || [] : [];
+    const selectedAdminHistory = selectedKey ? adminHistoryByKey[selectedKey] || [] : [];
+    const selectedHeaderRecord = selectedRecords[0] || selectedArchivedRecords[0] || null;
     const allFilteredSelected = filtered.length > 0 && filtered.every((t) => selectedKeys.includes(t.key));
     const currentClassForSelection = useMemo(() => {
       var _a2, _b2;
@@ -6120,10 +6124,6 @@ This cannot be undone.`)) return;
         return Array.from(next);
       });
     };
-    const selectedRecords = selectedKey ? recordsByKey[selectedKey] || [] : [];
-    const selectedArchivedRecords = selectedKey ? archivedRecordsByKey[selectedKey] || [] : [];
-    const selectedAdminHistory = selectedKey ? adminHistoryByKey[selectedKey] || [] : [];
-    const selectedHeaderRecord = selectedRecords[0] || selectedArchivedRecords[0] || null;
     const selectedLearnerSummary = useMemo(() => {
       var _a2, _b2, _c2, _d2, _e2, _f2, _g, _h, _i, _j, _k;
       if (!selectedKey) return null;
