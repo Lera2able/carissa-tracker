@@ -4020,6 +4020,11 @@ window.CLASS_DATA = {
       "firstname": "Samuel Mbuyi"
     },
     {
+      "number": 8,
+      "surname": "MAEBANE",
+      "firstname": "Lincoln Lehlogonolo"
+    },
+    {
       "number": 9,
       "surname": "MAHLANGU",
       "firstname": "Andile Prince"
@@ -4125,6 +4130,11 @@ window.CLASS_DATA = {
       "firstname": "Abdulgani"
     },
     {
+      "number": 30,
+      "surname": "RAKOLOLO",
+      "firstname": "Nare"
+    },
+    {
       "number": 31,
       "surname": "SEKGOBELA",
       "firstname": "Kholofelo"
@@ -4163,11 +4173,6 @@ window.CLASS_DATA = {
       "number": 38,
       "surname": "ZULU",
       "firstname": "Siyabonga"
-    },
-    {
-      "number": 39,
-      "surname": "MAEBANE",
-      "firstname": "Lehlogolono Lincoln"
     }
   ],
   "Grade 7.1": [
