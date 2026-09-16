@@ -3746,6 +3746,11 @@ window.CLASS_DATA = {
       "firstname": "Owami Ofentse"
     },
     {
+      "number": 29,
+      "surname": "ONTORO",
+      "firstname": "Abenizer"
+    },
+    {
       "number": 30,
       "surname": "PHIRI",
       "firstname": "Buhle Oratilwe"
@@ -3795,11 +3800,6 @@ window.CLASS_DATA = {
       "surname": "WOTITE",
       "firstname": "Hane Debebe"
     },
-    {
-      "number": 40,
-      "surname": "ONTORO",
-      "firstname": "Abehizer"
-    }
   ],
   "Grade 6.2": [
     {
