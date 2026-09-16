@@ -3873,6 +3873,11 @@ window.CLASS_DATA = {
       "firstname": "Buhle Hlengiwe"
     },
     {
+      "number": 15,
+      "surname": "MSIBI",
+      "firstname": "Ntandokazi"
+    },
+    {
       "number": 16,
       "surname": "MTIMUNYE",
       "firstname": "Prince Katlego"
