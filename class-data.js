@@ -3818,6 +3818,11 @@ window.CLASS_DATA = {
       "firstname": "Theto Shantelle"
     },
     {
+      "number": 4,
+      "surname": "MABUZA",
+      "firstname": "Andile"
+    },
+    {
       "number": 5,
       "surname": "MABUZA",
       "firstname": "Amanda Nomcebo"
