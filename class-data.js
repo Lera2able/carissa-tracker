@@ -4577,6 +4577,11 @@ window.CLASS_DATA = {
       "number": 39,
       "surname": "WILLIAMS +",
       "firstname": "Akeelah Courtney"
+    },
+    {
+      "number": 40,
+      "surname": "MOTAUNG",
+      "firstname": "Kefilwe"
     }
   ],
   "Grade 7.3": [
