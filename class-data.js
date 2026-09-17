@@ -425,6 +425,11 @@ window.CLASS_DATA = {
       "firstname": "Liam"
     },
     {
+      "number": 6,
+      "surname": "CHIBADA",
+      "firstname": "Trinity"
+    },
+    {
       "number": 7,
       "surname": "DAYIMANE +",
       "firstname": "Motheo Nala"
@@ -1538,6 +1543,11 @@ window.CLASS_DATA = {
       "number": 14,
       "surname": "MAKAMU",
       "firstname": "Ziyanda Natasha"
+    },
+    {
+      "number": 15,
+      "surname": "MANANA",
+      "firstname": "Lebohang"
     },
     {
       "number": 16,
