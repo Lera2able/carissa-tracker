@@ -1338,6 +1338,11 @@ window.CLASS_DATA = {
       "firstname": "Olothando Mbini"
     },
     {
+      "number": 18,
+      "surname": "MARARA",
+      "firstname": "Jayceon"
+    },
+    {
       "number": 19,
       "surname": "MASEKO",
       "firstname": "Nkosingphile Kariso"
