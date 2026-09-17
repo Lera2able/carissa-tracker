@@ -1333,6 +1333,11 @@ window.CLASS_DATA = {
       "firstname": "Kabasele Mbombo Luna"
     },
     {
+      "number": 16,
+      "surname": "MAMPURU",
+      "firstname": "Sbabatso M.A."
+    },
+    {
       "number": 17,
       "surname": "MAPAMELA",
       "firstname": "Olothando Mbini"
@@ -1351,6 +1356,11 @@ window.CLASS_DATA = {
       "number": 20,
       "surname": "MASINA",
       "firstname": "Sibongokuhle Nkanyezi"
+    },
+    {
+      "number": 21,
+      "surname": "MBUYI",
+      "firstname": "Emrid Miracle"
     },
     {
       "number": 22,
@@ -1403,11 +1413,6 @@ window.CLASS_DATA = {
       "firstname": "Naledi Maria"
     },
     {
-      "number": 32,
-      "surname": "MUKENDI",
-      "firstname": "Joy"
-    },
-    {
       "number": 33,
       "surname": "NGOEPE +",
       "firstname": "Boikgantsho Molatelo"
@@ -1431,11 +1436,6 @@ window.CLASS_DATA = {
       "number": 37,
       "surname": "NXUMALO",
       "firstname": "Malibongwe Philani"
-    },
-    {
-      "number": 38,
-      "surname": "SANGWENI",
-      "firstname": "Azokuhle Kuhlekonke Simikahle"
     },
     {
       "number": 39,
@@ -1466,21 +1466,6 @@ window.CLASS_DATA = {
       "number": 44,
       "surname": "ZWANE",
       "firstname": "Pholosho Clinton"
-    },
-    {
-      "number": 45,
-      "surname": "MAMPURU",
-      "firstname": "Sbabatso M.A."
-    },
-    {
-      "number": 46,
-      "surname": "MARARA",
-      "firstname": "Jayceon Takusha"
-    },
-    {
-      "number": 47,
-      "surname": "MBUYI",
-      "firstname": "Emrid Miracle"
     }
   ],
   "Grade 2.3": [
