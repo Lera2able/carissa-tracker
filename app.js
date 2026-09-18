@@ -2340,6 +2340,7 @@ Bands: WPM (<10=3/5, 10\u201315=4/5, >15=5/5); Accuracy (<85=3/5, 85\u201390=4/5
     const secC = getSecCItems(phase);
     return /* @__PURE__ */ React.createElement("div", { style: { position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "linear-gradient(135deg,#667eea 0%,#764ba2 100%)", zIndex: 9999, overflowY: "auto", padding: "30px", color: "white" } }, /* @__PURE__ */ React.createElement("div", { style: { maxWidth: "1100px", margin: "0 auto" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "10px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "14px" } }, /* @__PURE__ */ React.createElement("img", { src: LOGO, alt: "Carissa", style: { height: "70px", background: "white", padding: "6px", borderRadius: "12px" } }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "28px", fontWeight: 700 } }, "Carissa Primary \u2014 eLearning Test"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "16px", opacity: 0.9 } }, "Term 2 \xB7 ", phase === "foundation" ? "Foundation Phase (Gr 1-3)" : "Intermediate Phase (Gr 4-7)"))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setPhase("foundation"), style: { background: phase === "foundation" ? "white" : "rgba(255,255,255,0.2)", color: phase === "foundation" ? "#667eea" : "white", border: "2px solid white", padding: "10px 18px", borderRadius: "30px", fontSize: "14px", fontWeight: 700, cursor: "pointer" } }, "Foundation Gr 1-3"), /* @__PURE__ */ React.createElement("button", { onClick: () => setPhase("intermediate"), style: { background: phase === "intermediate" ? "white" : "rgba(255,255,255,0.2)", color: phase === "intermediate" ? "#667eea" : "white", border: "2px solid white", padding: "10px 18px", borderRadius: "30px", fontSize: "14px", fontWeight: 700, cursor: "pointer" } }, "Intermediate Gr 4-7"), /* @__PURE__ */ React.createElement("button", { onClick: onClose, style: { background: "rgba(255,255,255,0.2)", color: "white", border: "2px solid white", padding: "10px 22px", borderRadius: "30px", fontSize: "16px", fontWeight: 700, cursor: "pointer" } }, "\u2715 Close"))), /* @__PURE__ */ React.createElement("div", { style: { background: "rgba(255,255,255,0.12)", padding: "18px", borderRadius: "15px", marginBottom: "18px" } }, /* @__PURE__ */ React.createElement("h2", { style: { marginBottom: "10px", fontSize: "26px" } }, "\u{1F5B1}\uFE0F Part A \u2014 Window Controls (5 marks)"), /* @__PURE__ */ React.createElement("p", { style: { fontSize: "16px", marginBottom: "10px", opacity: 0.9 } }, "Show your teacher how to:"), /* @__PURE__ */ React.createElement("ul", { style: { paddingLeft: "24px", fontSize: "20px", lineHeight: 1.7, listStyle: '"\u2713 "' } }, SEC_A_ITEMS.map((it) => /* @__PURE__ */ React.createElement("li", { key: it.k, style: { marginBottom: "4px" } }, it.label)))), /* @__PURE__ */ React.createElement("div", { style: { background: "rgba(255,255,255,0.12)", padding: "18px", borderRadius: "15px", marginBottom: "18px" } }, /* @__PURE__ */ React.createElement("h2", { style: { marginBottom: "10px", fontSize: "26px" } }, "\u2328\uFE0F Part B \u2014 Typing the Alphabet (5 marks)"), /* @__PURE__ */ React.createElement("p", { style: { fontSize: "16px", marginBottom: "10px", opacity: 0.9 } }, "Open Word and do the following:"), /* @__PURE__ */ React.createElement("ol", { style: { paddingLeft: "24px", fontSize: "20px", lineHeight: 1.7 } }, secB.map((it) => /* @__PURE__ */ React.createElement("li", { key: it.k, style: { marginBottom: "6px" } }, it.label, " ", /* @__PURE__ */ React.createElement("span", { style: { fontSize: "14px", opacity: 0.75 } }, "(", it.max, " mark", it.max > 1 ? "s" : "", ")"))))), /* @__PURE__ */ React.createElement("div", { style: { background: "rgba(255,255,255,0.12)", padding: "18px", borderRadius: "15px" } }, /* @__PURE__ */ React.createElement("h2", { style: { marginBottom: "10px", fontSize: "26px" } }, "\u270D\uFE0F Part C \u2014 Writing Task (10 marks)"), /* @__PURE__ */ React.createElement("p", { style: { fontSize: "16px", marginBottom: "10px", opacity: 0.9 } }, phase === "foundation" ? "Continue in the same document and:" : "Now write about yourself:"), /* @__PURE__ */ React.createElement("ol", { style: { paddingLeft: "24px", fontSize: "20px", lineHeight: 1.7 } }, secC.map((it) => /* @__PURE__ */ React.createElement("li", { key: it.k, style: { marginBottom: "6px" } }, it.label, " ", /* @__PURE__ */ React.createElement("span", { style: { fontSize: "14px", opacity: 0.75 } }, "(", it.max, " mark", it.max > 1 ? "s" : "", ")"))))), /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", marginTop: "24px", fontSize: "16px", opacity: 0.85 } }, "\u{1F310} Visit us at ", /* @__PURE__ */ React.createElement("strong", null, "carissaprimary.co.za"))));
   }
+  const SCHOOL_STAMP = new URL("./school-stamp.png", window.location.href).href;
   function exportAssessmentReport(a) {
     var _a, _b, _c, _d, _e;
     function esc(s) {
@@ -2357,7 +2358,8 @@ Bands: WPM (<10=3/5, 10\u201315=4/5, >15=5/5); Accuracy (<85=3/5, 85\u201390=4/5
       const fn2 = esc(a.firstname);
       const pct2 = Math.round(a.grand_total / 20 * 100);
       const dateStr2 = new Date(a.date_assessed).toLocaleDateString("en-ZA", { day: "numeric", month: "long", year: "numeric" });
-      const teacherText2 = a.comments && a.comments.trim() ? esc(a.comments.trim()) : teacherSay(a.grand_total, fn2);
+      const rawTeacherComment2 = String((a == null ? void 0 : a.comments) || "").trim();
+      const teacherText2 = /^\[AUTO_TYPING_ASSESSMENT\]/i.test(rawTeacherComment2) ? esc(buildTypingTeacherComment(fn2, a.grand_total, wpm, acc, obs)) : rawTeacherComment2 ? esc(rawTeacherComment2) : esc(teacherSay(a.grand_total, fn2));
       const html2 = `<!DOCTYPE html>
 
 
@@ -2449,6 +2451,12 @@ table td.mk{text-align:center;width:92px;font-weight:700;color:#333;white-space:
 
 
 .teacher-comment .signed{font-size:11px;color:#1e3a5f;font-style:italic;margin-top:6px;text-align:right;}
+
+
+.stamp-row{display:flex;justify-content:flex-end;margin:16px 0 8px;}
+
+
+.stamp-row img{width:170px;max-width:38%;object-fit:contain;opacity:0.96;}
 
 
 .sigs{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:18px;align-items:end;}
@@ -2625,6 +2633,9 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
 
 
 
+  <div class="stamp-row"><img src="${SCHOOL_STAMP}" alt="Carissa Primary School stamp"/></div>
+
+
   <div class="sigs">
 
 
@@ -2704,12 +2715,21 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
       if (score >= 5) return `${fn2} is building their writing skills steadily. With more practice their confidence will grow.`;
       return `${fn2} is still developing their writing skills. We will continue to support their progress.`;
     }
+    function buildTypingTeacherComment(fn2, total, wpm, acc, obs) {
+      const wpmLine = wpm === null || wpm === void 0 ? `They completed the typing activities and showed steady effort.` : wpm >= 16 ? `They typed with very good speed and confidence during the assessment.` : wpm >= 10 ? `They showed steady progress with typing speed during the assessment.` : `They are still developing typing speed and will benefit from regular keyboard practice.`;
+      const accLine = acc === null || acc === void 0 ? `They followed the computer routine well.` : acc >= 95 ? `Their accuracy was excellent and they paid close attention to detail.` : acc >= 85 ? `Their accuracy was good and they are becoming more careful in their work.` : `They need to slow down a little so that their accuracy can improve.`;
+      const obsLine = obs && !/^✓\s*Signed in$/i.test(obs) ? `They also ${String(obs).replace(/^✓\s*/,"").trim().toLowerCase()}.` : `They followed the computer routine well and completed the task correctly.`;
+      if (total >= 19) return `${fn2} has shown outstanding computer performance this term. ${wpmLine} ${accLine} ${obsLine} I am very proud of the progress they are making.`;
+      if (total >= 17) return `${fn2} has done very well in Computer Studies this term. ${wpmLine} ${accLine} ${obsLine} They should keep up this good effort.`;
+      if (total >= 14) return `${fn2} has shown pleasing progress in Computer Studies this term. ${wpmLine} ${accLine} ${obsLine} With more practice, they will become even more confident.`;
+      return `${fn2} is trying in Computer Studies and is making progress step by step. ${wpmLine} ${accLine} ${obsLine} I would like them to keep practising so that their confidence can grow.`;
+    }
     function teacherSay(total, fn2) {
-      if (total >= 19) return `${fn2} is an outstanding learner who has truly stood out this term. ${fn2}'s typing, grammar and punctuation are impressive for the level, and ${fn2} approaches every lesson with enthusiasm. I am very proud of ${fn2}'s progress and look forward to building on this together next term.`;
-      if (total >= 18) return `${fn2} is a very good learner who has worked hard and made excellent progress in eLearning this term. ${fn2} is showing real confidence with computer skills and follows instructions carefully. Looking forward to doing more eLearning together next term.`;
-      if (total >= 17) return `${fn2} is a good learner who has shown consistent effort throughout the eLearning programme this term. ${fn2}'s confidence is growing each lesson. Looking forward to building on this together next term.`;
-      if (total >= 14) return `${fn2} is a hard-working learner who tried their best this term. With more practice, ${fn2}'s eLearning skills will continue to grow. Looking forward to seeing ${fn2}'s progress next term.`;
-      return `${fn2} is showing effort in eLearning and will benefit from more practice next term. I look forward to supporting their growth.`;
+      if (total >= 19) return `${fn2} has shown outstanding computer performance this term. They work confidently, follow instructions carefully and complete tasks accurately. I am very proud of the progress they are making.`;
+      if (total >= 18) return `${fn2} has worked very well in Computer Studies this term. They are growing in confidence, use the computer carefully and complete their tasks with a good standard of work. I would like them to keep up this effort.`;
+      if (total >= 17) return `${fn2} has made good progress in Computer Studies this term. They are becoming more confident with the computer and are developing their skills well. I am pleased with the effort they are showing.`;
+      if (total >= 14) return `${fn2} has tried hard in Computer Studies this term. They are building their computer skills steadily and will improve even more with regular practice. I would like them to stay focused and keep working.`;
+      return `${fn2} is showing effort in Computer Studies and is still developing confidence with the computer. They need more practice and support, but they can improve with steady effort. I will continue to encourage their progress.`;
     }
     function mark(got, max) {
       const tick = got >= max ? "\u2713" : got > 0 ? "\u25D0" : "\u2717";
@@ -2735,7 +2755,8 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
     const fn = esc(a.firstname);
     const pct = Math.round(a.grand_total / 20 * 100);
     const dateStr = new Date(a.date_assessed).toLocaleDateString("en-ZA", { day: "numeric", month: "long", year: "numeric" });
-    const teacherText = a.comments && a.comments.trim() ? esc(a.comments.trim()) : teacherSay(a.grand_total, fn);
+    const rawTeacherComment = String((a == null ? void 0 : a.comments) || "").trim();
+    const teacherText = /^\[AUTO_TYPING_ASSESSMENT\]/i.test(rawTeacherComment) ? esc(teacherSay(a.grand_total, fn)) : rawTeacherComment ? esc(rawTeacherComment) : esc(teacherSay(a.grand_total, fn));
     const html = `<!DOCTYPE html>
 
 
@@ -3204,6 +3225,9 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
 
 
 
+  <div class="stamp-row"><img src="${SCHOOL_STAMP}" alt="Carissa Primary School stamp"/></div>
+
+
   <div class="sigs">
 
 
@@ -3294,11 +3318,11 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
       return `${fn} is still developing their writing skills. We will continue to support their progress.`;
     }
     function teacherSay(total, fn) {
-      if (total >= 19) return `${fn} is an outstanding learner who has truly stood out this term. ${fn}'s typing, grammar and punctuation are impressive for the level, and ${fn} approaches every lesson with enthusiasm. I am very proud of ${fn}'s progress and look forward to building on this together next term.`;
-      if (total >= 18) return `${fn} is a very good learner who has worked hard and made excellent progress in eLearning this term. ${fn} is showing real confidence with computer skills and follows instructions carefully. Looking forward to doing more eLearning together next term.`;
-      if (total >= 17) return `${fn} is a good learner who has shown consistent effort throughout the eLearning programme this term. ${fn}'s confidence is growing each lesson. Looking forward to building on this together next term.`;
-      if (total >= 14) return `${fn} is a hard-working learner who tried their best this term. With more practice, ${fn}'s eLearning skills will continue to grow. Looking forward to seeing ${fn}'s progress next term.`;
-      return `${fn} is showing effort in eLearning and will benefit from more practice next term. I look forward to supporting their growth.`;
+      if (total >= 19) return `${fn} has shown outstanding computer performance this term. They work confidently, follow instructions carefully and complete tasks accurately. I am very proud of the progress they are making.`;
+      if (total >= 18) return `${fn} has worked very well in Computer Studies this term. They are growing in confidence, use the computer carefully and complete their tasks with a good standard of work. I would like them to keep up this effort.`;
+      if (total >= 17) return `${fn} has made good progress in Computer Studies this term. They are becoming more confident with the computer and are developing their skills well. I am pleased with the effort they are showing.`;
+      if (total >= 14) return `${fn} has tried hard in Computer Studies this term. They are building their computer skills steadily and will improve even more with regular practice. I would like them to stay focused and keep working.`;
+      return `${fn} is showing effort in Computer Studies and is still developing confidence with the computer. They need more practice and support, but they can improve with steady effort. I will continue to encourage their progress.`;
     }
     function mark(got, max) {
       const tick = got >= max ? "\u2713" : got > 0 ? "\u25D0" : "\u2717";
@@ -3319,7 +3343,8 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
       const fn = esc(a.firstname);
       const pct = Math.round(a.grand_total / 20 * 100);
       const dateStr = new Date(a.date_assessed).toLocaleDateString("en-ZA", { day: "numeric", month: "long", year: "numeric" });
-      const teacherText = a.comments && a.comments.trim() ? esc(a.comments.trim()) : teacherSay(a.grand_total, fn);
+      const rawTeacherComment = String((a == null ? void 0 : a.comments) || "").trim();
+      const teacherText = /^\[AUTO_TYPING_ASSESSMENT\]/i.test(rawTeacherComment) ? esc(teacherSay(a.grand_total, fn)) : rawTeacherComment ? esc(rawTeacherComment) : esc(teacherSay(a.grand_total, fn));
       const secARows = SEC_A_ITEMS.map((it) => {
         var _a2;
         const got = ((_a2 = a.prac1_scores) == null ? void 0 : _a2[it.k]) ? 1 : 0;
@@ -3473,7 +3498,10 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
 
 
 
-      <div class="sigs">
+      <div class="stamp-row"><img src="${SCHOOL_STAMP}" alt="Carissa Primary School stamp"/></div>
+
+
+  <div class="sigs">
 
 
         <div class="sigblock">
@@ -4398,6 +4426,9 @@ footer{text-align:center;margin-top:10px;font-size:9px;color:#888;border-top:1px
 
 
 
+
+
+  <div class="stamp-row"><img src="${SCHOOL_STAMP}" alt="Carissa Primary School stamp"/></div>
 
 
   <div class="sigs">
@@ -8521,34 +8552,34 @@ ${sectionsHtml}
       const progressValue = Number(summary == null ? void 0 : summary.termPercent);
       const progressBand = Number.isNaN(progressValue) ? null : progressValue;
       const introStrong = [
-        `${name} has worked hard this term.`,
-        `${name} has shown good effort this term.`,
-        `${name} has tried well this term.`,
-        `${name} has kept working this term.`
+        `${name} has shown good progress in this subject this term.`,
+        `${name} has worked well in this subject this term.`,
+        `${name} has produced pleasing work in this subject this term.`,
+        `${name} has made steady progress in this subject this term.`
       ];
       const introSupport = [
-        `${name} has kept trying this term.`,
-        `${name} has shown effort this term.`,
-        `${name} is still learning and growing this term.`,
-        `${name} is trying and can improve this term.`
+        `${name} has continued to try in this subject this term.`,
+        `${name} has shown effort in this subject this term.`,
+        `${name} is still building confidence in this subject this term.`,
+        `${name} is learning and improving step by step in this subject.`
       ];
       const strengthOpeners = [
-        `${name} is doing well in`,
-        `${name} shows good understanding in`,
-        `${name} is strongest in`,
-        `${name} has done well in`
+        `They are doing well in`,
+        `They show a good understanding of`,
+        `Their strongest work is in`,
+        `They have done well in`
       ];
       const supportOpeners = [
-        `${name} needs to focus more on`,
-        `${name} can do better in`,
-        `${name} still needs support in`,
-        `${name} should keep practising`
+        `They need more practice in`,
+        `They can improve further in`,
+        `They still need support in`,
+        `They should keep working on`
       ];
       const closers = [
-        `Keep practising and ${name} will shine.`,
-        `${name} should keep working hard and will improve.`,
-        `With steady practice, ${name} will do even better.`,
-        `${name} can do very well with regular practice.`
+        `With regular practice, they will continue to improve.`,
+        `I would like them to keep working steadily so that their confidence can grow.`,
+        `They are capable of even better results with continued effort.`,
+        `I encourage them to stay focused and keep trying their best.`
       ];
       const criterionScores = criteria.map((criterion, idx) => {
         const rawValue = getCellRawValue(learnerNo, criterion.off_criterion_id);
@@ -8567,8 +8598,8 @@ ${sectionsHtml}
       const introPool = progressBand !== null && progressBand >= 50 ? introStrong : introSupport;
       const seedBase = Number(String(learnerNo).replace(/\D/g, "")) || criterionScores.length + name.length;
       const intro = introPool[seedBase % introPool.length];
-      const strengthLine = strongest ? `${strengthOpeners[(seedBase + 1) % strengthOpeners.length]} ${strongest.title}.` : `${name} is still building marks in this subject.`;
-      const supportLine = weakest ? `${supportOpeners[(seedBase + 2) % supportOpeners.length]} ${weakest.title}.` : `${name} should keep trying one task at a time.`;
+      const strengthLine = strongest ? `${strengthOpeners[(seedBase + 1) % strengthOpeners.length]} ${strongest.title}.` : `They are still building their marks in this subject.`;
+      const supportLine = weakest ? `${supportOpeners[(seedBase + 2) % supportOpeners.length]} ${weakest.title}.` : `They should keep trying one task at a time.`;
       const closing = closers[(seedBase + 3) % closers.length];
       return `${intro} ${strengthLine} ${supportLine} ${closing}`.replace(/\s+/g, " ").trim();
     }, [criteria, getCellRawValue]);
@@ -9225,6 +9256,9 @@ ${sectionsHtml}
         </div>
 
 
+        <div class="stamp-row"><img src="${SCHOOL_STAMP}" alt="Carissa Primary School stamp"/></div>
+
+
       </section>`;
       }).join("");
       const html = `<!DOCTYPE html>
@@ -9303,6 +9337,12 @@ ${sectionsHtml}
 
 
     .comment-box { margin-top:12px; background:#eff6ff; border-left:4px solid #3b82f6; border-radius:10px; padding:12px 14px; font-size:12px; line-height:1.6; color:#1e3a5f; }
+
+
+    .stamp-row { display:flex; justify-content:flex-end; margin-top:10px; }
+
+
+    .stamp-row img { width:165px; max-width:34%; object-fit:contain; opacity:0.96; }
 
 
     .comment-label { font-size:10px; font-weight:800; color:#2563eb; text-transform:uppercase; letter-spacing:.4px; margin-bottom:4px; }
