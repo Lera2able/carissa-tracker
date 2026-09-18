@@ -3369,6 +3369,15 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
       if (total >= 14) return `${fn} has tried hard in Computer Studies this term. Computer skills are developing steadily and regular practice will bring even more improvement. I would like to see continued focus and effort.`;
       return `${fn} is showing effort in Computer Studies and is still developing confidence with the computer. More practice and support are needed, but steady effort will bring improvement. I will continue to encourage this progress.`;
     }
+    function buildTypingTeacherComment(fn, total, wpm, acc, obs) {
+      const wpmLine = wpm === null || wpm === void 0 ? `Completion of the typing activities showed steady effort.` : wpm >= 16 ? `Typing speed and confidence were very good during the assessment.` : wpm >= 10 ? `Typing speed showed steady progress during the assessment.` : `Typing speed is still developing and will benefit from regular keyboard practice.`;
+      const accLine = acc === null || acc === void 0 ? `Computer routine was followed well.` : acc >= 95 ? `Accuracy was excellent and close attention was paid to detail.` : acc >= 85 ? `Accuracy was good and work is becoming more careful.` : `Accuracy still needs attention, and a slower pace will help to improve it.`;
+      const obsLine = obs && !/^\u2713\s*Signed in$/i.test(obs) ? `${String(obs).replace(/^\u2713\s*/, "").trim()}.` : `Computer routine was followed well and the task was completed correctly.`;
+      if (total >= 19) return `${fn} has shown outstanding computer performance this term. ${wpmLine} ${accLine} ${obsLine} I am very proud of this progress.`;
+      if (total >= 17) return `${fn} has done very well in Computer Studies this term. ${wpmLine} ${accLine} ${obsLine} This good effort must continue.`;
+      if (total >= 14) return `${fn} has shown pleasing progress in Computer Studies this term. ${wpmLine} ${accLine} ${obsLine} With more practice, confidence will grow even more.`;
+      return `${fn} is trying in Computer Studies and is making progress step by step. ${wpmLine} ${accLine} ${obsLine} I would like to see regular practice so that confidence can grow.`;
+    }
     function mark(got, max) {
       const tick = got >= max ? "\u2713" : got > 0 ? "\u25D0" : "\u2717";
       return `<td class="mk">${tick}</td><td class="mk">${got}/${max}</td>`;
@@ -3387,6 +3396,171 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
     const avg = (sorted.reduce((s, a) => s + a.grand_total, 0) / totalLearners).toFixed(1);
     const high = Math.max(...sorted.map((a) => a.grand_total));
     const low = Math.min(...sorted.map((a) => a.grand_total));
+    if (reportTerm === "Term 3") {
+      const learnerPages2 = sorted.map((a, idx) => {
+        var _a, _b, _c;
+        const c = String((a == null ? void 0 : a.comments) || "");
+        const getNum = (re) => {
+          const m = c.match(re);
+          return m ? Number(m[1]) : null;
+        };
+        const wpm = (_a = getNum(/WPM\s*=\s*([0-9]+)/i)) != null ? _a : getNum(/WPM[:\s]+([0-9]+)/i);
+        const acc = (_b = getNum(/ACC\s*=\s*([0-9]+)/i)) != null ? _b : getNum(/Accuracy[:\s]+([0-9]+)/i);
+        const obs = (((_c = c.match(/OBS\s*=\s*([^\n]+)/i)) == null ? void 0 : _c[1]) || "\u2713 Signed in").trim();
+        const fn = esc(a.firstname);
+        const pct = Math.round(a.grand_total / 20 * 100);
+        const dateStr = new Date(a.date_assessed).toLocaleDateString("en-ZA", { day: "numeric", month: "long", year: "numeric" });
+        const rawTeacherComment = String((a == null ? void 0 : a.comments) || "").trim();
+        const teacherText = /^\[AUTO_TYPING_ASSESSMENT\]/i.test(rawTeacherComment) ? esc(buildTypingTeacherComment(fn, a.grand_total, wpm, acc, obs)) : rawTeacherComment ? esc(rawTeacherComment) : esc(buildTypingTeacherComment(fn, a.grand_total, wpm, acc, obs));
+        return `
+    <div class="page report-card">
+      <header>
+        <img src="${LOGO}" alt="Carissa Primary"/>
+        <div class="h-text">
+          <h1>Carissa Primary School</h1>
+          <p>Typing Assessment Report — Term ${esc((a.term || "").replace("Term ", "") || "3")}, ${a.year}</p>
+        </div>
+      </header>
+
+      <div class="meta">
+        <div><span>Learner</span><strong>${fn} ${esc(a.surname)}</strong></div>
+        <div><span>Class</span><strong>${esc(a.class_name)}</strong></div>
+        <div><span>Phase</span><strong>${a.phase === "foundation" ? "Foundation (Gr 1-3)" : "Intermediate (Gr 4-7)"}</strong></div>
+        <div><span>Date assessed</span><strong>${dateStr}</strong></div>
+      </div>
+
+      <div class="totalbox">
+        <div>
+          <div class="label">Total</div>
+          <div class="sublabel">WPM + Accuracy + Observation</div>
+        </div>
+        <div style="text-align:right">
+          <div class="score">${a.grand_total}/20</div>
+          <div class="pct">${pct}%</div>
+        </div>
+      </div>
+
+      <h2>Marks</h2>
+      <table>
+        <tbody>
+          <tr><td>Typing Speed (WPM)</td><td class="mk">${wpm == null ? "-" : esc(String(wpm))}</td><td class="mk">${a.oral_total}/5</td></tr>
+          <tr><td>Accuracy (%)</td><td class="mk">${acc == null ? "-" : esc(String(acc))}%</td><td class="mk">${a.prac1_total}/5</td></tr>
+          <tr><td>Observation (eLearning Sign-in)</td><td class="mk">${esc(obs)}</td><td class="mk">${a.prac2_total}/10</td></tr>
+        </tbody>
+      </table>
+
+      <div class="teacher-comment">
+        <span class="lbl">Teacher's Comment</span>
+        ${teacherText}
+        <div class="signed">— Ms L Mogajane, Computer Teacher</div>
+      </div>
+
+      <div class="stamp-row"><img src="${SCHOOL_STAMP}" alt="Carissa Primary School stamp"/></div>
+
+      <div class="sigs">
+        <div class="sigblock">
+          <img src="${SIG_PRINCIPAL}" alt="Principal's signature"/>
+          <div class="role">Ms V Sibande — Principal</div>
+        </div>
+        <div class="sigblock">
+          <img src="${SIG_TEACHER}" alt="Computer Teacher signature"/>
+          <div class="role">Ms L Mogajane — Computer Teacher</div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="footer-msg">Carissa Primary School remains committed to building a strong eLearning programme that prepares every learner for a digital future. We thank parents and guardians for their continued support and invite you to visit <span class="url">carissaprimary.co.za</span> to follow our progress.</div>
+        <div class="footer-meta">Carissa Primary School · Page ${idx + 2} of ${totalLearners + 1} · Generated ${(/* @__PURE__ */ new Date()).toLocaleDateString("en-ZA")}</div>
+      </footer>
+    </div>`;
+      }).join("\n");
+      const coverPage2 = `
+    <div class="page cover">
+      <div style="text-align:center;padding:40px 20px;">
+        <img src="${LOGO}" alt="Carissa Primary" style="height:100px;width:100px;object-fit:contain;border-radius:12px;margin-bottom:20px;"/>
+        <h1 style="color:#667eea;font-size:26px;margin-bottom:8px;">Carissa Primary School</h1>
+        <p style="color:#666;font-size:15px;margin-bottom:30px;">Typing Assessment Reports — Bulk Export</p>
+
+        <div style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:30px 24px;border-radius:14px;margin:20px 0;">
+          <div style="font-size:28px;font-weight:700;margin-bottom:6px;">${esc(className)}</div>
+          <div style="font-size:14px;opacity:0.9;margin-bottom:16px;">${phaseLabel} · ${esc(reportTerm)}, ${reportYear}</div>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;max-width:400px;margin:0 auto;font-size:13px;">
+            <div style="background:rgba(255,255,255,0.15);padding:10px 14px;border-radius:8px;"><div style="font-size:22px;font-weight:700;">${totalLearners}</div><div style="font-size:11px;opacity:0.85;">Learners Assessed</div></div>
+            <div style="background:rgba(255,255,255,0.15);padding:10px 14px;border-radius:8px;"><div style="font-size:22px;font-weight:700;">${avg}/20</div><div style="font-size:11px;opacity:0.85;">Class Average</div></div>
+            <div style="background:rgba(255,255,255,0.15);padding:10px 14px;border-radius:8px;"><div style="font-size:22px;font-weight:700;">${high}/20</div><div style="font-size:11px;opacity:0.85;">Highest Mark</div></div>
+            <div style="background:rgba(255,255,255,0.15);padding:10px 14px;border-radius:8px;"><div style="font-size:22px;font-weight:700;">${low}/20</div><div style="font-size:11px;opacity:0.85;">Lowest Mark</div></div>
+          </div>
+        </div>
+
+        <div style="margin-top:24px;font-size:12px;color:#888;line-height:1.6;">
+          <p>This document contains typing assessment reports for the selected learners in ${esc(className)}.</p>
+          <p>Each report starts on a new page. Use your browser's <strong>Print → Save as PDF</strong> function to save this document.</p>
+          <p style="margin-top:8px;"><strong>Tip:</strong> For best results, select <em>A4</em> paper size and enable <em>Background graphics</em> in print settings.</p>
+        </div>
+
+        <div style="margin-top:30px;padding-top:20px;border-top:1px solid #eee;">
+          <div style="font-size:11px;color:#999;">Generated ${(/* @__PURE__ */ new Date()).toLocaleDateString("en-ZA")} · carissaprimary.co.za</div>
+        </div>
+      </div>
+
+      <footer>
+        <div class="footer-meta">Carissa Primary School · Page 1 of ${totalLearners + 1} · Generated ${(/* @__PURE__ */ new Date()).toLocaleDateString("en-ZA")}</div>
+      </footer>
+    </div>`;
+      const html2 = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"/>
+<title>Bulk Typing Assessment Report — ${esc(className)}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f2ff;padding:10px;color:#222;line-height:1.55;}
+.page{max-width:850px;margin:0 auto 12px;background:white;padding:18px 24px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);page-break-after:always;break-after:page;}
+.page:last-child{page-break-after:auto;break-after:auto;}
+header{display:flex;align-items:center;gap:14px;border-bottom:3px solid #667eea;padding-bottom:10px;margin-bottom:14px;}
+header img{height:56px;width:56px;object-fit:contain;border-radius:8px;}
+header .h-text h1{color:#667eea;font-size:19px;margin-bottom:3px;}
+header .h-text p{color:#666;font-size:12px;}
+.meta{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;background:#f8f9fa;padding:11px 14px;border-radius:8px;margin-bottom:14px;font-size:12px;}
+.meta div span{color:#888;font-size:9.5px;display:block;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;}
+.meta div strong{color:#333;font-size:13px;}
+.totalbox{background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:12px 18px;border-radius:10px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+.totalbox .label{font-size:12.5px;opacity:0.9;}
+.totalbox .sublabel{font-size:11px;opacity:0.85;margin-top:2px;}
+.totalbox .score{font-size:28px;font-weight:700;line-height:1.1;}
+.totalbox .pct{font-size:13.5px;opacity:0.9;margin-top:2px;}
+h2{color:#667eea;font-size:13.5px;margin:14px 0 6px;border-bottom:1px solid #eee;padding-bottom:3px;}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:4px;}
+table td{padding:7px 10px;border-bottom:1px solid #f0f0f0;vertical-align:top;line-height:1.45;}
+table td.mk{text-align:center;width:92px;font-weight:700;color:#333;white-space:nowrap;}
+.teacher-comment{background:#eaf3ff;border-left:4px solid #3b82f6;padding:12px 16px;border-radius:6px;margin:26px 0 8px;font-size:12px;color:#1e3a5f;line-height:1.65;}
+.teacher-comment .lbl{color:#2563eb;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:5px;display:block;}
+.teacher-comment .signed{font-size:11px;color:#1e3a5f;font-style:italic;margin-top:6px;text-align:right;}
+.stamp-row{display:flex;justify-content:flex-end;align-items:flex-end;margin:14px 0 6px;}
+.stamp-row img{width:170px;max-width:34%;max-height:128px;object-fit:contain;opacity:1;mix-blend-mode:multiply;filter:contrast(1.02) saturate(1.05);display:block;}
+.sigs{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:18px;align-items:end;}
+.sigblock{text-align:center;}
+.sigblock img{max-height:32px;max-width:70%;object-fit:contain;}
+.sigblock .role{font-size:11px;color:#666;font-weight:600;margin-top:6px;}
+footer{margin-top:18px;padding-top:14px;border-top:2px solid #d8dbe6;text-align:center;}
+footer .footer-msg{font-size:11.5px;color:#3a3a3a;line-height:1.65;padding:8px 6px 4px;}
+footer .footer-msg .url{font-size:14px;font-weight:700;color:#5847c4;letter-spacing:0.2px;}
+footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px;text-transform:uppercase;}
+@page { size: A4; margin: 0.5cm; }
+@media print { body{background:#fff;padding:0;} .page{box-shadow:none;border-radius:0;max-width:100%;margin:0;page-break-after:always;break-after:page;} .page:last-child{page-break-after:auto;break-after:auto;} }
+</style>
+</head><body>
+${coverPage2}
+${learnerPages2}
+</body></html>`;
+      const w2 = window.open("", "_blank");
+      if (!w2) {
+        alert("Please allow pop-ups to view the report.");
+        return;
+      }
+      w2.document.open();
+      w2.document.write(html2);
+      w2.document.close();
+      return;
+    }
     const learnerPages = sorted.map((a, idx) => {
       var _a, _b;
       const fn = esc(a.firstname);
