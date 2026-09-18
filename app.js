@@ -2711,25 +2711,25 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
       if (score === 10) return `${fn2} completed the writing task beautifully \u2014 every step was done correctly. Outstanding work!`;
       if (score === 9) return `${fn2} did outstandingly in the writing task with only the smallest things to polish.`;
       if (score === 8) return `${fn2} is making excellent progress and writes with growing confidence. Well done!`;
-      if (score === 7) return `${fn2} has done well in the writing task and continues to build their skills. Keep up the good work!`;
-      if (score >= 5) return `${fn2} is building their writing skills steadily. With more practice their confidence will grow.`;
-      return `${fn2} is still developing their writing skills. We will continue to support their progress.`;
+      if (score === 7) return `${fn2} has done well in the writing task and continues to build writing skills. Keep up the good work!`;
+      if (score >= 5) return `${fn2} is building writing skills steadily. With more practice, confidence will grow.`;
+      return `${fn2} is still developing writing skills. Continued support will help progress.`;
     }
     function buildTypingTeacherComment(fn2, total, wpm, acc, obs) {
-      const wpmLine = wpm === null || wpm === void 0 ? `They completed the typing activities and showed steady effort.` : wpm >= 16 ? `They typed with very good speed and confidence during the assessment.` : wpm >= 10 ? `They showed steady progress with typing speed during the assessment.` : `They are still developing typing speed and will benefit from regular keyboard practice.`;
-      const accLine = acc === null || acc === void 0 ? `They followed the computer routine well.` : acc >= 95 ? `Their accuracy was excellent and they paid close attention to detail.` : acc >= 85 ? `Their accuracy was good and they are becoming more careful in their work.` : `They need to slow down a little so that their accuracy can improve.`;
-      const obsLine = obs && !/^✓\s*Signed in$/i.test(obs) ? `They also ${String(obs).replace(/^✓\s*/,"").trim().toLowerCase()}.` : `They followed the computer routine well and completed the task correctly.`;
-      if (total >= 19) return `${fn2} has shown outstanding computer performance this term. ${wpmLine} ${accLine} ${obsLine} I am very proud of the progress they are making.`;
-      if (total >= 17) return `${fn2} has done very well in Computer Studies this term. ${wpmLine} ${accLine} ${obsLine} They should keep up this good effort.`;
-      if (total >= 14) return `${fn2} has shown pleasing progress in Computer Studies this term. ${wpmLine} ${accLine} ${obsLine} With more practice, they will become even more confident.`;
-      return `${fn2} is trying in Computer Studies and is making progress step by step. ${wpmLine} ${accLine} ${obsLine} I would like them to keep practising so that their confidence can grow.`;
+      const wpmLine = wpm === null || wpm === void 0 ? `Completion of the typing activities showed steady effort.` : wpm >= 16 ? `Typing speed and confidence were very good during the assessment.` : wpm >= 10 ? `Typing speed showed steady progress during the assessment.` : `Typing speed is still developing and will benefit from regular keyboard practice.`;
+      const accLine = acc === null || acc === void 0 ? `Computer routine was followed well.` : acc >= 95 ? `Accuracy was excellent and close attention was paid to detail.` : acc >= 85 ? `Accuracy was good and work is becoming more careful.` : `Accuracy still needs attention, and a slower pace will help to improve it.`;
+      const obsLine = obs && !/^✓\s*Signed in$/i.test(obs) ? `${String(obs).replace(/^✓\s*/,"").trim()}.` : `Computer routine was followed well and the task was completed correctly.`;
+      if (total >= 19) return `${fn2} has shown outstanding computer performance this term. ${wpmLine} ${accLine} ${obsLine} I am very proud of this progress.`;
+      if (total >= 17) return `${fn2} has done very well in Computer Studies this term. ${wpmLine} ${accLine} ${obsLine} This good effort must continue.`;
+      if (total >= 14) return `${fn2} has shown pleasing progress in Computer Studies this term. ${wpmLine} ${accLine} ${obsLine} With more practice, confidence will grow even more.`;
+      return `${fn2} is trying in Computer Studies and is making progress step by step. ${wpmLine} ${accLine} ${obsLine} I would like to see regular practice so that confidence can grow.`;
     }
     function teacherSay(total, fn2) {
-      if (total >= 19) return `${fn2} has shown outstanding computer performance this term. They work confidently, follow instructions carefully and complete tasks accurately. I am very proud of the progress they are making.`;
-      if (total >= 18) return `${fn2} has worked very well in Computer Studies this term. They are growing in confidence, use the computer carefully and complete their tasks with a good standard of work. I would like them to keep up this effort.`;
-      if (total >= 17) return `${fn2} has made good progress in Computer Studies this term. They are becoming more confident with the computer and are developing their skills well. I am pleased with the effort they are showing.`;
-      if (total >= 14) return `${fn2} has tried hard in Computer Studies this term. They are building their computer skills steadily and will improve even more with regular practice. I would like them to stay focused and keep working.`;
-      return `${fn2} is showing effort in Computer Studies and is still developing confidence with the computer. They need more practice and support, but they can improve with steady effort. I will continue to encourage their progress.`;
+      if (total >= 19) return `${fn2} has shown outstanding computer performance this term. Careful listening, confident computer use and accurate task completion have stood out clearly. I am very proud of this progress.`;
+      if (total >= 18) return `${fn2} has worked very well in Computer Studies this term. Growing confidence, careful computer use and a good standard of work have been evident. This good effort must continue.`;
+      if (total >= 17) return `${fn2} has made good progress in Computer Studies this term. Confidence with the computer is growing and skills are developing well. I am pleased with the effort shown.`;
+      if (total >= 14) return `${fn2} has tried hard in Computer Studies this term. Computer skills are developing steadily and regular practice will bring even more improvement. I would like to see continued focus and effort.`;
+      return `${fn2} is showing effort in Computer Studies and is still developing confidence with the computer. More practice and support are needed, but steady effort will bring improvement. I will continue to encourage this progress.`;
     }
     function mark(got, max) {
       const tick = got >= max ? "\u2713" : got > 0 ? "\u25D0" : "\u2717";
@@ -3313,16 +3313,16 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
       if (score === 10) return `${fn} completed the writing task beautifully \u2014 every step was done correctly. Outstanding work!`;
       if (score === 9) return `${fn} did outstandingly in the writing task with only the smallest things to polish.`;
       if (score === 8) return `${fn} is making excellent progress and writes with growing confidence. Well done!`;
-      if (score === 7) return `${fn} has done well in the writing task and continues to build their skills. Keep up the good work!`;
-      if (score >= 5) return `${fn} is building their writing skills steadily. With more practice their confidence will grow.`;
-      return `${fn} is still developing their writing skills. We will continue to support their progress.`;
+      if (score === 7) return `${fn} has done well in the writing task and continues to build writing skills. Keep up the good work!`;
+      if (score >= 5) return `${fn} is building writing skills steadily. With more practice, confidence will grow.`;
+      return `${fn} is still developing writing skills. Continued support will help progress.`;
     }
     function teacherSay(total, fn) {
-      if (total >= 19) return `${fn} has shown outstanding computer performance this term. They work confidently, follow instructions carefully and complete tasks accurately. I am very proud of the progress they are making.`;
-      if (total >= 18) return `${fn} has worked very well in Computer Studies this term. They are growing in confidence, use the computer carefully and complete their tasks with a good standard of work. I would like them to keep up this effort.`;
-      if (total >= 17) return `${fn} has made good progress in Computer Studies this term. They are becoming more confident with the computer and are developing their skills well. I am pleased with the effort they are showing.`;
-      if (total >= 14) return `${fn} has tried hard in Computer Studies this term. They are building their computer skills steadily and will improve even more with regular practice. I would like them to stay focused and keep working.`;
-      return `${fn} is showing effort in Computer Studies and is still developing confidence with the computer. They need more practice and support, but they can improve with steady effort. I will continue to encourage their progress.`;
+      if (total >= 19) return `${fn} has shown outstanding computer performance this term. Careful listening, confident computer use and accurate task completion have stood out clearly. I am very proud of this progress.`;
+      if (total >= 18) return `${fn} has worked very well in Computer Studies this term. Growing confidence, careful computer use and a good standard of work have been evident. This good effort must continue.`;
+      if (total >= 17) return `${fn} has made good progress in Computer Studies this term. Confidence with the computer is growing and skills are developing well. I am pleased with the effort shown.`;
+      if (total >= 14) return `${fn} has tried hard in Computer Studies this term. Computer skills are developing steadily and regular practice will bring even more improvement. I would like to see continued focus and effort.`;
+      return `${fn} is showing effort in Computer Studies and is still developing confidence with the computer. More practice and support are needed, but steady effort will bring improvement. I will continue to encourage this progress.`;
     }
     function mark(got, max) {
       const tick = got >= max ? "\u2713" : got > 0 ? "\u25D0" : "\u2717";
@@ -8564,22 +8564,22 @@ ${sectionsHtml}
         `${name} is learning and improving step by step in this subject.`
       ];
       const strengthOpeners = [
-        `They are doing well in`,
-        `They show a good understanding of`,
-        `Their strongest work is in`,
-        `They have done well in`
+        `Good understanding is shown in`,
+        `Strongest work appears in`,
+        `Best progress is seen in`,
+        `Pleasant work has been produced in`
       ];
       const supportOpeners = [
-        `They need more practice in`,
-        `They can improve further in`,
-        `They still need support in`,
-        `They should keep working on`
+        `More practice is needed in`,
+        `Further improvement is needed in`,
+        `Extra support is still needed in`,
+        `Continued attention is needed in`
       ];
       const closers = [
-        `With regular practice, they will continue to improve.`,
-        `I would like them to keep working steadily so that their confidence can grow.`,
-        `They are capable of even better results with continued effort.`,
-        `I encourage them to stay focused and keep trying their best.`
+        `With regular practice, even more improvement will be seen.`,
+        `Steady work will help confidence to grow.`,
+        `Continued effort can lead to even better results.`,
+        `Focused practice will help to strengthen performance further.`
       ];
       const criterionScores = criteria.map((criterion, idx) => {
         const rawValue = getCellRawValue(learnerNo, criterion.off_criterion_id);
@@ -8598,8 +8598,8 @@ ${sectionsHtml}
       const introPool = progressBand !== null && progressBand >= 50 ? introStrong : introSupport;
       const seedBase = Number(String(learnerNo).replace(/\D/g, "")) || criterionScores.length + name.length;
       const intro = introPool[seedBase % introPool.length];
-      const strengthLine = strongest ? `${strengthOpeners[(seedBase + 1) % strengthOpeners.length]} ${strongest.title}.` : `They are still building their marks in this subject.`;
-      const supportLine = weakest ? `${supportOpeners[(seedBase + 2) % supportOpeners.length]} ${weakest.title}.` : `They should keep trying one task at a time.`;
+      const strengthLine = strongest ? `${strengthOpeners[(seedBase + 1) % strengthOpeners.length]} ${strongest.title}.` : `Marks in this subject are still being built steadily.`;
+      const supportLine = weakest ? `${supportOpeners[(seedBase + 2) % supportOpeners.length]} ${weakest.title}.` : `One task at a time should continue to receive careful attention.`;
       const closing = closers[(seedBase + 3) % closers.length];
       return `${intro} ${strengthLine} ${supportLine} ${closing}`.replace(/\s+/g, " ").trim();
     }, [criteria, getCellRawValue]);
