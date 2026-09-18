@@ -591,6 +591,27 @@
     });
     return Object.values(map);
   };
+  const assessmentLearnerKey = (className, surname, firstname, term = "") => [
+    normalizeReadingName(className),
+    normalizeReadingName(surname),
+    normalizeReadingName(firstname),
+    normalizeReadingName(term)
+  ].join("||");
+  const assessmentRecordSortValue = (row) => {
+    if (!row) return 0;
+    const updated = row.updated_at ? new Date(row.updated_at).getTime() : 0;
+    const created = row.created_at ? new Date(row.created_at).getTime() : 0;
+    const assessed = row.date_assessed ? new Date(row.date_assessed).getTime() : 0;
+    return Math.max(updated || 0, created || 0, assessed || 0);
+  };
+  const latestElearningAssessmentsForTerm = (rows, term) => {
+    const map = {};
+    (rows || []).filter((r) => String((r == null ? void 0 : r.term) || "").trim() === term).forEach((r) => {
+      const k = assessmentLearnerKey(r.class_name, r.surname, r.firstname, r.term || "");
+      if (!map[k] || assessmentRecordSortValue(r) > assessmentRecordSortValue(map[k])) map[k] = r;
+    });
+    return Object.values(map);
+  };
   const readingAgeYearsFromLabel = (label) => {
     if (!label) return null;
     const txt = String(label).trim();
@@ -2101,6 +2122,7 @@ This will also rename matching assessment records back.`)) return;
     const [editing, setEditing] = useState(null);
     const [termView, setTermView] = useState("Term 2");
     const [msg, setMsg] = useState("");
+    const [selectedReportIds, setSelectedReportIds] = useState([]);
     const showMsg = (m) => {
       setMsg(m);
       setTimeout(() => setMsg(""), 5e3);
@@ -2113,14 +2135,33 @@ This will also rename matching assessment records back.`)) return;
       return by.includes("typing") || c.includes("[AUTO_TYPING_ASSESSMENT]") || /WPM\s*=/.test(c) || /ACC\s*=/.test(c);
     }, []);
     const termAssessments = useMemo(() => {
-      return termView === "Term 3" ? (assessments || []).filter(isTerm3Typing) : assessments || [];
+      const rows = termView === "Term 3" ? (assessments || []).filter(isTerm3Typing) : assessments || [];
+      return latestElearningAssessmentsForTerm(rows, termView);
     }, [assessments, termView, isTerm3Typing]);
     const classLearners = selClass ? CLASS_DATA[selClass] || [] : [];
     const filtered = search.trim() ? classLearners.filter((l) => `${l.surname} ${l.firstname}`.toLowerCase().includes(search.toLowerCase())) : classLearners;
     const classAssessments = selClass ? termAssessments.filter((a) => a.class_name === selClass && a.term === termView) : [];
-    const assessmentFor = (cls, surname, firstname) => termAssessments.find(
-      (a) => a.class_name === cls && a.surname === surname && a.firstname === firstname && a.term === termView
-    );
+    const assessmentMap = useMemo(() => new Map(
+      termAssessments.map((a) => [assessmentLearnerKey(a.class_name, a.surname, a.firstname, a.term || ""), a])
+    ), [termAssessments]);
+    const filteredLearnerRows = useMemo(() => filtered.map((l) => ({
+      learner: l,
+      existing: selClass ? assessmentMap.get(assessmentLearnerKey(selClass, l.surname, l.firstname, termView)) || null : null
+    })), [filtered, selClass, termView, assessmentMap]);
+    const filteredAssessedIds = useMemo(() => filteredLearnerRows.map((row) => row.existing && row.existing.id).filter(Boolean), [filteredLearnerRows]);
+    const selectedClassAssessments = useMemo(() => classAssessments.filter((a) => selectedReportIds.includes(a.id)), [classAssessments, selectedReportIds]);
+    const bulkReportRows = selectedClassAssessments.length ? selectedClassAssessments : classAssessments;
+    const bulkReportCount = bulkReportRows.length;
+    const allFilteredAssessedSelected = filteredAssessedIds.length > 0 && filteredAssessedIds.every((id) => selectedReportIds.includes(id));
+    const toggleSelectedReport = (id) => setSelectedReportIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+    const toggleSelectAllFilteredReports = () => setSelectedReportIds((prev) => {
+      if (!filteredAssessedIds.length) return prev;
+      if (allFilteredAssessedSelected) return prev.filter((id) => !filteredAssessedIds.includes(id));
+      return [...new Set([...prev, ...filteredAssessedIds])];
+    });
+    useEffect(() => {
+      setSelectedReportIds((prev) => prev.filter((id) => classAssessments.some((a) => a.id === id)));
+    }, [classAssessments]);
     useEffect(() => {
       (async () => {
         if (termView !== "Term 3") return;
@@ -2138,13 +2179,12 @@ This will also rename matching assessment records back.`)) return;
         }
       })();
     }, [termView, selClass]);
-    return /* @__PURE__ */ React.createElement("div", null, msg && /* @__PURE__ */ React.createElement("div", { style: succ }, msg), /* @__PURE__ */ React.createElement("div", { style: { ...card, marginBottom: "14px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "14px" } }, /* @__PURE__ */ React.createElement("h3", { style: { ...ctitle, marginBottom: 0 } }, "\u{1F4DD} eLearning Assessments \u2014 ", termView), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap" } }, selClass && classAssessments.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#10b981", fontSize: "13px" }, onClick: () => exportClassSummary2(selClass, phaseForClass(selClass), classAssessments) }, "\u{1F4CA} Class Summary"), /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#7c3aed", fontSize: "13px" }, onClick: () => exportGradeBulkReport(selClass, phaseForClass(selClass), classAssessments) }, "\u{1F4C4} Download Grade Report (", classAssessments.length, " learners)")), /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#f97316", fontSize: "13px" }, onClick: () => onProjectTest(selClass ? phaseForClass(selClass) : "intermediate") }, "\u{1F4FA} Project Test (Full-screen)"))), /* @__PURE__ */ React.createElement("p", { style: { color: "#666", fontSize: "13px", marginBottom: "14px" } }, "Pick a class, then click ", /* @__PURE__ */ React.createElement("strong", null, "+ Assess"), " next to a learner to start. Learners who already have an assessment will show a \u2713 with their mark \u2014 click to view or edit."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px" } }, ["Term 2", "Term 3"].map((t) => /* @__PURE__ */ React.createElement("button", { key: t, onClick: () => setTermView(t), style: { padding: "9px 14px", borderRadius: "999px", border: termView === t ? "none" : "1px solid #dbe2f0", background: termView === t ? "linear-gradient(135deg,#667eea,#764ba2)" : "#f8fafc", color: termView === t ? "white" : "#475569", fontWeight: 700, cursor: "pointer" } }, t === "Term 2" ? "Term 2 eLearning Assessment" : "Term 3"))), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: "12px" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Class"), /* @__PURE__ */ React.createElement("select", { style: inp, value: selClass, onChange: (e) => {
+    return /* @__PURE__ */ React.createElement("div", null, msg && /* @__PURE__ */ React.createElement("div", { style: succ }, msg), /* @__PURE__ */ React.createElement("div", { style: { ...card, marginBottom: "14px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "14px" } }, /* @__PURE__ */ React.createElement("h3", { style: { ...ctitle, marginBottom: 0 } }, "\u{1F4DD} eLearning Assessments \u2014 ", termView), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap" } }, selClass && classAssessments.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#10b981", fontSize: "13px" }, onClick: () => exportClassSummary2(selClass, phaseForClass(selClass), classAssessments) }, "\u{1F4CA} Class Summary"), /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#7c3aed", fontSize: "13px" }, onClick: () => exportGradeBulkReport(selClass, phaseForClass(selClass), bulkReportRows) }, "📄 Download Grade Report (", bulkReportCount, selectedClassAssessments.length ? " selected" : "", " learners)")), /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#f97316", fontSize: "13px" }, onClick: () => onProjectTest(selClass ? phaseForClass(selClass) : "intermediate") }, "\u{1F4FA} Project Test (Full-screen)"))), /* @__PURE__ */ React.createElement("p", { style: { color: "#666", fontSize: "13px", marginBottom: "14px" } }, "Pick a class, then click ", /* @__PURE__ */ React.createElement("strong", null, "+ Assess"), " next to a learner to start. Learners who already have an assessment will show a \u2713 with their mark \u2014 click to view or edit."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px" } }, ["Term 2", "Term 3"].map((t) => /* @__PURE__ */ React.createElement("button", { key: t, onClick: () => setTermView(t), style: { padding: "9px 14px", borderRadius: "999px", border: termView === t ? "none" : "1px solid #dbe2f0", background: termView === t ? "linear-gradient(135deg,#667eea,#764ba2)" : "#f8fafc", color: termView === t ? "white" : "#475569", fontWeight: 700, cursor: "pointer" } }, t === "Term 2" ? "Term 2 eLearning Assessment" : "Term 3"))), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: "12px" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Class"), /* @__PURE__ */ React.createElement("select", { style: inp, value: selClass, onChange: (e) => {
       setSelClass(e.target.value);
       setSearch("");
-    } }, /* @__PURE__ */ React.createElement("option", { value: "" }, "-- Select Class --"), ASSESS_CLASS_NAMES.map((n) => /* @__PURE__ */ React.createElement("option", { key: n, value: n }, n, " (", CLASS_DATA[n].length, ")")))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Search learner"), /* @__PURE__ */ React.createElement("input", { style: inp, placeholder: "Type a name to filter...", value: search, onChange: (e) => setSearch(e.target.value), disabled: !selClass })))), selClass && /* @__PURE__ */ React.createElement("div", { style: card }, /* @__PURE__ */ React.createElement("h3", { style: ctitle }, selClass, " \u2014 ", termView === "Term 2" ? "Term 2 eLearning Assessment" : "Term 3", " (", filtered.length, ")"), filtered.length === 0 ? /* @__PURE__ */ React.createElement("p", { style: { color: "#999", textAlign: "center", padding: "20px" } }, "No learners match your search.") : /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gap: "8px" } }, filtered.map((l, i) => {
-      const existing = assessmentFor(selClass, l.surname, l.firstname);
-      return /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", background: existing ? "#e8f5e9" : "#f8f9fa", borderRadius: "10px", borderLeft: `5px solid ${existing ? "#28a745" : "#cbd5e1"}`, gap: "10px", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: "180px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 600, color: "#333", fontSize: "14px" } }, l.surname, ", ", l.firstname), existing && /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#155724", marginTop: "2px" } }, "\u2713 Assessed ", new Date(existing.date_assessed).toLocaleDateString("en-ZA"), " \u2014 ", /* @__PURE__ */ React.createElement("strong", null, existing.grand_total, "/20"), " \xB7 ", termView)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexShrink: 0, flexWrap: "wrap" } }, existing ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#667eea", fontSize: "13px" }, onClick: () => setEditing({ ...l, existing }) }, "\u270F\uFE0F View / Edit"), /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#10b981", fontSize: "13px" }, onClick: () => exportReport(existing) }, "\u{1F4E5} Export Report")) : /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#f97316", fontSize: "13px" }, onClick: () => setEditing({ ...l, existing: null }) }, "+ Assess")));
-    }))), editing && /* @__PURE__ */ React.createElement(
+    } }, /* @__PURE__ */ React.createElement("option", { value: "" }, "-- Select Class --"), ASSESS_CLASS_NAMES.map((n) => /* @__PURE__ */ React.createElement("option", { key: n, value: n }, n, " (", CLASS_DATA[n].length, ")")))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Search learner"), /* @__PURE__ */ React.createElement("input", { style: inp, placeholder: "Type a name to filter...", value: search, onChange: (e) => setSearch(e.target.value), disabled: !selClass })))), selClass && /* @__PURE__ */ React.createElement("div", { style: card }, /* @__PURE__ */ React.createElement("h3", { style: ctitle }, selClass, " \u2014 ", termView === "Term 2" ? "Term 2 eLearning Assessment" : "Term 3", " (", filtered.length, ")"), filtered.length === 0 ? /* @__PURE__ */ React.createElement("p", { style: { color: "#999", textAlign: "center", padding: "20px" } }, "No learners match your search.") : /* @__PURE__ */ React.createElement(React.Fragment, null, filteredAssessedIds.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "10px", padding: "10px 12px", background: "#f8fafc", border: "1px solid #dbe2f0", borderRadius: "10px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: allFilteredAssessedSelected ? "#64748b" : "#2563eb", fontSize: "12px", padding: "8px 12px" }, onClick: toggleSelectAllFilteredReports }, allFilteredAssessedSelected ? "Clear shown" : `Select all shown (${filteredAssessedIds.length})`), selectedReportIds.length > 0 && /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#e11d48", fontSize: "12px", padding: "8px 12px" }, onClick: () => setSelectedReportIds([]) }, `Clear selected (${selectedReportIds.length})`), selectedClassAssessments.length > 0 && /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#7c3aed", fontSize: "12px", padding: "8px 12px" }, onClick: () => exportGradeBulkReport(selClass, phaseForClass(selClass), selectedClassAssessments) }, `Print selected (${selectedClassAssessments.length})`)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#475569" } }, selectedClassAssessments.length > 0 ? "Only the ticked learner reports will print." : "Tick learners below to print selected reports, or leave them unticked to print the whole class.")), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gap: "8px" } }, filteredLearnerRows.map(({ learner: l, existing }, i) => {
+      return /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", background: existing ? "#e8f5e9" : "#f8f9fa", borderRadius: "10px", borderLeft: `5px solid ${existing ? "#28a745" : "#cbd5e1"}`, gap: "10px", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: "180px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 600, color: "#333", fontSize: "14px" } }, l.surname, ", ", l.firstname), existing && /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#155724", marginTop: "2px" } }, "✓ Assessed ", new Date(existing.date_assessed || existing.created_at).toLocaleDateString("en-ZA"), " — ", /* @__PURE__ */ React.createElement("strong", null, existing.grand_total, "/20"), " · ", termView)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexShrink: 0, flexWrap: "wrap", alignItems: "center" } }, existing && /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: "6px", background: "#ffffff", border: "1px solid #bfdbfe", borderRadius: "999px", padding: "6px 10px", cursor: "pointer" } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: selectedReportIds.includes(existing.id), onChange: () => toggleSelectedReport(existing.id), style: { width: 16, height: 16, cursor: "pointer" } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: "12px", color: "#1d4ed8", fontWeight: 700 } }, "Print")), existing ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#667eea", fontSize: "13px" }, onClick: () => setEditing({ ...l, existing }) }, "✏️ View / Edit"), /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#10b981", fontSize: "13px" }, onClick: () => exportReport(existing) }, "📥 Export Report")) : /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#f97316", fontSize: "13px" }, onClick: () => setEditing({ ...l, existing: null }) }, "+ Assess")));
+    })))), editing && /* @__PURE__ */ React.createElement(
       AssessmentModal,
       {
         learner: editing,
@@ -2453,10 +2493,10 @@ table td.mk{text-align:center;width:92px;font-weight:700;color:#333;white-space:
 .teacher-comment .signed{font-size:11px;color:#1e3a5f;font-style:italic;margin-top:6px;text-align:right;}
 
 
-.stamp-row{display:flex;justify-content:flex-end;align-items:flex-end;margin:12px 0 4px;}
+.stamp-row{display:flex;justify-content:flex-end;align-items:flex-end;margin:14px 0 6px;}
 
 
-.stamp-row img{width:118px;max-width:24%;max-height:88px;object-fit:contain;opacity:1;mix-blend-mode:multiply;filter:contrast(1.02) saturate(1.05);display:block;}
+.stamp-row img{width:170px;max-width:34%;max-height:128px;object-fit:contain;opacity:1;mix-blend-mode:multiply;filter:contrast(1.02) saturate(1.05);display:block;}
 
 
 .sigs{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:18px;align-items:end;}
@@ -2890,6 +2930,11 @@ table td.mk{text-align:center;width:50px;font-weight:600;color:#333;}
 
 
 .teacher-comment .signed{font-size:11px;color:#1e3a5f;font-style:italic;margin-top:6px;text-align:right;}
+
+.stamp-row{display:flex;justify-content:flex-end;align-items:flex-end;margin:14px 0 6px;}
+
+
+.stamp-row img{width:170px;max-width:34%;max-height:128px;object-fit:contain;opacity:1;mix-blend-mode:multiply;filter:contrast(1.02) saturate(1.05);display:block;}
 
 
 
@@ -3328,10 +3373,12 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
       const tick = got >= max ? "\u2713" : got > 0 ? "\u25D0" : "\u2717";
       return `<td class="mk">${tick}</td><td class="mk">${got}/${max}</td>`;
     }
-    const sorted = [...classAssessments].sort(
+    const inputTerm = String(((classAssessments == null ? void 0 : classAssessments[0]) == null ? void 0 : classAssessments[0].term) || "Term 3").trim() || "Term 3";
+    const latestRows = latestElearningAssessmentsForTerm(classAssessments, inputTerm);
+    const sorted = [...latestRows].sort(
       (a, b) => a.surname.localeCompare(b.surname) || a.firstname.localeCompare(b.firstname)
     );
-    const reportTerm = String(((sorted == null ? void 0 : sorted[0]) == null ? void 0 : sorted[0].term) || "Term 3").trim() || "Term 3";
+    const reportTerm = String(((sorted == null ? void 0 : sorted[0]) == null ? void 0 : sorted[0].term) || inputTerm).trim() || inputTerm;
     const reportYear = (((sorted == null ? void 0 : sorted[0]) == null ? void 0 : sorted[0].year) || (/* @__PURE__ */ new Date()).getFullYear());
     const phaseLabel = phase === "foundation" ? "Foundation Phase (Gr 1-3)" : "Intermediate Phase (Gr 4-7)";
     const secBItems = phase === "foundation" ? SEC_B_FOUNDATION : SEC_B_INTERMEDIATE;
@@ -3818,7 +3865,10 @@ table td.mk{text-align:center;width:50px;font-weight:600;color:#333;}
 .teacher-comment .signed{font-size:11px;color:#1e3a5f;font-style:italic;margin-top:6px;text-align:right;}
 
 
+.stamp-row{display:flex;justify-content:flex-end;align-items:flex-end;margin:8px 0 2px;}
 
+
+.stamp-row img{width:84px;max-width:18%;max-height:58px;object-fit:contain;opacity:0.92;mix-blend-mode:multiply;filter:contrast(1.02) saturate(1.05);display:block;}
 
 
 .sigs{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:22px;align-items:end;}
@@ -7798,7 +7848,16 @@ ${sectionsHtml}
       }
       setChatBusy(false);
     };
-    const classAssessments = selClass && assessmentTermView ? assessments.filter((x) => x.class_name === selClass && x.term === assessmentTermView) : [];
+    const classAssessments = useMemo(() => {
+      if (!(selClass && assessmentTermView)) return [];
+      const rows = assessmentTermView === "Term 3" ? (assessments || []).filter((x) => {
+        if (String((x == null ? void 0 : x.term) || "").trim() !== "Term 3") return false;
+        const by = String((x == null ? void 0 : x.assessed_by) || "").toLowerCase();
+        const c = String((x == null ? void 0 : x.comments) || "");
+        return by.includes("typing") || c.includes("[AUTO_TYPING_ASSESSMENT]") || /WPM\s*=/.test(c) || /ACC\s*=/.test(c);
+      }) : assessments || [];
+      return latestElearningAssessmentsForTerm(rows, assessmentTermView).filter((x) => x.class_name === selClass);
+    }, [selClass, assessmentTermView, assessments]);
     const classAssignments = selClass ? assignments.filter((x) => x.class_name === selClass) : [];
     const classInterventions = selClass ? interventions.filter((x) => x.class_name === selClass) : [];
     const learnerResultByAssignment = useMemo(() => new Map(
