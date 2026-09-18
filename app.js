@@ -2453,10 +2453,10 @@ table td.mk{text-align:center;width:92px;font-weight:700;color:#333;white-space:
 .teacher-comment .signed{font-size:11px;color:#1e3a5f;font-style:italic;margin-top:6px;text-align:right;}
 
 
-.stamp-row{display:flex;justify-content:flex-end;margin:16px 0 8px;}
+.stamp-row{display:flex;justify-content:flex-end;align-items:flex-end;margin:12px 0 4px;}
 
 
-.stamp-row img{width:170px;max-width:38%;object-fit:contain;opacity:0.96;}
+.stamp-row img{width:118px;max-width:24%;max-height:88px;object-fit:contain;opacity:1;mix-blend-mode:multiply;filter:contrast(1.02) saturate(1.05);display:block;}
 
 
 .sigs{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:18px;align-items:end;}
@@ -3331,6 +3331,8 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
     const sorted = [...classAssessments].sort(
       (a, b) => a.surname.localeCompare(b.surname) || a.firstname.localeCompare(b.firstname)
     );
+    const reportTerm = String(((sorted == null ? void 0 : sorted[0]) == null ? void 0 : sorted[0].term) || "Term 3").trim() || "Term 3";
+    const reportYear = (((sorted == null ? void 0 : sorted[0]) == null ? void 0 : sorted[0].year) || (/* @__PURE__ */ new Date()).getFullYear());
     const phaseLabel = phase === "foundation" ? "Foundation Phase (Gr 1-3)" : "Intermediate Phase (Gr 4-7)";
     const secBItems = phase === "foundation" ? SEC_B_FOUNDATION : SEC_B_INTERMEDIATE;
     const secCItems = phase === "foundation" ? SEC_C_FOUNDATION : SEC_C_INTERMEDIATE;
@@ -3575,7 +3577,7 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
           <div style="font-size:28px;font-weight:700;margin-bottom:6px;">${esc(className)}</div>
 
 
-          <div style="font-size:14px;opacity:0.9;margin-bottom:16px;">${phaseLabel} \xB7 Term 2, ${(/* @__PURE__ */ new Date()).getFullYear()}</div>
+          <div style="font-size:14px;opacity:0.9;margin-bottom:16px;">${phaseLabel} \xB7 ${esc(reportTerm)}, ${reportYear}</div>
 
 
           <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;max-width:400px;margin:0 auto;font-size:13px;">
@@ -4040,6 +4042,8 @@ ${learnerPages}
     const sorted = [...classAssessments].sort(
       (a, b) => a.surname.localeCompare(b.surname) || a.firstname.localeCompare(b.firstname)
     );
+    const reportTerm = String(((sorted == null ? void 0 : sorted[0]) == null ? void 0 : sorted[0].term) || "Term 3").trim() || "Term 3";
+    const reportYear = (((sorted == null ? void 0 : sorted[0]) == null ? void 0 : sorted[0].year) || (/* @__PURE__ */ new Date()).getFullYear());
     const rows = sorted.map((a, i) => {
       const pct = Math.round(a.grand_total / 20 * 100);
       const date = new Date(a.date_assessed).toLocaleDateString("en-ZA", { day: "2-digit", month: "2-digit", year: "2-digit" });
@@ -4299,7 +4303,7 @@ footer{text-align:center;margin-top:10px;font-size:9px;color:#888;border-top:1px
       <h1>Carissa Primary School</h1>
 
 
-      <p>Class: <strong>${className}</strong> \xB7 ${phaseLabel} \xB7 Term 2, ${(/* @__PURE__ */ new Date()).getFullYear()}</p>
+      <p>Class: <strong>${className}</strong> \xB7 ${phaseLabel} \xB7 ${reportTerm}, ${reportYear}</p>
 
 
     </div>
@@ -4311,7 +4315,7 @@ footer{text-align:center;margin-top:10px;font-size:9px;color:#888;border-top:1px
 
 
 
-  <div class="title">eLEARNING ASSESSMENT \u2014 TERM 2 RUBRIC</div>
+  <div class="title">eLEARNING ASSESSMENT \u2014 ${String(reportTerm).toUpperCase()} RUBRIC</div>
 
 
 
