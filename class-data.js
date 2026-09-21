@@ -2546,6 +2546,11 @@ window.CLASS_DATA = {
       "number": 43,
       "surname": "ABOSSA",
       "firstname": "Buruke Alex Abossa"
+    },
+    {
+      "number": 42,
+      "surname": "MBOKANE",
+      "firstname": "Junior Sushii"
     }
   ],
   "Grade 4.2": [
