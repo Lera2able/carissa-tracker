@@ -2147,19 +2147,20 @@ This will also rename matching assessment records back.`)) return;
     }, [assessments, termView, isTerm3Typing]);
     const classLearners = selClass ? CLASS_DATA[selClass] || [] : [];
     const filtered = search.trim() ? classLearners.filter((l) => `${l.surname} ${l.firstname}`.toLowerCase().includes(search.toLowerCase())) : classLearners;
-    const typingResourceIds = useMemo(() => {
-      return new Set((resources || []).filter((r) => {
-        const directType = String((r == null ? void 0 : r.type) || "").trim().toLowerCase();
-        if (directType === "typing") return true;
-        if (directType === "link" && isTrackableActivityUrl(r == null ? void 0 : r.url)) return true;
-        return false;
-      }).map((r) => String(r.id)));
-    }, [resources]);
+    const resType = (id) => {
+      const r = resources.find((x) => x.id === id);
+      if (!r) return "link";
+      if ((r.type || "") === "link" && isTrackableActivityUrl(r.url)) return "typing";
+      return r.type || "link";
+    };
+    const typingAssignmentsForReports = useMemo(() => {
+      return assignments.filter((a) => String((a == null ? void 0 : a.class_name) || "").trim() === selClass && resType(a == null ? void 0 : a.resource_id) === "typing");
+    }, [assignments, selClass, resources]);
     const latestProgressEntries = useMemo(() => {
       const map = /* @__PURE__ */ new Map();
       if (!selClass) return [];
       const assignmentMap = /* @__PURE__ */ new Map(
-        assignments.filter((a) => String((a == null ? void 0 : a.class_name) || "").trim() === selClass && typingResourceIds.has(String(a == null ? void 0 : a.resource_id))).map((a) => [String(a.id), a])
+        typingAssignmentsForReports.map((a) => [String(a.id), a])
       );
       learnerResults.forEach((result) => {
         const assignment = assignmentMap.get(String(result == null ? void 0 : result.assignment_id));
@@ -2190,7 +2191,7 @@ This will also rename matching assessment records back.`)) return;
           score: normalized === null ? null : Math.round(normalized * 10) / 10
         };
       }).filter((row) => row.score !== null);
-    }, [selClass, assignments, learnerResults, scoreOutOfTen, termView, typingResourceIds]);
+    }, [selClass, learnerResults, scoreOutOfTen, termView, typingAssignmentsForReports]);
     const displayedAssessments = useMemo(() => {
       if (termView !== "Term 3" || !selClass) return termAssessments;
       const latestForClass = termAssessments.filter((a) => a.class_name === selClass && a.term === termView);
