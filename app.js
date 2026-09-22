@@ -2183,13 +2183,14 @@ This will also rename matching assessment records back.`)) return;
       const addRow = (surname, firstname, existing) => {
         const key = assessmentLearnerKey(selClass, surname, firstname, termView);
         const progress = latestProgressScoreByLearner.get(key) || null;
+        if (!existing && !progress) return;
         seen.add(key);
         const hasExistingObservation = Number.isFinite(Number(existing == null ? void 0 : existing.prac2_total));
-        const observationScore = progress ? progress.score : hasExistingObservation ? Math.max(0, Math.min(10, Number(existing == null ? void 0 : existing.prac2_total) || 0)) : 10;
+        const observationScore = progress ? progress.score : hasExistingObservation ? Math.max(0, Math.min(10, Number(existing == null ? void 0 : existing.prac2_total) || 0)) : 0;
         const oralTotal = Math.max(0, Number(existing == null ? void 0 : existing.oral_total) || 0);
         const prac1Total = Math.max(0, Number(existing == null ? void 0 : existing.prac1_total) || 0);
         const grandTotal = Math.round((oralTotal + prac1Total + observationScore) * 10) / 10;
-        const obsLabel = progress ? "Track Progress mark used" : "\u2713 Signed in";
+        const obsLabel = "Progress made";
         merged.push({
           ...(existing || {}),
           id: (existing == null ? void 0 : existing.id) || `admin-progress-report-${selClass}-${normalizeReadingName(surname)}-${normalizeReadingName(firstname)}`,
@@ -2212,9 +2213,9 @@ This will also rename matching assessment records back.`)) return;
 WPM=
 ACC=
 OBS=${obsLabel}
-Bands: Term 3 learner report fallback uses the Track Progress mark in the observation section when available, otherwise the learner keeps the sign-in observation mark.`,
+Bands: Term 3 learner report fallback uses the normalized progress mark in Section C when no typing assessment is available.`,
           __report_obs_label: obsLabel,
-          __report_source: existing ? progress ? "typing_plus_progress" : "typing_only" : progress ? "progress_only" : "sign_in_only",
+          __report_source: existing ? progress ? "typing_plus_progress" : "typing_only" : "progress_only",
           __progress_score_out_of_ten: progress ? progress.score : null
         });
       };
@@ -2536,7 +2537,7 @@ Bands: ${typingGradeTargets.gradeLabel} target WPM ${typingGradeTargets.wpmRange
       };
       const wpm = (_a = getNum(/WPM\s*=\s*([0-9]+)/i)) != null ? _a : getNum(/WPM[:\s]+([0-9]+)/i);
       const acc = (_b = getNum(/ACC\s*=\s*([0-9]+)/i)) != null ? _b : getNum(/Accuracy[:\s]+([0-9]+)/i);
-      const obs = String((a == null ? void 0 : a.__report_obs_label) || (((_c = c.match(/OBS\s*=\s*([^\n]+)/i)) == null ? void 0 : _c[1]) || "\u2713 Signed in")).trim();
+      const obs = String((a == null ? void 0 : a.__report_obs_label) || (((_c = c.match(/OBS\s*=\s*([^\n]+)/i)) == null ? void 0 : _c[1]) || "Progress made")).trim();
       const fn2 = esc(a.firstname);
       const pct2 = Math.round(a.grand_total / 20 * 100);
       const dateStr2 = new Date(a.date_assessed).toLocaleDateString("en-ZA", { day: "numeric", month: "long", year: "numeric" });
@@ -2803,7 +2804,7 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
       <tr><td>Accuracy (%)</td><td class="mk">${acc == null ? "-" : esc(String(acc))}%</td><td class="mk">${a.prac1_total}/5</td></tr>
 
 
-      <tr><td>Observation (eLearning Sign-in)</td><td class="mk">${esc(obs)}</td><td class="mk">${a.prac2_total}/10</td></tr>
+      <tr><td>Progress made</td><td class="mk">${esc(obs)}</td><td class="mk">${a.prac2_total}/10</td></tr>
 
 
     </tbody>
@@ -3400,7 +3401,7 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
 
 
 
-  <h2>Section C \u2014 Practical: Writing Task <span class="stot">${a.prac2_total}/10</span></h2>
+  <h2>Section C — Progress made <span class="stot">${a.prac2_total}/10</span></h2>
 
 
   <table><tbody>${secCRows}</tbody></table>
@@ -3641,7 +3642,7 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
         <tbody>
           <tr><td>Typing Speed (WPM)</td><td class="mk">${wpm == null ? "-" : esc(String(wpm))}</td><td class="mk">${a.oral_total}/5</td></tr>
           <tr><td>Accuracy (%)</td><td class="mk">${acc == null ? "-" : esc(String(acc))}%</td><td class="mk">${a.prac1_total}/5</td></tr>
-          <tr><td>Observation (eLearning Sign-in)</td><td class="mk">${esc(obs)}</td><td class="mk">${a.prac2_total}/10</td></tr>
+          <tr><td>Progress made</td><td class="mk">${esc(obs)}</td><td class="mk">${a.prac2_total}/10</td></tr>
         </tbody>
       </table>
 
@@ -3896,7 +3897,7 @@ ${learnerPages2}
 
 
 
-      <h2>Section C \u2014 Practical: Writing Task <span class="stot">${a.prac2_total}/10</span></h2>
+      <h2>Section C — Progress made <span class="stot">${a.prac2_total}/10</span></h2>
 
 
       <table><tbody>${secCRows}</tbody></table>
@@ -8298,7 +8299,7 @@ ${sectionsHtml}
         const oralTotal = Math.max(0, Number(existing == null ? void 0 : existing.oral_total) || 0);
         const prac1Total = Math.max(0, Number(existing == null ? void 0 : existing.prac1_total) || 0);
         const grandTotal = Math.round((oralTotal + prac1Total + observationScore) * 10) / 10;
-        const progressObsLabel = progress ? "Track Progress mark used" : null;
+        const progressObsLabel = "Progress made";
         const baseDate = progress ? progress.submittedAt : (existing == null ? void 0 : existing.date_assessed) || (existing == null ? void 0 : existing.created_at) || null;
         merged.push({
           ...(existing || {}),
@@ -8321,9 +8322,9 @@ ${sectionsHtml}
           comments: (existing == null ? void 0 : existing.comments) || `[AUTO_TYPING_ASSESSMENT]
 WPM=
 ACC=
-OBS=${progressObsLabel || "✓ Signed in"}
-Bands: Term 3 learner report fallback uses the Track Progress mark in the observation section when no typing assessment is available.`,
-          __report_obs_label: progressObsLabel || void 0,
+OBS=${progressObsLabel}
+Bands: Term 3 learner report fallback uses the normalized progress mark in Section C when no typing assessment is available.`,
+          __report_obs_label: progressObsLabel,
           __report_source: existing ? progress ? "typing_plus_progress" : "typing_only" : "progress_only",
           __progress_score_out_of_ten: progress ? progress.score : null,
           __progress_submitted_at: progress ? progress.submittedAt : null
