@@ -2183,12 +2183,13 @@ This will also rename matching assessment records back.`)) return;
       const addRow = (surname, firstname, existing) => {
         const key = assessmentLearnerKey(selClass, surname, firstname, termView);
         const progress = latestProgressScoreByLearner.get(key) || null;
-        if (!existing && !progress) return;
         seen.add(key);
-        const observationScore = progress ? progress.score : Math.max(0, Math.min(10, Number(existing == null ? void 0 : existing.prac2_total) || 0));
+        const hasExistingObservation = Number.isFinite(Number(existing == null ? void 0 : existing.prac2_total));
+        const observationScore = progress ? progress.score : hasExistingObservation ? Math.max(0, Math.min(10, Number(existing == null ? void 0 : existing.prac2_total) || 0)) : 10;
         const oralTotal = Math.max(0, Number(existing == null ? void 0 : existing.oral_total) || 0);
         const prac1Total = Math.max(0, Number(existing == null ? void 0 : existing.prac1_total) || 0);
         const grandTotal = Math.round((oralTotal + prac1Total + observationScore) * 10) / 10;
+        const obsLabel = progress ? "Track Progress mark used" : "\u2713 Signed in";
         merged.push({
           ...(existing || {}),
           id: (existing == null ? void 0 : existing.id) || `admin-progress-report-${selClass}-${normalizeReadingName(surname)}-${normalizeReadingName(firstname)}`,
@@ -2210,10 +2211,10 @@ This will also rename matching assessment records back.`)) return;
           comments: (existing == null ? void 0 : existing.comments) || `[AUTO_TYPING_ASSESSMENT]
 WPM=
 ACC=
-OBS=Track Progress mark used
-Bands: Term 3 learner report fallback uses the Track Progress mark in the observation section when no typing assessment is available.`,
-          __report_obs_label: progress ? "Track Progress mark used" : void 0,
-          __report_source: existing ? progress ? "typing_plus_progress" : "typing_only" : "progress_only",
+OBS=${obsLabel}
+Bands: Term 3 learner report fallback uses the Track Progress mark in the observation section when available, otherwise the learner keeps the sign-in observation mark.`,
+          __report_obs_label: obsLabel,
+          __report_source: existing ? progress ? "typing_plus_progress" : "typing_only" : progress ? "progress_only" : "sign_in_only",
           __progress_score_out_of_ten: progress ? progress.score : null
         });
       };
