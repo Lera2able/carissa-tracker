@@ -3622,6 +3622,12 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
 
 
 
+  ${buildTypingCriteriaHtml(a.class_name, wpm, acc, a.oral_total, a.prac1_total)}
+        <div class="footer-meta">Carissa Primary School · Page 1 of ${totalLearners + 1} · Generated ${(/* @__PURE__ */ new Date()).toLocaleDateString("en-ZA")}</div>
+  ${buildTypingCriteriaHtml(a.class_name, wpm, acc, a.oral_total, a.prac1_total)}
+
+
+
       </footer>
         <div class="footer-meta">Carissa Primary School · Page 1 of ${totalLearners + 1} · Generated ${(/* @__PURE__ */ new Date()).toLocaleDateString("en-ZA")}</div>
       </footer>
