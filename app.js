@@ -9023,6 +9023,40 @@ ${sectionsHtml}
       const raw = String((criterion == null ? void 0 : criterion.short_label) || (criterion == null ? void 0 : criterion.description) || `Criterion ${(criterion == null ? void 0 : criterion.off_criterion_id) || ""}`).trim();
       return raw.replace(/^\d+\s*:\s*/, "").trim() || raw;
     };
+    const sasamsLevelGuideHtml = () => `
+      <div class="criteria-note"><strong>Performance levels used:</strong> Level 7 = 80-100%, Level 6 = 70-79%, Level 5 = 60-69%, Level 4 = 50-59%, Level 3 = 40-49%, Level 2 = 30-39%, Level 1 = 0-29%.</div>
+    `;
+    const buildSasamsSubjectCriteriaHtml = (summary) => {
+      const items = criteria.map((criterion) => {
+        const title = htmlEscape(normalizeSasamsCriterionTitle(criterion));
+        const maxScore = htmlEscape(criterion.criterion_score_max || 0);
+        const sbaWeight = criterion.sba_of_yearmark_pct !== null && criterion.sba_of_yearmark_pct !== void 0 ? `${htmlEscape(criterion.sba_of_yearmark_pct)}% of SBA` : "No SBA weight set";
+        return `<li><strong>${title}</strong> - max ${maxScore} marks, ${sbaWeight}</li>`;
+      }).join("");
+      return `
+        <div class="criteria-box">
+          <div class="criteria-title">How this report was scored</div>
+          <div class="criteria-subtitle">Task criteria for ${htmlEscape((activeSubject == null ? void 0 : activeSubject.name_english) || "this subject")}</div>
+          <ul class="criteria-list">${items}</ul>
+          <div class="criteria-note"><strong>Calculation used:</strong> Task total is the sum of the learner's captured task marks. Weighted mark is calculated from each task using its SBA percentage weighting. Term % is the weighted mark divided by the total possible weighting for the term.</div>
+          <div class="criteria-note"><strong>This learner:</strong> Task total ${htmlEscape(formatSasamsNumber(summary == null ? void 0 : summary.taskTotal))}, weighted mark ${htmlEscape(formatSasamsNumber(summary == null ? void 0 : summary.weightedTotal))}, term % ${htmlEscape(formatSasamsNumber(summary == null ? void 0 : summary.termPercent))}, level ${htmlEscape((summary == null ? void 0 : summary.level) || "—")}.</div>
+          ${sasamsLevelGuideHtml()}
+        </div>
+      `;
+    };
+    const buildOverallReportCriteriaHtml = (report) => {
+      const weightItems = (report.subjectSummaries || []).map((subject) => `<li><strong>${htmlEscape(subject.subjectName || "")}</strong> - subject weight ${htmlEscape(formatSasamsNumber(subject.subjectWeight))}, learner term % ${htmlEscape(formatSasamsNumber(subject.termPercent))}, level ${htmlEscape(subject.level || "—")}</li>`).join("");
+      return `
+        <div class="criteria-box">
+          <div class="criteria-title">How this report was scored</div>
+          <div class="criteria-subtitle">Overall learner report calculation</div>
+          <ul class="criteria-list">${weightItems}</ul>
+          <div class="criteria-note"><strong>Calculation used:</strong> Each subject first gets a term %. The weighted total is the sum of all subject term percentages multiplied by their subject weights. The weighted average is then calculated from the weighted total and the total weight used for captured subjects.</div>
+          <div class="criteria-note"><strong>This learner:</strong> Weighted total ${htmlEscape(formatSasamsNumber(report.weightedPercentTotal))}, total weight used ${htmlEscape(formatSasamsNumber(report.totalWeightUsed))}, weighted average ${htmlEscape(formatSasamsNumber(report.overallAverage))}, final level ${htmlEscape(report.overallLevel || "—")}.</div>
+          ${sasamsLevelGuideHtml()}
+        </div>
+      `;
+    };
     const sasamsCriterionGroups = useMemo(() => {
       const groups = [];
       const isFoundationLifeSkills = gradeNo !== null && Number(gradeNo) >= 0 && Number(gradeNo) <= 3 && /life skills/i.test(String((activeSubject == null ? void 0 : activeSubject.name_english) || ""));
@@ -9618,6 +9652,9 @@ ${sectionsHtml}
         </div>
 
 
+        ${buildSasamsSubjectCriteriaHtml(summary)}
+
+
         <div class="stamp-row"><img src="${SCHOOL_STAMP}" alt="Carissa Primary School stamp"/></div>
 
 
@@ -9708,6 +9745,24 @@ ${sectionsHtml}
 
 
     .comment-label { font-size:10px; font-weight:800; color:#2563eb; text-transform:uppercase; letter-spacing:.4px; margin-bottom:4px; }
+
+
+    .criteria-box { margin-top:12px; background:#fff8e8; border:1px solid #f6d48d; border-left:4px solid #d97706; border-radius:10px; padding:12px 14px; font-size:12px; line-height:1.6; color:#6b4f13; }
+
+
+    .criteria-title { font-size:10px; font-weight:800; color:#9a3412; text-transform:uppercase; letter-spacing:.4px; margin-bottom:4px; }
+
+
+    .criteria-subtitle { font-size:12px; font-weight:700; color:#7c2d12; margin-bottom:6px; }
+
+
+    .criteria-list { margin:0 0 8px 18px; padding:0; }
+
+
+    .criteria-list li { margin-bottom:4px; }
+
+
+    .criteria-note { margin-top:6px; }
 
 
     @media print { body { background:#fff; } .toolbar { display:none; } .wrap { padding:0; } .report-card { border:none; border-radius:0; max-width:none; margin:0 0 12px; } }
@@ -10311,6 +10366,9 @@ ${sectionsHtml}
           </div>
 
 
+          ${buildOverallReportCriteriaHtml(report)}
+
+
         </section>
 
 
@@ -10395,6 +10453,24 @@ ${sectionsHtml}
 
 
     .comment-label { font-size:10px; font-weight:800; color:#2563eb; text-transform:uppercase; letter-spacing:.4px; margin-bottom:4px; }
+
+
+    .criteria-box { margin-top:12px; background:#fff8e8; border:1px solid #f6d48d; border-left:4px solid #d97706; border-radius:10px; padding:12px 14px; font-size:12px; line-height:1.6; color:#6b4f13; }
+
+
+    .criteria-title { font-size:10px; font-weight:800; color:#9a3412; text-transform:uppercase; letter-spacing:.4px; margin-bottom:4px; }
+
+
+    .criteria-subtitle { font-size:12px; font-weight:700; color:#7c2d12; margin-bottom:6px; }
+
+
+    .criteria-list { margin:0 0 8px 18px; padding:0; }
+
+
+    .criteria-list li { margin-bottom:4px; }
+
+
+    .criteria-note { margin-top:6px; }
 
 
     @media print { body { background:#fff; } .toolbar { display:none; } .wrap { padding:0; } .report-card { border:none; border-radius:0; max-width:none; margin:0 0 12px; } }
