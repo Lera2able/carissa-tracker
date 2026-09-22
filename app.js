@@ -2450,7 +2450,7 @@ Bands: ${typingGradeTargets.gradeLabel} target WPM ${typingGradeTargets.wpmRange
       };
       const wpm = (_a = getNum(/WPM\s*=\s*([0-9]+)/i)) != null ? _a : getNum(/WPM[:\s]+([0-9]+)/i);
       const acc = (_b = getNum(/ACC\s*=\s*([0-9]+)/i)) != null ? _b : getNum(/Accuracy[:\s]+([0-9]+)/i);
-      const obs = (((_c = c.match(/OBS\s*=\s*([^\n]+)/i)) == null ? void 0 : _c[1]) || "\u2713 Signed in").trim();
+      const obs = String((a == null ? void 0 : a.__report_obs_label) || (((_c = c.match(/OBS\s*=\s*([^\n]+)/i)) == null ? void 0 : _c[1]) || "\u2713 Signed in")).trim();
       const fn2 = esc(a.firstname);
       const pct2 = Math.round(a.grand_total / 20 * 100);
       const dateStr2 = new Date(a.date_assessed).toLocaleDateString("en-ZA", { day: "numeric", month: "long", year: "numeric" });
@@ -3516,7 +3516,7 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
         };
         const wpm = (_a = getNum(/WPM\s*=\s*([0-9]+)/i)) != null ? _a : getNum(/WPM[:\s]+([0-9]+)/i);
         const acc = (_b = getNum(/ACC\s*=\s*([0-9]+)/i)) != null ? _b : getNum(/Accuracy[:\s]+([0-9]+)/i);
-        const obs = (((_c = c.match(/OBS\s*=\s*([^\n]+)/i)) == null ? void 0 : _c[1]) || "\u2713 Signed in").trim();
+        const obs = String((a == null ? void 0 : a.__report_obs_label) || (((_c = c.match(/OBS\s*=\s*([^\n]+)/i)) == null ? void 0 : _c[1]) || "\u2713 Signed in")).trim();
         const fn = esc(a.firstname);
         const pct = Math.round(a.grand_total / 20 * 100);
         const dateStr = new Date(a.date_assessed).toLocaleDateString("en-ZA", { day: "numeric", month: "long", year: "numeric" });
@@ -8141,16 +8141,6 @@ ${sectionsHtml}
       }
       setChatBusy(false);
     };
-    const classAssessments = useMemo(() => {
-      if (!(selClass && assessmentTermView)) return [];
-      const rows = assessmentTermView === "Term 3" ? (assessments || []).filter((x) => {
-        if (String((x == null ? void 0 : x.term) || "").trim() !== "Term 3") return false;
-        const by = String((x == null ? void 0 : x.assessed_by) || "").toLowerCase();
-        const c = String((x == null ? void 0 : x.comments) || "");
-        return by.includes("typing") || c.includes("[AUTO_TYPING_ASSESSMENT]") || /WPM\s*=/.test(c) || /ACC\s*=/.test(c);
-      }) : assessments || [];
-      return latestElearningAssessmentsForTerm(rows, assessmentTermView).filter((x) => x.class_name === selClass);
-    }, [selClass, assessmentTermView, assessments]);
     const classAssignments = selClass ? assignments.filter((x) => x.class_name === selClass) : [];
     const classInterventions = selClass ? interventions.filter((x) => x.class_name === selClass) : [];
     const learnerResultByAssignment = useMemo(() => new Map(
@@ -8169,6 +8159,92 @@ ${sectionsHtml}
       const text = Number.isInteger(normalized) ? String(normalized) : normalized.toFixed(1);
       return `Score: ${text}/10`;
     }, [scoreOutOfTen]);
+    const latestProgressScoreByLearner = useMemo(() => {
+      const map = /* @__PURE__ */ new Map();
+      if (!selClass) return map;
+      const assignmentMap = /* @__PURE__ */ new Map(classAssignments.map((a) => [String(a.id), a]));
+      learnerResults.forEach((result) => {
+        const assignment = assignmentMap.get(String(result == null ? void 0 : result.assignment_id));
+        if (!assignment) return;
+        const normalized = scoreOutOfTen(result == null ? void 0 : result.score, result == null ? void 0 : result.max_score);
+        if (normalized === null) return;
+        const key = assessmentLearnerKey(selClass, assignment.surname, assignment.firstname, "");
+        const submittedAt = (result == null ? void 0 : result.submitted_at) || (result == null ? void 0 : result.updated_at) || assignment.updated_at || assignment.created_at || null;
+        const prev = map.get(key);
+        const ts = submittedAt ? new Date(submittedAt).getTime() : 0;
+        const prevTs = (prev == null ? void 0 : prev.submittedAt) ? new Date(prev.submittedAt).getTime() : 0;
+        if (!prev || ts >= prevTs) {
+          map.set(key, {
+            score: Math.round(normalized * 10) / 10,
+            submittedAt,
+            assignment,
+            result
+          });
+        }
+      });
+      return map;
+    }, [selClass, classAssignments, learnerResults, scoreOutOfTen]);
+    const classAssessments = useMemo(() => {
+      if (!(selClass && assessmentTermView)) return [];
+      const rows = assessmentTermView === "Term 3" ? (assessments || []).filter((x) => {
+        if (String((x == null ? void 0 : x.term) || "").trim() !== "Term 3") return false;
+        const by = String((x == null ? void 0 : x.assessed_by) || "").toLowerCase();
+        const c = String((x == null ? void 0 : x.comments) || "");
+        return by.includes("typing") || c.includes("[AUTO_TYPING_ASSESSMENT]") || /WPM\s*=/.test(c) || /ACC\s*=/.test(c);
+      }) : assessments || [];
+      const latest = latestElearningAssessmentsForTerm(rows, assessmentTermView).filter((x) => x.class_name === selClass);
+      if (assessmentTermView !== "Term 3") return latest;
+      const roster = CLASS_DATA[selClass] || [];
+      const latestByLearner = /* @__PURE__ */ new Map(latest.map((row) => [assessmentLearnerKey(selClass, row.surname, row.firstname, ""), row]));
+      const merged = [];
+      const seen = /* @__PURE__ */ new Set();
+      const addRow = (surname, firstname, existing) => {
+        const key = assessmentLearnerKey(selClass, surname, firstname, "");
+        const progress = latestProgressScoreByLearner.get(key) || null;
+        if (!existing && !progress) return;
+        seen.add(key);
+        const observationScore = progress ? progress.score : Math.max(0, Math.min(10, Number(existing == null ? void 0 : existing.prac2_total) || 0));
+        const oralTotal = Math.max(0, Number(existing == null ? void 0 : existing.oral_total) || 0);
+        const prac1Total = Math.max(0, Number(existing == null ? void 0 : existing.prac1_total) || 0);
+        const grandTotal = Math.round((oralTotal + prac1Total + observationScore) * 10) / 10;
+        const progressObsLabel = progress ? "Track Progress mark used" : null;
+        const baseDate = progress ? progress.submittedAt : (existing == null ? void 0 : existing.date_assessed) || (existing == null ? void 0 : existing.created_at) || null;
+        merged.push({
+          ...(existing || {}),
+          id: (existing == null ? void 0 : existing.id) || `progress-report-${selClass}-${normalizeReadingName(surname)}-${normalizeReadingName(firstname)}`,
+          surname,
+          firstname,
+          class_name: selClass,
+          term: "Term 3",
+          year: (existing == null ? void 0 : existing.year) || (/* @__PURE__ */ new Date()).getFullYear(),
+          phase: (existing == null ? void 0 : existing.phase) || phaseForClass(selClass),
+          date_assessed: baseDate ? String(baseDate).split("T")[0] : (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
+          assessed_by: (existing == null ? void 0 : existing.assessed_by) || "Track Progress",
+          oral_scores: (existing == null ? void 0 : existing.oral_scores) || {},
+          oral_total: oralTotal,
+          prac1_scores: (existing == null ? void 0 : existing.prac1_scores) || {},
+          prac1_total: prac1Total,
+          prac2_scores: (existing == null ? void 0 : existing.prac2_scores) || {},
+          prac2_total: observationScore,
+          grand_total: grandTotal,
+          comments: (existing == null ? void 0 : existing.comments) || `[AUTO_TYPING_ASSESSMENT]
+WPM=
+ACC=
+OBS=${progressObsLabel || "✓ Signed in"}
+Bands: Term 3 learner report fallback uses the Track Progress mark in the observation section when no typing assessment is available.`,
+          __report_obs_label: progressObsLabel || void 0,
+          __report_source: existing ? progress ? "typing_plus_progress" : "typing_only" : "progress_only",
+          __progress_score_out_of_ten: progress ? progress.score : null,
+          __progress_submitted_at: progress ? progress.submittedAt : null
+        });
+      };
+      roster.forEach((learner) => addRow(learner.surname, learner.firstname, latestByLearner.get(assessmentLearnerKey(selClass, learner.surname, learner.firstname, "")) || null));
+      latest.forEach((row) => {
+        const key = assessmentLearnerKey(selClass, row.surname, row.firstname, "");
+        if (!seen.has(key)) addRow(row.surname, row.firstname, row);
+      });
+      return merged.sort((a, b) => String(a.surname || "").localeCompare(String(b.surname || "")) || String(a.firstname || "").localeCompare(String(b.firstname || "")));
+    }, [selClass, assessmentTermView, assessments, latestProgressScoreByLearner]);
     const resTitle = (id) => {
       var _a;
       return ((_a = resources.find((r) => r.id === id)) == null ? void 0 : _a.title) || "Unknown";
