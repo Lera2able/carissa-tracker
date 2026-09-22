@@ -12189,6 +12189,7 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
       monitoringOpen ? "\u{1F4C2} Close folder" : "\u{1F4C1} Open folder"
     )), monitoringOpen && /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: "10px", marginTop: "12px" } }, [
       { t: "Carissa Lesson Observation - QMS Data Sheet", f: "monitoring-tools/carissa_lesson_observation_qms_data_sheet.pdf" },
+      { t: "Carissa SPIP - Fillable", f: "monitoring-tools/carissa_spip_fillable.pdf" },
       { t: "Carissa Pre-Assessment Tool", f: "monitoring-tools/carissa_pre_assessment_tool.pdf" },
       { t: "Carissa Reporting Tool - Work Schedule & SBA Completion", f: "monitoring-tools/carissa_reporting_tool_work_schedule_sba_completion.pdf" },
       { t: "Composite Baseline Analysis", f: "monitoring-tools/composite_baseline_analysis.pdf" },
