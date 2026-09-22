@@ -2147,9 +2147,9 @@ This will also rename matching assessment records back.`)) return;
     }, [assessments, termView, isTerm3Typing]);
     const classLearners = selClass ? CLASS_DATA[selClass] || [] : [];
     const filtered = search.trim() ? classLearners.filter((l) => `${l.surname} ${l.firstname}`.toLowerCase().includes(search.toLowerCase())) : classLearners;
-    const latestProgressScoreByLearner = useMemo(() => {
+    const latestProgressEntries = useMemo(() => {
       const map = /* @__PURE__ */ new Map();
-      if (!selClass) return map;
+      if (!selClass) return [];
       const assignmentMap = /* @__PURE__ */ new Map(
         assignments.filter((a) => String((a == null ? void 0 : a.class_name) || "").trim() === selClass).map((a) => [String(a.id), a])
       );
@@ -2165,12 +2165,16 @@ This will also rename matching assessment records back.`)) return;
         const prevTs = (prev == null ? void 0 : prev.submittedAt) ? new Date(prev.submittedAt).getTime() : 0;
         if (!prev || ts >= prevTs) {
           map.set(key, {
+            key,
+            class_name: selClass,
+            surname: assignment.surname,
+            firstname: assignment.firstname,
             score: Math.round(normalized * 10) / 10,
             submittedAt
           });
         }
       });
-      return map;
+      return Array.from(map.values());
     }, [selClass, assignments, learnerResults, scoreOutOfTen, termView]);
     const displayedAssessments = useMemo(() => {
       if (termView !== "Term 3" || !selClass) return termAssessments;
@@ -2178,11 +2182,92 @@ This will also rename matching assessment records back.`)) return;
       const latestByLearner = /* @__PURE__ */ new Map(
         latestForClass.map((row) => [assessmentLearnerKey(selClass, row.surname, row.firstname, row.term || termView), row])
       );
+      const progressByLearner = /* @__PURE__ */ new Map(
+        latestProgressEntries.map((row) => [assessmentLearnerKey(selClass, row.surname, row.firstname, termView), row])
+      );
       const merged = [];
       const seen = /* @__PURE__ */ new Set();
+      const usedAssessmentIds = /* @__PURE__ */ new Set();
+      const usedProgressIds = /* @__PURE__ */ new Set();
+      const resolveAssessmentForLearner = (learner, idx) => {
+        const baseSurname = learner._origSurname || learner.surname;
+        const baseFirstname = learner._origFirstname || learner.firstname;
+        const exact = latestByLearner.get(assessmentLearnerKey(selClass, baseSurname, baseFirstname, termView)) || latestByLearner.get(assessmentLearnerKey(selClass, learner.surname, learner.firstname, termView));
+        if (exact) {
+          usedAssessmentIds.add(exact.id || `asm-exact-${idx}`);
+          return { ...exact, surname: learner.surname, firstname: learner.firstname, matchedFrom: "exact" };
+        }
+        const firstNorm = normalizeReadingName(baseFirstname);
+        const firstPrimary = normalizeReadingPrimaryToken(baseFirstname);
+        const lastNorm = normalizeReadingName(baseSurname);
+        let best = null;
+        let bestScore = -999;
+        latestForClass.forEach((row) => {
+          const candidateId = row.id || `asm-${row.surname}-${row.firstname}-${idx}`;
+          if (usedAssessmentIds.has(candidateId)) return;
+          const rf = normalizeReadingName(row.firstname);
+          const rfPrimary = normalizeReadingPrimaryToken(row.firstname);
+          const rs = normalizeReadingName(row.surname);
+          const firstDist = levenshtein(firstNorm, rf);
+          const lastDist = levenshtein(lastNorm, rs);
+          const firstClose = firstNorm === rf || firstPrimary === rfPrimary || firstDist <= 2 || firstNorm.includes(rf) || rf.includes(firstNorm) || firstPrimary && rfPrimary && (firstPrimary.includes(rfPrimary) || rfPrimary.includes(firstPrimary));
+          const lastClose = lastNorm === rs || lastDist <= 2 || lastNorm.includes(rs) || rs.includes(lastNorm);
+          if (!firstClose && !lastClose) return;
+          const firstScore = firstNorm === rf ? 8 : firstPrimary === rfPrimary ? 6 : firstNorm.includes(rf) || rf.includes(firstNorm) ? 4 : -firstDist;
+          const lastScore = lastNorm === rs ? 8 : lastNorm.includes(rs) || rs.includes(lastNorm) ? 4 : -lastDist;
+          const score = firstScore + lastScore;
+          if (score > bestScore) {
+            bestScore = score;
+            best = row;
+          }
+        });
+        if (best && bestScore >= 2) {
+          usedAssessmentIds.add(best.id || `asm-fuzzy-${idx}`);
+          return { ...best, surname: learner.surname, firstname: learner.firstname, matchedFrom: "fuzzy" };
+        }
+        return null;
+      };
+      const resolveProgressForLearner = (learner, idx) => {
+        const baseSurname = learner._origSurname || learner.surname;
+        const baseFirstname = learner._origFirstname || learner.firstname;
+        const exact = progressByLearner.get(assessmentLearnerKey(selClass, baseSurname, baseFirstname, termView)) || progressByLearner.get(assessmentLearnerKey(selClass, learner.surname, learner.firstname, termView));
+        if (exact) {
+          usedProgressIds.add(exact.key || `prog-exact-${idx}`);
+          return exact;
+        }
+        const firstNorm = normalizeReadingName(baseFirstname);
+        const firstPrimary = normalizeReadingPrimaryToken(baseFirstname);
+        const lastNorm = normalizeReadingName(baseSurname);
+        let best = null;
+        let bestScore = -999;
+        latestProgressEntries.forEach((row) => {
+          const candidateId = row.key || `prog-${row.surname}-${row.firstname}-${idx}`;
+          if (usedProgressIds.has(candidateId)) return;
+          const rf = normalizeReadingName(row.firstname);
+          const rfPrimary = normalizeReadingPrimaryToken(row.firstname);
+          const rs = normalizeReadingName(row.surname);
+          const firstDist = levenshtein(firstNorm, rf);
+          const lastDist = levenshtein(lastNorm, rs);
+          const firstClose = firstNorm === rf || firstPrimary === rfPrimary || firstDist <= 2 || firstNorm.includes(rf) || rf.includes(firstNorm) || firstPrimary && rfPrimary && (firstPrimary.includes(rfPrimary) || rfPrimary.includes(firstPrimary));
+          const lastClose = lastNorm === rs || lastDist <= 2 || lastNorm.includes(rs) || rs.includes(lastNorm);
+          if (!firstClose && !lastClose) return;
+          const firstScore = firstNorm === rf ? 8 : firstPrimary === rfPrimary ? 6 : firstNorm.includes(rf) || rf.includes(firstNorm) ? 4 : -firstDist;
+          const lastScore = lastNorm === rs ? 8 : lastNorm.includes(rs) || rs.includes(lastNorm) ? 4 : -lastDist;
+          const score = firstScore + lastScore;
+          if (score > bestScore) {
+            bestScore = score;
+            best = row;
+          }
+        });
+        if (best && bestScore >= 2) {
+          usedProgressIds.add(best.key || `prog-fuzzy-${idx}`);
+          return best;
+        }
+        return null;
+      };
       const addRow = (surname, firstname, existing) => {
         const key = assessmentLearnerKey(selClass, surname, firstname, termView);
-        const progress = latestProgressScoreByLearner.get(key) || null;
+        const progress = existing && existing.__matchedProgress ? existing.__matchedProgress : progressByLearner.get(key) || null;
         if (!existing && !progress) return;
         seen.add(key);
         const hasExistingObservation = Number.isFinite(Number(existing == null ? void 0 : existing.prac2_total));
@@ -2219,14 +2304,18 @@ Bands: Term 3 learner report fallback uses the normalized progress mark in Secti
           __progress_score_out_of_ten: progress ? progress.score : null
         });
       };
-      classLearners.forEach((learner) => addRow(learner.surname, learner.firstname, latestByLearner.get(assessmentLearnerKey(selClass, learner.surname, learner.firstname, termView)) || null));
+      classLearners.forEach((learner, idx) => {
+        const existing = resolveAssessmentForLearner(learner, idx);
+        const progress = resolveProgressForLearner(learner, idx);
+        addRow(learner.surname, learner.firstname, existing ? { ...existing, __matchedProgress: progress || void 0 } : progress ? { __matchedProgress: progress } : null);
+      });
       latestForClass.forEach((row) => {
         const key = assessmentLearnerKey(selClass, row.surname, row.firstname, row.term || termView);
-        if (!seen.has(key)) addRow(row.surname, row.firstname, row);
+        if (!seen.has(key) && !usedAssessmentIds.has(row.id || `asm-tail-${key}`)) addRow(row.surname, row.firstname, row);
       });
       const others = termAssessments.filter((a) => !(a.class_name === selClass && a.term === termView));
       return [...others, ...merged];
-    }, [termView, selClass, termAssessments, latestProgressScoreByLearner, classLearners]);
+    }, [termView, selClass, termAssessments, latestProgressEntries, classLearners]);
     const classAssessments = selClass ? displayedAssessments.filter((a) => a.class_name === selClass && a.term === termView) : [];
     const assessmentMap = useMemo(() => new Map(
       displayedAssessments.map((a) => [assessmentLearnerKey(a.class_name, a.surname, a.firstname, a.term || ""), a])
