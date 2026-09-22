@@ -2285,12 +2285,19 @@ This will also rename matching assessment records back.`)) return;
         const progress = existing && existing.__matchedProgress ? existing.__matchedProgress : progressByLearner.get(key) || null;
         if (!existing && !progress) return;
         seen.add(key);
+        const autoSyncedAssessment = /^system\s*\(typing assessment\)/i.test(String((existing == null ? void 0 : existing.assessed_by) || "").trim());
+        const manualAssessment = !!existing && !autoSyncedAssessment;
         const hasExistingObservation = Number.isFinite(Number(existing == null ? void 0 : existing.prac2_total));
-        const observationScore = progress ? progress.score : hasExistingObservation ? Math.max(0, Math.min(10, Number(existing == null ? void 0 : existing.prac2_total) || 0)) : 0;
-        const oralTotal = Math.max(0, Number(existing == null ? void 0 : existing.oral_total) || 0);
-        const prac1Total = Math.max(0, Number(existing == null ? void 0 : existing.prac1_total) || 0);
+        const observationScore = progress ? progress.score : manualAssessment && hasExistingObservation ? Math.max(0, Math.min(10, Number(existing == null ? void 0 : existing.prac2_total) || 0)) : 0;
+        const oralTotal = manualAssessment ? Math.max(0, Number(existing == null ? void 0 : existing.oral_total) || 0) : 0;
+        const prac1Total = manualAssessment ? Math.max(0, Number(existing == null ? void 0 : existing.prac1_total) || 0) : 0;
         const grandTotal = Math.round((oralTotal + prac1Total + observationScore) * 10) / 10;
         const obsLabel = "Progress made";
+        const fallbackComments = `[AUTO_TYPING_ASSESSMENT]
+WPM=
+ACC=
+OBS=${obsLabel}
+Bands: Term 3 learner report fallback uses the normalized progress mark in Section C when no typing assessment is available.`;
         merged.push({
           ...(existing || {}),
           id: (existing == null ? void 0 : existing.id) || `admin-progress-report-${selClass}-${normalizeReadingName(surname)}-${normalizeReadingName(firstname)}`,
@@ -2301,21 +2308,17 @@ This will also rename matching assessment records back.`)) return;
           year: (existing == null ? void 0 : existing.year) || (/* @__PURE__ */ new Date()).getFullYear(),
           phase: (existing == null ? void 0 : existing.phase) || phaseForClass(selClass),
           date_assessed: progress && progress.submittedAt ? String(progress.submittedAt).split("T")[0] : ((existing == null ? void 0 : existing.date_assessed) || (/* @__PURE__ */ new Date()).toISOString().split("T")[0]),
-          assessed_by: (existing == null ? void 0 : existing.assessed_by) || "Track Progress",
-          oral_scores: (existing == null ? void 0 : existing.oral_scores) || {},
+          assessed_by: manualAssessment ? ((existing == null ? void 0 : existing.assessed_by) || "Admin") : "Track Progress",
+          oral_scores: manualAssessment ? ((existing == null ? void 0 : existing.oral_scores) || {}) : {},
           oral_total: oralTotal,
-          prac1_scores: (existing == null ? void 0 : existing.prac1_scores) || {},
+          prac1_scores: manualAssessment ? ((existing == null ? void 0 : existing.prac1_scores) || {}) : {},
           prac1_total: prac1Total,
           prac2_scores: (existing == null ? void 0 : existing.prac2_scores) || {},
           prac2_total: observationScore,
           grand_total: grandTotal,
-          comments: (existing == null ? void 0 : existing.comments) || `[AUTO_TYPING_ASSESSMENT]
-WPM=
-ACC=
-OBS=${obsLabel}
-Bands: Term 3 learner report fallback uses the normalized progress mark in Section C when no typing assessment is available.`,
+          comments: manualAssessment ? ((existing == null ? void 0 : existing.comments) || fallbackComments) : fallbackComments,
           __report_obs_label: obsLabel,
-          __report_source: existing ? progress ? "typing_plus_progress" : "typing_only" : "progress_only",
+          __report_source: manualAssessment ? progress ? "typing_plus_progress" : "typing_only" : "progress_only",
           __progress_score_out_of_ten: progress ? progress.score : null
         });
       };
@@ -2912,10 +2915,10 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
     <tbody>
 
 
-      <tr><td>Typing Speed (WPM)</td><td class="mk">${wpm == null ? "-" : esc(String(wpm))}</td><td class="mk">${a.oral_total}/5</td></tr>
+      <tr><td>Typing Speed (WPM)</td><td class="mk">${wpm == null ? "-" : esc(String(wpm))}</td><td class="mk">${progressOnly ? "-" : `${a.oral_total}/5`}</td></tr>
 
 
-      <tr><td>Accuracy (%)</td><td class="mk">${acc == null ? "-" : esc(String(acc))}%</td><td class="mk">${a.prac1_total}/5</td></tr>
+      <tr><td>Accuracy (%)</td><td class="mk">${acc == null ? "-" : esc(String(acc))}%</td><td class="mk">${progressOnly ? "-" : `${a.prac1_total}/5`}</td></tr>
 
 
       <tr><td>Progress made</td><td class="mk">${esc(obs)}</td><td class="mk">${a.prac2_total}/10</td></tr>
