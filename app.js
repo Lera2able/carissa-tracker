@@ -2406,6 +2406,42 @@ Bands: ${typingGradeTargets.gradeLabel} target WPM ${typingGradeTargets.wpmRange
     function esc(s) {
       return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
     }
+    function getTypingGradeTargets(className) {
+      const gradeMatch = String(className || "").match(/Grade\s+(\d+)/i);
+      const gradeNo = gradeMatch ? Number(gradeMatch[1]) : 0;
+      if (gradeNo === 1) return { gradeLabel: "Grade 1", wpmRange: "5-7", wpmTarget: 7, accRange: "80-85", accTarget: 85 };
+      if (gradeNo === 2) return { gradeLabel: "Grade 2", wpmRange: "7-10", wpmTarget: 10, accRange: "80-85", accTarget: 85 };
+      if (gradeNo >= 3 && gradeNo <= 5) return { gradeLabel: `Grade ${gradeNo}`, wpmRange: "8-20", wpmTarget: 20, accRange: "85-90", accTarget: 90 };
+      if (gradeNo >= 6 && gradeNo <= 8) return { gradeLabel: `Grade ${gradeNo}`, wpmRange: "20-30", wpmTarget: 30, accRange: "90-95", accTarget: 95 };
+      return { gradeLabel: String(className || "This class"), wpmRange: "8-20", wpmTarget: 20, accRange: "85-90", accTarget: 90 };
+    }
+    function typingPercent(value, target) {
+      const num = Number(value);
+      const tgt = Number(target);
+      if (!Number.isFinite(num) || num < 0 || !Number.isFinite(tgt) || tgt <= 0) return null;
+      return Math.round(num / tgt * 100);
+    }
+    function buildTypingCriteriaHtml(className, wpm, acc, wpmScore, accScore) {
+      const targets = getTypingGradeTargets(className);
+      const wpmPct = typingPercent(wpm, targets.wpmTarget);
+      const accPct = typingPercent(acc, targets.accTarget);
+      const wpmText = wpm == null ? "Not captured" : `${esc(String(wpm))} WPM`;
+      const accText = acc == null ? "Not captured" : `${esc(String(acc))}%`;
+      const wpmPctText = wpmPct == null ? "not available" : `${wpmPct}% of ${targets.wpmTarget} WPM target`;
+      const accPctText = accPct == null ? "not available" : `${accPct}% of ${targets.accTarget}% target`;
+      return `
+  <div class="criteria-box">
+    <div class="criteria-title">How this report was scored</div>
+    <div class="criteria-subtitle">${esc(targets.gradeLabel)} typing criteria</div>
+    <div class="criteria-grid">
+      <div><strong>Typing speed target:</strong> ${esc(targets.wpmRange)} WPM <span>(scored against ${targets.wpmTarget} WPM)</span></div>
+      <div><strong>Accuracy target:</strong> ${esc(targets.accRange)}% <span>(scored against ${targets.accTarget}%)</span></div>
+      <div><strong>This learner's typing speed:</strong> ${wpmText} <span>= ${wpmPctText} = ${esc(String(wpmScore))}/5</span></div>
+      <div><strong>This learner's accuracy:</strong> ${accText} <span>= ${accPctText} = ${esc(String(accScore))}/5</span></div>
+    </div>
+    <div class="criteria-note"><strong>Score bands used:</strong> below 10% of target = 1/5, below 30% = 2/5, below 50% = 3/5, below 70% = 4/5, and 70% to 100% or more of the grade target = 5/5.</div>
+  </div>`;
+    }
     if (String((a == null ? void 0 : a.term) || "").trim() === "Term 3") {
       const c = String((a == null ? void 0 : a.comments) || "");
       const getNum = (re) => {
@@ -2517,6 +2553,24 @@ table td.mk{text-align:center;width:92px;font-weight:700;color:#333;white-space:
 
 
 .stamp-row img{width:170px;max-width:34%;max-height:128px;object-fit:contain;opacity:1;mix-blend-mode:multiply;filter:contrast(1.02) saturate(1.05);display:block;}
+
+
+.criteria-box{background:#fff8e8;border:1px solid #f6d48d;border-left:5px solid #d97706;padding:12px 14px;border-radius:8px;margin:18px 0 10px;font-size:11.5px;color:#6b4f13;line-height:1.6;}
+
+
+.criteria-title{font-size:12px;font-weight:800;color:#9a3412;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:3px;}
+
+
+.criteria-subtitle{font-size:12px;font-weight:700;color:#7c2d12;margin-bottom:8px;}
+
+
+.criteria-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;}
+
+
+.criteria-grid span{color:#7c6a3f;}
+
+
+.criteria-note{margin-top:8px;padding-top:8px;border-top:1px dashed #e8b75d;}
 
 
 .sigs{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:18px;align-items:end;}
@@ -3362,6 +3416,42 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
     function esc(s) {
       return String(s).replace(/[&<"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
     }
+    function getTypingGradeTargets(className2) {
+      const gradeMatch = String(className2 || "").match(/Grade\s+(\d+)/i);
+      const gradeNo = gradeMatch ? Number(gradeMatch[1]) : 0;
+      if (gradeNo === 1) return { gradeLabel: "Grade 1", wpmRange: "5-7", wpmTarget: 7, accRange: "80-85", accTarget: 85 };
+      if (gradeNo === 2) return { gradeLabel: "Grade 2", wpmRange: "7-10", wpmTarget: 10, accRange: "80-85", accTarget: 85 };
+      if (gradeNo >= 3 && gradeNo <= 5) return { gradeLabel: `Grade ${gradeNo}`, wpmRange: "8-20", wpmTarget: 20, accRange: "85-90", accTarget: 90 };
+      if (gradeNo >= 6 && gradeNo <= 8) return { gradeLabel: `Grade ${gradeNo}`, wpmRange: "20-30", wpmTarget: 30, accRange: "90-95", accTarget: 95 };
+      return { gradeLabel: String(className2 || "This class"), wpmRange: "8-20", wpmTarget: 20, accRange: "85-90", accTarget: 90 };
+    }
+    function typingPercent(value, target) {
+      const num = Number(value);
+      const tgt = Number(target);
+      if (!Number.isFinite(num) || num < 0 || !Number.isFinite(tgt) || tgt <= 0) return null;
+      return Math.round(num / tgt * 100);
+    }
+    function buildTypingCriteriaHtml(className2, wpm, acc, wpmScore, accScore) {
+      const targets = getTypingGradeTargets(className2);
+      const wpmPct = typingPercent(wpm, targets.wpmTarget);
+      const accPct = typingPercent(acc, targets.accTarget);
+      const wpmText = wpm == null ? "Not captured" : `${esc(String(wpm))} WPM`;
+      const accText = acc == null ? "Not captured" : `${esc(String(acc))}%`;
+      const wpmPctText = wpmPct == null ? "not available" : `${wpmPct}% of ${targets.wpmTarget} WPM target`;
+      const accPctText = accPct == null ? "not available" : `${accPct}% of ${targets.accTarget}% target`;
+      return `
+      <div class="criteria-box">
+        <div class="criteria-title">How this report was scored</div>
+        <div class="criteria-subtitle">${esc(targets.gradeLabel)} typing criteria</div>
+        <div class="criteria-grid">
+          <div><strong>Typing speed target:</strong> ${esc(targets.wpmRange)} WPM <span>(scored against ${targets.wpmTarget} WPM)</span></div>
+          <div><strong>Accuracy target:</strong> ${esc(targets.accRange)}% <span>(scored against ${targets.accTarget}%)</span></div>
+          <div><strong>This learner's typing speed:</strong> ${wpmText} <span>= ${wpmPctText} = ${esc(String(wpmScore))}/5</span></div>
+          <div><strong>This learner's accuracy:</strong> ${accText} <span>= ${accPctText} = ${esc(String(accScore))}/5</span></div>
+        </div>
+        <div class="criteria-note"><strong>Score bands used:</strong> below 10% of target = 1/5, below 30% = 2/5, below 50% = 3/5, below 70% = 4/5, and 70% to 100% or more of the grade target = 5/5.</div>
+      </div>`;
+    }
     function commentA(score, fn) {
       if (score === 5) return `${fn} has done excellently and shows a strong understanding of the basic Microsoft Word controls.`;
       if (score === 4) return `${fn} has done really well and understands the basics of Microsoft Word controls.`;
@@ -3488,6 +3578,9 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
         </div>
       </div>
 
+
+  ${buildTypingCriteriaHtml(a.class_name, wpm, acc, a.oral_total, a.prac1_total)}
+
       <footer>
         <div class="footer-msg">Carissa Primary School remains committed to building a strong eLearning programme that prepares every learner for a digital future. We thank parents and guardians for their continued support and invite you to visit <span class="url">carissaprimary.co.za</span> to follow our progress.</div>
         <div class="footer-meta">Carissa Primary School · Page ${idx + 2} of ${totalLearners + 1} · Generated ${(/* @__PURE__ */ new Date()).toLocaleDateString("en-ZA")}</div>
@@ -3525,6 +3618,12 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
 
       <footer>
         <div class="footer-meta">Carissa Primary School · Page 1 of ${totalLearners + 1} · Generated ${(/* @__PURE__ */ new Date()).toLocaleDateString("en-ZA")}</div>
+  ${buildTypingCriteriaHtml(a.class_name, wpm, acc, a.oral_total, a.prac1_total)}
+
+
+
+      </footer>
+        <div class="footer-meta">Carissa Primary School · Page 1 of ${totalLearners + 1} · Generated ${(/* @__PURE__ */ new Date()).toLocaleDateString("en-ZA")}</div>
       </footer>
     </div>`;
       const html2 = `<!DOCTYPE html>
@@ -3556,6 +3655,12 @@ table td.mk{text-align:center;width:92px;font-weight:700;color:#333;white-space:
 .teacher-comment .signed{font-size:11px;color:#1e3a5f;font-style:italic;margin-top:6px;text-align:right;}
 .stamp-row{display:flex;justify-content:flex-end;align-items:flex-end;margin:14px 0 6px;}
 .stamp-row img{width:170px;max-width:34%;max-height:128px;object-fit:contain;opacity:1;mix-blend-mode:multiply;filter:contrast(1.02) saturate(1.05);display:block;}
+.criteria-box{background:#fff8e8;border:1px solid #f6d48d;border-left:5px solid #d97706;padding:12px 14px;border-radius:8px;margin:18px 0 10px;font-size:11.5px;color:#6b4f13;line-height:1.6;}
+.criteria-title{font-size:12px;font-weight:800;color:#9a3412;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:3px;}
+.criteria-subtitle{font-size:12px;font-weight:700;color:#7c2d12;margin-bottom:8px;}
+.criteria-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;}
+.criteria-grid span{color:#7c6a3f;}
+.criteria-note{margin-top:8px;padding-top:8px;border-top:1px dashed #e8b75d;}
 .sigs{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:18px;align-items:end;}
 .sigblock{text-align:center;}
 .sigblock img{max-height:32px;max-width:70%;object-fit:contain;}
