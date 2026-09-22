@@ -2286,12 +2286,11 @@ This will also rename matching assessment records back.`)) return;
         const progress = existing && existing.__matchedProgress ? existing.__matchedProgress : progressByLearner.get(key) || null;
         if (!existing && !progress) return;
         seen.add(key);
-        const autoSyncedAssessment = /^system\s*\(typing assessment\)/i.test(String((existing == null ? void 0 : existing.assessed_by) || "").trim());
-        const manualAssessment = !!existing && !autoSyncedAssessment;
+        const hasAssessment = !!existing;
         const hasExistingObservation = Number.isFinite(Number(existing == null ? void 0 : existing.prac2_total));
-        const observationScore = progress ? progress.score : manualAssessment && hasExistingObservation ? Math.max(0, Math.min(10, Number(existing == null ? void 0 : existing.prac2_total) || 0)) : 0;
-        const oralTotal = manualAssessment ? Math.max(0, Number(existing == null ? void 0 : existing.oral_total) || 0) : 0;
-        const prac1Total = manualAssessment ? Math.max(0, Number(existing == null ? void 0 : existing.prac1_total) || 0) : 0;
+        const observationScore = progress ? progress.score : hasAssessment && hasExistingObservation ? Math.max(0, Math.min(10, Number(existing == null ? void 0 : existing.prac2_total) || 0)) : 0;
+        const oralTotal = hasAssessment ? Math.max(0, Number(existing == null ? void 0 : existing.oral_total) || 0) : 0;
+        const prac1Total = hasAssessment ? Math.max(0, Number(existing == null ? void 0 : existing.prac1_total) || 0) : 0;
         const grandTotal = Math.round((oralTotal + prac1Total + observationScore) * 10) / 10;
         const obsLabel = "Progress made";
         const fallbackComments = `[AUTO_TYPING_ASSESSMENT]
@@ -2309,17 +2308,17 @@ Bands: Term 3 learner report fallback uses the normalized progress mark in Secti
           year: (existing == null ? void 0 : existing.year) || (/* @__PURE__ */ new Date()).getFullYear(),
           phase: (existing == null ? void 0 : existing.phase) || phaseForClass(selClass),
           date_assessed: progress && progress.submittedAt ? String(progress.submittedAt).split("T")[0] : ((existing == null ? void 0 : existing.date_assessed) || (/* @__PURE__ */ new Date()).toISOString().split("T")[0]),
-          assessed_by: manualAssessment ? ((existing == null ? void 0 : existing.assessed_by) || "Admin") : "Track Progress",
-          oral_scores: manualAssessment ? ((existing == null ? void 0 : existing.oral_scores) || {}) : {},
+          assessed_by: hasAssessment ? ((existing == null ? void 0 : existing.assessed_by) || "Admin") : "Track Progress",
+          oral_scores: hasAssessment ? ((existing == null ? void 0 : existing.oral_scores) || {}) : {},
           oral_total: oralTotal,
-          prac1_scores: manualAssessment ? ((existing == null ? void 0 : existing.prac1_scores) || {}) : {},
+          prac1_scores: hasAssessment ? ((existing == null ? void 0 : existing.prac1_scores) || {}) : {},
           prac1_total: prac1Total,
           prac2_scores: (existing == null ? void 0 : existing.prac2_scores) || {},
           prac2_total: observationScore,
           grand_total: grandTotal,
-          comments: manualAssessment ? ((existing == null ? void 0 : existing.comments) || fallbackComments) : fallbackComments,
+          comments: hasAssessment ? ((existing == null ? void 0 : existing.comments) || fallbackComments) : fallbackComments,
           __report_obs_label: obsLabel,
-          __report_source: manualAssessment ? progress ? "typing_plus_progress" : "typing_only" : "progress_only",
+          __report_source: hasAssessment ? progress ? "typing_plus_progress" : "typing_only" : "progress_only",
           __progress_score_out_of_ten: progress ? progress.score : null
         });
       };
