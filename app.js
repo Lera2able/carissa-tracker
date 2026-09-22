@@ -8456,58 +8456,8 @@ ${sectionsHtml}
         return by.includes("typing") || c.includes("[AUTO_TYPING_ASSESSMENT]") || /WPM\s*=/.test(c) || /ACC\s*=/.test(c);
       }) : assessments || [];
       const latest = latestElearningAssessmentsForTerm(rows, assessmentTermView).filter((x) => x.class_name === selClass);
-      if (assessmentTermView !== "Term 3") return latest;
-      const roster = CLASS_DATA[selClass] || [];
-      const latestByLearner = /* @__PURE__ */ new Map(latest.map((row) => [assessmentLearnerKey(selClass, row.surname, row.firstname, ""), row]));
-      const merged = [];
-      const seen = /* @__PURE__ */ new Set();
-      const addRow = (surname, firstname, existing) => {
-        const key = assessmentLearnerKey(selClass, surname, firstname, "");
-        const progress = latestProgressScoreByLearner.get(key) || null;
-        if (!existing && !progress) return;
-        seen.add(key);
-        const observationScore = progress ? progress.score : Math.max(0, Math.min(10, Number(existing == null ? void 0 : existing.prac2_total) || 0));
-        const oralTotal = Math.max(0, Number(existing == null ? void 0 : existing.oral_total) || 0);
-        const prac1Total = Math.max(0, Number(existing == null ? void 0 : existing.prac1_total) || 0);
-        const grandTotal = Math.round((oralTotal + prac1Total + observationScore) * 10) / 10;
-        const progressObsLabel = "Progress made";
-        const baseDate = progress ? progress.submittedAt : (existing == null ? void 0 : existing.date_assessed) || (existing == null ? void 0 : existing.created_at) || null;
-        merged.push({
-          ...(existing || {}),
-          id: (existing == null ? void 0 : existing.id) || `progress-report-${selClass}-${normalizeReadingName(surname)}-${normalizeReadingName(firstname)}`,
-          surname,
-          firstname,
-          class_name: selClass,
-          term: "Term 3",
-          year: (existing == null ? void 0 : existing.year) || (/* @__PURE__ */ new Date()).getFullYear(),
-          phase: (existing == null ? void 0 : existing.phase) || phaseForClass(selClass),
-          date_assessed: baseDate ? String(baseDate).split("T")[0] : (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
-          assessed_by: (existing == null ? void 0 : existing.assessed_by) || "Track Progress",
-          oral_scores: (existing == null ? void 0 : existing.oral_scores) || {},
-          oral_total: oralTotal,
-          prac1_scores: (existing == null ? void 0 : existing.prac1_scores) || {},
-          prac1_total: prac1Total,
-          prac2_scores: (existing == null ? void 0 : existing.prac2_scores) || {},
-          prac2_total: observationScore,
-          grand_total: grandTotal,
-          comments: (existing == null ? void 0 : existing.comments) || `[AUTO_TYPING_ASSESSMENT]
-WPM=
-ACC=
-OBS=${progressObsLabel}
-Bands: Term 3 learner report fallback uses the normalized progress mark in Section C when no typing assessment is available.`,
-          __report_obs_label: progressObsLabel,
-          __report_source: existing ? progress ? "typing_plus_progress" : "typing_only" : "progress_only",
-          __progress_score_out_of_ten: progress ? progress.score : null,
-          __progress_submitted_at: progress ? progress.submittedAt : null
-        });
-      };
-      roster.forEach((learner) => addRow(learner.surname, learner.firstname, latestByLearner.get(assessmentLearnerKey(selClass, learner.surname, learner.firstname, "")) || null));
-      latest.forEach((row) => {
-        const key = assessmentLearnerKey(selClass, row.surname, row.firstname, "");
-        if (!seen.has(key)) addRow(row.surname, row.firstname, row);
-      });
-      return merged.sort((a, b) => String(a.surname || "").localeCompare(String(b.surname || "")) || String(a.firstname || "").localeCompare(String(b.firstname || "")));
-    }, [selClass, assessmentTermView, assessments, latestProgressScoreByLearner]);
+      return latest.sort((a, b) => String(a.surname || "").localeCompare(String(b.surname || "")) || String(a.firstname || "").localeCompare(String(b.firstname || "")));
+    }, [selClass, assessmentTermView, assessments]);
     const resTitle = (id) => {
       var _a;
       return ((_a = resources.find((r) => r.id === id)) == null ? void 0 : _a.title) || "Unknown";
