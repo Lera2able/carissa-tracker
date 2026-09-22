@@ -2147,6 +2147,31 @@ This will also rename matching assessment records back.`)) return;
     }, [assessments, termView, isTerm3Typing]);
     const classLearners = selClass ? CLASS_DATA[selClass] || [] : [];
     const filtered = search.trim() ? classLearners.filter((l) => `${l.surname} ${l.firstname}`.toLowerCase().includes(search.toLowerCase())) : classLearners;
+    const typingGradeTargetsForReports = useMemo(() => {
+      const gradeMatch = String(selClass || "").match(/Grade\s+(\d+)/i);
+      const gradeNo = gradeMatch ? Number(gradeMatch[1]) : 0;
+      if (gradeNo === 1) return { wpmTarget: 7, accTarget: 85 };
+      if (gradeNo === 2) return { wpmTarget: 10, accTarget: 85 };
+      if (gradeNo >= 3 && gradeNo <= 5) return { wpmTarget: 20, accTarget: 90 };
+      if (gradeNo >= 6 && gradeNo <= 8) return { wpmTarget: 30, accTarget: 95 };
+      return { wpmTarget: 20, accTarget: 90 };
+    }, [selClass]);
+    const scoreByTargetPercentForReports = useCallback((rawValue, targetValue) => {
+      const value = Number(rawValue);
+      const target = Number(targetValue);
+      if (!Number.isFinite(value) || value <= 0 || !Number.isFinite(target) || target <= 0) return 0;
+      const pctOfTarget = value / target * 100;
+      if (pctOfTarget < 10) return 1;
+      if (pctOfTarget < 30) return 2;
+      if (pctOfTarget < 50) return 3;
+      if (pctOfTarget < 70) return 4;
+      return 5;
+    }, []);
+    const parseTypingWpmForReports = useCallback((notes) => {
+      const s = String(notes || "");
+      const m = s.match(/WPM:\s*(\d+)/i);
+      return m ? Number(m[1]) : null;
+    }, []);
     const resType = (id) => {
       const r = resources.find((x) => x.id === id);
       if (!r) return "link";
@@ -2165,9 +2190,9 @@ This will also rename matching assessment records back.`)) return;
       learnerResults.forEach((result) => {
         const assignment = assignmentMap.get(String(result == null ? void 0 : result.assignment_id));
         if (!assignment) return;
-        const rawScore = Number(result == null ? void 0 : result.score);
-        const rawMax = Number(result == null ? void 0 : result.max_score);
-        if (!Number.isFinite(rawScore) || !Number.isFinite(rawMax) || rawMax <= 0) return;
+        const rawAccuracy = Number(result == null ? void 0 : result.score);
+        const rawWpm = parseTypingWpmForReports(result == null ? void 0 : result.learner_notes);
+        if (!Number.isFinite(rawAccuracy) && !Number.isFinite(rawWpm)) return;
         const key = assessmentLearnerKey(selClass, assignment.surname, assignment.firstname, termView || "Term 3");
         const submittedAt = (result == null ? void 0 : result.submitted_at) || (result == null ? void 0 : result.updated_at) || assignment.updated_at || assignment.created_at || null;
         const prev = map.get(key) || {
@@ -2175,23 +2200,27 @@ This will also rename matching assessment records back.`)) return;
           class_name: selClass,
           surname: assignment.surname,
           firstname: assignment.firstname,
-          totalScore: 0,
-          totalMax: 0,
+          wpmValues: [],
+          accuracyValues: [],
           submittedAt: null
         };
-        prev.totalScore += rawScore;
-        prev.totalMax += rawMax;
+        if (Number.isFinite(rawWpm) && rawWpm >= 0) prev.wpmValues.push(Number(rawWpm));
+        if (Number.isFinite(rawAccuracy) && rawAccuracy >= 0) prev.accuracyValues.push(Number(rawAccuracy));
         if (submittedAt && (!prev.submittedAt || new Date(submittedAt) > new Date(prev.submittedAt))) prev.submittedAt = submittedAt;
         map.set(key, prev);
       });
       return Array.from(map.values()).map((row) => {
-        const normalized = scoreOutOfTen(row.totalScore, row.totalMax);
+        const avgWpm = row.wpmValues.length ? row.wpmValues.reduce((a, b) => a + b, 0) / row.wpmValues.length : null;
+        const avgAcc = row.accuracyValues.length ? row.accuracyValues.reduce((a, b) => a + b, 0) / row.accuracyValues.length : null;
+        const normalized = scoreByTargetPercentForReports(avgWpm, typingGradeTargetsForReports.wpmTarget) + scoreByTargetPercentForReports(avgAcc, typingGradeTargetsForReports.accTarget);
         return {
           ...row,
-          score: normalized === null ? null : Math.round(normalized * 10) / 10
+          avgWpm: avgWpm == null ? null : Math.round(avgWpm * 10) / 10,
+          avgAcc: avgAcc == null ? null : Math.round(avgAcc * 10) / 10,
+          score: Math.round(normalized * 10) / 10
         };
-      }).filter((row) => row.score !== null);
-    }, [selClass, learnerResults, scoreOutOfTen, termView, typingAssignmentsForReports]);
+      }).filter((row) => row.score > 0);
+    }, [selClass, learnerResults, termView, typingAssignmentsForReports, parseTypingWpmForReports, scoreByTargetPercentForReports, typingGradeTargetsForReports]);
     const displayedAssessments = useMemo(() => {
       if (termView !== "Term 3" || !selClass) return termAssessments;
       const latestForClass = termAssessments.filter((a) => a.class_name === selClass && a.term === termView);
