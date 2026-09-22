@@ -2116,7 +2116,7 @@ This will also rename matching assessment records back.`)) return;
   function getSecCItems(phase) {
     return phase === "foundation" ? SEC_C_FOUNDATION : SEC_C_INTERMEDIATE;
   }
-  function AssessmentsTab({ assessments, setAssessments, exportReport, exportClassSummary: exportClassSummary2, onProjectTest, assignments = [], learnerResults = [] }) {
+  function AssessmentsTab({ assessments, setAssessments, exportReport, exportClassSummary: exportClassSummary2, onProjectTest, assignments = [], learnerResults = [], resources = [] }) {
     const [selClass, setSelClass] = useState("");
     const [search, setSearch] = useState("");
     const [editing, setEditing] = useState(null);
@@ -2147,35 +2147,50 @@ This will also rename matching assessment records back.`)) return;
     }, [assessments, termView, isTerm3Typing]);
     const classLearners = selClass ? CLASS_DATA[selClass] || [] : [];
     const filtered = search.trim() ? classLearners.filter((l) => `${l.surname} ${l.firstname}`.toLowerCase().includes(search.toLowerCase())) : classLearners;
+    const typingResourceIds = useMemo(() => {
+      return new Set((resources || []).filter((r) => {
+        const directType = String((r == null ? void 0 : r.type) || "").trim().toLowerCase();
+        if (directType === "typing") return true;
+        if (directType === "link" && isTrackableActivityUrl(r == null ? void 0 : r.url)) return true;
+        return false;
+      }).map((r) => String(r.id)));
+    }, [resources]);
     const latestProgressEntries = useMemo(() => {
       const map = /* @__PURE__ */ new Map();
       if (!selClass) return [];
       const assignmentMap = /* @__PURE__ */ new Map(
-        assignments.filter((a) => String((a == null ? void 0 : a.class_name) || "").trim() === selClass).map((a) => [String(a.id), a])
+        assignments.filter((a) => String((a == null ? void 0 : a.class_name) || "").trim() === selClass && typingResourceIds.has(String(a == null ? void 0 : a.resource_id))).map((a) => [String(a.id), a])
       );
       learnerResults.forEach((result) => {
         const assignment = assignmentMap.get(String(result == null ? void 0 : result.assignment_id));
         if (!assignment) return;
-        const normalized = scoreOutOfTen(result == null ? void 0 : result.score, result == null ? void 0 : result.max_score);
-        if (normalized === null) return;
+        const rawScore = Number(result == null ? void 0 : result.score);
+        const rawMax = Number(result == null ? void 0 : result.max_score);
+        if (!Number.isFinite(rawScore) || !Number.isFinite(rawMax) || rawMax <= 0) return;
         const key = assessmentLearnerKey(selClass, assignment.surname, assignment.firstname, termView || "Term 3");
         const submittedAt = (result == null ? void 0 : result.submitted_at) || (result == null ? void 0 : result.updated_at) || assignment.updated_at || assignment.created_at || null;
-        const prev = map.get(key);
-        const ts = submittedAt ? new Date(submittedAt).getTime() : 0;
-        const prevTs = (prev == null ? void 0 : prev.submittedAt) ? new Date(prev.submittedAt).getTime() : 0;
-        if (!prev || ts >= prevTs) {
-          map.set(key, {
-            key,
-            class_name: selClass,
-            surname: assignment.surname,
-            firstname: assignment.firstname,
-            score: Math.round(normalized * 10) / 10,
-            submittedAt
-          });
-        }
+        const prev = map.get(key) || {
+          key,
+          class_name: selClass,
+          surname: assignment.surname,
+          firstname: assignment.firstname,
+          totalScore: 0,
+          totalMax: 0,
+          submittedAt: null
+        };
+        prev.totalScore += rawScore;
+        prev.totalMax += rawMax;
+        if (submittedAt && (!prev.submittedAt || new Date(submittedAt) > new Date(prev.submittedAt))) prev.submittedAt = submittedAt;
+        map.set(key, prev);
       });
-      return Array.from(map.values());
-    }, [selClass, assignments, learnerResults, scoreOutOfTen, termView]);
+      return Array.from(map.values()).map((row) => {
+        const normalized = scoreOutOfTen(row.totalScore, row.totalMax);
+        return {
+          ...row,
+          score: normalized === null ? null : Math.round(normalized * 10) / 10
+        };
+      }).filter((row) => row.score !== null);
+    }, [selClass, assignments, learnerResults, scoreOutOfTen, termView, typingResourceIds]);
     const displayedAssessments = useMemo(() => {
       if (termView !== "Term 3" || !selClass) return termAssessments;
       const latestForClass = termAssessments.filter((a) => a.class_name === selClass && a.term === termView);
@@ -2359,7 +2374,7 @@ Bands: Term 3 learner report fallback uses the normalized progress mark in Secti
       setSelClass(e.target.value);
       setSearch("");
     } }, /* @__PURE__ */ React.createElement("option", { value: "" }, "-- Select Class --"), ASSESS_CLASS_NAMES.map((n) => /* @__PURE__ */ React.createElement("option", { key: n, value: n }, n, " (", CLASS_DATA[n].length, ")")))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Search learner"), /* @__PURE__ */ React.createElement("input", { style: inp, placeholder: "Type a name to filter...", value: search, onChange: (e) => setSearch(e.target.value), disabled: !selClass })))), selClass && /* @__PURE__ */ React.createElement("div", { style: card }, /* @__PURE__ */ React.createElement("h3", { style: ctitle }, selClass, " \u2014 ", termView === "Term 2" ? "Term 2 eLearning Assessment" : "Term 3", " (", filtered.length, ")"), filtered.length === 0 ? /* @__PURE__ */ React.createElement("p", { style: { color: "#999", textAlign: "center", padding: "20px" } }, "No learners match your search.") : /* @__PURE__ */ React.createElement(React.Fragment, null, filteredAssessedIds.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "10px", padding: "10px 12px", background: "#f8fafc", border: "1px solid #dbe2f0", borderRadius: "10px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: allFilteredAssessedSelected ? "#64748b" : "#2563eb", fontSize: "12px", padding: "8px 12px" }, onClick: toggleSelectAllFilteredReports }, allFilteredAssessedSelected ? "Clear shown" : `Select all shown (${filteredAssessedIds.length})`), selectedReportIds.length > 0 && /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#e11d48", fontSize: "12px", padding: "8px 12px" }, onClick: () => setSelectedReportIds([]) }, `Clear selected (${selectedReportIds.length})`), selectedClassAssessments.length > 0 && /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#7c3aed", fontSize: "12px", padding: "8px 12px" }, onClick: () => exportGradeBulkReport(selClass, phaseForClass(selClass), selectedClassAssessments) }, `Print selected (${selectedClassAssessments.length})`)), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#475569" } }, selectedClassAssessments.length > 0 ? "Only the ticked learner reports will print." : "Tick learners below to print selected reports, or leave them unticked to print the whole class.")), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gap: "8px" } }, filteredLearnerRows.map(({ learner: l, existing }, i) => {
-      return /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", background: existing ? "#e8f5e9" : "#f8f9fa", borderRadius: "10px", borderLeft: `5px solid ${existing ? "#28a745" : "#cbd5e1"}`, gap: "10px", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: "180px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 600, color: "#333", fontSize: "14px" } }, l.surname, ", ", l.firstname), existing && /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#155724", marginTop: "2px" } }, "✓ Assessed ", new Date(existing.date_assessed || existing.created_at).toLocaleDateString("en-ZA"), " — ", /* @__PURE__ */ React.createElement("strong", null, existing.grand_total, "/20"), " · ", termView)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexShrink: 0, flexWrap: "wrap", alignItems: "center" } }, existing && /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: "6px", background: "#ffffff", border: "1px solid #bfdbfe", borderRadius: "999px", padding: "6px 10px", cursor: "pointer" } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: selectedReportIds.includes(existing.id), onChange: () => toggleSelectedReport(existing.id), style: { width: 16, height: 16, cursor: "pointer" } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: "12px", color: "#1d4ed8", fontWeight: 700 } }, "Print")), existing ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#667eea", fontSize: "13px" }, onClick: () => setEditing({ ...l, existing }) }, "✏️ View / Edit"), /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#10b981", fontSize: "13px" }, onClick: () => exportReport(existing) }, "📥 Export Report")) : /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#f97316", fontSize: "13px" }, onClick: () => setEditing({ ...l, existing: null }) }, "+ Assess")));
+      return /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", background: existing ? "#e8f5e9" : "#f8f9fa", borderRadius: "10px", borderLeft: `5px solid ${existing ? "#28a745" : "#cbd5e1"}`, gap: "10px", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1, minWidth: "180px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 600, color: "#333", fontSize: "14px" } }, l.surname, ", ", l.firstname), existing && /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#155724", marginTop: "2px" } }, "✓ Assessed ", new Date(existing.date_assessed || existing.created_at).toLocaleDateString("en-ZA"), " — ", /* @__PURE__ */ React.createElement("strong", null, String((existing == null ? void 0 : existing.__report_source) || "") === "progress_only" ? `${Math.round((Number(existing == null ? void 0 : existing.__progress_score_out_of_ten) || Number(existing == null ? void 0 : existing.prac2_total) || 0) * 10) / 10}/10` : `${existing.grand_total}/20`), " · ", termView)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexShrink: 0, flexWrap: "wrap", alignItems: "center" } }, existing && /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: "6px", background: "#ffffff", border: "1px solid #bfdbfe", borderRadius: "999px", padding: "6px 10px", cursor: "pointer" } }, /* @__PURE__ */ React.createElement("input", { type: "checkbox", checked: selectedReportIds.includes(existing.id), onChange: () => toggleSelectedReport(existing.id), style: { width: 16, height: 16, cursor: "pointer" } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: "12px", color: "#1d4ed8", fontWeight: 700 } }, "Print")), existing ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#667eea", fontSize: "13px" }, onClick: () => setEditing({ ...l, existing }) }, "✏️ View / Edit"), /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#10b981", fontSize: "13px" }, onClick: () => exportReport(existing) }, "📥 Export Report")) : /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#f97316", fontSize: "13px" }, onClick: () => setEditing({ ...l, existing: null }) }, "+ Assess")));
     })))), editing && /* @__PURE__ */ React.createElement(
       AssessmentModal,
       {
@@ -2627,11 +2642,21 @@ Bands: ${typingGradeTargets.gradeLabel} target WPM ${typingGradeTargets.wpmRange
       const wpm = (_a = getNum(/WPM\s*=\s*([0-9]+)/i)) != null ? _a : getNum(/WPM[:\s]+([0-9]+)/i);
       const acc = (_b = getNum(/ACC\s*=\s*([0-9]+)/i)) != null ? _b : getNum(/Accuracy[:\s]+([0-9]+)/i);
       const obs = String((a == null ? void 0 : a.__report_obs_label) || (((_c = c.match(/OBS\s*=\s*([^\n]+)/i)) == null ? void 0 : _c[1]) || "Progress made")).trim();
+      const progressOnly = String((a == null ? void 0 : a.__report_source) || "") === "progress_only";
+      const totalMax2 = progressOnly ? 10 : 20;
+      const totalScore2 = progressOnly ? Math.round((Number((_d = a == null ? void 0 : a.__progress_score_out_of_ten) != null ? _d : a.prac2_total) || 0) * 10) / 10 : Math.round((Number(a == null ? void 0 : a.grand_total) || 0) * 10) / 10;
+      const totalLabel2 = progressOnly ? "Progress made only" : "WPM + Accuracy + Progress";
       const fn2 = esc(a.firstname);
-      const pct2 = Math.round(a.grand_total / 20 * 100);
+      const pct2 = totalMax2 > 0 ? Math.round(totalScore2 / totalMax2 * 100) : 0;
       const dateStr2 = new Date(a.date_assessed).toLocaleDateString("en-ZA", { day: "numeric", month: "long", year: "numeric" });
       const rawTeacherComment2 = String((a == null ? void 0 : a.comments) || "").trim();
-      const teacherText2 = /^\[AUTO_TYPING_ASSESSMENT\]/i.test(rawTeacherComment2) ? esc(buildTypingTeacherComment(fn2, a.grand_total, wpm, acc, obs)) : rawTeacherComment2 ? esc(rawTeacherComment2) : esc(teacherSay(a.grand_total, fn2));
+      const buildProgressTeacherComment = (fn3, progressScore) => {
+        if (progressScore >= 9) return `${fn3} has shown excellent progress in the typing games this term. Confidence and keyboard control are developing very well.`;
+        if (progressScore >= 7) return `${fn3} has made good progress in the typing games this term. Skills are developing well and steady practice is helping.`;
+        if (progressScore >= 5) return `${fn3} is making steady progress in the typing games. Continued practice will help confidence and speed to improve further.`;
+        return `${fn3} is beginning to build typing-game progress and still needs regular practice and support.`;
+      };
+      const teacherText2 = /^\[AUTO_TYPING_ASSESSMENT\]/i.test(rawTeacherComment2) ? esc(progressOnly ? buildProgressTeacherComment(fn2, totalScore2) : buildTypingTeacherComment(fn2, totalScore2, wpm, acc, obs)) : rawTeacherComment2 ? esc(rawTeacherComment2) : esc(progressOnly ? buildProgressTeacherComment(fn2, totalScore2) : teacherSay(totalScore2, fn2));
       const html2 = `<!DOCTYPE html>
 
 
@@ -2854,7 +2879,7 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
       <div class="label">Total</div>
 
 
-      <div class="sublabel">WPM + Accuracy + Observation</div>
+      <div class="sublabel">${totalLabel2}</div>
 
 
     </div>
@@ -2863,7 +2888,7 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
     <div style="text-align:right">
 
 
-      <div class="score">${a.grand_total}/20</div>
+      <div class="score">${totalScore2}/${totalMax2}</div>
 
 
       <div class="pct">${pct2}%</div>
@@ -3692,12 +3717,22 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
         };
         const wpm = (_a = getNum(/WPM\s*=\s*([0-9]+)/i)) != null ? _a : getNum(/WPM[:\s]+([0-9]+)/i);
         const acc = (_b = getNum(/ACC\s*=\s*([0-9]+)/i)) != null ? _b : getNum(/Accuracy[:\s]+([0-9]+)/i);
-        const obs = String((a == null ? void 0 : a.__report_obs_label) || (((_c = c.match(/OBS\s*=\s*([^\n]+)/i)) == null ? void 0 : _c[1]) || "\u2713 Signed in")).trim();
+        const obs = String((a == null ? void 0 : a.__report_obs_label) || (((_c = c.match(/OBS\s*=\s*([^\n]+)/i)) == null ? void 0 : _c[1]) || "Progress made")).trim();
+        const progressOnly = String((a == null ? void 0 : a.__report_source) || "") === "progress_only";
+        const totalMax = progressOnly ? 10 : 20;
+        const totalScore = progressOnly ? Math.round((Number((_d = a == null ? void 0 : a.__progress_score_out_of_ten) != null ? _d : a.prac2_total) || 0) * 10) / 10 : Math.round((Number(a == null ? void 0 : a.grand_total) || 0) * 10) / 10;
+        const totalLabel = progressOnly ? "Progress made only" : "WPM + Accuracy + Progress";
         const fn = esc(a.firstname);
-        const pct = Math.round(a.grand_total / 20 * 100);
+        const pct = totalMax > 0 ? Math.round(totalScore / totalMax * 100) : 0;
         const dateStr = new Date(a.date_assessed).toLocaleDateString("en-ZA", { day: "numeric", month: "long", year: "numeric" });
         const rawTeacherComment = String((a == null ? void 0 : a.comments) || "").trim();
-        const teacherText = /^\[AUTO_TYPING_ASSESSMENT\]/i.test(rawTeacherComment) ? esc(buildTypingTeacherComment(fn, a.grand_total, wpm, acc, obs)) : rawTeacherComment ? esc(rawTeacherComment) : esc(buildTypingTeacherComment(fn, a.grand_total, wpm, acc, obs));
+        const buildProgressTeacherComment = (fn2, progressScore) => {
+          if (progressScore >= 9) return `${fn2} has shown excellent progress in the typing games this term. Confidence and keyboard control are developing very well.`;
+          if (progressScore >= 7) return `${fn2} has made good progress in the typing games this term. Skills are developing well and steady practice is helping.`;
+          if (progressScore >= 5) return `${fn2} is making steady progress in the typing games. Continued practice will help confidence and speed to improve further.`;
+          return `${fn2} is beginning to build typing-game progress and still needs regular practice and support.`;
+        };
+        const teacherText = /^\[AUTO_TYPING_ASSESSMENT\]/i.test(rawTeacherComment) ? esc(progressOnly ? buildProgressTeacherComment(fn, totalScore) : buildTypingTeacherComment(fn, totalScore, wpm, acc, obs)) : rawTeacherComment ? esc(rawTeacherComment) : esc(progressOnly ? buildProgressTeacherComment(fn, totalScore) : buildTypingTeacherComment(fn, totalScore, wpm, acc, obs));
         return `
     <div class="page report-card">
       <header>
@@ -3718,10 +3753,10 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
       <div class="totalbox">
         <div>
           <div class="label">Total</div>
-          <div class="sublabel">WPM + Accuracy + Observation</div>
+          <div class="sublabel">${totalLabel}</div>
         </div>
         <div style="text-align:right">
-          <div class="score">${a.grand_total}/20</div>
+          <div class="score">${totalScore}/${totalMax}</div>
           <div class="pct">${pct}%</div>
         </div>
       </div>
@@ -3729,8 +3764,8 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
       <h2>Marks</h2>
       <table>
         <tbody>
-          <tr><td>Typing Speed (WPM)</td><td class="mk">${wpm == null ? "-" : esc(String(wpm))}</td><td class="mk">${a.oral_total}/5</td></tr>
-          <tr><td>Accuracy (%)</td><td class="mk">${acc == null ? "-" : esc(String(acc))}%</td><td class="mk">${a.prac1_total}/5</td></tr>
+          <tr><td>Typing Speed (WPM)</td><td class="mk">${wpm == null ? "-" : esc(String(wpm))}</td><td class="mk">${progressOnly ? "-" : `${a.oral_total}/5`}</td></tr>
+          <tr><td>Accuracy (%)</td><td class="mk">${acc == null ? "-" : esc(String(acc))}%</td><td class="mk">${progressOnly ? "-" : `${a.prac1_total}/5`}</td></tr>
           <tr><td>Progress made</td><td class="mk">${esc(obs)}</td><td class="mk">${a.prac2_total}/10</td></tr>
         </tbody>
       </table>
@@ -3755,7 +3790,7 @@ footer .footer-meta{font-size:9px;color:#999;margin-top:6px;letter-spacing:0.3px
       </div>
 
 
-  ${buildTypingCriteriaHtml(a.class_name, wpm, acc, a.oral_total, a.prac1_total)}
+  ${progressOnly ? "" : buildTypingCriteriaHtml(a.class_name, wpm, acc, a.oral_total, a.prac1_total)}
 
       <footer>
         <div class="footer-msg">Carissa Primary School remains committed to building a strong eLearning programme that prepares every learner for a digital future. We thank parents and guardians for their continued support and invite you to visit <span class="url">carissaprimary.co.za</span> to follow our progress.</div>
@@ -7359,6 +7394,7 @@ ${sectionsHtml}
         setAssessments,
         assignments,
         learnerResults,
+        resources,
         exportReport: exportAssessmentReport,
         exportClassSummary,
         onProjectTest: (phase) => setProjectMode({ phase })
