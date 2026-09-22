@@ -2221,7 +2221,67 @@ This will also rename matching assessment records back.`)) return;
         };
       }).filter((row) => row.score > 0);
     }, [selClass, learnerResults, termView, typingAssignmentsForReports, parseTypingWpmForReports, scoreByTargetPercentForReports, typingGradeTargetsForReports]);
-    const displayedAssessments = useMemo(() => termAssessments, [termAssessments]);
+    const displayedAssessments = useMemo(() => {
+      if (termView !== "Term 3" || !selClass) return termAssessments;
+      const latestForClass = termAssessments.filter((a) => a.class_name === selClass && a.term === termView);
+      const latestByLearner = /* @__PURE__ */ new Map(
+        latestForClass.map((row) => [assessmentLearnerKey(selClass, row.surname, row.firstname, row.term || termView), row])
+      );
+      const merged = [];
+      const seen = /* @__PURE__ */ new Set();
+      const usedAssessmentIds = /* @__PURE__ */ new Set();
+      const resolveAssessmentForLearner = (learner, idx) => {
+        const baseSurname = learner._origSurname || learner.surname;
+        const baseFirstname = learner._origFirstname || learner.firstname;
+        const exact = latestByLearner.get(assessmentLearnerKey(selClass, baseSurname, baseFirstname, termView)) || latestByLearner.get(assessmentLearnerKey(selClass, learner.surname, learner.firstname, termView));
+        if (exact) {
+          usedAssessmentIds.add(exact.id || `asm-exact-${idx}`);
+          return { ...exact, surname: learner.surname, firstname: learner.firstname, matchedFrom: "exact" };
+        }
+        const firstNorm = normalizeReadingName(baseFirstname);
+        const firstPrimary = normalizeReadingPrimaryToken(baseFirstname);
+        const lastNorm = normalizeReadingName(baseSurname);
+        let best = null;
+        let bestScore = -999;
+        latestForClass.forEach((row) => {
+          const candidateId = row.id || `asm-${row.surname}-${row.firstname}-${idx}`;
+          if (usedAssessmentIds.has(candidateId)) return;
+          const rf = normalizeReadingName(row.firstname);
+          const rfPrimary = normalizeReadingPrimaryToken(row.firstname);
+          const rs = normalizeReadingName(row.surname);
+          const firstDist = levenshtein(firstNorm, rf);
+          const lastDist = levenshtein(lastNorm, rs);
+          const firstClose = firstNorm === rf || firstPrimary === rfPrimary || firstDist <= 2 || firstNorm.includes(rf) || rf.includes(firstNorm) || firstPrimary && rfPrimary && (firstPrimary.includes(rfPrimary) || rfPrimary.includes(firstPrimary));
+          const lastClose = lastNorm === rs || lastDist <= 2 || lastNorm.includes(rs) || rs.includes(lastNorm);
+          if (!firstClose && !lastClose) return;
+          const firstScore = firstNorm === rf ? 8 : firstPrimary === rfPrimary ? 6 : firstNorm.includes(rf) || rf.includes(firstNorm) ? 4 : -firstDist;
+          const lastScore = lastNorm === rs ? 8 : lastNorm.includes(rs) || rs.includes(lastNorm) ? 4 : -lastDist;
+          const score = firstScore + lastScore;
+          if (score > bestScore) {
+            bestScore = score;
+            best = row;
+          }
+        });
+        if (best && bestScore >= 2) {
+          usedAssessmentIds.add(best.id || `asm-fuzzy-${idx}`);
+          return { ...best, surname: learner.surname, firstname: learner.firstname, matchedFrom: "fuzzy" };
+        }
+        return null;
+      };
+      classLearners.forEach((learner, idx) => {
+        const existing = resolveAssessmentForLearner(learner, idx);
+        if (!existing) return;
+        const key = assessmentLearnerKey(selClass, learner.surname, learner.firstname, termView);
+        seen.add(key);
+        merged.push(existing);
+      });
+      latestForClass.forEach((row) => {
+        const key = assessmentLearnerKey(selClass, row.surname, row.firstname, row.term || termView);
+        if (!seen.has(key) && !usedAssessmentIds.has(row.id || `asm-tail-${key}`)) merged.push(row);
+      });
+      const others = termAssessments.filter((a) => !(a.class_name === selClass && a.term === termView));
+      return [...others, ...merged];
+    }, [termView, selClass, termAssessments, classLearners]);
     const classAssessments = selClass ? displayedAssessments.filter((a) => a.class_name === selClass && a.term === termView) : [];
     const assessmentMap = useMemo(() => new Map(
       displayedAssessments.map((a) => [assessmentLearnerKey(a.class_name, a.surname, a.firstname, a.term || ""), a])
