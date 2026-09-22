@@ -2229,7 +2229,7 @@ This will also rename matching assessment records back.`)) return;
     const filteredLearnerRows = useMemo(() => filtered.map((l) => ({
       learner: l,
       existing: selClass ? assessmentMap.get(assessmentLearnerKey(selClass, l.surname, l.firstname, termView)) || null : null
-    })).filter((row) => row.existing), [filtered, selClass, termView, assessmentMap]);
+    })), [filtered, selClass, termView, assessmentMap]);
     const filteredAssessedIds = useMemo(() => filteredLearnerRows.map((row) => row.existing && row.existing.id).filter(Boolean), [filteredLearnerRows]);
     const selectedClassAssessments = useMemo(() => classAssessments.filter((a) => selectedReportIds.includes(a.id)), [classAssessments, selectedReportIds]);
     const bulkReportRows = selectedClassAssessments.length ? selectedClassAssessments : classAssessments;
