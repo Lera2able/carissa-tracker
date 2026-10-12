@@ -7695,33 +7695,42 @@ ${sectionsHtml}
     }, [assignments, learnerAuth2, results]);
     const learnerLogin = async () => {
       setLoginErr("");
-      const found = findLearnerByCredentials(loginUser, loginPin);
-      if (!found) {
-        setManualLoginMode(true);
-        setLoginErr("Login failed. Check the learner username and PIN.");
+      const cleanUser = String(loginUser || "").trim().toLowerCase();
+      const cleanPin = String(loginPin || "").trim();
+      if (!cleanUser || !cleanPin) {
+        setLoginErr("Enter the learner username and PIN.");
         return;
       }
+      const found = findLearnerByCredentials(cleanUser, cleanPin);
       setLoginBusy(true);
       try {
-        await apiRequest("/auth/learner/login", {
+        const data = await apiRequest("/auth/learner/login", {
           method: "POST",
           body: {
-            username: found.username,
-            pin: found.pin,
-            profile: {
+            username: cleanUser,
+            pin: cleanPin,
+            profile: found ? {
               class_name: found.class_name,
               surname: found.surname,
               firstname: found.firstname,
               original_surname: found.original_surname || found.surname,
               original_firstname: found.original_firstname || found.firstname
-            }
+            } : null
           }
         });
-        saveLearnerSession(found);
-        LEARNER_SESSION = found;
-        setLearnerAuth2(found);
+        const nextSession = {
+          ...(data == null ? void 0 : data.session) || {},
+          pin: cleanPin
+        };
+        if (!nextSession.username || !nextSession.class_name || !nextSession.surname || !nextSession.firstname) {
+          throw new Error("Could not load the learner profile.");
+        }
+        saveLearnerSession(nextSession);
+        LEARNER_SESSION = nextSession;
+        setLearnerAuth2(nextSession);
         setTimeout(() => setLoginBusy(false), 200);
       } catch (e) {
+        setManualLoginMode(true);
         setLoginErr((e == null ? void 0 : e.message) || "Could not sign in right now. Please try again.");
         setLoginBusy(false);
       }

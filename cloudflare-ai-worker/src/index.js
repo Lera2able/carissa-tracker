@@ -175,15 +175,53 @@ function classSlug(className) {
     .replace(/^g/, "g");
 }
 
-function deriveLearnerIdentity(username, pin, profile = {}) {
+function parseLearnerCredentials(username, pin) {
   const cleanUser = String(username || "").trim().toLowerCase();
   const cleanPin = String(pin || "").trim();
   const match = cleanUser.match(/^(g[a-z0-9]+)-(\d{2})$/i);
   if (!match) return null;
   const learnerNumber = Number.parseInt(match[2], 10);
   if (!learnerNumber || cleanPin !== String(learnerNumber).padStart(4, "0")) return null;
+  return {
+    username: cleanUser,
+    pin: cleanPin,
+    learnerNumber,
+    classSlug: match[1].toLowerCase(),
+  };
+}
+
+async function findLearnerIdentityFromLiveData(env, username, pin) {
+  const parsed = parseLearnerCredentials(username, pin);
+  if (!parsed) return null;
+  const rows = await supabaseGet(env, "carissa_learner_payments", {
+    learner_username: `eq.${parsed.username}`,
+    learner_number: `eq.${parsed.learnerNumber}`,
+    limit: "1",
+  });
+  const row = Array.isArray(rows) ? rows[0] : null;
+  if (!row) return null;
+  const className = String(row.class_name || "").trim();
+  const surname = String(row.surname || "").trim();
+  const firstname = String(row.firstname || "").trim();
+  if (!className || !surname || !firstname) return null;
+  if (classSlug(className) !== parsed.classSlug) return null;
+  return {
+    type: "learner",
+    username: parsed.username,
+    class_name: className,
+    surname,
+    firstname,
+    original_surname: surname,
+    original_firstname: firstname,
+    learner_number: parsed.learnerNumber,
+  };
+}
+
+function deriveLearnerIdentity(username, pin, profile = {}) {
+  const parsed = parseLearnerCredentials(username, pin);
+  if (!parsed) return null;
   const className = String(profile.class_name || "").trim();
-  if (!className || classSlug(className) !== match[1].toLowerCase()) return null;
+  if (!className || classSlug(className) !== parsed.classSlug) return null;
   const surname = String(profile.surname || "").trim();
   const firstname = String(profile.firstname || "").trim();
   if (!surname || !firstname) return null;
@@ -191,13 +229,13 @@ function deriveLearnerIdentity(username, pin, profile = {}) {
   const originalFirstname = String(profile.original_firstname || firstname).trim();
   return {
     type: "learner",
-    username: cleanUser,
+    username: parsed.username,
     class_name: className,
     surname,
     firstname,
     original_surname: originalSurname,
     original_firstname: originalFirstname,
-    learner_number: learnerNumber,
+    learner_number: parsed.learnerNumber,
   };
 }
 
@@ -481,7 +519,9 @@ async function handleTeacherLogout(_request, _env, corsOrigin) {
 
 async function handleLearnerLogin(request, env, corsOrigin) {
   const body = await readJsonBody(request);
-  const learner = deriveLearnerIdentity(body?.username, body?.pin, body?.profile);
+  const learner =
+    await findLearnerIdentityFromLiveData(env, body?.username, body?.pin) ||
+    deriveLearnerIdentity(body?.username, body?.pin, body?.profile);
   if (!learner) {
     return jsonResponse({ error: "Invalid learner login." }, 401, corsOrigin);
   }
