@@ -7802,14 +7802,14 @@ ${sectionsHtml}
       return m ? Number(m[1]) : null;
     }, []);
     const typingGradeTargetsForProgress = useMemo(() => {
-      const gradeMatch = String(selClass || "").match(/Grade\s+(\d+)/i);
+      const gradeMatch = String((learnerAuth2 == null ? void 0 : learnerAuth2.class_name) || "").match(/Grade\s+(\d+)/i);
       const gradeNo = gradeMatch ? Number(gradeMatch[1]) : 0;
       if (gradeNo === 1) return { wpmTarget: 7, accTarget: 85 };
       if (gradeNo === 2) return { wpmTarget: 10, accTarget: 85 };
       if (gradeNo >= 3 && gradeNo <= 5) return { wpmTarget: 20, accTarget: 90 };
       if (gradeNo >= 6 && gradeNo <= 8) return { wpmTarget: 30, accTarget: 95 };
       return { wpmTarget: 20, accTarget: 90 };
-    }, [selClass]);
+    }, [learnerAuth2 == null ? void 0 : learnerAuth2.class_name]);
     const scoreByTargetPercentForProgress = useCallback((rawValue, targetValue) => {
       const value = Number(rawValue);
       const target = Number(targetValue);
