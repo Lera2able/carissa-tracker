@@ -3177,6 +3177,11 @@ window.CLASS_DATA = {
       "number": 45,
       "surname": "MANGANI",
       "firstname": "Tapiwanashe Ethan"
+    },
+    {
+      "number": 46,
+      "surname": "MORIRI",
+      "firstname": "Sibongile"
     }
   ],
   "Grade 5.2": [
