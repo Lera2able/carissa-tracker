@@ -5013,6 +5013,7 @@ footer{text-align:center;margin-top:10px;font-size:9px;color:#888;border-top:1px
     ["registrations", "\u{1F9D1}\u200D\u{1F3EB} Registrations"],
     ["teacher_audit", "\u{1F9FE} Teacher Audit"],
     ["assistant", "\u{1F916} TRAE Assistant"],
+    ["email", "\u{1F4E7} Email"],
     ["chats", "\u{1F4AC} Chats"],
     ["audit", "\u{1F6E1} Audit & Recovery"]
   ];
@@ -7254,6 +7255,39 @@ ${sectionsHtml}
       }
     ), /* @__PURE__ */ React.createElement("input", { ref: fileRef, type: "file", multiple: true, style: { display: "none" }, onChange: (e) => setFiles(Array.from(e.target.files || [])) }), /* @__PURE__ */ React.createElement("button", { onClick: () => fileRef.current && fileRef.current.click(), disabled: busy, style: { ...sbtn, background: "#6366f1", opacity: busy ? 0.6 : 1 } }, "Upload files"), /* @__PURE__ */ React.createElement("button", { onClick: send, disabled: busy || !text.trim() && files.length === 0, style: { ...sbtn, background: "#10b981", opacity: busy || !text.trim() && files.length === 0 ? 0.6 : 1 } }, busy ? files.length ? "Uploading..." : "Sending..." : "Send")), files.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { marginTop: "8px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: "12px", color: "#64748b" } }, files.length, " file(s) selected"), /* @__PURE__ */ React.createElement("button", { onClick: clearFiles, disabled: busy, style: { border: "none", background: "transparent", color: "#4f46e5", cursor: "pointer", fontSize: "12px", fontWeight: 700, padding: 0 } }, "Clear files")));
   }
+  function EmailAdminTab() {
+    const [to, setTo] = useState("");
+    const [subject, setSubject] = useState("");
+    const [message, setMessage] = useState("");
+    const [status, setStatus] = useState(null);
+    const [busy, setBusy] = useState(false);
+    const send = async () => {
+      if (!to.trim() || !subject.trim() || !message.trim()) {
+        setStatus({ type: "error", text: "Please fill in all fields." });
+        return;
+      }
+      setBusy(true);
+      setStatus(null);
+      try {
+        await apiRequest("/email/send", {
+          method: "POST",
+          body: {
+            to: to.split(",").map((e) => e.trim()).filter(Boolean),
+            subject: subject.trim(),
+            html: message.trim()
+          }
+        });
+        setStatus({ type: "success", text: "Email sent successfully!" });
+        setTo("");
+        setSubject("");
+        setMessage("");
+      } catch (e) {
+        setStatus({ type: "error", text: e.message || "Failed to send email." });
+      }
+      setBusy(false);
+    };
+    return /* @__PURE__ */ React.createElement("div", { style: card }, /* @__PURE__ */ React.createElement("h3", { style: ctitle }, "\u{1F4E7} Send Email"), status && /* @__PURE__ */ React.createElement("div", { style: status.type === "success" ? succ : { ...succ, background: "#f8d7da", color: "#721c24", borderColor: "#f5c6cb" } }, status.text), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: "15px" } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "To (separate with commas for multiple)"), /* @__PURE__ */ React.createElement("input", { style: inp, value: to, onChange: (e) => setTo(e.target.value), placeholder: "recipient@example.com" })), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: "15px" } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Subject"), /* @__PURE__ */ React.createElement("input", { style: inp, value: subject, onChange: (e) => setSubject(e.target.value), placeholder: "Welcome to Carissa Primary" })), /* @__PURE__ */ React.createElement("div", { style: { marginBottom: "20px" } }, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Message"), /* @__PURE__ */ React.createElement("textarea", { style: { ...inp, height: "200px", resize: "vertical" }, value: message, onChange: (e) => setMessage(e.target.value), placeholder: "Type your message here..." })), /* @__PURE__ */ React.createElement("button", { onClick: send, disabled: busy, style: { ...btn, width: "100%", opacity: busy ? 0.7 : 1 } }, busy ? "Sending..." : "Send Email"));
+  }
   function AdminDashboard({ onBack, adminUser }) {
     var _a, _b;
     const [subTab, setSubTab] = useState("overview");
@@ -7350,7 +7384,7 @@ ${sectionsHtml}
         exportClassSummary,
         onProjectTest: (phase) => setProjectMode({ phase })
       }
-    ), subTab === "sasams_submits" && /* @__PURE__ */ React.createElement(SasamsAdminSubmissionsTab, { adminUser }), subTab === "reading" && /* @__PURE__ */ React.createElement(ReadingResultsTab, { reading }), subTab === "discipline" && /* @__PURE__ */ React.createElement(DisciplineAdminTab, { adminUser }), subTab === "learners" && /* @__PURE__ */ React.createElement(LearnersAdminTab, { overrides, setOverrides, setAssessments }), subTab === "moderation" && /* @__PURE__ */ React.createElement(ModerationToolsTab, { adminAccess: true }), subTab === "registrations" && /* @__PURE__ */ React.createElement(TeacherRegistrationsTab, null), subTab === "teacher_audit" && /* @__PURE__ */ React.createElement(TeacherAuditTab, { events: auditEvents, setEvents: setAuditEvents }), subTab === "assistant" && /* @__PURE__ */ React.createElement(TraeAssistantTab, null), subTab === "chats" && /* @__PURE__ */ React.createElement(ChatsAdminTab, { chats, setChats }), subTab === "audit" && /* @__PURE__ */ React.createElement(AuditAdminTab, null), projectMode && /* @__PURE__ */ React.createElement(
+    ), subTab === "sasams_submits" && /* @__PURE__ */ React.createElement(SasamsAdminSubmissionsTab, { adminUser }), subTab === "reading" && /* @__PURE__ */ React.createElement(ReadingResultsTab, { reading }), subTab === "discipline" && /* @__PURE__ */ React.createElement(DisciplineAdminTab, { adminUser }), subTab === "learners" && /* @__PURE__ */ React.createElement(LearnersAdminTab, { overrides, setOverrides, setAssessments }), subTab === "moderation" && /* @__PURE__ */ React.createElement(ModerationToolsTab, { adminAccess: true }), subTab === "registrations" && /* @__PURE__ */ React.createElement(TeacherRegistrationsTab, null), subTab === "teacher_audit" && /* @__PURE__ */ React.createElement(TeacherAuditTab, { events: auditEvents, setEvents: setAuditEvents }), subTab === "assistant" && /* @__PURE__ */ React.createElement(TraeAssistantTab, null), subTab === "email" && /* @__PURE__ */ React.createElement(EmailAdminTab, null), subTab === "chats" && /* @__PURE__ */ React.createElement(ChatsAdminTab, { chats, setChats }), subTab === "audit" && /* @__PURE__ */ React.createElement(AuditAdminTab, null), projectMode && /* @__PURE__ */ React.createElement(
       ProjectTestView,
       {
         initialPhase: projectMode.phase,
