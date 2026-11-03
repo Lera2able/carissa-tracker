@@ -20,6 +20,9 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 const DEFAULT_SUPABASE_URL = "https://vousucfboetqtppjywlg.supabase.co";
+const EMAIL_SENDER_DOMAIN = "carissaprimary.co.za";
+const DEFAULT_EMAIL_FROM = `noreply@${EMAIL_SENDER_DOMAIN}`;
+const MAX_EMAIL_RECIPIENTS = 50;
 const COOKIE_NAMES = {
   teacher: "carissa_tracker_teacher_session",
   learner: "carissa_tracker_learner_session",
@@ -1243,6 +1246,107 @@ async function requireAdminTeacher(request, env, corsOrigin) {
   return { ok: true, session };
 }
 
+function emailAddressOf(value) {
+  if (typeof value === "string") return value.trim().toLowerCase();
+  if (value && typeof value === "object" && typeof value.email === "string") {
+    return value.email.trim().toLowerCase();
+  }
+  return "";
+}
+
+function isValidEmailAddress(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function htmlToPlainText(html) {
+  return String(html)
+    .replace(/<(script|style)[\s\S]*?<\/\1>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|h[1-6]|li|tr|table)>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function emailErrorStatus(code) {
+  if (code === "E_RATE_LIMIT_EXCEEDED" || code === "E_DAILY_LIMIT_EXCEEDED") return 429;
+  if (code === "E_ACCOUNT_SUSPENDED") return 503;
+  if (typeof code === "string" && code.startsWith("E_") && code !== "E_DELIVERY_FAILED" && code !== "E_INTERNAL_SERVER_ERROR") {
+    return 400;
+  }
+  return 502;
+}
+
+async function handleEmailSend(request, env, corsOrigin) {
+  const auth = await requireAdminTeacher(request, env, corsOrigin);
+  if (!auth.ok) return auth.res;
+
+  if (!env.EMAIL) {
+    return jsonResponse({ error: "The EMAIL binding is not configured on this Worker." }, 500, corsOrigin);
+  }
+
+  const body = await readJsonBody(request);
+  if (!body || typeof body !== "object") {
+    return jsonResponse({ error: "Invalid JSON body." }, 400, corsOrigin);
+  }
+
+  const rawRecipients = Array.isArray(body.to) ? body.to : [body.to];
+  const to = rawRecipients.map(emailAddressOf).filter(Boolean);
+  if (!to.length) {
+    return jsonResponse({ error: "At least one recipient is required in 'to'." }, 400, corsOrigin);
+  }
+  if (to.length > MAX_EMAIL_RECIPIENTS) {
+    return jsonResponse({ error: `A maximum of ${MAX_EMAIL_RECIPIENTS} recipients is allowed.` }, 400, corsOrigin);
+  }
+  const invalidRecipient = to.find((address) => !isValidEmailAddress(address));
+  if (invalidRecipient) {
+    return jsonResponse({ error: `Invalid recipient address: ${invalidRecipient}` }, 400, corsOrigin);
+  }
+
+  const from = emailAddressOf(body.from) || DEFAULT_EMAIL_FROM;
+  if (!isValidEmailAddress(from) || !from.endsWith(`@${EMAIL_SENDER_DOMAIN}`)) {
+    return jsonResponse({ error: `'from' must be an address on ${EMAIL_SENDER_DOMAIN}.` }, 400, corsOrigin);
+  }
+
+  const subject = String(body.subject || "").trim();
+  if (!subject) {
+    return jsonResponse({ error: "A 'subject' is required." }, 400, corsOrigin);
+  }
+
+  const html = typeof body.html === "string" ? body.html : "";
+  const text = typeof body.text === "string" && body.text.trim() ? body.text : html ? htmlToPlainText(html) : "";
+  if (!html && !text) {
+    return jsonResponse({ error: "Provide 'html' and/or 'text' content." }, 400, corsOrigin);
+  }
+
+  const message = { to, from, subject };
+  if (html) message.html = html;
+  if (text) message.text = text;
+
+  const replyTo = emailAddressOf(body.replyTo);
+  if (replyTo) {
+    if (!isValidEmailAddress(replyTo)) {
+      return jsonResponse({ error: `Invalid replyTo address: ${replyTo}` }, 400, corsOrigin);
+    }
+    message.replyTo = replyTo;
+  }
+
+  try {
+    const result = await env.EMAIL.send(message);
+    return jsonResponse({ success: true, messageId: result?.messageId || null, to, from }, 200, corsOrigin);
+  } catch (error) {
+    return jsonResponse(
+      { success: false, error: error?.message || "Email sending failed.", code: error?.code || null },
+      emailErrorStatus(error?.code),
+      corsOrigin,
+    );
+  }
+}
+
 async function handleLearnWorldPurgeRemovedGames(request, env, corsOrigin) {
   const auth = await requireAdminTeacher(request, env, corsOrigin);
   if (!auth.ok) return auth.res;
@@ -2396,6 +2500,14 @@ export default {
         return await handleLearnWorldPurgeRemovedGames(request, env, corsOrigin);
       } catch (error) {
         return jsonResponse({ error: error?.message || "LearnWorld purge failed" }, 500, corsOrigin);
+      }
+    }
+    if (url.pathname === "/api/email/send") {
+      if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handleEmailSend(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Email send failed" }, 500, corsOrigin);
       }
     }
     if (url.pathname !== "/api/ai") {

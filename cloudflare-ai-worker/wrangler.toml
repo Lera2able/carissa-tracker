@@ -2,6 +2,11 @@ name = "carissa-tracker-ai"
 main = "src/index.js"
 compatibility_date = "2026-07-15"
 
+# Cloudflare Email Sending. carissaprimary.co.za is onboarded, so the Worker can
+# send with env.EMAIL.send() and needs no API token.
+[[send_email]]
+name = "EMAIL"
+
 # Ensure the API is reachable under the tracker domain.
 routes = [
   { pattern = "tracker.carissaprimary.co.za/api/*", zone_name = "carissaprimary.co.za" }
