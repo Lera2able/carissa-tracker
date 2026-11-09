@@ -8677,7 +8677,7 @@ ${sectionsHtml}
         showMsg,
         onAudit: (type, r) => logTeacherAudit(`${type}:${String((r == null ? void 0 : r.title) || "").slice(0, 40)}`, selClass)
       }
-    ), tab === "resources" && /* @__PURE__ */ React.createElement(ResourcesLibrary, { resources, onAudit: (type, r) => logTeacherAudit(`${type}:${String((r == null ? void 0 : r.title) || "").slice(0, 40)}`, selClass) })) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px", background: "white", padding: "8px", borderRadius: "12px", boxShadow: "0 4px 14px rgba(0,0,0,0.06)" } }, [
+    ), tab === "resources" && /* @__PURE__ */ React.createElement(ResourcesLibrary, { resources: resources.filter((r) => adminAccess || !isMockExamUrl(r == null ? void 0 : r.url)), onAudit: (type, r) => logTeacherAudit(`${type}:${String((r == null ? void 0 : r.title) || "").slice(0, 40)}`, selClass) })) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px", background: "white", padding: "8px", borderRadius: "12px", boxShadow: "0 4px 14px rgba(0,0,0,0.06)" } }, [
       ["dashboard", `\u{1F3E0} Dashboard`],
       ["assessments", `\u{1F4DD} Assessments`],
       ...teacherAuth ? [["sasams_marks", "\u{1F9EE} SASAMS Marks"]] : [],
@@ -8793,7 +8793,7 @@ ${sectionsHtml}
         showMsg,
         onAudit: (type, r) => logTeacherAudit(`${type}:${String((r == null ? void 0 : r.title) || "").slice(0, 40)}`, selClass)
       }
-    ), tab === "resources" && /* @__PURE__ */ React.createElement(ResourcesLibrary, { resources, onAudit: (type, r) => logTeacherAudit(`${type}:${String((r == null ? void 0 : r.title) || "").slice(0, 40)}`, selClass) })));
+    ), tab === "resources" && /* @__PURE__ */ React.createElement(ResourcesLibrary, { resources: resources.filter((r) => adminAccess || !isMockExamUrl(r == null ? void 0 : r.url)), onAudit: (type, r) => logTeacherAudit(`${type}:${String((r == null ? void 0 : r.title) || "").slice(0, 40)}`, selClass) })));
   }
   function TeacherSasamsMarksTab({ teacherAuth, selClass, sharedAdminEmails, showMsg, onAudit, onOpenLearnerReports, setOverrides }) {
     var _a, _b;
@@ -12953,7 +12953,7 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
       "sight word safari (grade 1)",
       "letter hunt (grade 1)"
     ]), []);
-    const games = resources.filter(isLearnWorldGameResource).filter((r) => !REMOVED_LEARNWORLD_TITLES.has(String((r == null ? void 0 : r.title) || "").trim().toLowerCase()));
+    const games = resources.filter(isLearnWorldGameResource).filter((r) => adminAccess || !isMockExamUrl(r == null ? void 0 : r.url)).filter((r) => !REMOVED_LEARNWORLD_TITLES.has(String((r == null ? void 0 : r.title) || "").trim().toLowerCase()));
     const isTypingGame = useCallback((r) => {
       const title = String((r == null ? void 0 : r.title) || "").toLowerCase();
       const subject = String((r == null ? void 0 : r.subject) || "").toLowerCase();
