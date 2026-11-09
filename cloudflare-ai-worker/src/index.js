@@ -26,6 +26,7 @@ const MAX_EMAIL_RECIPIENTS = 50;
 const COOKIE_NAMES = {
   teacher: "carissa_tracker_teacher_session",
   learner: "carissa_tracker_learner_session",
+  onti: "carissa_tracker_onti_session",
 };
 const TEACHER_SESSION_MAX_AGE = 60 * 60 * 12;
 const TEACHER_PERSIST_MAX_AGE = 60 * 60 * 24 * 30;
@@ -542,6 +543,101 @@ async function handleLearnerLogout(_request, _env, corsOrigin) {
   return jsonResponse({ ok: true }, 200, corsOrigin, {
     "Set-Cookie": clearCookie(COOKIE_NAMES.learner),
   });
+}
+
+
+// ---------- Onti private dashboard (owner + Onti only) ----------
+async function getOntiAccess(request, env) {
+  const cookies = parseCookies(request.headers.get("Cookie") || "");
+  const teacher = await decodeSignedSession(env, cookies[COOKIE_NAMES.teacher]);
+  const rows = await supabaseGet(env, "onti_settings", { select: "*", limit: "1" });
+  const settings = Array.isArray(rows) ? rows[0] : null;
+  if (!settings) return { role: null, settings: null };
+  if (teacher && String(teacher.email || "").toLowerCase() === String(settings.owner_email).toLowerCase()) {
+    return { role: "owner", settings };
+  }
+  const onti = await decodeSignedSession(env, cookies[COOKIE_NAMES.onti]);
+  if (onti && onti.type === "onti") return { role: "onti", settings };
+  return { role: null, settings };
+}
+
+async function handleOntiLogin(request, env, corsOrigin) {
+  const body = await readJsonBody(request);
+  const username = String(body?.username || "").trim().toLowerCase();
+  const pin = String(body?.pin || "").trim();
+  const rows = await supabaseGet(env, "onti_settings", { select: "*", limit: "1" });
+  const settings = Array.isArray(rows) ? rows[0] : null;
+  if (!settings || !username || username !== String(settings.username).toLowerCase() || pin !== String(settings.pin)) {
+    return jsonResponse({ error: "Invalid login." }, 401, corsOrigin);
+  }
+  const maxAge = 60 * 60 * 24 * 14;
+  const session = buildSessionPayload({ type: "onti", username: settings.username }, maxAge);
+  const cookie = await createSessionCookie(env, COOKIE_NAMES.onti, session, maxAge);
+  return jsonResponse({ role: "onti" }, 200, corsOrigin, { "Set-Cookie": cookie });
+}
+
+async function handleOntiData(request, env, corsOrigin) {
+  const { role, settings } = await getOntiAccess(request, env);
+  if (!role) return jsonResponse({ error: "Not signed in." }, 401, corsOrigin);
+  const [subjects, marks, activities] = await Promise.all([
+    supabaseGet(env, "onti_subjects", { select: "*", order: "sort.asc" }),
+    supabaseGet(env, "onti_marks", { select: "*", order: "taken_on.desc.nullslast,created_at.desc" }),
+    supabaseGet(env, "onti_activities", { select: "*", order: "due_on.asc.nullslast,created_at.asc" }),
+  ]);
+  const out = { role, subjects, marks, activities, username: settings.username };
+  if (role === "owner") out.pin = settings.pin;
+  return jsonResponse(out, 200, corsOrigin);
+}
+
+const ONTI_TABLES = { subject: "onti_subjects", mark: "onti_marks", activity: "onti_activities" };
+const ONTI_FIELDS = {
+  subject: ["name", "paper", "exam_date", "total_marks", "sort", "scope"],
+  mark: ["subject_id", "title", "kind", "mark", "total", "taken_on", "notes"],
+  activity: ["subject_id", "title", "kind", "due_on", "done", "notes"],
+};
+
+async function handleOntiSave(request, env, corsOrigin) {
+  const { role } = await getOntiAccess(request, env);
+  if (!role) return jsonResponse({ error: "Not signed in." }, 401, corsOrigin);
+  const body = await readJsonBody(request);
+  const op = String(body?.op || "");
+  const entity = String(body?.entity || "");
+  if (op === "set_pin") {
+    if (role !== "owner") return jsonResponse({ error: "Not allowed." }, 403, corsOrigin);
+    const pin = String(body?.pin || "").trim();
+    if (!/^\d{4,8}$/.test(pin)) return jsonResponse({ error: "PIN must be 4 to 8 digits." }, 400, corsOrigin);
+    await supabasePatch(env, "onti_settings", { id: "eq.1" }, { pin });
+    return jsonResponse({ ok: true }, 200, corsOrigin);
+  }
+  const table = ONTI_TABLES[entity];
+  if (!table) return jsonResponse({ error: "Unknown item." }, 400, corsOrigin);
+  if (role === "onti") {
+    // Onti may only tick activities done or not done.
+    if (!(entity === "activity" && op === "update" && body?.id && Object.keys(body?.values || {}).every((k) => k === "done"))) {
+      return jsonResponse({ error: "Only your parent can change this." }, 403, corsOrigin);
+    }
+  }
+  const values = {};
+  for (const k of ONTI_FIELDS[entity]) {
+    if (body?.values && k in body.values) values[k] = body.values[k] === "" ? null : body.values[k];
+  }
+  if (op === "create") {
+    const rows = await supabasePost(env, table, values);
+    return jsonResponse({ row: Array.isArray(rows) ? rows[0] : rows }, 200, corsOrigin);
+  }
+  if (op === "update" && body?.id) {
+    const rows = await supabasePatch(env, table, { id: `eq.${body.id}` }, values);
+    return jsonResponse({ row: Array.isArray(rows) ? rows[0] : rows }, 200, corsOrigin);
+  }
+  if (op === "delete" && body?.id) {
+    await supabaseDelete(env, table, { id: `eq.${body.id}` });
+    return jsonResponse({ ok: true }, 200, corsOrigin);
+  }
+  return jsonResponse({ error: "Bad request." }, 400, corsOrigin);
+}
+
+async function handleOntiLogout(_request, _env, corsOrigin) {
+  return jsonResponse({ ok: true }, 200, corsOrigin, { "Set-Cookie": clearCookie(COOKIE_NAMES.onti) });
 }
 
 async function fetchAllLearnerResults(env) {
@@ -2481,6 +2577,13 @@ export default {
     if (url.pathname === "/api/auth/teacher/logout") {
       if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
       return handleTeacherLogout(request, env, corsOrigin);
+    }
+    if (url.pathname.startsWith("/api/onti/")) {
+      const routes = { "/api/onti/login": ["POST", handleOntiLogin], "/api/onti/data": ["GET", handleOntiData], "/api/onti/save": ["POST", handleOntiSave], "/api/onti/logout": ["POST", handleOntiLogout] };
+      const r = routes[url.pathname];
+      if (!r) return jsonResponse({ error: "Not found" }, 404, corsOrigin);
+      if (request.method !== r[0]) return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try { return await r[1](request, env, corsOrigin); } catch (error) { return jsonResponse({ error: error?.message || "Request failed" }, 500, corsOrigin); }
     }
     if (url.pathname === "/api/auth/learner/login") {
       if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);

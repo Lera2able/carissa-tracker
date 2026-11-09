@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en-ZA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Onti's Study Dashboard | Carissa eLearning</title>
+<style>
+:root{--bg:#f4f1fa;--card:#fff;--ink:#2a2340;--mute:#6f6888;--pri:#6d3fc0;--pri2:#ede5fb;--ok:#1f8a4c;--warn:#c77700;--bad:#c0392b;--line:#e3dcf1}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.45}
+header{background:linear-gradient(135deg,#6d3fc0,#9a5fd8);color:#fff;padding:18px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header h1{margin:0;font-size:1.3rem}
+header small{opacity:.85}
+main{max-width:1000px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 1px 3px rgba(60,30,100,.06)}
+button,.btn{font:inherit;border:0;border-radius:9px;padding:8px 14px;background:var(--pri);color:#fff;cursor:pointer}
+button.ghost{background:var(--pri2);color:var(--pri)}
+button.danger{background:#fbe9e7;color:var(--bad)}
+button.small{padding:4px 9px;font-size:.85rem}
+input,select,textarea{font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;width:100%;background:#fff}
+label{display:block;font-size:.85rem;color:var(--mute);margin:8px 0 3px}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1;min-width:140px}
+.login{max-width:360px;margin:60px auto}
+.err{color:var(--bad);margin-top:8px;min-height:1.2em}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.subj{cursor:pointer;border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff}
+.subj:hover{border-color:var(--pri)}
+.subj h3{margin:0 0 4px;font-size:1rem}
+.pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:.78rem;background:var(--pri2);color:var(--pri)}
+.pill.soon{background:#fff1da;color:var(--warn)}.pill.past{background:#e8f6ee;color:var(--ok)}
+.muted{color:var(--mute);font-size:.9rem}
+table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left;font-size:.92rem}
+.topic{margin:8px 0}.topic b{display:block}.topic ul{margin:3px 0 0 20px;padding:0}
+.chk{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--line)}
+.chk input{width:auto}.chk.done span{text-decoration:line-through;color:var(--mute)}.chk span{flex:1}
+.tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.tabs button{background:var(--pri2);color:var(--pri)}.tabs button.on{background:var(--pri);color:#fff}
+.hidden{display:none}
+.big{font-size:2rem;font-weight:700;color:var(--pri)}
+@media print{header button,.noprint{display:none}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function(){
+  var API = "/api/onti/";
+  var D = null, view = "home", subjId = null, tab = "scope";
+  var app = document.getElementById("app");
+
+  function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+  function api(path, method, body){
+    return fetch(API+path,{method:method||"GET",credentials:"include",headers:{"content-type":"application/json"},body:body?JSON.stringify(body):undefined})
+      .then(function(r){return r.json().catch(function(){return {};}).then(function(j){if(!r.ok){var e=new Error(j.error||"Request failed");e.status=r.status;throw e;}return j;});});
+  }
+  function load(){return api("data").then(function(j){D=j;});}
+  function today(){var d=new Date();d.setHours(0,0,0,0);return d;}
+  function daysTo(s){if(!s)return null;var p=s.split("-");var d=new Date(+p[0],+p[1]-1,+p[2]);return Math.round((d-today())/864e5);}
+  function nice(s){if(!s)return "Date to be added";var p=s.split("-");var d=new Date(+p[0],+p[1]-1,+p[2]);return d.toLocaleDateString("en-ZA",{weekday:"short",day:"numeric",month:"short"});}
+  function subjName(s){return s.name+(s.paper?" ("+s.paper+")":"");}
+  function owner(){return D&&D.role==="owner";}
+
+  function loginScreen(msg){
+    app.innerHTML='<div class="card login"><h2 style="margin-top:0">Onti\'s study dashboard</h2><p class="muted">Sign in to see your exam timetable and what to study.</p>'+
+      '<label>Username</label><input id="u" autocomplete="username" value="onti">'+
+      '<label>PIN</label><input id="p" type="password" inputmode="numeric" autocomplete="current-password">'+
+      '<p class="err" id="e">'+esc(msg||"")+'</p><button id="go">Sign in</button>'+
+      '<p class="muted" style="margin-top:14px">Parent? Sign in as a teacher on the Carissa tracker first, then open this page again.</p></div>';
+    function go(){api("login","POST",{username:document.getElementById("u").value,pin:document.getElementById("p").value})
+      .then(load).then(render).catch(function(e){document.getElementById("e").textContent=e.message;});}
+    document.getElementById("go").onclick=go;
+    document.getElementById("p").onkeydown=function(e){if(e.key==="Enter")go();};
+  }
+
+  function header(){
+    return '<header><div><h1>Onti\'s Study Dashboard</h1><small>Grade 7 final assessments 2026'+(owner()?' &middot; parent view':'')+'</small></div><div>'+
+      (view!=="home"?'<button class="ghost" id="back">&larr; All subjects</button> ':'')+
+      (D.role==="onti"?'<button class="ghost" id="out">Sign out</button>':'')+'</div></header>';
+  }
+  function bind(){
+    var b=document.getElementById("back"); if(b) b.onclick=function(){view="home";render();};
+    var o=document.getElementById("out"); if(o) o.onclick=function(){api("logout","POST").then(function(){D=null;loginScreen();});};
+  }
+
+  function avg(sid){
+    var m=D.marks.filter(function(x){return x.subject_id===sid&&x.mark!=null&&x.total>0;});
+    if(!m.length) return null;
+    var sum=0;m.forEach(function(x){sum+=x.mark/x.total*100;});return Math.round(sum/m.length);
+  }
+
+  function home(){
+    var subs=D.subjects.slice().sort(function(a,b){return (a.exam_date||"9")>(b.exam_date||"9")?1:-1;});
+    var next=subs.filter(function(s){var d=daysTo(s.exam_date);return d!=null&&d>=0;})[0];
+    var h=header()+'<main>';
+    if(next){var d=daysTo(next.exam_date);
+      h+='<div class="card"><div class="muted">Next exam</div><div class="big">'+esc(subjName(next))+'</div><div>'+esc(nice(next.exam_date))+' &middot; '+(d===0?'<b>today</b>':d===1?'tomorrow':'in '+d+' days')+'</div></div>';
+    } else h+='<div class="card"><b>All exams done. Well done, Onti!</b></div>';
+    var openActs=D.activities.filter(function(a){return !a.done;});
+    h+='<div class="card"><h3 style="margin-top:0">Timetable and subjects</h3><div class="grid">';
+    subs.forEach(function(s){
+      var d=daysTo(s.exam_date),pc=d==null?'':d<0?'past':d<=3?'soon':'';
+      var a=avg(s.id),n=openActs.filter(function(x){return x.subject_id===s.id;}).length;
+      var topics=(s.scope||[]).length;
+      h+='<div class="subj" data-id="'+s.id+'"><h3>'+esc(subjName(s))+'</h3><span class="pill '+pc+'">'+esc(nice(s.exam_date))+(s.total_marks?' &middot; '+s.total_marks+' marks':'')+'</span>'+
+        '<div class="muted" style="margin-top:6px">'+(topics?topics+' scope topics':'Scope not added yet')+(n?' &middot; '+n+' to do':'')+(a!=null?' &middot; avg '+a+'%':'')+'</div></div>';
+    });
+    h+='</div></div>';
+    if(owner()){
+      h+='<div class="card noprint"><h3 style="margin-top:0">Parent settings</h3><div class="row"><div><label>Onti\'s username</label><input value="'+esc(D.username)+'" disabled></div>'+
+        '<div><label>Onti\'s PIN</label><input id="pin" value="'+esc(D.pin)+'"></div><div style="align-self:end"><button id="savepin">Change PIN</button></div></div>'+
+        '<p class="muted">Only you (signed in as a teacher) and Onti can open this page. Nothing here is visible to learners or other teachers.</p>'+
+        '<button class="ghost small" id="addsub">+ Add subject</button></div>';
+    }
+    h+='</main>';
+    app.innerHTML=h;bind();
+    Array.prototype.forEach.call(app.querySelectorAll(".subj"),function(el){el.onclick=function(){subjId=el.getAttribute("data-id");tab="scope";view="subj";render();};});
+    if(owner()){
+      document.getElementById("savepin").onclick=function(){api("save","POST",{op:"set_pin",pin:document.getElementById("pin").value}).then(function(){alert("PIN changed.");return load();}).then(render).catch(function(e){alert(e.message);});};
+      document.getElementById("addsub").onclick=function(){var n=prompt("Subject name?");if(!n)return;save("create","subject",null,{name:n,sort:D.subjects.length+1});};
+    }
+  }
+
+  function save(op,entity,id,values){
+    return api("save","POST",{op:op,entity:entity,id:id,values:values}).then(load).then(render).catch(function(e){alert(e.message);});
+  }
+
+  function scopeToText(scope){
+    return (scope||[]).map(function(t){return "# "+t.topic+"\n"+(t.items||[]).map(function(i){return "- "+i;}).join("\n");}).join("\n\n");
+  }
+  function textToScope(txt){
+    var out=[],cur=null;
+    txt.split(/\r?\n/).forEach(function(l){
+      l=l.trim();if(!l)return;
+      if(l[0]==="#"){cur={topic:l.replace(/^#+\s*/,""),items:[]};out.push(cur);}
+      else{if(!cur){cur={topic:"General",items:[]};out.push(cur);}cur.items.push(l.replace(/^[-*]\s*/,""));}
+    });
+    return out;
+  }
+
+  function subject(){
+    var s=D.subjects.filter(function(x){return x.id===subjId;})[0];
+    if(!s){view="home";return render();}
+    var h=header()+'<main><div class="card"><h2 style="margin:0">'+esc(subjName(s))+'</h2><div class="muted">'+esc(nice(s.exam_date))+(s.total_marks?' &middot; '+s.total_marks+' marks':'')+'</div></div>';
+    h+='<div class="tabs"><button data-t="scope" class="'+(tab==="scope"?'on':'')+'">Scope</button><button data-t="acts" class="'+(tab==="acts"?'on':'')+'">Activities</button><button data-t="marks" class="'+(tab==="marks"?'on':'')+'">Marks</button>'+(owner()?'<button data-t="edit" class="'+(tab==="edit"?'on':'')+'">Edit subject</button>':'')+'</div><div class="card">';
+    if(tab==="scope"){
+      if(!(s.scope||[]).length) h+='<p class="muted">The scope for this subject has not been added yet.</p>';
+      (s.scope||[]).forEach(function(t){h+='<div class="topic"><b>'+esc(t.topic)+'</b>'+((t.items||[]).length?'<ul>'+t.items.map(function(i){return '<li>'+esc(i)+'</li>';}).join('')+'</ul>':'')+'</div>';});
+    }
+    if(tab==="acts"){
+      var acts=D.activities.filter(function(a){return a.subject_id===s.id;});
+      if(!acts.length) h+='<p class="muted">No activities yet.</p>';
+      acts.forEach(function(a){
+        h+='<div class="chk '+(a.done?'done':'')+'"><input type="checkbox" data-a="'+a.id+'" '+(a.done?'checked':'')+'><span>'+esc(a.title)+(a.kind?' <span class="pill">'+esc(a.kind)+'</span>':'')+(a.due_on?' <span class="muted">due '+esc(nice(a.due_on))+'</span>':'')+(a.notes?'<br><span class="muted">'+esc(a.notes)+'</span>':'')+'</span>'+(owner()?'<button class="danger small" data-da="'+a.id+'">Delete</button>':'')+'</div>';
+      });
+      if(owner()) h+='<h4>Add activity</h4><div class="row"><div><label>What to do</label><input id="at"></div><div><label>Type</label><select id="ak"><option>Revision</option><option>Practice exam</option><option>Past paper</option><option>Worksheet</option><option>Homework</option></select></div><div><label>Due</label><input id="ad" type="date"></div></div><label>Notes</label><input id="an"><p><button id="addact">Add activity</button></p>';
+    }
+    if(tab==="marks"){
+      var ms=D.marks.filter(function(m){return m.subject_id===s.id;}),a=avg(s.id);
+      if(a!=null) h+='<p><b>Average: '+a+'%</b></p>';
+      if(!ms.length) h+='<p class="muted">No marks captured yet.</p>'; else {
+        h+='<table><tr><th>Assessment</th><th>Type</th><th>Date</th><th>Mark</th><th></th></tr>';
+        ms.forEach(function(m){h+='<tr><td>'+esc(m.title)+(m.notes?'<br><span class="muted">'+esc(m.notes)+'</span>':'')+'</td><td>'+esc(m.kind)+'</td><td>'+esc(m.taken_on?nice(m.taken_on):'')+'</td><td>'+(m.mark!=null?esc(m.mark)+(m.total?' / '+esc(m.total)+' ('+Math.round(m.mark/m.total*100)+'%)':''):'-')+'</td><td>'+(owner()?'<button class="danger small" data-dm="'+m.id+'">Delete</button>':'')+'</td></tr>';});
+        h+='</table>';
+      }
+      if(owner()) h+='<h4>Add mark</h4><div class="row"><div><label>Title</label><input id="mt" placeholder="e.g. Practice paper 1"></div><div><label>Type</label><select id="mk"><option>Practice exam</option><option>Test</option><option>Class test</option><option>Past paper</option><option>Final exam</option></select></div></div><div class="row"><div><label>Mark</label><input id="mm" type="number" step="any"></div><div><label>Out of</label><input id="mo" type="number" step="any" value="'+(s.total_marks||'')+'"></div><div><label>Date</label><input id="md" type="date"></div></div><label>Notes</label><input id="mn"><p><button id="addmark">Add mark</button></p>';
+    }
+    if(tab==="edit"&&owner()){
+      h+='<div class="row"><div><label>Name</label><input id="en" value="'+esc(s.name)+'"></div><div><label>Paper</label><input id="ep" value="'+esc(s.paper||'')+'"></div></div><div class="row"><div><label>Exam date</label><input id="ed" type="date" value="'+esc(s.exam_date||'')+'"></div><div><label>Total marks</label><input id="et" type="number" value="'+esc(s.total_marks||'')+'"></div></div>'+
+        '<label>Scope (use # for a topic heading and - for each point)</label><textarea id="es" rows="14">'+esc(scopeToText(s.scope))+'</textarea><p><button id="savesub">Save subject</button> <button class="danger" id="delsub">Delete subject</button></p>';
+    }
+    h+='</div></main>';
+    app.innerHTML=h;bind();
+    Array.prototype.forEach.call(app.querySelectorAll(".tabs button"),function(b){b.onclick=function(){tab=b.getAttribute("data-t");render();};});
+    Array.prototype.forEach.call(app.querySelectorAll("input[data-a]"),function(c){c.onchange=function(){save("update","activity",c.getAttribute("data-a"),{done:c.checked});};});
+    Array.prototype.forEach.call(app.querySelectorAll("[data-da]"),function(b){b.onclick=function(){if(confirm("Delete this activity?"))save("delete","activity",b.getAttribute("data-da"));};});
+    Array.prototype.forEach.call(app.querySelectorAll("[data-dm]"),function(b){b.onclick=function(){if(confirm("Delete this mark?"))save("delete","mark",b.getAttribute("data-dm"));};});
+    function v(id){return document.getElementById(id).value;}
+    var aa=document.getElementById("addact");if(aa)aa.onclick=function(){if(!v("at").trim())return;save("create","activity",null,{subject_id:s.id,title:v("at").trim(),kind:v("ak"),due_on:v("ad"),notes:v("an")});};
+    var am=document.getElementById("addmark");if(am)am.onclick=function(){if(!v("mt").trim())return;save("create","mark",null,{subject_id:s.id,title:v("mt").trim(),kind:v("mk"),mark:v("mm"),total:v("mo"),taken_on:v("md"),notes:v("mn")});};
+    var ss=document.getElementById("savesub");if(ss)ss.onclick=function(){save("update","subject",s.id,{name:v("en").trim(),paper:v("ep").trim(),exam_date:v("ed"),total_marks:v("et"),scope:textToScope(v("es"))});};
+    var ds=document.getElementById("delsub");if(ds)ds.onclick=function(){if(confirm("Delete this subject with all its marks and activities?")){view="home";save("delete","subject",s.id);}};
+  }
+
+  function render(){
+    if(!D) return loginScreen();
+    if(view==="subj") subject(); else home();
+  }
+
+  load().then(render).catch(function(){loginScreen();});
+})();
+</script>
+</body>
+</html>
