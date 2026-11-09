@@ -1050,7 +1050,7 @@ async function handleMockExamAssign(request, env, corsOrigin) {
     return jsonResponse({ error: "You do not have access to that class." }, 403, corsOrigin);
   }
   const resourceId = body?.resource_id;
-  const resRows = await supabaseGet(env, "carissa_resources", { id: `eq.${resourceId}`, select: "id,url", limit: "1" });
+  const resRows = await supabaseGet(env, "carissa_resources", { id: `eq.${resourceId}`, select: "id,url,title", limit: "1" });
   const resource = Array.isArray(resRows) ? resRows[0] : null;
   if (!resource || !String(resource.url || "").toLowerCase().includes("mock-exam")) {
     return jsonResponse({ error: "That resource is not the mock exam." }, 400, corsOrigin);
