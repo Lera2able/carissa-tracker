@@ -13045,40 +13045,39 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
     const examIds = new Set((resources || []).filter((r) => isMockExamUrl(r == null ? void 0 : r.url) && !String((r == null ? void 0 : r.id) || "").startsWith("builtin-")).map((r) => String(r.id)));
     const roster = CLASS_DATA[selClass] || [];
     const examAssignments = (assignments || []).filter((a) => a.class_name === selClass && examIds.has(String(a.resource_id)));
-    const byLearner = new Map(examAssignments.map((a) => [learnerNameKey(a.surname, a.firstname), a]));
+    const nameLc = (v) => String(v || "").trim().toLowerCase().replace(/\s+/g, " ");
+    const sameLearner = (a, l) => {
+      if (nameLc(a.surname) !== nameLc(l.surname)) return false;
+      const x = nameLc(a.firstname), y = nameLc(l.firstname);
+      return x === y || x.startsWith(y + " ") || y.startsWith(x + " ");
+    };
     const resultFor = (a) => a ? (learnerResults || []).find((r) => String(r.assignment_id) === String(a.id)) : null;
     const rows = roster.map((l) => {
-      const a = byLearner.get(learnerNameKey(l.surname, l.firstname));
+      const a = examAssignments.find((x) => sameLearner(x, l));
       return { l, a, r: resultFor(a) };
     });
     const done = rows.filter((x) => x.r);
     const avg = done.length ? Math.round(done.reduce((t, x) => t + Number(x.r.score || 0) / Math.max(1, Number(x.r.max_score || 40)) * 100, 0) / done.length) : null;
+    const assignLearners = async (list, label) => {
+      setBusy(true);
+      try {
+        const resourceId = await resolveBuiltInResourceId("builtin-grade4-english-mock-exam", resources);
+        const out = await apiRequest("/mock-exam/assign", { method: "POST", body: { class_name: selClass, resource_id: resourceId, learners: list.map((l) => ({ surname: l.surname, firstname: l.firstname })) } });
+        const fresh = await db.get("carissa_resource_assignments", `class_name=eq.${encodeURIComponent(selClass)}&order=created_at.desc&limit=20000`).catch(() => []);
+        if (setAssignments && Array.isArray(fresh)) setAssignments((prev) => [...fresh, ...(prev || []).filter((a) => a.class_name !== selClass)]);
+        showMsg && showMsg(`\u2713 Mock exam assigned to ${out.created} learner(s) in ${selClass}${label ? ` (${label})` : ""}.${out.skipped ? ` ${out.skipped} already had it.` : ""}`);
+      } catch (e) {
+        alert("Could not assign the exam: " + ((e == null ? void 0 : e.message) || "Unknown error"));
+      }
+      setBusy(false);
+    };
     const assignClass = async () => {
       if (!selClass || !roster.length) {
         alert("No learners were found on the class list for this class.");
         return;
       }
-      if (!confirm(`Assign the Grade 4 English Mock Exam to ALL learners in ${selClass}?
-
-Learners who already have it will be skipped.`)) return;
-      setBusy(true);
-      try {
-        const resourceId = await resolveBuiltInResourceId("builtin-grade4-english-mock-exam", resources);
-        const existing = await db.get("carissa_resource_assignments", `class_name=eq.${encodeURIComponent(selClass)}&resource_id=eq.${encodeURIComponent(resourceId)}&select=surname,firstname&limit=5000`).catch(() => []);
-        const have = new Set((existing || []).map((r) => learnerNameKey(r.surname, r.firstname)));
-        const teacherName = `${(teacherAuth == null ? void 0 : teacherAuth.first_name) || ""} ${(teacherAuth == null ? void 0 : teacherAuth.surname) || ""}`.trim() || (teacherAuth == null ? void 0 : teacherAuth.email) || "Teacher";
-        const missing = dedupeLearners(roster).filter((l) => !have.has(learnerNameKey(l.surname, l.firstname)));
-        for (let i = 0; i < missing.length; i += 80) {
-          const chunk = missing.slice(i, i + 80).map((l) => ({ resource_id: resourceId, class_name: selClass, assign_type: "class", assigned_by: teacherName, due_date: null, notes: "Grade 4 English Mock Exam", surname: l.surname, firstname: l.firstname }));
-          await db.post("carissa_resource_assignments", chunk, "return=minimal");
-        }
-        const fresh = await db.get("carissa_resource_assignments", `class_name=eq.${encodeURIComponent(selClass)}&order=created_at.desc`).catch(() => []);
-        if (setAssignments && Array.isArray(fresh)) setAssignments((prev) => [...fresh, ...(prev || []).filter((a) => a.class_name !== selClass)]);
-        showMsg && showMsg(`✓ Mock exam assigned to ${missing.length} learner(s) in ${selClass}.${roster.length - missing.length ? ` (${roster.length - missing.length} already had it)` : ""}`);
-      } catch (e) {
-        alert("Error: " + ((e == null ? void 0 : e.message) || "Could not assign the exam."));
-      }
-      setBusy(false);
+      if (!confirm(`Assign the Grade 4 English Mock Exam to ALL learners in ${selClass}?\n\nLearners who already have it will be skipped.`)) return;
+      await assignLearners(dedupeLearners(roster), "whole class");
     };
     const pill = (bg, fg, t) => /* @__PURE__ */ React.createElement("span", { style: { background: bg, color: fg, padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 800 } }, t);
     const th = { textAlign: "left", padding: "8px", borderBottom: "2px solid #e2e8f0", color: "#475569" };
@@ -13089,7 +13088,7 @@ Learners who already have it will be skipped.`)) return;
       const max = r ? Number(r.max_score || 40) : 40;
       const pct = r ? Math.round(Number(r.score || 0) / Math.max(1, max) * 100) : null;
       const status = r ? pill("#dcfce7", "#166534", "Completed") : !a ? pill("#f1f5f9", "#64748b", "Not assigned") : a.status === "in_progress" ? pill("#fef3c7", "#92400e", "In progress") : pill("#e0e7ff", "#3730a3", "Assigned");
-      return /* @__PURE__ */ React.createElement(React.Fragment, { key }, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { style: { ...td, fontWeight: 700 } }, l.surname, ", ", l.firstname), /* @__PURE__ */ React.createElement("td", { style: td }, status), /* @__PURE__ */ React.createElement("td", { style: { ...td, fontWeight: 800 } }, r ? `${r.score}/${max}` : "—"), /* @__PURE__ */ React.createElement("td", { style: td }, pct === null ? "—" : `${pct}%`), /* @__PURE__ */ React.createElement("td", { style: { ...td, color: "#64748b", fontSize: "13px" } }, r ? formatDateTimeZA(r.submitted_at) || "" : ""), /* @__PURE__ */ React.createElement("td", { style: { ...td, whiteSpace: "nowrap" } }, r && /* @__PURE__ */ React.createElement("button", { style: { ...sm, background: "#eef2ff", color: "#3730a3", marginRight: "6px" }, onClick: () => window.open(`grade4-english-mock-exam.html?review=1&assignment_id=${encodeURIComponent(a.id)}`, "_blank"), title: "See the whole test with the learner's answers, corrections and suggestions" }, "Details"), r && /* @__PURE__ */ React.createElement("button", { style: { ...sm, background: "#dc2626", color: "white" }, onClick: () => resetMark(a.id), title: "Remove this mark so the learner can try again" }, "♻ Reset"))), r && openNotes[key] && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 6, style: { padding: "8px 10px", background: "#f8fafc", fontSize: "13px", color: "#475569", borderBottom: "1px solid #e2e8f0" } }, r.learner_notes || "No details saved.")));
+      return /* @__PURE__ */ React.createElement(React.Fragment, { key }, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { style: { ...td, fontWeight: 700 } }, l.surname, ", ", l.firstname), /* @__PURE__ */ React.createElement("td", { style: td }, status), /* @__PURE__ */ React.createElement("td", { style: { ...td, fontWeight: 800 } }, r ? `${r.score}/${max}` : "—"), /* @__PURE__ */ React.createElement("td", { style: td }, pct === null ? "—" : `${pct}%`), /* @__PURE__ */ React.createElement("td", { style: { ...td, color: "#64748b", fontSize: "13px" } }, r ? formatDateTimeZA(r.submitted_at) || "" : ""), /* @__PURE__ */ React.createElement("td", { style: { ...td, whiteSpace: "nowrap" } }, !a && /* @__PURE__ */ React.createElement("button", { disabled: busy, style: { ...sm, background: "#16a34a", color: "white", marginRight: "6px" }, onClick: () => assignLearners([l], `${l.firstname} ${l.surname}`), title: "Give the mock exam to this learner only" }, "+ Assign"), r && /* @__PURE__ */ React.createElement("button", { style: { ...sm, background: "#eef2ff", color: "#3730a3", marginRight: "6px" }, onClick: () => window.open(`grade4-english-mock-exam.html?review=1&assignment_id=${encodeURIComponent(a.id)}`, "_blank"), title: "See the whole test with the learner's answers, corrections and suggestions" }, "Details"), r && /* @__PURE__ */ React.createElement("button", { style: { ...sm, background: "#dc2626", color: "white" }, onClick: () => resetMark(a.id), title: "Remove this mark so the learner can try again" }, "♻ Reset"))), r && openNotes[key] && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 6, style: { padding: "8px 10px", background: "#f8fafc", fontSize: "13px", color: "#475569", borderBottom: "1px solid #e2e8f0" } }, r.learner_notes || "No details saved.")));
     })))));
   }
   function LearnWorldGamesLibrary({ resources, selClass = "", teacherAuth = null, adminAccess = false, interventions = [], setAssignments, showMsg, onAudit }) {
