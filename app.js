@@ -240,7 +240,7 @@
       url: "./grade4-english-mock-exam.html",
       subject: "English",
       grade_range: "Grade 4",
-      description: "Digital CAPS-style mock exam (40 marks, 30 minutes): Comprehension, Visual Literacy, Summary and Language. Every learner gets a different scrambled paper. The test locks when time is up and is marked automatically (PIN locked).",
+      description: "Digital CAPS-style mock exam (40 marks, 30 minutes): Comprehension, Visual Literacy, Summary and Language. Every learner gets a different scrambled paper. The test locks when time is up and is marked automatically.",
       uploaded_by: "System",
       builtin: true
     },

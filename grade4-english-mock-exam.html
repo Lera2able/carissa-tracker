@@ -144,8 +144,7 @@
    ===================================================================== */
 const CONFIG = {
   DURATION_MIN: 30,            // exam length in minutes
-  START_PIN: '112233',         // PIN learners type to start (same PIN as the other assessments). '' = no PIN
-  TEACHER_PIN: '246810',       // PIN for teacher preview + marking memo
+  START_PIN: '',               // no PIN: learners are already signed in on their dashboard
   SHUFFLE_QUESTION_ORDER: true,// shuffle order of questions inside Q1 and Q2 for each learner
   RESULT_ENDPOINT: '/api/learner-results/upsert',
   ME_ENDPOINT: '/api/learner-results/me',
@@ -648,11 +647,9 @@ function showStart(note){
       </div>
       <div class="small" style="margin-top:10px">${LEARNER ? 'Learner: ' + esc(LEARNER) : ''}</div>`
       : `<div class="msg-err">This test must be opened from your <b>Learner Dashboard</b> so that your teacher receives your marks.</div>`}
-      <details class="teacher" ${IS_PREVIEW_URL ? 'open' : ''}>
+      ${TEACHER_OK && !hasAssign ? `<details class="teacher" open>
         <summary>Teacher options</summary>
         <div style="margin-top:10px">
-          <div class="small" style="margin-bottom:4px">Teacher PIN</div>
-          <input id="tpin" class="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="12" aria-label="Teacher PIN">
           <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             <select id="pvP" class="sel" style="width:auto"><option value="">Any passage</option>${PASSAGES.map((p, i) => `<option value="${i}">Passage ${p.id}: ${esc(p.title)}</option>`).join('')}</select>
             <select id="pvA" class="sel" style="width:auto"><option value="">Any advert</option>${ADS.map((a, i) => `<option value="${i}">Advert ${a.id}: ${esc(a.name)}</option>`).join('')}</select>
@@ -663,23 +660,27 @@ function showStart(note){
           </div>
           <div id="tmsg"></div>
         </div>
-      </details>
+      </details>` : ''}
     </div>
   </div>`;
   const sb = $('#startBtn');
   if (sb) sb.onclick = onStartClick;
   const pin = $('#pinIn'); if (pin) pin.addEventListener('keydown', e => { if (e.key === 'Enter') onStartClick(); });
-  $('#pvBtn').onclick = () => teacherGate(() => {
-    const f = {}; const p = $('#pvP').value, a = $('#pvA').value;
-    if (p !== '') f.p = +p; if (a !== '') f.a = +a;
-    startExam({ preview: true, force: f });
-  });
-  $('#memoBtn').onclick = () => teacherGate(showMemo);
+  if ($('#pvBtn')){
+    $('#pvBtn').onclick = () => teacherGate(() => {
+      const f = {}; const p = $('#pvP').value, a = $('#pvA').value;
+      if (p !== '') f.p = +p; if (a !== '') f.a = +a;
+      startExam({ preview: true, force: f });
+    });
+    $('#memoBtn').onclick = () => teacherGate(showMemo);
+  }
 }
-function teacherGate(fn){
-  const v = ($('#tpin').value || '').trim();
-  if (v !== CONFIG.TEACHER_PIN){ $('#tmsg').innerHTML = '<div class="msg-err">Wrong teacher PIN.</div>'; return; }
-  fn();
+function teacherGate(fn){ if (!TEACHER_OK){ return; } fn(); }
+// Teacher tools show only to people who are NOT signed in as a learner (a learner session means a learner).
+let TEACHER_OK = false;
+async function detectTeacher(){
+  try { const r = await fetch(CONFIG.ME_ENDPOINT, { credentials: 'include' }); TEACHER_OK = (r.status === 401 || r.status === 403); }
+  catch (_e) { TEACHER_OK = false; }
 }
 async function onStartClick(){
   const btn = $('#startBtn');
@@ -1065,9 +1066,11 @@ window.addEventListener('beforeunload', e => { if (S && !S.finished && !S.previe
 
 (async function boot(){
   if (qs.get('memo') === '1'){
-    root.innerHTML = `<div class="wrap"><div class="card"><h2>Marking memo</h2><p class="note">Enter the teacher PIN.</p><input id="tpin" class="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="12"><div style="margin-top:10px"><button class="btn" id="go" type="button">Open memo</button></div><div id="tmsg"></div></div></div>`;
-    $('#go').onclick = () => teacherGate(showMemo); return;
+    await detectTeacher();
+    if (TEACHER_OK) showMemo(); else root.innerHTML = '<div class="wrap"><div class="card"><div class="msg-err">The marking memo is for teachers only.</div></div></div>';
+    return;
   }
+  await detectTeacher();
   if (resumeIfAny()) return;
   if (ASSIGNMENT_ID && await alreadyCompletedOnServer()) return;
   showStart();
