@@ -1034,6 +1034,55 @@ async function handleMockExamPasswordTeacher(request, env, corsOrigin) {
   return jsonResponse({ ok: true, pin }, 200, corsOrigin);
 }
 
+const lcTrim = (v) => String(v || "").trim().toLowerCase().replace(/\s+/g, " ");
+function sameLearnerNames(aSur, aFirst, bSur, bFirst) {
+  if (lcTrim(aSur) !== lcTrim(bSur)) return false;
+  const a = lcTrim(aFirst), b = lcTrim(bFirst);
+  return a === b || a.startsWith(b + " ") || b.startsWith(a + " ");
+}
+
+async function handleMockExamAssign(request, env, corsOrigin) {
+  const session = await getTeacherSession(request, env);
+  if (!session) return jsonResponse({ error: "Teacher session required." }, 401, corsOrigin);
+  const body = await readJsonBody(request);
+  const className = String(body?.class_name || "").trim();
+  if (!className || !session.class_names.includes(className)) {
+    return jsonResponse({ error: "You do not have access to that class." }, 403, corsOrigin);
+  }
+  const resourceId = body?.resource_id;
+  const resRows = await supabaseGet(env, "carissa_resources", { id: `eq.${resourceId}`, select: "id,url", limit: "1" });
+  const resource = Array.isArray(resRows) ? resRows[0] : null;
+  if (!resource || !String(resource.url || "").toLowerCase().includes("mock-exam")) {
+    return jsonResponse({ error: "That resource is not the mock exam." }, 400, corsOrigin);
+  }
+  const learners = (Array.isArray(body?.learners) ? body.learners : []).slice(0, 120)
+    .map((l) => ({ surname: String(l?.surname || "").trim(), firstname: String(l?.firstname || "").trim() }))
+    .filter((l) => l.surname && l.firstname);
+  if (!learners.length) return jsonResponse({ error: "No learners were chosen." }, 400, corsOrigin);
+
+  // Use the name each learner logs in with, so the exam appears on their own dashboard.
+  const logins = await supabaseGet(env, "carissa_learner_payments", { class_name: `eq.${className}`, select: "surname,firstname", limit: "2000" });
+  const loginRows = Array.isArray(logins) ? logins : [];
+  const existing = await supabaseGet(env, "carissa_resource_assignments", { class_name: `eq.${className}`, resource_id: `eq.${resource.id}`, select: "surname,firstname", limit: "5000" });
+  const haveRows = Array.isArray(existing) ? existing : [];
+  const teacherName = `${session.first_name || ""} ${session.surname || ""}`.trim() || session.email || "Teacher";
+  const toCreate = [];
+  let skipped = 0;
+  for (const l of learners) {
+    const login = loginRows.find((r) => sameLearnerNames(r.surname, r.firstname, l.surname, l.firstname));
+    const surname = login ? String(login.surname).trim() : l.surname;
+    const firstname = login ? String(login.firstname).trim() : l.firstname;
+    const dup = haveRows.some((r) => sameLearnerNames(r.surname, r.firstname, surname, firstname)) ||
+      toCreate.some((r) => sameLearnerNames(r.surname, r.firstname, surname, firstname));
+    if (dup) { skipped++; continue; }
+    toCreate.push({ resource_id: resource.id, class_name: className, assign_type: "individual", assigned_by: teacherName, due_date: null, notes: "Grade 4 English Mock Exam", surname, firstname });
+  }
+  for (let i = 0; i < toCreate.length; i += 60) {
+    await supabasePost(env, "carissa_resource_assignments", toCreate.slice(i, i + 60), "return=minimal");
+  }
+  return jsonResponse({ ok: true, created: toCreate.length, skipped }, 200, corsOrigin);
+}
+
 async function handleMockExamCheck(request, env, corsOrigin) {
   const session = await getLearnerSession(request, env);
   if (!session) return jsonResponse({ error: "Learner session required." }, 401, corsOrigin);
@@ -2531,6 +2580,14 @@ export default {
         return await handleMockExamPasswordTeacher(request, env, corsOrigin);
       } catch (error) {
         return jsonResponse({ error: error?.message || "Password request failed" }, 500, corsOrigin);
+      }
+    }
+    if (url.pathname === "/api/mock-exam/assign") {
+      if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handleMockExamAssign(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Assign failed" }, 500, corsOrigin);
       }
     }
     if (url.pathname === "/api/mock-exam/check") {
