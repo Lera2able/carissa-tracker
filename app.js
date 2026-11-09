@@ -1164,45 +1164,6 @@ This will NOT remove any existing activities.`)) return;
       setBusy(false);
       setBusyLabel("");
     };
-    const bulkAssignGrade4MockExam = async () => {
-      if (busy) return;
-      const grade4Count = grade4Classes.length;
-      if (!grade4Count) {
-        alert("No Grade 4 classes were found.");
-        return;
-      }
-      if (!confirm(`Assign "Grade 4 English Mock Exam" to ALL learners across ${grade4Count} Grade 4 class(es)?
-
-This will NOT remove any existing activities.`)) return;
-      setBusy(true);
-      setBusyLabel("Preparing Grade 4 English mock exam...");
-      try {
-        const resourceId = await resolveBuiltInResourceId("builtin-grade4-english-mock-exam", resources);
-        let inserted = 0;
-        let skipped = 0;
-        for (const cls of grade4Classes) {
-          const learners = (CLASS_DATA[cls] || []).map((l) => ({ surname: l.surname, firstname: l.firstname }));
-          if (!learners.length) continue;
-          setBusyLabel(`Assigning Grade 4 English mock exam in ${cls}...`);
-          const base = {
-            resource_id: resourceId,
-            class_name: cls,
-            assign_type: "class",
-            assigned_by: "Admin",
-            due_date: null,
-            notes: "Grade 4 English Mock Exam (auto-assigned)"
-          };
-          const result = await postAssignmentRows(cls, resourceId, base, learners);
-          inserted += result.insertedCount;
-          skipped += result.skippedCount;
-        }
-        showMsg(`\u2713 Grade 4 English Mock Exam assigned to ${inserted} learner(s).${skipped ? ` (Skipped ${skipped} already assigned)` : ""}`);
-      } catch (e) {
-        alert("Error: " + e.message);
-      }
-      setBusy(false);
-      setBusyLabel("");
-    };
     const bulkAssignGrade3TypingAssessment = async () => {
       if (busy) return;
       const grade3Count = grade3Classes.length;
@@ -1470,7 +1431,7 @@ This will NOT remove any existing activities.`)) return;
       if (!grouped[key]) grouped[key] = [];
       grouped[key].push(a);
     });
-    return /* @__PURE__ */ React.createElement("div", null, msg && /* @__PURE__ */ React.createElement("div", { style: succ }, msg), /* @__PURE__ */ React.createElement("div", { style: card }, /* @__PURE__ */ React.createElement("h3", { style: ctitle }, "Assign Activity to Learners"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", margin: "-4px 0 12px" } }, /* @__PURE__ */ React.createElement("button", { type: "button", style: { ...sbtn, background: "#7c3aed" }, disabled: busy, onClick: bulkAssignGrade5TypingAssessment }, "\u26A1 Assign Grade 5 Typing Assessment (All Grade 5 classes)"), /* @__PURE__ */ React.createElement("button", { type: "button", style: { ...sbtn, background: "#f59e0b" }, disabled: busy, onClick: bulkAssignGrade1TypingAssessment }, "\u26A1 Assign Grade 1 Typing Assessment (All Grade 1 classes)"), /* @__PURE__ */ React.createElement("button", { type: "button", style: { ...sbtn, background: "#22c55e" }, disabled: busy, onClick: bulkAssignGrade2TypingAssessment }, "\u26A1 Assign Grade 2 Typing Assessment (All Grade 2 classes)"), /* @__PURE__ */ React.createElement("button", { type: "button", style: { ...sbtn, background: "#0ea5e9" }, disabled: busy, onClick: bulkAssignGrade3TypingAssessment }, "\u26A1 Assign Grade 3 Typing Assessment (All Grade 3 classes)"), /* @__PURE__ */ React.createElement("button", { type: "button", style: { ...sbtn, background: "#2563eb" }, disabled: busy, onClick: bulkAssignGrade4TypingAssessment }, "\u26A1 Assign Grade 4 Typing Assessment (All Grade 4 classes)"), /* @__PURE__ */ React.createElement("button", { type: "button", style: { ...sbtn, background: "#7c3aed" }, disabled: busy, onClick: bulkAssignGrade4MockExam }, "\u{1F4DD} Assign Grade 4 English Mock Exam (All Grade 4 classes)"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: "12px", color: "#64748b", alignSelf: "center" } }, "This adds the assessment; it does not remove any existing learner activities.")), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: "12px", marginBottom: "12px" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Resource / Activity *"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("select", { style: { ...inp, flex: 1, minWidth: "220px", margin: 0 }, value: form.resource_id, onChange: (e) => f("resource_id", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "" }, "-- Select Resource --"), filteredResources.map((r) => {
+    return /* @__PURE__ */ React.createElement("div", null, msg && /* @__PURE__ */ React.createElement("div", { style: succ }, msg), /* @__PURE__ */ React.createElement("div", { style: card }, /* @__PURE__ */ React.createElement("h3", { style: ctitle }, "Assign Activity to Learners"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", margin: "-4px 0 12px" } }, /* @__PURE__ */ React.createElement("button", { type: "button", style: { ...sbtn, background: "#7c3aed" }, disabled: busy, onClick: bulkAssignGrade5TypingAssessment }, "\u26A1 Assign Grade 5 Typing Assessment (All Grade 5 classes)"), /* @__PURE__ */ React.createElement("button", { type: "button", style: { ...sbtn, background: "#f59e0b" }, disabled: busy, onClick: bulkAssignGrade1TypingAssessment }, "\u26A1 Assign Grade 1 Typing Assessment (All Grade 1 classes)"), /* @__PURE__ */ React.createElement("button", { type: "button", style: { ...sbtn, background: "#22c55e" }, disabled: busy, onClick: bulkAssignGrade2TypingAssessment }, "\u26A1 Assign Grade 2 Typing Assessment (All Grade 2 classes)"), /* @__PURE__ */ React.createElement("button", { type: "button", style: { ...sbtn, background: "#0ea5e9" }, disabled: busy, onClick: bulkAssignGrade3TypingAssessment }, "\u26A1 Assign Grade 3 Typing Assessment (All Grade 3 classes)"), /* @__PURE__ */ React.createElement("button", { type: "button", style: { ...sbtn, background: "#2563eb" }, disabled: busy, onClick: bulkAssignGrade4TypingAssessment }, "\u26A1 Assign Grade 4 Typing Assessment (All Grade 4 classes)"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: "12px", color: "#64748b", alignSelf: "center" } }, "This adds the assessment; it does not remove any existing learner activities.")), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: "12px", marginBottom: "12px" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Resource / Activity *"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("select", { style: { ...inp, flex: 1, minWidth: "220px", margin: 0 }, value: form.resource_id, onChange: (e) => f("resource_id", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "" }, "-- Select Resource --"), filteredResources.map((r) => {
       var _a;
       return /* @__PURE__ */ React.createElement("option", { key: r.id, value: r.id }, (_a = RESOURCE_TYPES.find((t) => t.v === r.type)) == null ? void 0 : _a.icon, " ", r.title, r.subject ? ` (${r.subject})` : "");
     })), /* @__PURE__ */ React.createElement("select", { style: { ...inp, width: "auto", margin: 0 }, value: resFilter, onChange: (e) => setResFilter(e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "all" }, "All"), /* @__PURE__ */ React.createElement("option", { value: "splashlearn" }, "SplashLearn"), /* @__PURE__ */ React.createElement("option", { value: "other" }, "Other"))), resFilter === "splashlearn" && filteredResources.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#64748b", marginTop: "6px" } }, "No SplashLearn links found yet. Add them under the ", /* @__PURE__ */ React.createElement("strong", null, "Resources"), " tab using \u201C\u2795 SplashLearn link\u201D.")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Class *"), /* @__PURE__ */ React.createElement("select", { style: inp, value: form.class_name, onChange: (e) => f("class_name", e.target.value), disabled: form.assign_type === "interventions_all" || form.assign_type === "classlist_all" }, /* @__PURE__ */ React.createElement("option", { value: "" }, "-- Select Class --"), classOptions.map((n) => /* @__PURE__ */ React.createElement("option", { key: n.name, value: n.name }, n.name, " \u2022 Classlist ", n.classlistCount, " \u2022 Intervention ", n.interventionCount))), (form.assign_type === "interventions_all" || form.assign_type === "classlist_all") && /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#64748b", marginTop: "6px" } }, "Class selection is disabled because you chose \u201CAll classes\u201D."), form.class_name && form.assign_type !== "interventions_all" && form.assign_type !== "classlist_all" && /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#475569", marginTop: "6px" } }, "Linked to ", /* @__PURE__ */ React.createElement("strong", null, rosterLearners.length), " learner(s) on the class list and ", /* @__PURE__ */ React.createElement("strong", null, classInterventions.length), " learner(s) on the intervention list.")), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Assign To"), /* @__PURE__ */ React.createElement("select", { style: inp, value: form.assign_type, onChange: (e) => f("assign_type", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "interventions_class" }, `Intervention list (this class${form.class_name ? ` \u2022 ${classInterventions.length}` : ""})`), /* @__PURE__ */ React.createElement("option", { value: "classlist_class" }, `Class list (this class${form.class_name ? ` \u2022 ${rosterLearners.length}` : ""})`), /* @__PURE__ */ React.createElement("option", { value: "learner" }, "Specific learner (dropdown)"), /* @__PURE__ */ React.createElement("option", { value: "interventions_all" }, `Intervention list (all classes \u2022 ${allInterventionCount})`), /* @__PURE__ */ React.createElement("option", { value: "classlist_all" }, `Class lists (all classes \u2022 ${allClasslistCount})`))), form.assign_type === "learner" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Learner"), /* @__PURE__ */ React.createElement("select", { style: inp, value: `${form.surname}|${form.firstname}`, onChange: (e) => {
@@ -8677,7 +8638,7 @@ ${sectionsHtml}
         showMsg,
         onAudit: (type, r) => logTeacherAudit(`${type}:${String((r == null ? void 0 : r.title) || "").slice(0, 40)}`, selClass)
       }
-    ), tab === "resources" && /* @__PURE__ */ React.createElement(ResourcesLibrary, { resources: resources.filter((r) => adminAccess || !isMockExamUrl(r == null ? void 0 : r.url)), onAudit: (type, r) => logTeacherAudit(`${type}:${String((r == null ? void 0 : r.title) || "").slice(0, 40)}`, selClass) })) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px", background: "white", padding: "8px", borderRadius: "12px", boxShadow: "0 4px 14px rgba(0,0,0,0.06)" } }, [
+    ), tab === "resources" && /* @__PURE__ */ React.createElement(ResourcesLibrary, { resources: resources.filter((r) => !isMockExamUrl(r == null ? void 0 : r.url)), onAudit: (type, r) => logTeacherAudit(`${type}:${String((r == null ? void 0 : r.title) || "").slice(0, 40)}`, selClass) })) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px", background: "white", padding: "8px", borderRadius: "12px", boxShadow: "0 4px 14px rgba(0,0,0,0.06)" } }, [
       ["dashboard", `\u{1F3E0} Dashboard`],
       ["assessments", `\u{1F4DD} Assessments`],
       ...teacherAuth ? [["sasams_marks", "\u{1F9EE} SASAMS Marks"]] : [],
@@ -8724,7 +8685,7 @@ ${sectionsHtml}
         learners: CLASS_DATA[selClass] || [],
         onAudit: (evt) => logTeacherAudit(evt, selClass)
       }
-    ), tab === "moderation" && moderationAccess && /* @__PURE__ */ React.createElement(ModerationToolsTab, { teacherAuth, adminAccess, selClass }), tab === "assessments" && /* @__PURE__ */ React.createElement("div", { style: card }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "12px" } }, /* @__PURE__ */ React.createElement("h3", { style: { ...ctitle, marginBottom: 0 } }, selClass, " \u2014 Assessments"), assessmentTermView && classAssessments.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#10b981", fontSize: "13px" }, onClick: () => exportClassSummary2(selClass, classAssessments[0].phase, classAssessments) }, "\u{1F4CA} Class Summary"), /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#7c3aed", fontSize: "13px" }, onClick: () => exportGradeBulkReport(selClass, classAssessments[0].phase, classAssessments) }, "\u{1F4C4} Grade Report (", classAssessments.length, " learners)"))), /* @__PURE__ */ React.createElement("p", { style: { color: "#666", fontSize: "13px", marginBottom: "12px" } }, "Open the folder you want to view. Assessment marks stay inside the selected term folder."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "12px" } }, ["Term 2", "Term 3"].map((t) => /* @__PURE__ */ React.createElement("button", { key: t, onClick: () => {
+    ), tab === "moderation" && moderationAccess && /* @__PURE__ */ React.createElement(ModerationToolsTab, { teacherAuth, adminAccess, selClass }), tab === "assessments" && teacherAuth && /* @__PURE__ */ React.createElement(MockExamPanel, { resources, selClass, teacherAuth, assignments, setAssignments, learnerResults, resetMark, showMsg }), tab === "assessments" && /* @__PURE__ */ React.createElement("div", { style: card }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "12px" } }, /* @__PURE__ */ React.createElement("h3", { style: { ...ctitle, marginBottom: 0 } }, selClass, " \u2014 Assessments"), assessmentTermView && classAssessments.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#10b981", fontSize: "13px" }, onClick: () => exportClassSummary2(selClass, classAssessments[0].phase, classAssessments) }, "\u{1F4CA} Class Summary"), /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#7c3aed", fontSize: "13px" }, onClick: () => exportGradeBulkReport(selClass, classAssessments[0].phase, classAssessments) }, "\u{1F4C4} Grade Report (", classAssessments.length, " learners)"))), /* @__PURE__ */ React.createElement("p", { style: { color: "#666", fontSize: "13px", marginBottom: "12px" } }, "Open the folder you want to view. Assessment marks stay inside the selected term folder."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "12px" } }, ["Term 2", "Term 3"].map((t) => /* @__PURE__ */ React.createElement("button", { key: t, onClick: () => {
       const next = assessmentTermView === t ? "" : t;
       setAssessmentTermView(next);
       if (next) logTeacherAudit(`open_assessments:${next}`, selClass);
@@ -8793,7 +8754,7 @@ ${sectionsHtml}
         showMsg,
         onAudit: (type, r) => logTeacherAudit(`${type}:${String((r == null ? void 0 : r.title) || "").slice(0, 40)}`, selClass)
       }
-    ), tab === "resources" && /* @__PURE__ */ React.createElement(ResourcesLibrary, { resources: resources.filter((r) => adminAccess || !isMockExamUrl(r == null ? void 0 : r.url)), onAudit: (type, r) => logTeacherAudit(`${type}:${String((r == null ? void 0 : r.title) || "").slice(0, 40)}`, selClass) })));
+    ), tab === "resources" && /* @__PURE__ */ React.createElement(ResourcesLibrary, { resources: resources.filter((r) => !isMockExamUrl(r == null ? void 0 : r.url)), onAudit: (type, r) => logTeacherAudit(`${type}:${String((r == null ? void 0 : r.title) || "").slice(0, 40)}`, selClass) })));
   }
   function TeacherSasamsMarksTab({ teacherAuth, selClass, sharedAdminEmails, showMsg, onAudit, onOpenLearnerReports, setOverrides }) {
     var _a, _b;
@@ -12939,6 +12900,60 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
       )), onList && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: "10px", fontSize: "12px", color: "#f97316", fontWeight: "700" } }, "On intervention list"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#64748b", marginTop: "6px" } }, "Learner login: ", /* @__PURE__ */ React.createElement("strong", null, learnerUser), " \u2022 PIN: ", /* @__PURE__ */ React.createElement("strong", null, learnerPin))), !onList ? /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#667eea", fontSize: "12px", padding: "7px 12px" }, onClick: () => setModalFor(learner) }, "+ Add to Intervention") : /* @__PURE__ */ React.createElement("span", { style: { fontSize: "12px", color: "#888", fontWeight: 600 } }, "Already saved"));
     })), modalFor && /* @__PURE__ */ React.createElement(RemedialModal, { learner: modalFor, onSave: saveIntervention, onClose: () => setModalFor(null) }));
   }
+  function MockExamPanel({ resources, selClass, teacherAuth, assignments, setAssignments, learnerResults, resetMark, showMsg }) {
+    const [busy, setBusy] = useState(false);
+    const [openNotes, setOpenNotes] = useState({});
+    if (!/grade\s*4/i.test(String(selClass || ""))) return null;
+    const examIds = new Set((resources || []).filter((r) => isMockExamUrl(r == null ? void 0 : r.url) && !String((r == null ? void 0 : r.id) || "").startsWith("builtin-")).map((r) => String(r.id)));
+    const roster = CLASS_DATA[selClass] || [];
+    const examAssignments = (assignments || []).filter((a) => a.class_name === selClass && examIds.has(String(a.resource_id)));
+    const byLearner = new Map(examAssignments.map((a) => [learnerNameKey(a.surname, a.firstname), a]));
+    const resultFor = (a) => a ? (learnerResults || []).find((r) => String(r.assignment_id) === String(a.id)) : null;
+    const rows = roster.map((l) => {
+      const a = byLearner.get(learnerNameKey(l.surname, l.firstname));
+      return { l, a, r: resultFor(a) };
+    });
+    const done = rows.filter((x) => x.r);
+    const avg = done.length ? Math.round(done.reduce((t, x) => t + Number(x.r.score || 0) / Math.max(1, Number(x.r.max_score || 40)) * 100, 0) / done.length) : null;
+    const assignClass = async () => {
+      if (!selClass || !roster.length) {
+        alert("No learners were found on the class list for this class.");
+        return;
+      }
+      if (!confirm(`Assign the Grade 4 English Mock Exam to ALL learners in ${selClass}?
+
+Learners who already have it will be skipped.`)) return;
+      setBusy(true);
+      try {
+        const resourceId = await resolveBuiltInResourceId("builtin-grade4-english-mock-exam", resources);
+        const existing = await db.get("carissa_resource_assignments", `class_name=eq.${encodeURIComponent(selClass)}&resource_id=eq.${encodeURIComponent(resourceId)}&select=surname,firstname&limit=5000`).catch(() => []);
+        const have = new Set((existing || []).map((r) => learnerNameKey(r.surname, r.firstname)));
+        const teacherName = `${(teacherAuth == null ? void 0 : teacherAuth.first_name) || ""} ${(teacherAuth == null ? void 0 : teacherAuth.surname) || ""}`.trim() || (teacherAuth == null ? void 0 : teacherAuth.email) || "Teacher";
+        const missing = dedupeLearners(roster).filter((l) => !have.has(learnerNameKey(l.surname, l.firstname)));
+        for (let i = 0; i < missing.length; i += 80) {
+          const chunk = missing.slice(i, i + 80).map((l) => ({ resource_id: resourceId, class_name: selClass, assign_type: "class", assigned_by: teacherName, due_date: null, notes: "Grade 4 English Mock Exam", surname: l.surname, firstname: l.firstname }));
+          await db.post("carissa_resource_assignments", chunk, "return=minimal");
+        }
+        const fresh = await db.get("carissa_resource_assignments", `class_name=eq.${encodeURIComponent(selClass)}&order=created_at.desc`).catch(() => []);
+        if (setAssignments && Array.isArray(fresh)) setAssignments((prev) => [...fresh, ...(prev || []).filter((a) => a.class_name !== selClass)]);
+        showMsg && showMsg(`✓ Mock exam assigned to ${missing.length} learner(s) in ${selClass}.${roster.length - missing.length ? ` (${roster.length - missing.length} already had it)` : ""}`);
+      } catch (e) {
+        alert("Error: " + ((e == null ? void 0 : e.message) || "Could not assign the exam."));
+      }
+      setBusy(false);
+    };
+    const pill = (bg, fg, t) => /* @__PURE__ */ React.createElement("span", { style: { background: bg, color: fg, padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 800 } }, t);
+    const th = { textAlign: "left", padding: "8px", borderBottom: "2px solid #e2e8f0", color: "#475569" };
+    const td = { padding: "8px", borderBottom: "1px solid #f1f5f9" };
+    const sm = { padding: "4px 10px", borderRadius: "8px", border: "none", fontWeight: 700, cursor: "pointer", fontSize: "12px" };
+    return /* @__PURE__ */ React.createElement("div", { style: { background: "white", padding: "20px", borderRadius: "12px", boxShadow: "0 4px 14px rgba(0,0,0,0.06)", marginBottom: "16px", border: "2px solid #ddd6fe" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "6px" } }, /* @__PURE__ */ React.createElement("h3", { style: { margin: 0, color: "#4c1d95" } }, "\u{1F4DD} Grade 4 English Mock Exam — ", selClass), /* @__PURE__ */ React.createElement("button", { style: { padding: "9px 16px", borderRadius: "8px", border: "none", background: "#7c3aed", color: "white", fontWeight: 700, cursor: "pointer", opacity: busy ? 0.6 : 1 }, disabled: busy, onClick: assignClass }, busy ? "Assigning…" : "⚡ Assign to this class")), /* @__PURE__ */ React.createElement("p", { style: { margin: "0 0 12px", fontSize: "13px", color: "#64748b" } }, "40 marks • 30 minutes • every learner gets a scrambled paper • locks and marks automatically at time up. ", `${examAssignments.length}/${roster.length} assigned • ${done.length} completed`, avg !== null ? ` • class average ${avg}%` : ""), /* @__PURE__ */ React.createElement("div", { style: { overflowX: "auto" } }, /* @__PURE__ */ React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: "14px" } }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, ["Learner", "Status", "Mark", "%", "Submitted", ""].map((h) => /* @__PURE__ */ React.createElement("th", { key: h, style: th }, h)))), /* @__PURE__ */ React.createElement("tbody", null, rows.map(({ l, a, r }) => {
+      const key = learnerNameKey(l.surname, l.firstname);
+      const max = r ? Number(r.max_score || 40) : 40;
+      const pct = r ? Math.round(Number(r.score || 0) / Math.max(1, max) * 100) : null;
+      const status = r ? pill("#dcfce7", "#166534", "Completed") : !a ? pill("#f1f5f9", "#64748b", "Not assigned") : a.status === "in_progress" ? pill("#fef3c7", "#92400e", "In progress") : pill("#e0e7ff", "#3730a3", "Assigned");
+      return /* @__PURE__ */ React.createElement(React.Fragment, { key }, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { style: { ...td, fontWeight: 700 } }, l.surname, ", ", l.firstname), /* @__PURE__ */ React.createElement("td", { style: td }, status), /* @__PURE__ */ React.createElement("td", { style: { ...td, fontWeight: 800 } }, r ? `${r.score}/${max}` : "—"), /* @__PURE__ */ React.createElement("td", { style: td }, pct === null ? "—" : `${pct}%`), /* @__PURE__ */ React.createElement("td", { style: { ...td, color: "#64748b", fontSize: "13px" } }, r ? formatDateTimeZA(r.submitted_at) || "" : ""), /* @__PURE__ */ React.createElement("td", { style: { ...td, whiteSpace: "nowrap" } }, r && /* @__PURE__ */ React.createElement("button", { style: { ...sm, background: "#eef2ff", color: "#3730a3", marginRight: "6px" }, onClick: () => setOpenNotes((p) => ({ ...p, [key]: !p[key] })) }, openNotes[key] ? "Hide details" : "Details"), r && /* @__PURE__ */ React.createElement("button", { style: { ...sm, background: "#dc2626", color: "white" }, onClick: () => resetMark(a.id), title: "Remove this mark so the learner can try again" }, "♻ Reset"))), r && openNotes[key] && /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 6, style: { padding: "8px 10px", background: "#f8fafc", fontSize: "13px", color: "#475569", borderBottom: "1px solid #e2e8f0" } }, r.learner_notes || "No details saved.")));
+    })))));
+  }
   function LearnWorldGamesLibrary({ resources, selClass = "", teacherAuth = null, adminAccess = false, interventions = [], setAssignments, showMsg, onAudit }) {
     const [search, setSearch] = useState("");
     const [assignFor, setAssignFor] = useState(null);
@@ -12953,7 +12968,7 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
       "sight word safari (grade 1)",
       "letter hunt (grade 1)"
     ]), []);
-    const games = resources.filter(isLearnWorldGameResource).filter((r) => adminAccess || !isMockExamUrl(r == null ? void 0 : r.url)).filter((r) => !REMOVED_LEARNWORLD_TITLES.has(String((r == null ? void 0 : r.title) || "").trim().toLowerCase()));
+    const games = resources.filter(isLearnWorldGameResource).filter((r) => !isMockExamUrl(r == null ? void 0 : r.url)).filter((r) => !REMOVED_LEARNWORLD_TITLES.has(String((r == null ? void 0 : r.title) || "").trim().toLowerCase()));
     const isTypingGame = useCallback((r) => {
       const title = String((r == null ? void 0 : r.title) || "").toLowerCase();
       const subject = String((r == null ? void 0 : r.subject) || "").toLowerCase();
