@@ -1075,7 +1075,7 @@ async function handleMockExamAssign(request, env, corsOrigin) {
     const dup = haveRows.some((r) => sameLearnerNames(r.surname, r.firstname, surname, firstname)) ||
       toCreate.some((r) => sameLearnerNames(r.surname, r.firstname, surname, firstname));
     if (dup) { skipped++; continue; }
-    toCreate.push({ resource_id: resource.id, class_name: className, assign_type: "individual", assigned_by: teacherName, due_date: null, notes: "Grade 4 English Mock Exam", surname, firstname });
+    toCreate.push({ resource_id: resource.id, class_name: className, assign_type: "learner", assigned_by: teacherName, due_date: null, notes: String(resource.title || "English Mock Exam"), surname, firstname });
   }
   for (let i = 0; i < toCreate.length; i += 60) {
     await supabasePost(env, "carissa_resource_assignments", toCreate.slice(i, i + 60), "return=minimal");
