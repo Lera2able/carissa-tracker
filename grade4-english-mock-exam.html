@@ -128,7 +128,19 @@
   .memo-q .bad{color:#b91c1c;font-weight:900}
   details.teacher{margin-top:16px;border-top:2px dashed #cbd5e1;padding-top:10px}
   details.teacher summary{cursor:pointer;font-weight:900;color:#64748b;font-size:14px}
-  @media print{.topbar,.btn,details.teacher{display:none!important}body{background:#fff;font-size:13px}.card{box-shadow:none;break-inside:avoid}}
+  .rv-bar{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+  .rv-q{border-left:6px solid #94a3b8;background:#fff;border-radius:10px;padding:10px 14px;margin:10px 0;box-shadow:0 1px 4px rgba(0,0,0,.06);break-inside:avoid}
+  .rv-q.ok{border-left-color:#16a34a}.rv-q.part{border-left-color:#f59e0b}.rv-q.bad{border-left-color:#dc2626}
+  .rv-h{display:flex;justify-content:space-between;gap:10px;font-weight:900}
+  .rv-pill{padding:2px 10px;border-radius:999px;font-size:13px;font-weight:900;white-space:nowrap}
+  .rv-pill.ok{background:#dcfce7;color:#166534}.rv-pill.part{background:#fef3c7;color:#92400e}.rv-pill.bad{background:#fee2e2;color:#b91c1c}
+  .rv-row{margin-top:6px;font-size:15px}.rv-row b{display:inline-block;min-width:130px;color:#475569}
+  .rv-learner{background:#eff6ff;border-radius:8px;padding:4px 8px;font-weight:800}
+  .rv-correct{background:#f0fdf4;border-radius:8px;padding:4px 8px;font-weight:800;color:#166534}
+  .rv-tip{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:6px 10px;margin-top:8px;font-size:14px}
+  .rv-sug li{margin:6px 0;line-height:1.5}
+  .rv-ctx{background:#f8fafc;border:2px solid #e2e8f0;border-radius:12px;padding:10px 14px;margin:8px 0}
+  @media print{.topbar,.btn,.rv-bar,details.teacher{display:none!important}body{background:#fff;font-size:13px}.card{box-shadow:none;break-inside:avoid}.stick{position:static;max-height:none;overflow:visible}.rv-q{box-shadow:none}}
 </style>
 </head>
 <body>
@@ -975,7 +987,8 @@ async function sendResult(){
   if (!S || S.preview || !S.final || S.final.sent || sending) return;
   sending = true; renderSendState(); clearTimeout(retryTimer);
   const f = S.final;
-  const body = { assignment_id: ASSIGNMENT_ID, score: f.got, max_score: f.max, result_status: 'completed', learner_notes: f.notes, submitted_at: new Date().toISOString() };
+  const body = { assignment_id: ASSIGNMENT_ID, score: f.got, max_score: f.max, result_status: 'completed', learner_notes: f.notes, submitted_at: new Date().toISOString(),
+    answer_data: { v: 1, seed: S.paper.seed, force: S.force || null, answers: S.answers, startTs: S.startTs, usedSec: Math.round(Math.min(durationMs(), Math.max(0, Date.now() - S.startTs)) / 1000), reason: f.reason, leaves: S.leaves || 0 } };
   try {
     const res = await fetch(CONFIG.RESULT_ENDPOINT, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (res.ok || res.status === 409){ f.sent = true; f.err = ''; persist(); notifyDashboard(); }
@@ -1004,7 +1017,7 @@ function notifyDashboard(){
    START / RESUME
    ===================================================================== */
 function startExam({ preview, force = {} }){
-  const seed = preview ? (qs.get('seed') || String(Math.floor(Math.random() * 1e9))) : hashStr(ASSIGNMENT_ID + '|' + LEARNER.toLowerCase());
+  const seed = preview ? (qs.get('seed') || String(Math.floor(Math.random() * 1e9))) : hashStr(ASSIGNMENT_ID + '|' + LEARNER.toLowerCase() + '|' + Date.now());
   S = { paper: buildPaper(seed, force), force, answers: {}, startTs: Date.now(), preview: !!preview, leaves: 0, finished: false, final: null };
   locked = false; warned5 = warned1 = false;
   persist(); renderExam();
@@ -1060,6 +1073,155 @@ function showMemo(){
     <div style="margin-top:10px"><button class="btn dark" onclick="location.reload()">← Back</button> <button class="btn ghost" onclick="window.print()">🖨 Print memo</button></div>${blocks.join('')}</div>`;
 }
 
+
+/* =====================================================================
+   TEACHER REVIEW  (the learner's own paper, answers, corrections, suggestions)
+   ===================================================================== */
+const TIPS = {
+  q1: 'Re-read the passage together. For every question, ask the learner to point to the paragraph number and the exact sentence that gives the answer BEFORE choosing. For True/False, ask "What words in the text prove it?"',
+  q2: 'Use real adverts and posters from magazines or shops. Ask: What is selling? Who is it for? What does the picture show? What is the slogan or small print telling us? Practise reading headings, prices and contact details.',
+  q3: 'Practise sequencing with story strips cut into sentences. Teach time words (first, then, next, finally). For missing words, ask the learner to read the whole sentence aloud and check it makes sense.',
+  'q4-syn': 'Make a synonym wall (big = large, happy = glad). Play matching pairs with word cards.',
+  'q4-ant': 'Play "opposites" games (hot / cold). Put each word in a sentence to check the meaning.',
+  'q4-pron': 'Revise pronouns (he, she, it, they, we) by replacing names in sentences. Revise proper nouns: they start with a capital letter and name a special person or place.',
+  'q4-deg': 'Use a table of positive, comparative and superlative (tall, taller, tallest). Practise with classroom objects (tall, taller, tallest learner).',
+  'q4-st': 'Revise simple, compound and complex sentences with sentence strips. Circle the joining words (and, but, because, when) and count the ideas.',
+  'q4-adj': 'Ask "Which word tells us more about the noun?" Practise with a picture: describe it using three adjectives.',
+  'q4-punc': 'Practise "capital letter, apostrophe, full stop" with a daily dictation sentence. Let the learner mark the corrections with a coloured pen.'
+};
+function tipFor(it){
+  const id = it.id;
+  if (id.startsWith('q1')) return TIPS.q1;
+  if (id.startsWith('q2')) return TIPS.q2;
+  if (id.startsWith('q3')) return TIPS.q3;
+  const k = Object.keys(TIPS).find(k => k.startsWith('q4') && id.startsWith(k));
+  return k ? TIPS[k] : '';
+}
+function ansText(it, ans){
+  switch (it.type){
+    case 'mcq': { const o = it.opt.find(o => o.id === ans); return o ? o.t : ''; }
+    case 'tf': return ans === 'T' ? 'True' : ans === 'F' ? 'False' : '';
+    case 'multi': return (Array.isArray(ans) ? ans : []).map(id => (it.opt.find(o => o.id === id) || {}).t).filter(Boolean).join('  +  ');
+    case 'text': case 'rewrite': return String(ans || '').trim();
+    case 'pick': return Number.isInteger(ans) ? it.words[ans] : '';
+    case 'select': return ans || '';
+  }
+  return '';
+}
+function reviewItemHtml(it, ans){
+  const r = markItem(it, ans);
+  const cls = r.got === r.max ? 'ok' : r.got > 0 ? 'part' : 'bad';
+  const stemTxt = it.type === 'summary' ? it.prompt : (it.sentence ? it.sentence + ' - ' : '') + (it.prompt || '');
+  let body = '';
+  if (it.type === 'summary'){
+    const a = ans || {}; const b = a.b || {}, o = a.o || {};
+    body = it.shown.map(s => {
+      const pre = (s.t.split('____')[0] || ''), post = (s.t.split('____')[1] || '');
+      const ok = b[s.letter] && b[s.letter] === s.a;
+      return `<div class="rv-row"><b>Sentence ${s.letter}</b> ${esc(pre)}<span class="rv-learner">${esc(b[s.letter] || '(blank)')}</span>${esc(post)} ${ok ? '✔' : `✘ <span class="rv-correct">${esc(s.a)}</span>`}</div>`;
+    }).join('');
+    const mine = [0, 1, 2, 3].map(i => o[i] || '-').join(' ');
+    const okOrd = it.correctOrder.every((L, i) => o[i] === L);
+    body += `<div class="rv-row"><b>Order (1st to 4th)</b> <span class="rv-learner">${esc(mine)}</span> ${okOrd ? '✔' : `✘ correct: <span class="rv-correct">${esc(it.correctOrder.join(' '))}</span>`}</div>`;
+  } else {
+    const mine = ansText(it, ans);
+    body = `<div class="rv-row"><b>Learner wrote</b> <span class="rv-learner">${esc(mine || '(no answer)')}</span></div>`;
+    if (r.got < r.max) body += `<div class="rv-row"><b>Correct answer</b> <span class="rv-correct">${esc(memoText(it))}</span></div>`;
+    if (it.type === 'rewrite' && mine){ const p = rewriteParts(it.target, ans);
+      body += `<div class="rv-row"><b>Words and capitals</b> ${p.words ? '✔ correct' : '✘ not correct'} &nbsp; <b style="min-width:0">Punctuation</b> ${p.punct ? '✔ correct' : '✘ not correct'}</div>`; }
+    if (it.type === 'multi' && it.pick > 1) body += `<div class="rv-row small">This question needs ${it.pick} correct answers.</div>`;
+  }
+  if (r.got < r.max){ const t = tipFor(it); if (t) body += `<div class="rv-tip">💡 <b>What to do:</b> ${esc(t)}</div>`; }
+  return `<div class="rv-q ${cls}"><div class="rv-h"><span>${esc(it.label)} &nbsp; ${esc(stemTxt)}</span><span class="rv-pill ${cls}">${r.got}/${r.max}</span></div>${body}</div>`;
+}
+function reviewSuggestions(paper, answers, ad){
+  const res = markPaper(paper, answers);
+  const out = [];
+  const names = { q1: 'Comprehension', q2: 'Visual Literacy', q3: 'Summary', q4: 'Language Structures' };
+  res.sections.forEach(s => {
+    const pct = Math.round(s.got / s.max * 100);
+    if (pct < 60) out.push(`<b>${names[s.key]} (${s.got}/${s.max}, ${pct}%):</b> ${esc(TIPS[s.key] || 'Revise the lost marks below with the learner and practise a few similar questions.')}`);
+    else if (pct < 100) out.push(`<b>${names[s.key]} (${s.got}/${s.max}):</b> Good effort. Go through the questions marked in orange or red below and let the learner explain their thinking.`);
+  });
+  const q4 = res.sections.find(s => s.key === 'q4');
+  if (q4 && q4.missed.length){ const seen = new Set(); q4.missed.forEach(m => { const t = tipFor(m.it); if (t && !seen.has(t)){ seen.add(t); out.push(`<b>${esc(m.it.label)}:</b> ${esc(t)}`); } }); }
+  let blanks = 0, total = 0; paper.sections.forEach(sec => sec.items.forEach(it => { total += partsOf(it); blanks += partsOf(it) - answeredParts(it, answers[it.id]); }));
+  if (blanks >= 4) out.push(`<b>Unanswered questions (${blanks}):</b> The learner left several answers blank. Encourage them to always try an answer, to underline key words in the question, and to check for unanswered questions before handing in.`);
+  if (ad){
+    if (ad.usedSec && ad.usedSec < 600 && res.got / res.max < 0.5) out.push('<b>Time:</b> The learner finished in under 10 minutes with a low mark. They may have rushed. Remind them to read the passage twice and use the full 30 minutes.');
+    if (ad.leaves >= 2) out.push(`<b>Focus:</b> The learner left the test page ${ad.leaves} times. Sit with them for the next assessment to help them stay focused.`);
+  }
+  if (!out.length) out.push('Excellent work. Challenge the learner with a harder passage and ask them to write their own summary.');
+  out.push('<b>Next step:</b> Print this review, go through the red and orange questions with the learner, and let them correct each one in their own words. Re-test the same skills in a few weeks.');
+  return out;
+}
+async function showReview(){
+  const aid = String(qs.get('assignment_id') || '');
+  const fail = m => { root.innerHTML = `<div class="wrap"><div class="card"><div class="msg-err">${m}</div></div></div>`; };
+  if (!aid) return fail('No test was selected. Open this page from the Teacher Dashboard: Assessments, then Details.');
+  let row = null;
+  try {
+    const r = await fetch('/api/learner-results/teacher', { credentials: 'include' });
+    if (r.status === 401 || r.status === 403) return fail('Please log in on the Teacher Dashboard first, then open the test from Assessments.');
+    if (!r.ok) throw new Error('Could not load the result.');
+    const d = await r.json();
+    row = (d.results || []).find(x => String(x.assignment_id) === aid) || null;
+  } catch (e) { return fail(esc((e && e.message) || 'Could not load the result.')); }
+  if (!row) return fail('No submitted test was found for this learner yet.');
+  const name = `${row.firstname || ''} ${row.surname || ''}`.trim();
+  const when = row.submitted_at ? new Date(row.submitted_at).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' }) : '';
+  const ad = row.answer_data;
+  if (!ad || !ad.answers){
+    root.innerHTML = `<div class="wrap"><div class="card hero"><h1>📄 ${esc(name)}</h1><p>${esc(row.class_name || '')} &nbsp;•&nbsp; ${esc(row.score)}/${esc(row.max_score)}</p></div>
+      <div class="card" style="margin-top:14px"><div class="msg-err">The individual answers were not saved for this attempt (it was written before this feature was added). Only the marks summary is available. Reset the mark if you would like the learner to write the test again.</div>
+      <p class="note" style="margin-top:10px">${esc(row.learner_notes || '')}</p></div></div>`;
+    return;
+  }
+  const paper = buildPaper(ad.seed, ad.force || {});
+  const res = markPaper(paper, ad.answers);
+  const pct = Math.round(res.got / res.max * 100);
+  const used = ad.usedSec ? `${Math.floor(ad.usedSec / 60)}m ${String(ad.usedSec % 60).padStart(2, '0')}s` : '';
+  const names = { q1: 'Comprehension', q2: 'Visual Literacy', q3: 'Summary', q4: 'Language' };
+  const secs = paper.sections.map(sec => {
+    let ctx = '';
+    if (sec.passage) ctx = `<div class="rv-ctx"><h3>${esc(sec.passage.title)}</h3>${sec.passage.paras.map((p, i) => `<p><span class="pn">${i + 1}</span>${esc(p)}</p>`).join('')}</div>`;
+    else if (sec.ad) ctx = `<div class="rv-ctx" style="max-width:560px">${sec.ad.html}</div>`;
+    const s = res.sections.find(z => z.key === sec.key);
+    return `<section style="margin-top:18px"><div class="sec-h"><h2>${esc(sec.title)}</h2><span class="tot">${s.got}/${s.max}</span></div>${ctx}${sec.items.map(it => reviewItemHtml(it, ad.answers[it.id])).join('')}</section>`;
+  }).join('');
+  const sug = reviewSuggestions(paper, ad.answers, ad);
+  root.innerHTML = `<div class="wrap">
+    <div class="rv-bar"><button class="btn dark" id="rvPrint" type="button">🖨 Print / Save as PDF</button><button class="btn ghost" id="rvDl" type="button">⬇ Download (HTML file)</button></div>
+    <div id="reviewDoc">
+      <div class="card hero"><h1>📝 ${esc(CONFIG.TITLE)}: Review</h1><p>${esc(name)} &nbsp;•&nbsp; ${esc(row.class_name || '')} &nbsp;•&nbsp; ${esc(when)}</p>
+        <div class="bigscore">${res.got} / ${res.max}</div><p>${pct}%${used ? ' &nbsp;•&nbsp; Time used: ' + esc(used) : ''}${ad.reason === 'time' ? ' (time ran out)' : ''}</p></div>
+      <div class="card" style="margin-top:14px"><div class="res-grid">${res.sections.map(s => `<div class="res-box"><div class="small">${names[s.key]}</div><b>${s.got}/${s.max}</b></div>`).join('')}</div></div>
+      <div class="card" style="margin-top:14px"><h2>💡 How can the teacher help this learner?</h2><ul class="rv-sug">${sug.map(t => `<li>${t}</li>`).join('')}</ul></div>
+      ${secs}
+    </div></div>`;
+  $('#rvPrint').onclick = () => window.print();
+  $('#rvDl').onclick = () => {
+    const css = (document.querySelector('style') || {}).textContent || '';
+    const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(CONFIG.TITLE)} - ${esc(name)}</title><style>${css}</style></head><body><div class="wrap">${document.getElementById('reviewDoc').outerHTML}</div></body></html>`;
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+    a.download = `Grade4-English-Mock-${(row.surname || '').replace(/\W+/g, '')}-${(row.firstname || '').replace(/\W+/g, '')}.html`;
+    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  };
+}
+async function dropStaleLocal(){     // a teacher reset the mark: forget the old finished attempt on this device
+  if (!ASSIGNMENT_ID) return;
+  const st = safeGet(STORE_KEY);
+  if (!st || !st.finished || !st.final || !st.final.sent) return;
+  try {
+    const res = await fetch(CONFIG.ME_ENDPOINT, { credentials: 'include' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const rows = Array.isArray(data && data.results) ? data.results : [];
+    const row = rows.find(r => String(r.assignment_id) === String(ASSIGNMENT_ID) && String(r.result_status || '').toLowerCase() === 'completed');
+    if (!row) { try { localStorage.removeItem(STORE_KEY); } catch (_e) {} }
+  } catch (_e) {}
+}
+
 /* =====================================================================
    BOOT
    ===================================================================== */
@@ -1093,7 +1255,9 @@ async function loadClassPin(){
     if (TEACHER_OK) showMemo(); else root.innerHTML = '<div class="wrap"><div class="card"><div class="msg-err">The marking memo is for teachers only.</div></div></div>';
     return;
   }
+  if (qs.get('review') === '1'){ await showReview(); return; }
   await detectTeacher();
+  await dropStaleLocal();
   if (resumeIfAny()) return;
   if (ASSIGNMENT_ID && await alreadyCompletedOnServer()) return;
   await loadClassPin();
