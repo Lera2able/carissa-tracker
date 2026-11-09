@@ -573,6 +573,7 @@ async function handleOntiLogin(request, env, corsOrigin) {
   const maxAge = 60 * 60 * 24 * 14;
   const session = buildSessionPayload({ type: "onti", username: settings.username }, maxAge);
   const cookie = await createSessionCookie(env, COOKIE_NAMES.onti, session, maxAge);
+  try { await supabasePost(env, "onti_events", { kind: "login", detail: {} }); } catch {}
   return jsonResponse({ role: "onti" }, 200, corsOrigin, { "Set-Cookie": cookie });
 }
 
@@ -584,8 +585,12 @@ async function handleOntiData(request, env, corsOrigin) {
     supabaseGet(env, "onti_marks", { select: "*", order: "taken_on.desc.nullslast,created_at.desc" }),
     supabaseGet(env, "onti_activities", { select: "*", order: "due_on.asc.nullslast,created_at.asc" }),
   ]);
-  const out = { role, subjects, marks, activities, username: settings.username };
-  if (role === "owner") out.pin = settings.pin;
+  const attempts = await supabaseGet(env, "onti_attempts", { select: "*", order: "finished_at.desc", limit: "200" });
+  const out = { role, subjects, marks, activities, attempts, username: settings.username };
+  if (role === "owner") {
+    out.pin = settings.pin;
+    out.events = await supabaseGet(env, "onti_events", { select: "*", order: "created_at.desc", limit: "150" });
+  }
   return jsonResponse(out, 200, corsOrigin);
 }
 
@@ -634,6 +639,54 @@ async function handleOntiSave(request, env, corsOrigin) {
     return jsonResponse({ ok: true }, 200, corsOrigin);
   }
   return jsonResponse({ error: "Bad request." }, 400, corsOrigin);
+}
+
+
+async function handleOntiAttempt(request, env, corsOrigin) {
+  const { role } = await getOntiAccess(request, env);
+  if (role !== "onti" && role !== "owner") return jsonResponse({ error: "Not signed in." }, 401, corsOrigin);
+  const b = await readJsonBody(request);
+  if (!b?.bank_key) return jsonResponse({ error: "Missing paper." }, 400, corsOrigin);
+  const row = {
+    bank_key: String(b.bank_key).slice(0, 80),
+    bank_title: String(b.bank_title || "").slice(0, 200),
+    subject_name: String(b.subject_name || "").slice(0, 120),
+    score: Number(b.score) || 0,
+    total: Number(b.total) || 0,
+    seconds: Math.max(0, Math.round(Number(b.seconds) || 0)),
+    answers: Array.isArray(b.answers) ? b.answers.slice(0, 200) : [],
+    started_at: b.started_at || null,
+  };
+  const rows = await supabasePost(env, "onti_attempts", row);
+  try {
+    await supabasePost(env, "onti_events", { kind: role === "owner" ? "owner_attempt" : "finish", detail: { bank: row.bank_key, score: row.score, total: row.total, seconds: row.seconds } });
+  } catch {}
+  return jsonResponse({ row: Array.isArray(rows) ? rows[0] : rows }, 200, corsOrigin);
+}
+
+async function handleOntiEvent(request, env, corsOrigin) {
+  const { role } = await getOntiAccess(request, env);
+  if (role !== "onti") return jsonResponse({ ok: true }, 200, corsOrigin);
+  const b = await readJsonBody(request);
+  const kind = String(b?.kind || "").slice(0, 40);
+  if (!["open_practice", "start", "block_done", "view_plan"].includes(kind)) return jsonResponse({ error: "Unknown event." }, 400, corsOrigin);
+  await supabasePost(env, "onti_events", { kind, detail: b?.detail && typeof b.detail === "object" ? b.detail : {} });
+  return jsonResponse({ ok: true }, 200, corsOrigin);
+}
+
+async function handleOntiModerate(request, env, corsOrigin) {
+  const { role } = await getOntiAccess(request, env);
+  if (role !== "owner") return jsonResponse({ error: "Not allowed." }, 403, corsOrigin);
+  const b = await readJsonBody(request);
+  if (!b?.id) return jsonResponse({ error: "Missing attempt." }, 400, corsOrigin);
+  const vals = {
+    mod_comment: String(b.mod_comment || "").slice(0, 2000) || null,
+    mod_overrides: b.mod_overrides && typeof b.mod_overrides === "object" ? b.mod_overrides : {},
+    final_score: b.final_score == null ? null : Number(b.final_score),
+    moderated_at: new Date().toISOString(),
+  };
+  const rows = await supabasePatch(env, "onti_attempts", { id: `eq.${b.id}` }, vals);
+  return jsonResponse({ row: Array.isArray(rows) ? rows[0] : rows }, 200, corsOrigin);
 }
 
 async function handleOntiLogout(_request, _env, corsOrigin) {
@@ -2579,7 +2632,7 @@ export default {
       return handleTeacherLogout(request, env, corsOrigin);
     }
     if (url.pathname.startsWith("/api/onti/")) {
-      const routes = { "/api/onti/login": ["POST", handleOntiLogin], "/api/onti/data": ["GET", handleOntiData], "/api/onti/save": ["POST", handleOntiSave], "/api/onti/logout": ["POST", handleOntiLogout] };
+      const routes = { "/api/onti/login": ["POST", handleOntiLogin], "/api/onti/data": ["GET", handleOntiData], "/api/onti/save": ["POST", handleOntiSave], "/api/onti/logout": ["POST", handleOntiLogout], "/api/onti/attempt": ["POST", handleOntiAttempt], "/api/onti/event": ["POST", handleOntiEvent], "/api/onti/moderate": ["POST", handleOntiModerate] };
       const r = routes[url.pathname];
       if (!r) return jsonResponse({ error: "Not found" }, 404, corsOrigin);
       if (request.method !== r[0]) return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);

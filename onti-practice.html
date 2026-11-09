@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en-ZA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Practice Exam | Onti</title>
+<style>
+:root{--bg:#f4f1fa;--card:#fff;--ink:#2a2340;--mute:#6f6888;--pri:#6d3fc0;--pri2:#ede5fb;--ok:#1f8a4c;--okbg:#e6f6ed;--bad:#c0392b;--badbg:#fdeceb;--line:#e3dcf1;--gold:#f2b705}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+header{background:linear-gradient(135deg,#6d3fc0,#9a5fd8);color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+header h1{margin:0;font-size:1.15rem}
+header a{color:#fff}
+main{max-width:860px;margin:0 auto;padding:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:0 2px 6px rgba(60,30,100,.07)}
+button{font:inherit;border:0;border-radius:10px;padding:10px 18px;background:var(--pri);color:#fff;cursor:pointer}
+button.ghost{background:var(--pri2);color:var(--pri)}
+button:disabled{opacity:.45;cursor:default}
+input[type=text],input[type=number],textarea{font:inherit;padding:10px;border:2px solid var(--line);border-radius:10px;width:100%}
+input:focus,textarea:focus{outline:0;border-color:var(--pri)}
+.track{height:14px;background:var(--pri2);border-radius:99px;position:relative;margin:6px 0 4px}
+.track>i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#9a5fd8,#f2b705);transition:width .3s}
+.rocket{position:absolute;top:-12px;font-size:1.4rem;transition:left .3s;transform:translateX(-50%)}
+.opt{display:flex;gap:10px;align-items:center;border:2px solid var(--line);border-radius:12px;padding:11px 13px;margin:8px 0;cursor:pointer;background:#fff}
+.opt:hover{border-color:var(--pri)}
+.opt.sel{border-color:var(--pri);background:var(--pri2)}
+.opt b{width:26px;height:26px;border-radius:50%;background:var(--pri2);color:var(--pri);display:inline-flex;align-items:center;justify-content:center;flex:none}
+.opt.sel b{background:var(--pri);color:#fff}
+.passage{background:#faf7ff;border-left:5px solid var(--pri);padding:12px 14px;border-radius:8px;max-height:230px;overflow:auto;font-size:.95rem;margin-bottom:12px;white-space:pre-line}
+.svgbox{text-align:center;margin:10px 0;background:#fcfbff;border:1px dashed var(--line);border-radius:12px;padding:8px;overflow:auto}
+.svgbox svg{max-width:100%;height:auto}
+.q{font-size:1.08rem;font-weight:600;margin:6px 0 10px;white-space:pre-line}
+.nav{display:flex;justify-content:space-between;gap:10px;margin-top:14px;flex-wrap:wrap}
+.dots{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}
+.dots button{padding:0;width:28px;height:28px;border-radius:8px;font-size:.78rem;background:#fff;color:var(--mute);border:2px solid var(--line)}
+.dots button.ans{background:var(--pri2);color:var(--pri);border-color:var(--pri2)}
+.dots button.cur{border-color:var(--pri)}
+.dots button.flag{border-color:var(--gold);background:#fff7d6}
+.muted{color:var(--mute);font-size:.9rem}
+.big{font-size:2.6rem;font-weight:800;color:var(--pri);line-height:1}
+.bar{height:12px;border-radius:99px;background:var(--pri2);overflow:hidden}
+.bar>i{display:block;height:100%}
+.pill{display:inline-block;border-radius:99px;padding:2px 10px;font-size:.78rem;background:var(--pri2);color:var(--pri)}
+.rev{border-left:6px solid var(--line);padding:10px 12px;margin:10px 0;border-radius:8px;background:#fff}
+.rev.ok{border-color:var(--ok);background:var(--okbg)}.rev.bad{border-color:var(--bad);background:var(--badbg)}.rev.part{border-color:var(--gold);background:#fff9e0}
+.hint{background:#fff9e0;border:1px solid #f3dc7a;border-radius:10px;padding:8px 12px;margin-top:10px;font-size:.93rem}
+.match{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center}
+.match select{font:inherit;padding:8px;border-radius:8px;border:2px solid var(--line);width:100%}
+.ord{list-style:none;padding:0;margin:0}
+.ord li{display:flex;align-items:center;gap:8px;border:2px solid var(--line);border-radius:10px;padding:8px 10px;margin:6px 0;background:#fff}
+.ord li span{flex:1}.ord button{padding:3px 9px;border-radius:7px}
+.links a{display:inline-block;margin:3px 6px 3px 0;padding:5px 11px;border-radius:99px;background:var(--pri2);color:var(--pri);text-decoration:none;font-size:.88rem}
+.mod{background:#fff9e0;border:2px dashed var(--gold)}
+canvas#conf{position:fixed;inset:0;pointer-events:none;z-index:50}
+@media print{header,.nav,.noprint,canvas{display:none}.card{box-shadow:none}}
+</style>
+</head>
+<body>
+<header><h1 id="ttl">Practice exam</h1><a href="onti.html">&larr; My dashboard</a></header>
+<main id="m"><div class="card">Loading&hellip;</div></main>
+<canvas id="conf"></canvas>
+<script>
+/* ------------ question builders (used by bank files) ------------ */
+var ONTI_BANK=null;
+function ONTI_REGISTER(b){ONTI_BANK=b;}
+function MC(t,q,o,a,e,x){return Object.assign({type:"mc",topic:t,q:q,opts:o,answer:a,explain:e||"",marks:1},x||{});}
+function TF(t,q,a,e,x){return Object.assign({type:"tf",topic:t,q:q,answer:!!a,explain:e||"",marks:1},x||{});}
+function TX(t,q,acc,e,x){return Object.assign({type:"text",topic:t,q:q,accept:acc||[],explain:e||"",marks:1},x||{});}
+function NUM(t,q,a,e,x){return Object.assign({type:"num",topic:t,q:q,answer:a,tol:0.001,explain:e||"",marks:1},x||{});}
+function MATCH(t,q,pairs,e,x){return Object.assign({type:"match",topic:t,q:q,pairs:pairs,explain:e||"",marks:pairs.length},x||{});}
+function ORDER(t,q,items,e,x){return Object.assign({type:"order",topic:t,q:q,items:items,explain:e||"",marks:1},x||{});}
+
+/* ------------ helpers ------------ */
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+function norm(s){return String(s==null?"":s).normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/(\d)[\s ](?=\d{3}\b)/g,"$1").replace(/[^a-z0-9.,%\/ -]/g," ").replace(/\s+/g," ").trim();}
+function rng(seed){var s=seed>>>0||1;return function(){s=(s*1664525+1013904223)>>>0;return s/4294967296;};}
+function shuffle(a,r){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(r()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+var $=function(id){return document.getElementById(id);};
+var M=$("m");
+var params=new URLSearchParams(location.search);
+var paperKey=params.get("paper"), attemptId=params.get("attempt");
+var role=null, DATA=null, B=null, Q=[], ans={}, flags={}, hints={}, cur=0, t0=0, startedAt=null, timer=null, seed=0, hintUsed=0;
+
+function api(path,method,body){
+  return fetch("/api/onti/"+path,{method:method||"GET",credentials:"include",headers:{"content-type":"application/json"},body:body?JSON.stringify(body):undefined})
+   .then(function(r){return r.json().catch(function(){return {};}).then(function(j){if(!r.ok){var e=new Error(j.error||"Request failed");e.status=r.status;throw e;}return j;});});
+}
+function loadScript(src){return new Promise(function(res,rej){var s=document.createElement("script");s.src=src;s.onload=res;s.onerror=function(){rej(new Error("Could not load "+src));};document.head.appendChild(s);});}
+
+/* ------------ start ------------ */
+function boot(){
+  api("data").then(function(d){DATA=d;role=d.role;}).catch(function(){role=null;}).then(function(){
+    if(!role){M.innerHTML='<div class="card"><h2>Please sign in first</h2><p>Open <a href="onti.html">your dashboard</a> and sign in, then come back to this practice exam.</p></div>';return;}
+    if(!paperKey){return loadScript("onti-banks/index.js?v=1").then(function(){menu();});}
+    return loadScript("onti-banks/"+encodeURIComponent(paperKey)+".js?v=1").then(function(){B=ONTI_BANK;if(!B)throw new Error("Paper not found");
+      $("ttl").textContent=B.emoji+" "+B.title;
+      if(attemptId){var a=(DATA.attempts||[]).filter(function(x){return x.id===attemptId;})[0];if(!a){M.innerHTML='<div class="card">Attempt not found.</div>';return;}reviewSaved(a);return;}
+      intro();
+    });
+  }).catch(function(e){M.innerHTML='<div class="card"><h3>Oops</h3><p>'+esc(e.message)+'</p></div>';});
+}
+function menu(){
+  var h='<div class="card"><h2 style="margin-top:0">Pick a practice exam 🎯</h2><p class="muted">Each paper is marked automatically at the end. You will see what went wrong and where to learn more.</p></div>';
+  (window.ONTI_BANKS_INDEX||[]).forEach(function(b){h+='<div class="card"><b>'+esc(b.emoji)+' '+esc(b.title)+'</b><div class="muted">'+esc(b.subject)+' &middot; '+b.count+' questions &middot; about '+b.minutes+' min</div><p><button onclick="location.href=\'onti-practice.html?paper='+esc(b.key)+'\'">Open</button></p></div>';});
+  M.innerHTML=h;
+}
+function intro(){
+  var n=B.questions.length,tot=B.questions.reduce(function(s,q){return s+q.marks;},0);
+  var past=(DATA.attempts||[]).filter(function(a){return a.bank_key===B.key;});
+  M.innerHTML='<div class="card"><div style="font-size:3rem">'+esc(B.emoji)+'</div><h2 style="margin:4px 0">'+esc(B.title)+'</h2><p>'+esc(B.blurb||"")+'</p>'+
+   '<p><span class="pill">'+n+' questions</span> <span class="pill">'+tot+' marks</span> <span class="pill">about '+B.minutes+' minutes</span></p>'+
+   '<ul class="muted"><li>Answer in your own time. You can go back and change answers.</li><li>The 💡 Hint button helps if you are stuck (your parent can see how many hints you used).</li><li>Press 🚩 to flag a question you want to check again.</li><li>When you finish, the paper is marked straight away and saved to your dashboard.</li></ul>'+
+   (past.length?'<p class="muted">You have done this paper '+past.length+' time(s). Best: '+Math.max.apply(null,past.map(function(a){return Math.round((a.final_score!=null?a.final_score:a.score)/a.total*100);}))+'%</p>':'')+
+   '<button id="go">Let\'s go! 🚀</button></div>';
+  $("go").onclick=start;
+}
+function start(){
+  seed=Math.floor(Math.random()*1e9);var r=rng(seed);
+  Q=B.questions.map(function(q){q=JSON.parse(JSON.stringify(q));
+    if(q.type==="mc"){var idx=q.opts.map(function(_,i){return i;});var sh=shuffle(idx,r);q._o=sh.map(function(i){return q.opts[i];});q._a=sh.indexOf(q.answer);}
+    if(q.type==="match"){q._r=shuffle(q.pairs.map(function(p){return p[1];}),r);}
+    if(q.type==="order"){q._o=shuffle(q.items,r);if(q._o.join("|")===q.items.join("|"))q._o.reverse();}
+    return q;});
+  ans={};flags={};hints={};cur=0;hintUsed=0;t0=Date.now();startedAt=new Date().toISOString();
+  Q.forEach(function(q,i){if(q.type==="order")ans[i]=q._o.slice();});
+  api("event","POST",{kind:"start",detail:{bank:B.key}}).catch(function(){});
+  clearInterval(timer);timer=setInterval(tick,1000);
+  show();
+}
+function tick(){var el=$("clk");if(el){var s=Math.floor((Date.now()-t0)/1000);el.textContent=Math.floor(s/60)+":"+("0"+(s%60)).slice(-2);}}
+var cheers=["Nice one! 💪","Keep going! 🚀","You've got this! ⭐","Brilliant effort! 🌟","On a roll! 🔥","Steady and smart! 🧠"];
+
+function answered(i){var a=ans[i],q=Q[i];if(a==null)return false;if(q.type==="match")return Object.keys(a).length>0;if(q.type==="order")return true;return String(a).trim()!=="";}
+function show(){
+  var q=Q[cur],done=Q.filter(function(_,i){return answered(i);}).length;
+  var pct=Math.round(done/Q.length*100);
+  var h='<div class="card"><div style="display:flex;justify-content:space-between"><span class="muted">Question '+(cur+1)+' of '+Q.length+' &middot; '+done+' answered</span><span class="muted">⏱ <span id="clk">0:00</span></span></div>'+
+   '<div class="track"><i style="width:'+pct+'%"></i><span class="rocket" style="left:'+Math.max(2,pct)+'%">🚀</span></div><div class="dots">';
+  Q.forEach(function(_,i){h+='<button class="'+(answered(i)?'ans ':'')+(i===cur?'cur ':'')+(flags[i]?'flag':'')+'" data-i="'+i+'">'+(i+1)+'</button>';});
+  h+='</div></div><div class="card">';
+  if(q.p&&B.passages&&B.passages[q.p]){var p=B.passages[q.p];h+='<div class="muted" style="margin-bottom:4px">📖 '+esc(p.title)+'</div>'+(p.svg?'<div class="svgbox">'+p.svg+'</div>':'')+(p.text?'<div class="passage">'+esc(p.text)+'</div>':'');}
+  h+='<div class="pill">'+esc((B.topics[q.topic]||{}).label||q.topic)+' &middot; '+q.marks+' mark'+(q.marks>1?'s':'')+'</div><div class="q">'+esc(q.q)+'</div>';
+  if(q.svg)h+='<div class="svgbox">'+q.svg+'</div>';
+  h+=input(q,cur);
+  if(hints[cur]&&q.hint)h+='<div class="hint">💡 '+esc(q.hint)+'</div>';
+  h+='<div class="nav"><div><button class="ghost" id="prev"'+(cur?'':' disabled')+'>&larr; Back</button> <button class="ghost" id="flag">'+(flags[cur]?'🚩 Unflag':'🚩 Flag')+'</button> '+(q.hint?'<button class="ghost" id="hint">💡 Hint</button>':'')+'</div><div>'+
+   (cur<Q.length-1?'<button id="next">Next &rarr;</button>':'<button id="fin">Finish and mark ✅</button>')+'</div></div></div>';
+  M.innerHTML=h;
+  var r=Array.prototype.slice.call(M.querySelectorAll(".dots button")).forEach(function(b){b.onclick=function(){cur=+b.dataset.i;show();};});
+  bindInput(q,cur);
+  $("prev").onclick=function(){cur--;show();};
+  $("flag").onclick=function(){flags[cur]=!flags[cur];show();};
+  if($("hint"))$("hint").onclick=function(){if(!hints[cur]){hints[cur]=1;hintUsed++;}show();};
+  if($("next"))$("next").onclick=function(){cur++;show();window.scrollTo(0,0);};
+  if($("fin"))$("fin").onclick=finish;
+  tick();
+}
+function input(q,i){
+  var a=ans[i],h="";
+  if(q.type==="mc"){q._o.forEach(function(o,k){h+='<div class="opt'+(a===k?' sel':'')+'" data-k="'+k+'"><b>'+"ABCDEFG"[k]+'</b><span>'+esc(o)+'</span></div>';});}
+  else if(q.type==="tf"){["True","False"].forEach(function(o,k){h+='<div class="opt'+(a===(k===0)?' sel':'')+'" data-k="'+k+'"><b>'+(k===0?"✔":"✘")+'</b><span>'+o+'</span></div>';});}
+  else if(q.type==="num"){h='<input type="text" inputmode="decimal" id="inp" placeholder="Type your answer" value="'+esc(a||"")+'">';}
+  else if(q.type==="text"){h='<input type="text" id="inp" placeholder="Type your answer" autocomplete="off" value="'+esc(a||"")+'">';}
+  else if(q.type==="match"){h='<div class="match">';q.pairs.forEach(function(p,k){h+='<div>'+esc(p[0])+'</div><select data-k="'+k+'"><option value="">Choose&hellip;</option>'+q._r.map(function(r){return '<option'+((a||{})[k]===r?' selected':'')+'>'+esc(r)+'</option>';}).join("")+'</select>';});h+='</div>';}
+  else if(q.type==="order"){h='<p class="muted">Use the arrows to put these in the correct order.</p><ul class="ord">';a.forEach(function(it,k){h+='<li><span>'+(k+1)+'. '+esc(it)+'</span><button class="ghost" data-up="'+k+'">▲</button><button class="ghost" data-dn="'+k+'">▼</button></li>';});h+='</ul>';}
+  return h;
+}
+function bindInput(q,i){
+  if(q.type==="mc"||q.type==="tf"){Array.prototype.forEach.call(M.querySelectorAll(".opt"),function(o){o.onclick=function(){var k=+o.dataset.k;ans[i]=q.type==="tf"?(k===0):k;show();};});}
+  if(q.type==="num"||q.type==="text"){var el=$("inp");el.oninput=function(){ans[i]=el.value;var d=M.querySelectorAll(".dots button")[i];if(d)d.className=(answered(i)?"ans ":"")+"cur "+(flags[i]?"flag":"");};}
+  if(q.type==="match"){Array.prototype.forEach.call(M.querySelectorAll("select"),function(s){s.onchange=function(){ans[i]=ans[i]||{};if(s.value)ans[i][s.dataset.k]=s.value;else delete ans[i][s.dataset.k];show();};});}
+  if(q.type==="order"){Array.prototype.forEach.call(M.querySelectorAll("[data-up],[data-dn]"),function(b){b.onclick=function(){var k=+(b.dataset.up!=null?b.dataset.up:b.dataset.dn),d=b.dataset.up!=null?-1:1,n=k+d;if(n<0||n>=ans[i].length)return;var t=ans[i][k];ans[i][k]=ans[i][n];ans[i][n]=t;show();};});}
+}
+
+/* ------------ marking ------------ */
+function markQ(q,a){
+  var ok=0,given="",correct="";
+  if(q.type==="mc"){given=a==null?"":q._o[a];correct=q.opts[q.answer];ok=a===q._a?q.marks:0;}
+  else if(q.type==="tf"){given=a==null?"":(a?"True":"False");correct=q.answer?"True":"False";ok=a===q.answer?q.marks:0;}
+  else if(q.type==="num"){given=a==null?"":String(a);var v=parseFloat(String(a||"").replace(/\s/g,"").replace(",",".").replace(/[^0-9.\-]/g,""));correct=String(q.answer)+(q.unit?" "+q.unit:"");ok=(!isNaN(v)&&Math.abs(v-q.answer)<=q.tol)?q.marks:0;}
+  else if(q.type==="text"){given=a==null?"":String(a);var n=norm(a);correct=(q.accept[0]!=null?q.accept[0]:(q.show||""));
+    if(q.accept.some(function(x){return norm(x)===n;}))ok=q.marks;
+    else if(q.kw){var hit=q.kw.filter(function(g){return g.some(function(w){return n.indexOf(norm(w))>=0;});}).length;ok=hit>=(q.need||q.kw.length)?q.marks:0;}
+    if(q.show)correct=q.show;}
+  else if(q.type==="match"){var g=[];q.pairs.forEach(function(p,k){var x=(a||{})[k];g.push(p[0]+" → "+(x||"?"));if(x===p[1])ok++;});given=g.join("; ");correct=q.pairs.map(function(p){return p[0]+" → "+p[1];}).join("; ");}
+  else if(q.type==="order"){given=(a||[]).join(" → ");correct=q.items.join(" → ");ok=(a||[]).join("|")===q.items.join("|")?q.marks:0;}
+  return {ok:ok,given:given,correct:correct};
+}
+function links(topic){
+  var t=B.topics[topic]||{},qs=(t.search||[t.label||topic]),h='';
+  qs.forEach(function(s){var enc=encodeURIComponent(s+" grade 7");
+    h+='<a target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query='+enc+'">▶ Videos: '+esc(s)+'</a>';});
+  var k=encodeURIComponent((t.search||[t.label||topic])[0]);
+  h+='<a target="_blank" rel="noopener" href="https://www.siyavula.com/search?q='+k+'">📘 Siyavula</a><a target="_blank" rel="noopener" href="https://en.wikipedia.org/w/index.php?search='+k+'">🌍 Wikipedia</a>';
+  if(t.link)h+='<a target="_blank" rel="noopener" href="'+esc(t.link)+'">⭐ Recommended</a>';
+  return h;
+}
+
+function finish(){
+  var un=Q.filter(function(_,i){return !answered(i);}).length;
+  if(un&&!confirm(un+" question(s) not answered yet. Finish anyway?"))return;
+  clearInterval(timer);
+  var secs=Math.round((Date.now()-t0)/1000),score=0,total=0,rows=[];
+  Q.forEach(function(q,i){var m=markQ(q,ans[i]);score+=m.ok;total+=q.marks;rows.push({id:q.id||("q"+(i+1)),topic:q.topic,tl:(B.topics[q.topic]||{}).label||q.topic,given:m.given,correct:m.correct,marks:m.ok,max:q.marks,hint:hints[i]?1:0,flag:flags[i]?1:0,q:q.q,explain:q.explain||""});});
+  var payload={bank_key:B.key,bank_title:B.title,subject_name:B.subject,score:score,total:total,seconds:secs,answers:rows,started_at:startedAt};
+  results({score:score,total:total,seconds:secs,answers:rows,hints:hintUsed},true);
+  api("attempt","POST",payload).then(function(){var s=$("savemsg");if(s)s.innerHTML='✅ Saved to your dashboard. Your parent can see it.';}).catch(function(e){var s=$("savemsg");if(s)s.innerHTML='⚠️ Could not save this attempt ('+esc(e.message)+'). Take a screenshot and try again later.';});
+}
+function level(p){return p>=80?7:p>=70?6:p>=60?5:p>=50?4:p>=40?3:p>=30?2:1;}
+function topicStats(rows){var t={};rows.forEach(function(r){t[r.topic]=t[r.topic]||{s:0,m:0};t[r.topic].s+=r.marks;t[r.topic].m+=r.max;});return t;}
+
+function results(a,fresh,att){
+  var final=(att&&att.final_score!=null)?Number(att.final_score):a.score;
+  var pct=Math.round(final/a.total*100),lv=level(pct);
+  var msg=pct>=80?"Outstanding! You really know your stuff 🌟":pct>=60?"Great work! A little more practice and you'll shine ✨":pct>=40?"Good effort. Let's fix the tricky bits together 💪":"This is just practice. Now you know exactly what to study 🧭";
+  var ts=topicStats(a.answers);
+  var h='<div class="card" style="text-align:center"><div style="font-size:3rem">'+(pct>=80?"🏆":pct>=60?"🥈":pct>=40?"🌱":"🧭")+'</div><div class="big">'+final+' / '+a.total+'</div><div style="font-size:1.4rem;margin:4px 0">'+pct+'% &middot; Level '+lv+'</div><p>'+msg+'</p>'+
+   '<p class="muted">Time: '+Math.floor(a.seconds/60)+' min '+(a.seconds%60)+' s &middot; Hints used: '+(a.hints!=null?a.hints:a.answers.filter(function(r){return r.hint;}).length)+'</p>'+(fresh?'<p id="savemsg" class="muted">Saving&hellip;</p>':'')+
+   (att&&att.mod_comment?'<div class="hint" style="text-align:left"><b>Comment from your parent:</b><br>'+esc(att.mod_comment)+'</div>':'')+'</div>';
+  h+='<div class="card"><h3 style="margin-top:0">Your topic power meters ⚡</h3>';
+  Object.keys(ts).forEach(function(k){var p=Math.round(ts[k].s/ts[k].m*100);h+='<div style="margin:8px 0"><div style="display:flex;justify-content:space-between"><span>'+esc((B.topics[k]||{}).label||k)+'</span><span>'+ts[k].s+'/'+ts[k].m+'</span></div><div class="bar"><i style="width:'+p+'%;background:'+(p>=70?'var(--ok)':p>=50?'var(--gold)':'var(--bad)')+'"></i></div></div>';});
+  h+='</div>';
+  var weak=Object.keys(ts).filter(function(k){return ts[k].s/ts[k].m<0.7;});
+  h+='<div class="card"><h3 style="margin-top:0">📚 Extra material to help you</h3>';
+  if(!weak.length)h+='<p>No weak spots. Brilliant! Try the paper again to beat your score.</p>';
+  weak.forEach(function(k){var t=B.topics[k]||{};h+='<div style="margin-bottom:12px"><b>'+esc(t.label||k)+'</b>'+((t.tips||[]).length?'<ul>'+t.tips.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul>':'')+'<div class="links">'+links(k)+'</div></div>';});
+  h+='</div><div class="card"><h3 style="margin-top:0">Where you went wrong 🔍</h3><div class="muted">Wrong and partly right answers first. Everything else is listed below.</div>';
+  var order=a.answers.map(function(r,i){return {r:r,i:i};}).sort(function(x,y){var fx=x.r.marks>=x.r.max?1:0,fy=y.r.marks>=y.r.max?1:0;return fx-fy||x.i-y.i;});
+  var mod=(role==="owner"&&att);
+  order.forEach(function(o){var r=o.r,full=r.marks>=r.max,cls=full?'ok':r.marks>0?'part':'bad';
+    var ov=att&&att.mod_overrides&&att.mod_overrides[r.id]!=null?att.mod_overrides[r.id]:null;
+    h+='<div class="rev '+cls+'"><div class="muted">Q'+(o.i+1)+' &middot; '+esc((B.topics[r.topic]||{}).label||r.topic)+' &middot; '+r.marks+'/'+r.max+(ov!=null?' &middot; parent mark: '+ov:'')+'</div><div><b>'+esc(r.q)+'</b></div>'+
+     '<div>Your answer: <b>'+esc(r.given||"(no answer)")+'</b></div>'+(full?'':'<div>Correct answer: <b>'+esc(r.correct)+'</b></div>')+(r.explain?'<div class="muted">💬 '+esc(r.explain)+'</div>':'')+
+     (mod?'<div class="mod" style="margin-top:6px;padding:6px 8px">Parent mark: <input type="number" step="0.5" min="0" max="'+r.max+'" data-ov="'+esc(r.id)+'" value="'+(ov!=null?ov:r.marks)+'" style="width:80px;display:inline-block"> / '+r.max+'</div>':'')+'</div>';});
+  h+='</div>';
+  if(mod){h+='<div class="card mod"><h3 style="margin-top:0">Moderation (only you can see this)</h3><p class="muted">Change a mark if an answer was right but worded differently, or wrong but a good try. Add a comment for Onti.</p><textarea id="mcom" rows="3" placeholder="Comment for Onti...">'+esc(att.mod_comment||"")+'</textarea><p><button id="msave">Save moderation</button> <span id="mmsg" class="muted"></span></p></div>';}
+  h+='<div class="card noprint" style="text-align:center">'+(att?'':'<button id="again">Try again (new order) 🔁</button> ')+'<button class="ghost" onclick="window.print()">🖨 Print</button> <button class="ghost" onclick="location.href=\'onti.html\'">Back to dashboard</button></div>';
+  M.innerHTML=h;window.scrollTo(0,0);
+  if($("again"))$("again").onclick=intro;
+  if(pct>=60&&fresh)confetti();
+  if(mod){$("msave").onclick=function(){
+    var ovs={},tot=0;Array.prototype.forEach.call(M.querySelectorAll("[data-ov]"),function(inp){var v=parseFloat(inp.value);if(isNaN(v))v=0;ovs[inp.dataset.ov]=v;tot+=v;});
+    api("moderate","POST",{id:att.id,mod_comment:$("mcom").value,mod_overrides:ovs,final_score:tot}).then(function(){$("mmsg").textContent="Saved. New score: "+tot+"/"+a.total;att.final_score=tot;att.mod_overrides=ovs;att.mod_comment=$("mcom").value;}).catch(function(e){$("mmsg").textContent="Could not save: "+e.message;});};}
+}
+function reviewSaved(att){
+  results({score:att.score,total:att.total,seconds:att.seconds,answers:att.answers},false,att);
+}
+
+/* ------------ confetti ------------ */
+function confetti(){
+  var c=$("conf"),x=c.getContext("2d");c.width=innerWidth;c.height=innerHeight;
+  var p=[];for(var i=0;i<130;i++)p.push({x:Math.random()*c.width,y:-Math.random()*c.height*.5,v:2+Math.random()*3,s:5+Math.random()*7,c:"hsl("+Math.floor(Math.random()*360)+",85%,60%)",r:Math.random()*6});
+  var f=0;(function loop(){x.clearRect(0,0,c.width,c.height);p.forEach(function(q){q.y+=q.v;q.x+=Math.sin(q.r+=.05)*1.5;x.fillStyle=q.c;x.fillRect(q.x,q.y,q.s,q.s*.6);});if(++f<220)requestAnimationFrame(loop);else x.clearRect(0,0,c.width,c.height);})();
+}
+boot();
+</script>
+</body>
+</html>
