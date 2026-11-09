@@ -43,10 +43,11 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
 </head>
 <body>
 <div id="app"></div>
+<script src="onti-banks/index.js?v=1"></script>
 <script>
 (function(){
   var API = "/api/onti/";
-  var D = null, view = "home", subjId = null, tab = "scope";
+  var D = null, view = "home", subjId = null, tab = "scope", htab = "overview";
   var app = document.getElementById("app");
 
   function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
@@ -89,15 +90,42 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
     var sum=0;m.forEach(function(x){sum+=x.mark/x.total*100;});return Math.round(sum/m.length);
   }
 
+  function htabs(){
+    var t=[["overview","📅 Overview"],["plan","⏰ Study plan"],["practice","🎯 Practice exams"],[owner()?"monitor":"results",owner()?"🔍 Monitor":"📈 My results"]];
+    var h='<div class="tabs noprint">';
+    t.forEach(function(x){h+='<button data-h="'+x[0]+'" class="'+(htab===x[0]?'on':'')+'">'+x[1]+'</button>';});
+    return h+'</div>';
+  }
+  function logEvent(kind,detail){if(D&&D.role==="onti")api("event","POST",{kind:kind,detail:detail||{}}).catch(function(){});}
+
   function home(){
+    var h=header()+'<main>'+htabs();
+    if(htab==="overview") h+=overviewHtml();
+    else if(htab==="plan") h+=planHtml();
+    else if(htab==="practice") h+=practiceHtml();
+    else if(htab==="results") h+=resultsHtml(false);
+    else if(htab==="monitor") h+=monitorHtml();
+    h+='</main>';
+    app.innerHTML=h;bind();
+    Array.prototype.forEach.call(app.querySelectorAll("[data-h]"),function(b){b.onclick=function(){htab=b.getAttribute("data-h");if(htab==="plan")logEvent("view_plan");render();};});
+    Array.prototype.forEach.call(app.querySelectorAll(".subj"),function(el){el.onclick=function(){subjId=el.getAttribute("data-id");tab="scope";view="subj";render();};});
+    Array.prototype.forEach.call(app.querySelectorAll("[data-blk]"),function(c){c.onchange=function(){localStorage.setItem("onti_blk_"+c.getAttribute("data-blk"),c.checked?"1":"");if(c.checked)logEvent("block_done",{block:c.getAttribute("data-blk")});render();};});
+    Array.prototype.forEach.call(app.querySelectorAll("[data-go]"),function(b){b.onclick=function(){logEvent("open_practice",{bank:b.getAttribute("data-go")});location.href="onti-practice.html?paper="+b.getAttribute("data-go");};});
+    if(owner()&&htab==="overview"){
+      document.getElementById("savepin").onclick=function(){api("save","POST",{op:"set_pin",pin:document.getElementById("pin").value}).then(function(){alert("PIN changed.");return load();}).then(render).catch(function(e){alert(e.message);});};
+      document.getElementById("addsub").onclick=function(){var n=prompt("Subject name?");if(!n)return;save("create","subject",null,{name:n,sort:D.subjects.length+1});};
+    }
+  }
+
+  function overviewHtml(){
     var subs=D.subjects.slice().sort(function(a,b){return (a.exam_date||"9")>(b.exam_date||"9")?1:-1;});
     var next=subs.filter(function(s){var d=daysTo(s.exam_date);return d!=null&&d>=0;})[0];
-    var h=header()+'<main>';
+    var h='';
     if(next){var d=daysTo(next.exam_date);
       h+='<div class="card"><div class="muted">Next exam</div><div class="big">'+esc(subjName(next))+'</div><div>'+esc(nice(next.exam_date))+' &middot; '+(d===0?'<b>today</b>':d===1?'tomorrow':'in '+d+' days')+'</div></div>';
     } else h+='<div class="card"><b>All exams done. Well done, Onti!</b></div>';
     var openActs=D.activities.filter(function(a){return !a.done;});
-    h+='<div class="card"><h3 style="margin-top:0">Timetable and subjects</h3><div class="grid">';
+    h+='<div class="card"><h3 style="margin-top:0">Exam timetable and subjects</h3><div class="grid">';
     subs.forEach(function(s){
       var d=daysTo(s.exam_date),pc=d==null?'':d<0?'past':d<=3?'soon':'';
       var a=avg(s.id),n=openActs.filter(function(x){return x.subject_id===s.id;}).length;
@@ -112,13 +140,147 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
         '<p class="muted">Only you (signed in as a teacher) and Onti can open this page. Nothing here is visible to learners or other teachers.</p>'+
         '<button class="ghost small" id="addsub">+ Add subject</button></div>';
     }
-    h+='</main>';
-    app.innerHTML=h;bind();
-    Array.prototype.forEach.call(app.querySelectorAll(".subj"),function(el){el.onclick=function(){subjId=el.getAttribute("data-id");tab="scope";view="subj";render();};});
-    if(owner()){
-      document.getElementById("savepin").onclick=function(){api("save","POST",{op:"set_pin",pin:document.getElementById("pin").value}).then(function(){alert("PIN changed.");return load();}).then(render).catch(function(e){alert(e.message);});};
-      document.getElementById("addsub").onclick=function(){var n=prompt("Subject name?");if(!n)return;save("create","subject",null,{name:n,sort:D.subjects.length+1});};
+    return h;
+  }
+
+  /* ---------- study planner ---------- */
+  var BREAKS=["Drink some water 💧 and stretch your arms","Step outside for fresh air 🌿","Healthy snack time 🍎","Five slow, deep breaths 😮‍💨","Tidy your desk and rest your eyes 👀","Quick dance or a walk around the house 🎵","Look out of the window and rest your eyes 🪟"];
+  var LONGB=["Long break: snack, water and fresh air 🥪","Long break: go outside or play with the dog 🌳","Long break: chat with family, no screens 💬"];
+  function pad(n){return (n<10?"0":"")+n;}
+  function hm(m){return pad(Math.floor(m/60))+":"+pad(m%60);}
+  function ymd(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
+  function bankFor(s){var l=window.ONTI_BANKS_INDEX||[];return l.filter(function(b){return b.subject===s.name&&(!b.paper||b.paper===s.paper);})[0]||null;}
+  function buildPlan(){
+    var subs=D.subjects.filter(function(s){return s.exam_date;}).sort(function(a,b){return a.exam_date>b.exam_date?1:-1;});
+    if(!subs.length) return [];
+    var last=subs[subs.length-1].exam_date, days=[], d=today(), counter={}, rr=0;
+    var nowMin=(new Date()).getHours()*60+(new Date()).getMinutes();
+    while(ymd(d)<=last){
+      var key=ymd(d), dow=d.getDay(), weekend=(dow===0||dow===6);
+      var upcoming=subs.filter(function(s){return s.exam_date>key;});
+      var examToday=subs.filter(function(s){return s.exam_date===key;});
+      var tomorrow=new Date(d.getTime()+864e5), tkey=ymd(tomorrow);
+      var examTomorrow=subs.some(function(s){return s.exam_date===tkey;});
+      var wins=weekend?[[540,720],[840,990]]:(examToday.length?[[870,945]]:[[870,1050],[1110,1140]]);
+      if(examTomorrow&&!weekend) wins=[[870,1050],[1110,1140]];
+      var items=[];
+      if(examToday.length) items.push({t:"exam",start:480,end:720,label:"📝 EXAM today: "+examToday.map(subjName).join(" and "),note:"Read every question twice. Use all your time. You've prepared!"});
+      var bi=0, studied=0, maxStudy=weekend?7:(examToday.length?2:6);
+      wins.forEach(function(w){
+        var t=w[0];
+        while(t+25<=w[1]&&studied<maxStudy){
+          if(upcoming.length){
+            var wts=upcoming.map(function(s,i){return i===0?5:i===1?3:i===2?2:1;});
+            var tot=wts.reduce(function(a,b){return a+b;},0), pick=(rr*7)%tot, ix=0;
+            while(pick>=wts[ix]){pick-=wts[ix];ix++;}
+            rr++;
+            var sub=upcoming[ix], c=counter[sub.id]=(counter[sub.id]||0)+1, bank=bankFor(sub), sc=sub.scope||[];
+            var what, go=null;
+            if(bank&&c%3===0){what="Practice exam: "+bank.title;go=bank.key;}
+            else if(sc.length){what="Revise: "+sc[(c-1)%sc.length].topic;}
+            else what="Revise class notes and past papers";
+            items.push({t:"study",start:t,end:t+25,sub:subjName(sub),label:what,go:go,id:key+"_"+t});
+          } else break;
+          studied++;t+=25;
+          var longb=studied%2===0;
+          var bl=longb?20:5;
+          if(t+bl<=w[1]+5) items.push({t:longb?"long":"break",start:t,end:t+bl,label:longb?LONGB[(studied/2-1)%LONGB.length]:BREAKS[bi++%BREAKS.length]});
+          t+=bl;
+        }
+      });
+      if(examTomorrow) items.push({t:"rest",start:1170,end:1230,label:"🌙 Pack your bag, relax and go to bed early (no screens after 20:00)",note:"Sleep helps your brain remember."});
+      days.push({key:key,date:new Date(d.getTime()),items:items,exam:examToday});
+      d=new Date(d.getTime()+864e5);
     }
+    return days;
+  }
+  function planHtml(){
+    var days=buildPlan(), nowMin=(new Date()).getHours()*60+(new Date()).getMinutes(), tk=ymd(today());
+    var h='<div class="card"><h3 style="margin-top:0">Your study plan ⏰</h3><p class="muted">Study for 25 minutes, then take a 5 minute break. After two study blocks, take a longer 20 minute break. Short, focused blocks work better than studying for hours without stopping. School finishes at 12:00 during exams, so afternoons are for study and evenings are for rest.</p></div>';
+    days.forEach(function(day,idx){
+      var isToday=day.key===tk, past=day.key<tk;
+      var title=day.date.toLocaleDateString("en-ZA",{weekday:"long",day:"numeric",month:"long"});
+      var inner='';
+      day.items.forEach(function(it){
+        if(isToday&&it.end<=nowMin&&it.t!=="exam") return;
+        var cls=it.t==="study"?"pill":"muted", id=it.id;
+        var done=id&&localStorage.getItem("onti_blk_"+id);
+        if(it.t==="study"){
+          inner+='<div class="chk '+(done?'done':'')+'"><input type="checkbox" data-blk="'+id+'" '+(done?'checked':'')+'><span><b>'+hm(it.start)+' to '+hm(it.end)+'</b> &middot; '+esc(it.sub)+'<br><span class="muted">'+esc(it.label)+'</span></span>'+(it.go?'<button class="small" data-go="'+it.go+'">Start 🚀</button>':'')+'</div>';
+        } else if(it.t==="exam"){
+          inner+='<div class="chk" style="background:#fff1da;border-radius:8px;padding:8px"><span><b>'+esc(it.label)+'</b><br><span class="muted">'+esc(it.note)+'</span></span></div>';
+        } else {
+          inner+='<div class="chk" style="color:var(--mute)"><span>'+hm(it.start)+' to '+hm(it.end)+' &middot; '+esc(it.label)+(it.note?'<br>'+esc(it.note):'')+'</span></div>';
+        }
+      });
+      if(!inner) inner='<p class="muted">Nothing more planned for today. Rest well. 💜</p>';
+      h+='<details class="card" '+(isToday||idx===1?'open':'')+'><summary style="cursor:pointer;font-weight:700">'+esc(title)+(isToday?' (today)':'')+(day.exam.length?' &middot; EXAM':'')+'</summary>'+inner+'</details>';
+    });
+    return h;
+  }
+
+  /* ---------- practice launcher ---------- */
+  function bestFor(key){var a=(D.attempts||[]).filter(function(x){return x.bank_key===key;});if(!a.length)return null;return Math.max.apply(null,a.map(function(x){return Math.round((x.final_score!=null?x.final_score:x.score)/x.total*100);}));}
+  function practiceHtml(){
+    var h='<div class="card"><h3 style="margin-top:0">Practice exams 🎯</h3><p class="muted">Fun practice papers built from your past papers and scope. They are marked automatically, then show you what went wrong and where to learn more.</p></div><div class="grid">';
+    (window.ONTI_BANKS_INDEX||[]).forEach(function(b){
+      var best=bestFor(b.key),n=(D.attempts||[]).filter(function(x){return x.bank_key===b.key;}).length;
+      h+='<div class="card" style="margin:0"><div style="font-size:2rem">'+esc(b.emoji)+'</div><b>'+esc(b.title)+'</b><div class="muted">'+b.count+' questions &middot; about '+b.minutes+' min</div><div class="muted">'+(n?n+' attempt(s) &middot; best '+best+'%':'Not tried yet')+'</div><p><button data-go="'+b.key+'">'+(n?'Try again':'Start')+'</button></p></div>';
+    });
+    return h+'</div>';
+  }
+  function resultsHtml(isOwner){
+    var at=D.attempts||[];
+    var h='<div class="card"><h3 style="margin-top:0">'+(isOwner?'Attempts':'My results 📈')+'</h3>';
+    if(!at.length) h+='<p class="muted">No practice exams completed yet.</p>';
+    else{
+      h+='<table><tr><th>Date</th><th>Paper</th><th>Score</th><th>Time</th>'+(isOwner?'<th>Hints</th><th>Status</th>':'<th>Parent comment</th>')+'<th></th></tr>';
+      at.forEach(function(a){
+        var sc=a.final_score!=null?Number(a.final_score):Number(a.score), pc=Math.round(sc/a.total*100);
+        var hints=(a.answers||[]).filter(function(r){return r.hint;}).length;
+        h+='<tr><td>'+esc(new Date(a.finished_at).toLocaleString("en-ZA",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))+'</td><td>'+esc(a.bank_title||a.bank_key)+'</td><td><b>'+sc+'/'+a.total+'</b> ('+pc+'%)'+(a.final_score!=null?' ✔':'')+'</td><td>'+Math.round((a.seconds||0)/60)+' min</td>'+
+          (isOwner?'<td>'+hints+'</td><td>'+(a.moderated_at?'Moderated':'<span class="pill soon">To check</span>')+'</td>':'<td class="muted">'+esc(a.mod_comment||'')+'</td>')+
+          '<td><a href="onti-practice.html?paper='+esc(a.bank_key)+'&attempt='+esc(a.id)+'">'+(isOwner?'Review and moderate':'Review')+'</a></td></tr>';
+      });
+      h+='</table>';
+    }
+    return h+'</div>';
+  }
+  function evText(e){
+    var d=e.detail||{}, k=e.kind;
+    var nm=function(key){var b=(window.ONTI_BANKS_INDEX||[]).filter(function(x){return x.key===key;})[0];return b?b.title:key;};
+    if(k==="login") return "Signed in";
+    if(k==="view_plan") return "Looked at her study plan";
+    if(k==="open_practice") return "Opened practice: "+nm(d.bank);
+    if(k==="start") return "Started: "+nm(d.bank);
+    if(k==="finish") return "Finished: "+nm(d.bank)+" ("+d.score+"/"+d.total+" in "+Math.round((d.seconds||0)/60)+" min)";
+    if(k==="block_done") return "Ticked off a study block";
+    if(k==="owner_attempt") return "You tried: "+nm(d.bank);
+    return k;
+  }
+  function monitorHtml(){
+    var at=D.attempts||[], ev=D.events||[];
+    var login=ev.filter(function(e){return e.kind==="login";})[0];
+    var secs=at.reduce(function(s,a){return s+(a.seconds||0);},0);
+    var todo=at.filter(function(a){return !a.moderated_at;}).length;
+    var blocks=ev.filter(function(e){return e.kind==="block_done";}).length;
+    var h='<div class="grid" style="margin-bottom:14px"><div class="card" style="margin:0"><div class="muted">Last sign-in</div><b>'+(login?esc(new Date(login.created_at).toLocaleString("en-ZA",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})):'Never')+'</b></div>'+
+      '<div class="card" style="margin:0"><div class="muted">Practice exams done</div><div class="big">'+at.length+'</div></div>'+
+      '<div class="card" style="margin:0"><div class="muted">Time practising</div><div class="big">'+Math.round(secs/60)+'<small style="font-size:1rem"> min</small></div></div>'+
+      '<div class="card" style="margin:0"><div class="muted">To moderate</div><div class="big">'+todo+'</div></div>'+
+      '<div class="card" style="margin:0"><div class="muted">Study blocks ticked</div><div class="big">'+blocks+'</div></div></div>';
+    // weak topics
+    var tp={};at.forEach(function(a){(a.answers||[]).forEach(function(r){var k=(a.subject_name||'')+' | '+(r.tl||r.topic);tp[k]=tp[k]||{s:0,m:0};tp[k].s+=r.marks;tp[k].m+=r.max;});});
+    var keys=Object.keys(tp).sort(function(a,b){return tp[a].s/tp[a].m-tp[b].s/tp[b].m;});
+    h+='<div class="card"><h3 style="margin-top:0">Weakest topics so far</h3>';
+    if(!keys.length) h+='<p class="muted">Appears after the first practice exam.</p>';
+    keys.slice(0,8).forEach(function(k){var p=Math.round(tp[k].s/tp[k].m*100);h+='<div style="margin:6px 0"><div style="display:flex;justify-content:space-between"><span>'+esc(k)+'</span><span>'+tp[k].s+'/'+tp[k].m+' ('+p+'%)</span></div><div style="height:10px;border-radius:99px;background:var(--pri2);overflow:hidden"><i style="display:block;height:100%;width:'+p+'%;background:'+(p>=70?'var(--ok)':p>=50?'var(--warn)':'var(--bad)')+'"></i></div></div>';});
+    h+='</div>';
+    h+=resultsHtml(true);
+    h+='<div class="card"><h3 style="margin-top:0">Activity log</h3>';
+    if(!ev.length) h+='<p class="muted">No activity yet.</p>';
+    else h+='<table>'+ev.slice(0,40).map(function(e){return '<tr><td class="muted">'+esc(new Date(e.created_at).toLocaleString("en-ZA",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))+'</td><td>'+esc(evText(e))+'</td></tr>';}).join('')+'</table>';
+    return h+'</div>';
   }
 
   function save(op,entity,id,values){
