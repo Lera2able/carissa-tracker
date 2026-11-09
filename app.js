@@ -773,6 +773,34 @@
     const max = Math.max(1, ...data.map((d) => d.value));
     return /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "10px" } }, data.map((d, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", alignItems: "center", gap: "10px" } }, /* @__PURE__ */ React.createElement("div", { style: { minWidth: "130px", fontSize: "13px", color: "#333" } }, d.label), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, background: "#f0f0f5", borderRadius: "6px", height: "22px", position: "relative" } }, /* @__PURE__ */ React.createElement("div", { style: { width: `${d.value / max * 100}%`, height: "100%", background: colorFn ? colorFn(i) : "#667eea", borderRadius: "6px", transition: "width 0.4s" } })), /* @__PURE__ */ React.createElement("div", { style: { minWidth: "30px", textAlign: "right", fontSize: "13px", color: "#333", fontWeight: 600 } }, d.value))));
   }
+  function LineChart({ series, xLabels, height = 260, yUnit = "wpm" }) {
+    const width = 640;
+    const padL = 52, padR = 16, padT = 16, padB = 40;
+    const innerW = width - padL - padR;
+    const innerH = height - padT - padB;
+    const allVals = series.flatMap((s) => s.points.map((p) => p.y)).filter((v) => v != null && !isNaN(v));
+    const yMax = Math.max(10, ...allVals);
+    const yTicks = 5;
+    const xStep = xLabels.length > 1 ? innerW / (xLabels.length - 1) : innerW;
+    const px = (i) => padL + i * xStep;
+    const py = (v) => padT + innerH - (v / yMax) * innerH;
+    const tickVals = Array.from({ length: yTicks + 1 }, (_, i) => Math.round((yMax / yTicks) * i));
+    const gridLines = tickVals.map((tv, i) => {
+      const y = py(tv);
+      return [
+        /* @__PURE__ */ React.createElement("line", { key: `gl-${i}`, x1: padL, y1: y, x2: width - padR, y2: y, stroke: "#e2e8f0", strokeWidth: 1 }),
+        /* @__PURE__ */ React.createElement("text", { key: `gt-${i}`, x: padL - 8, y: y + 4, textAnchor: "end", fontSize: 11, fill: "#94a3b8" }, tv)
+      ];
+    }).flat();
+    const xLabelsEls = xLabels.map((xl, i) => /* @__PURE__ */ React.createElement("text", { key: `x-${i}`, x: px(i), y: height - padB + 22, textAnchor: "middle", fontSize: 12, fill: "#64748b", fontWeight: 600 }, xl));
+    const seriesEls = series.map((s, si) => {
+      const pts = s.points.map((p) => p.y != null && !isNaN(p.y) ? { x: px(p.x), y: py(p.y), val: p.y } : null);
+      const linePts = pts.filter(Boolean);
+      const path = linePts.length > 1 ? linePts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ") : "";
+      return /* @__PURE__ */ React.createElement(React.Fragment, { key: `s-${si}` }, path && /* @__PURE__ */ React.createElement("path", { d: path, fill: "none", stroke: s.color, strokeWidth: s.width || 2, strokeLinejoin: "round", strokeLinecap: "round", strokeDasharray: s.dash || undefined }), pts.map((p, pi) => p ? /* @__PURE__ */ React.createElement("circle", { key: `p-${si}-${pi}`, cx: p.x, cy: p.y, r: s.radius || 4, fill: s.color, stroke: "#fff", strokeWidth: 1.5 }) : null), linePts.map((p, pi) => /* @__PURE__ */ React.createElement("text", { key: `l-${si}-${pi}`, x: p.x, y: p.y - 10, textAnchor: "middle", fontSize: 11, fill: s.color, fontWeight: 700 }, p.val)));
+    });
+    return /* @__PURE__ */ React.createElement("div", { style: { width: "100%", overflowX: "auto" } }, /* @__PURE__ */ React.createElement("svg", { viewBox: `0 0 ${width} ${height}`, style: { width: "100%", maxWidth: width, height, display: "block" } }, gridLines, xLabelsEls, seriesEls, /* @__PURE__ */ React.createElement("line", { x1: padL, y1: padT, x2: padL, y2: height - padB, stroke: "#cbd5e1", strokeWidth: 1 }), /* @__PURE__ */ React.createElement("line", { x1: padL, y1: height - padB, x2: width - padR, y2: height - padB, stroke: "#cbd5e1", strokeWidth: 1 })), series.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "14px", flexWrap: "wrap", justifyContent: "center", marginTop: "8px" } }, series.map((s, i) => /* @__PURE__ */ React.createElement("div", { key: i, style: { display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "#475569" } }, /* @__PURE__ */ React.createElement("span", { style: { display: "inline-block", width: "16px", height: "3px", background: s.color, borderRadius: "2px" } }), s.label))));
+  }
   function StatusBadge({ status }) {
     const s = STATUS_OPTS.find((x) => x.v === status) || STATUS_OPTS[0];
     return /* @__PURE__ */ React.createElement("span", { style: { background: s.c + "22", color: s.c, padding: "4px 10px", borderRadius: "12px", fontSize: "12px", fontWeight: 600 } }, s.l);
@@ -6012,11 +6040,37 @@ ${trimmedReviewNote}` : noteHeader;
       }
     )))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "18px" } }, /* @__PURE__ */ React.createElement("button", { onClick: downloadFilledPdf, disabled: busy, style: { ...sbtn, background: "#10b981", opacity: busy ? 0.65 : 1 } }, busy ? "Preparing PDF..." : "Download filled PDF"), /* @__PURE__ */ React.createElement("a", { href: MODERATION_TEMPLATE_PATH, target: "_blank", rel: "noreferrer", style: { ...sbtn, background: "#667eea", textDecoration: "none" } }, "Open blank template"), /* @__PURE__ */ React.createElement("button", { onClick: resetDraft, style: { ...sbtn, background: "#f59e0b" } }, "Clear draft")), status && /* @__PURE__ */ React.createElement("div", { style: { marginTop: "12px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "11px 12px", fontSize: "13px", color: "#334155" } }, status));
   }
-  function ReadingAssessmentTab({ reading, setReading, initialClass, lockClass }) {
+  function ReadingStatisticsView({ reading, selClass }) {
+    const terms = ["Term 2", "Term 3", "Term 4"];
+    const learners = CLASS_DATA[selClass] || [];
+    const wpmFor = (cls, surname, firstname, term) => {
+      const key = readingKey(cls, surname, firstname, term);
+      const recs = reading.filter((r) => readingKey(r.class_name, r.surname, r.firstname, r.term || "") === key);
+      if (!recs.length) return null;
+      const latest = recs.slice().sort((a, b) => new Date(b.date_assessed || b.created_at) - new Date(a.date_assessed || a.created_at))[0];
+      return latest.words_correct != null ? Number(latest.words_correct) : null;
+    };
+    const learnerSeries = learners.map((l, i) => {
+      const colors = ["#667eea", "#f97316", "#10b981", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16", "#f59e0b", "#3b82f6", "#14b8a6", "#f43f5e", "#a855f7", "#22c55e", "#eab308"];
+      return {
+        label: `${l.surname}, ${l.firstname}`,
+        color: colors[i % colors.length],
+        points: terms.map((t, ti) => ({ x: ti, y: wpmFor(selClass, l.surname, l.firstname, t) }))
+      };
+    }).filter((s) => s.points.some((p) => p.y != null));
+    const classAvgSeries = terms.map((t, ti) => {
+      const vals = learners.map((l) => wpmFor(selClass, l.surname, l.firstname, t)).filter((v) => v != null);
+      return vals.length ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length) : null;
+    });
+    const assessedCounts = terms.map((t) => learners.filter((l) => wpmFor(selClass, l.surname, l.firstname, t) != null).length);
+    return /* @__PURE__ */ React.createElement("div", { style: card }, /* @__PURE__ */ React.createElement("h3", { style: ctitle }, selClass, " \u2014 Reading Statistics"), /* @__PURE__ */ React.createElement("p", { style: { color: "#666", fontSize: "13px", marginBottom: "16px" } }, "Progress across Term 2, Term 3, and Term 4. Lines show words-per-minute (wpm) for each learner and the class average."), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px", marginBottom: "20px" } }, terms.map((t, i) => /* @__PURE__ */ React.createElement("div", { key: t, style: { background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#64748b", marginBottom: "4px" } }, t, " average"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "22px", fontWeight: 700, color: "#3730a3" } }, classAvgSeries[i] != null ? `${classAvgSeries[i]} wpm` : "\u2014"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "11px", color: "#94a3b8", marginTop: "4px" } }, assessedCounts[i], " / ", learners.length, " assessed")))), /* @__PURE__ */ React.createElement("div", { style: { background: "white", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "16px", marginBottom: "20px" } }, /* @__PURE__ */ React.createElement("h4", { style: { margin: "0 0 12px", color: "#334155", fontSize: "15px" } }, "\u{1F4C8} Class Average Trend"), /* @__PURE__ */ React.createElement(LineChart, { series: [{ label: "Class Average", color: "#667eea", width: 3, radius: 5, points: terms.map((t, i) => ({ x: i, y: classAvgSeries[i] })) }], xLabels: terms })), learnerSeries.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { background: "white", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "16px" } }, /* @__PURE__ */ React.createElement("h4", { style: { margin: "0 0 12px", color: "#334155", fontSize: "15px" } }, "\u{1F465} Individual Learner Trends"), /* @__PURE__ */ React.createElement(LineChart, { series: learnerSeries, xLabels: terms, height: 320 })), learnerSeries.length === 0 && /* @__PURE__ */ React.createElement("p", { style: { color: "#999", textAlign: "center", padding: "20px" } }, "No reading data available yet for this class."));
+  }
+  function ReadingAssessmentTab({ reading, setReading, initialClass, lockClass, initialTerm }) {
     const [selClass, setSelClass] = useState(initialClass || "");
     const [search, setSearch] = useState("");
     const [editing, setEditing] = useState(null);
-    const [termView, setTermView] = useState("Term 2");
+    const [termView, setTermView] = useState(initialTerm || "Term 2");
+    const [view, setView] = useState("entry");
     const [msg, setMsg] = useState("");
     const showMsg = (m) => {
       setMsg(m);
@@ -6041,7 +6095,7 @@ ${trimmedReviewNote}` : noteHeader;
     return /* @__PURE__ */ React.createElement("div", null, msg && /* @__PURE__ */ React.createElement("div", { style: succ }, msg), /* @__PURE__ */ React.createElement("div", { style: { ...card, marginBottom: "14px" } }, /* @__PURE__ */ React.createElement("h3", { style: { ...ctitle, marginBottom: "10px" } }, "\u{1F4D6} One-Minute Reading Assessment"), /* @__PURE__ */ React.createElement("p", { style: { color: "#666", fontSize: "13px", marginBottom: "14px" } }, "Use ", /* @__PURE__ */ React.createElement("strong", null, "Term 2 Results"), " to view imported class results and reading-age status. Use ", /* @__PURE__ */ React.createElement("strong", null, "Term 3 Entry"), " or ", /* @__PURE__ */ React.createElement("strong", null, "Term 4 Entry"), " to capture the new round of assessments without showing old marks as current entries."), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: "12px" } }, !lockClass && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Class"), /* @__PURE__ */ React.createElement("select", { style: inp, value: selClass, onChange: (e) => {
       setSelClass(e.target.value);
       setSearch("");
-    } }, /* @__PURE__ */ React.createElement("option", { value: "" }, "-- Select Class --"), ASSESS_CLASS_NAMES.map((n) => /* @__PURE__ */ React.createElement("option", { key: n, value: n }, n, " (", CLASS_DATA[n].length, ")")))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Search learner"), /* @__PURE__ */ React.createElement("input", { style: inp, placeholder: "Type a name to filter...", value: search, onChange: (e) => setSearch(e.target.value), disabled: !selClass }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "14px" } }, ["Term 2", "Term 3", "Term 4"].map((t) => /* @__PURE__ */ React.createElement("button", { key: t, onClick: () => setTermView(t), style: { padding: "9px 14px", borderRadius: "999px", border: termView === t ? "none" : "1px solid #dbe2f0", background: termView === t ? "linear-gradient(135deg,#667eea,#764ba2)" : "#f8fafc", color: termView === t ? "white" : "#475569", fontWeight: 700, cursor: "pointer" } }, t === "Term 2" ? "Term 2 Results" : `${t} Entry`)))), selClass && /* @__PURE__ */ React.createElement("div", { style: card }, /* @__PURE__ */ React.createElement("h3", { style: ctitle }, selClass, " \u2014 ", termView === "Term 2" ? "Term 2 Results" : `${termView} Entry`), summaryCards, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "13px", margin: "-4px 0 16px", color: summary.status.fg } }, "Class reading age is ", /* @__PURE__ */ React.createElement("strong", null, formatReadingAgeYears(summary.avgAgeYears)), ". Desired chronological reading age for ", /* @__PURE__ */ React.createElement("strong", null, selClass), " is ", /* @__PURE__ */ React.createElement("strong", null, formatReadingAgeYears(summary.targetYears)), "."), termView === "Term 2" ? shownResults.length === 0 ? /* @__PURE__ */ React.createElement("p", { style: { color: "#999", textAlign: "center", padding: "20px" } }, "No Term 2 reading results were found for this class.") : /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gap: "8px" } }, shownResults.map((r, i) => {
+    } }, /* @__PURE__ */ React.createElement("option", { value: "" }, "-- Select Class --"), ASSESS_CLASS_NAMES.map((n) => /* @__PURE__ */ React.createElement("option", { key: n, value: n }, n, " (", CLASS_DATA[n].length, ")")))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { style: lbl }, "Search learner"), /* @__PURE__ */ React.createElement("input", { style: inp, placeholder: "Type a name to filter...", value: search, onChange: (e) => setSearch(e.target.value), disabled: !selClass }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "14px" } }, ["Term 2", "Term 3", "Term 4"].map((t) => /* @__PURE__ */ React.createElement("button", { key: t, onClick: () => { setTermView(t); setView("entry"); }, style: { padding: "9px 14px", borderRadius: "999px", border: termView === t ? "none" : "1px solid #dbe2f0", background: termView === t ? "linear-gradient(135deg,#667eea,#764ba2)" : "#f8fafc", color: termView === t ? "white" : "#475569", fontWeight: 700, cursor: "pointer" } }, t === "Term 2" ? "Term 2 Results" : `${t} Entry`))), /* @__PURE__ */ React.createElement("button", { onClick: () => setView("statistics"), style: { padding: "9px 14px", borderRadius: "999px", border: view === "statistics" ? "none" : "1px solid #dbe2f0", background: view === "statistics" ? "linear-gradient(135deg,#10b981,#059669)" : "#f8fafc", color: view === "statistics" ? "white" : "#475569", fontWeight: 700, cursor: "pointer" } }, "📊 Statistics")), selClass && view === "statistics" && /* @__PURE__ */ React.createElement(ReadingStatisticsView, { reading, selClass }), selClass && view !== "statistics" && /* @__PURE__ */ React.createElement("div", { style: card }, /* @__PURE__ */ React.createElement("h3", { style: ctitle }, selClass, " \u2014 ", termView === "Term 2" ? "Term 2 Results" : `${termView} Entry`), summaryCards, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "13px", margin: "-4px 0 16px", color: summary.status.fg } }, "Class reading age is ", /* @__PURE__ */ React.createElement("strong", null, formatReadingAgeYears(summary.avgAgeYears)), ". Desired chronological reading age for ", /* @__PURE__ */ React.createElement("strong", null, selClass), " is ", /* @__PURE__ */ React.createElement("strong", null, formatReadingAgeYears(summary.targetYears)), "."), termView === "Term 2" ? shownResults.length === 0 ? /* @__PURE__ */ React.createElement("p", { style: { color: "#999", textAlign: "center", padding: "20px" } }, "No Term 2 reading results were found for this class.") : /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gap: "8px" } }, shownResults.map((r, i) => {
       const ageLabel = readingAgeLabelForRecord(r);
       const status = readingStatusFor(selClass, ageLabel);
       const missingMatch = r.syntheticZero || r.words_correct == null;
@@ -7619,12 +7673,16 @@ ${sectionsHtml}
   let PREFILLED_TEACHER_PIN = "";
   let PREFILLED_LEARNER_USER = "";
   let PREFILLED_LEARNER_PIN = "";
+  let PREFILLED_TAB = "";
+  let PREFILLED_READING_TERM = "";
   try {
     const qs = new URLSearchParams(window.location.search);
     PREFILLED_TEACHER_EMAIL = qs.get("email") || "";
     PREFILLED_TEACHER_PIN = qs.get("pin") || "";
     PREFILLED_LEARNER_USER = qs.get("user") || "";
     PREFILLED_LEARNER_PIN = qs.get("learner_pin") || qs.get("pin") || "";
+    PREFILLED_TAB = qs.get("tab") || "";
+    PREFILLED_READING_TERM = qs.get("reading_term") || "";
   } catch (e) {
   }
   function LearnerPortalView() {
@@ -8205,7 +8263,7 @@ ${sectionsHtml}
       autoLoginRef.current = false;
       setManualLoginMode(false);
     };
-    const [tab, setTab] = useState("dashboard");
+    const [tab, setTab] = useState(PREFILLED_TAB || "dashboard");
     const [assessments, setAssessments] = useState([]);
     const [assignments, setAssignments] = useState([]);
     const [learnerResults, setLearnerResults] = useState([]);
@@ -8669,7 +8727,7 @@ ${sectionsHtml}
         placeholder: "Type your request (worksheets, resources, support)...",
         style: { ...inp, flex: 1, minWidth: "240px", resize: "vertical", fontSize: "13px" }
       }
-    ), /* @__PURE__ */ React.createElement("button", { onClick: sendTeacherChat, disabled: chatBusy || !chatText.trim(), style: { ...sbtn, background: "#10b981", opacity: chatBusy || !chatText.trim() ? 0.6 : 1 } }, chatBusy ? "Sending..." : "Send"))), /* @__PURE__ */ React.createElement("div", { style: { border: "1px solid #e2e8f0", borderRadius: "12px", padding: "12px", background: "#ffffff" } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 900, color: "#333", marginBottom: "8px" } }, "\u{1F916} AI support (optional)"), /* @__PURE__ */ React.createElement("p", { style: { color: "#666", fontSize: "13px", marginBottom: "10px" } }, "We can add an AI helper inside the dashboard, similar to Khanmigo/Gemini for Educators. For security, it needs a server-side key (we should not put API keys in the browser)."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("a", { href: "https://www.khanmigo.ai/teachers", target: "_blank", rel: "noreferrer", style: { ...sbtn, background: "#667eea", textDecoration: "none", fontSize: "13px" } }, "Open Khanmigo"), /* @__PURE__ */ React.createElement("a", { href: "https://edu.google.com/gemini/", target: "_blank", rel: "noreferrer", style: { ...sbtn, background: "#7c3aed", textDecoration: "none", fontSize: "13px" } }, "Open Gemini for Education"))))), tab === "reading" && teacherAuth && /* @__PURE__ */ React.createElement(ReadingAssessmentTab, { key: selClass, reading, setReading, initialClass: selClass, lockClass: true }), tab === "discipline" && teacherAuth && /* @__PURE__ */ React.createElement(
+    ), /* @__PURE__ */ React.createElement("button", { onClick: sendTeacherChat, disabled: chatBusy || !chatText.trim(), style: { ...sbtn, background: "#10b981", opacity: chatBusy || !chatText.trim() ? 0.6 : 1 } }, chatBusy ? "Sending..." : "Send"))), /* @__PURE__ */ React.createElement("div", { style: { border: "1px solid #e2e8f0", borderRadius: "12px", padding: "12px", background: "#ffffff" } }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 900, color: "#333", marginBottom: "8px" } }, "\u{1F916} AI support (optional)"), /* @__PURE__ */ React.createElement("p", { style: { color: "#666", fontSize: "13px", marginBottom: "10px" } }, "We can add an AI helper inside the dashboard, similar to Khanmigo/Gemini for Educators. For security, it needs a server-side key (we should not put API keys in the browser)."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("a", { href: "https://www.khanmigo.ai/teachers", target: "_blank", rel: "noreferrer", style: { ...sbtn, background: "#667eea", textDecoration: "none", fontSize: "13px" } }, "Open Khanmigo"), /* @__PURE__ */ React.createElement("a", { href: "https://edu.google.com/gemini/", target: "_blank", rel: "noreferrer", style: { ...sbtn, background: "#7c3aed", textDecoration: "none", fontSize: "13px" } }, "Open Gemini for Education"))))), tab === "reading" && teacherAuth && /* @__PURE__ */ React.createElement(ReadingAssessmentTab, { key: selClass, reading, setReading, initialClass: selClass, lockClass: true, initialTerm: PREFILLED_READING_TERM }), tab === "discipline" && teacherAuth && /* @__PURE__ */ React.createElement(
       TeacherDisciplineTab,
       {
         teacherAuth,
