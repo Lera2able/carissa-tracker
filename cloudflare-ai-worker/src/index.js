@@ -633,6 +633,13 @@ async function handleLearnerResultUpsert(request, env, corsOrigin) {
     submitted_at: body?.submitted_at || new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
+  // Full answer sheet (used by the Grade 4 mock exam so teachers can review what the learner wrote).
+  if (body?.answer_data && typeof body.answer_data === "object") {
+    try {
+      const raw = JSON.stringify(body.answer_data);
+      if (raw.length <= 40000) payload.answer_data = body.answer_data;
+    } catch (_e) {}
+  }
   const existingRows = await supabaseGet(env, "carissa_learner_activity_results", {
     assignment_id: `eq.${assignment.id}`,
     learner_username: `eq.${session.username}`,
