@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en-ZA">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Grade 4 English Mock Exam — Carissa Primary</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#1E4E5E; --teal:#2FA9BC; --teal-dark:#157A8C; --cream:#FBF4E4;
+    --sun:#FFC93C; --coral:#FF6B6B; --green:#3BB273; --purple:#7c3aed; --blue:#2563eb; --ink:#23414d;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:'Nunito',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:var(--ink);
+    min-height:100vh;font-size:18px;line-height:1.5;
+    background:linear-gradient(180deg,#EAF7F5 0%,var(--cream) 60%,#FDF8EC 100%)}
+  h1,h2,h3,.fk{font-family:'Fredoka','Nunito',system-ui,sans-serif}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px 14px 70px}
+  .card{background:#fff;border-radius:20px;padding:18px 18px;border:2px solid rgba(21,122,140,.12);
+    box-shadow:0 5px 0 rgba(30,78,94,.10),0 12px 24px rgba(30,78,94,.08)}
+  .hero{background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;border:none}
+  .hero h1{font-size:clamp(24px,4vw,34px);line-height:1.1}
+  .hero p{font-weight:800;opacity:.95;margin-top:6px;font-size:16px}
+  .btn{border:none;border-radius:14px;padding:13px 18px;font-weight:900;cursor:pointer;font-size:17px;font-family:inherit;
+    background:linear-gradient(135deg,var(--sun),#ffb703);color:#1f2937;box-shadow:0 5px 0 rgba(180,83,9,.2)}
+  .btn:active{transform:translateY(1px)}
+  .btn.dark{background:#0f172a;color:#fff;box-shadow:none}
+  .btn.green{background:linear-gradient(135deg,#34d399,#10b981);color:#fff;box-shadow:0 5px 0 rgba(4,120,87,.25)}
+  .btn.ghost{background:#eef2ff;color:#3730a3;box-shadow:none}
+  .btn:disabled{opacity:.55;cursor:not-allowed}
+  .note{margin-top:12px;font-size:15px;color:#475569;font-weight:700}
+  .small{font-size:13px;color:#64748b;font-weight:700}
+  .msg-err{margin-top:12px;background:#fef2f2;border:2px solid #fecaca;border-radius:14px;padding:12px;color:#b91c1c;font-weight:800}
+  .msg-ok{margin-top:12px;background:#ecfdf5;border:2px solid #bbf7d0;border-radius:14px;padding:12px;color:#166534;font-weight:800}
+  .rules{margin:12px 0 0 22px;font-weight:700}
+  .rules li{margin:5px 0}
+  input.pin{font-size:22px;letter-spacing:6px;text-align:center;padding:10px;border:3px solid #cbd5e1;border-radius:14px;width:190px;font-family:inherit}
+
+  /* exam header */
+  .topbar{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.96);backdrop-filter:blur(6px);
+    border-bottom:3px solid #e2e8f0;box-shadow:0 4px 14px rgba(0,0,0,.06)}
+  .topbar-in{max-width:1100px;margin:0 auto;padding:8px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between}
+  .tb-title{font-weight:900;font-size:15px;color:var(--navy)}
+  .tb-name{font-size:13px;color:#64748b;font-weight:800}
+  .timer{font-family:'Fredoka',sans-serif;font-size:26px;font-weight:700;padding:4px 14px;border-radius:12px;background:#ecfeff;color:#0e7490;border:2px solid #a5f3fc;min-width:120px;text-align:center}
+  .timer.warn{background:#fff7ed;color:#c2410c;border-color:#fdba74}
+  .timer.danger{background:#fef2f2;color:#b91c1c;border-color:#fca5a5;animation:pulse 1s infinite}
+  @keyframes pulse{50%{opacity:.65}}
+  .prog{height:8px;background:#e2e8f0}
+  .prog > i{display:block;height:100%;width:0;background:linear-gradient(90deg,#34d399,#10b981);transition:width .3s}
+
+  /* sections */
+  .sec{margin-top:18px}
+  .sec-h{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
+    background:linear-gradient(135deg,#1E4E5E,#157A8C);color:#fff;border-radius:16px;padding:12px 16px}
+  .sec-h h2{font-size:clamp(18px,3vw,24px)}
+  .sec-h .tot{font-weight:900;background:rgba(255,255,255,.18);border-radius:999px;padding:4px 14px}
+  .instr{margin:10px 2px;font-weight:800;color:#475569}
+  .split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
+  .stick{position:sticky;top:78px;max-height:calc(100vh - 96px);overflow:auto}
+  @media(max-width:860px){.split{grid-template-columns:minmax(0,1fr)}.stick{position:static;max-height:none}}
+  .passage h3{font-size:22px;margin-bottom:8px;color:var(--navy)}
+  .passage p{margin:9px 0;font-size:18px}
+  .passage .pn{display:inline-block;min-width:24px;font-weight:900;color:var(--teal-dark)}
+  .qs{display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}
+  .qs > .q{min-width:0;overflow-wrap:anywhere}
+  textarea.txt{resize:vertical}
+  .q table{table-layout:fixed}
+  .q{background:#fff;border-radius:16px;padding:14px 14px;border:2px solid #e2e8f0}
+  .q.answered{border-color:#86efac;background:#f7fef9}
+  .qh{display:flex;justify-content:space-between;gap:8px;margin-bottom:6px}
+  .qn{font-weight:900;color:#fff;background:var(--teal-dark);border-radius:10px;padding:1px 10px;font-size:15px;height:fit-content}
+  .mk{font-weight:900;color:#64748b;font-size:15px}
+  .qt{font-weight:800;margin-bottom:8px}
+  .hint{font-size:14px;color:#7c3aed;font-weight:800;margin-bottom:6px}
+  .opts{display:grid;gap:8px}
+  label.opt{display:block;cursor:pointer}
+  label.opt input{position:absolute;opacity:0;pointer-events:none}
+  label.opt span.box{display:flex;gap:10px;align-items:center;border:3px solid #e2e8f0;border-radius:14px;padding:10px 12px;font-weight:700;background:#f8fafc}
+  label.opt span.box::before{content:"";flex:0 0 22px;height:22px;border-radius:50%;border:3px solid #94a3b8;background:#fff}
+  label.opt.chk span.box::before{border-radius:6px}
+  label.opt input:checked + span.box{border-color:var(--blue);background:#eff6ff}
+  label.opt input:checked + span.box::before{background:var(--blue);border-color:var(--blue);box-shadow:inset 0 0 0 4px #fff}
+  label.opt.chk input:checked + span.box::before{box-shadow:inset 0 0 0 3px #fff}
+  label.opt input:focus-visible + span.box{outline:3px solid #fbbf24}
+  input.txt,textarea.txt,select.sel{width:100%;font-size:18px;padding:10px 12px;border:3px solid #cbd5e1;border-radius:12px;font-family:inherit;font-weight:700;color:var(--ink);background:#fff}
+  input.txt:focus,textarea.txt:focus,select.sel:focus{outline:none;border-color:var(--blue)}
+  select.sel.inl{width:auto;min-width:130px;padding:4px 8px;font-size:17px;display:inline-block;margin:0 4px}
+  .sentence{font-size:20px;font-weight:800;background:#f1f5f9;border-radius:12px;padding:10px 12px;margin-bottom:8px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:3px solid #cbd5e1;background:#fff;border-radius:12px;padding:6px 12px;font-size:19px;font-weight:800;cursor:pointer;font-family:inherit;color:var(--ink)}
+  .chip[aria-pressed="true"]{border-color:var(--blue);background:#dbeafe}
+  .bank{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px}
+  .bank b{background:#fef3c7;border:2px dashed #f59e0b;border-radius:10px;padding:3px 12px}
+  .sline{background:#f8fafc;border:2px solid #e2e8f0;border-radius:12px;padding:10px 12px;margin:8px 0;font-weight:700;line-height:2.1}
+  .sline .ltr{display:inline-block;background:#7c3aed;color:#fff;border-radius:8px;padding:0 9px;margin-right:6px;font-weight:900}
+  .orderrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px;font-weight:800}
+
+  /* adverts */
+  .ad{border-radius:18px;overflow:hidden;border:4px solid #1f2937;text-align:center;padding:18px 14px;color:#1f2937}
+  .ad h3{font-family:'Fredoka',sans-serif;font-size:clamp(26px,4.2vw,40px);line-height:1.05;text-transform:uppercase;letter-spacing:.5px}
+  .ad .pics{font-size:44px;margin:6px 0;letter-spacing:6px}
+  .ad .big{font-size:22px;font-weight:900;margin:6px 0}
+  .ad .fine{font-size:15px;font-weight:700;margin:4px 0}
+  .ad .box{display:inline-block;text-align:left;background:rgba(255,255,255,.85);border-radius:14px;padding:10px 14px;margin:8px 0;font-weight:800;border:2px solid rgba(0,0,0,.15)}
+  .ad .box div{margin:3px 0}
+  .ad .burst{display:inline-block;background:#ef4444;color:#fff;font-family:'Fredoka',sans-serif;font-weight:700;border-radius:999px;padding:6px 18px;font-size:22px;transform:rotate(-3deg);margin:6px 0;border:3px solid #fff;box-shadow:0 3px 0 rgba(0,0,0,.2)}
+  .ad .brand{font-weight:900;margin-top:8px;font-size:17px}
+  .ad-book{background:linear-gradient(160deg,#fde68a,#fdba74)}
+  .ad-run{background:linear-gradient(160deg,#a7f3d0,#7dd3fc)}
+  .ad-juice{background:linear-gradient(160deg,#fed7aa,#fb923c)}
+
+  /* overlays */
+  .overlay{position:fixed;inset:0;background:rgba(15,23,42,.62);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px}
+  .modal{background:#fff;border-radius:22px;max-width:520px;width:100%;padding:22px;text-align:center}
+  .modal h2{margin-bottom:8px}
+  .modal .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#0f172a;color:#fff;padding:12px 20px;border-radius:14px;font-weight:900;z-index:120;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+  .locked .q,.locked .card{opacity:.97}
+  .res-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:14px}
+  .res-box{background:#f8fafc;border:2px solid #e2e8f0;border-radius:14px;padding:12px;text-align:center}
+  .res-box b{display:block;font-size:26px;font-family:'Fredoka',sans-serif;color:var(--navy)}
+  .bigscore{font-family:'Fredoka',sans-serif;font-size:56px;font-weight:700;color:#fff}
+  .memo-q{border-bottom:1px solid #e2e8f0;padding:6px 0;font-size:16px}
+  .memo-q .ans{color:#166534;font-weight:900}
+  .memo-q .bad{color:#b91c1c;font-weight:900}
+  details.teacher{margin-top:16px;border-top:2px dashed #cbd5e1;padding-top:10px}
+  details.teacher summary{cursor:pointer;font-weight:900;color:#64748b;font-size:14px}
+  @media print{.topbar,.btn,details.teacher{display:none!important}body{background:#fff;font-size:13px}.card{box-shadow:none;break-inside:avoid}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<noscript><div style="padding:30px;font-weight:800">Please turn on JavaScript to take this exam.</div></noscript>
+
+<script>
+(() => {
+'use strict';
+
+/* =====================================================================
+   SETTINGS  (teacher can change these)
+   ===================================================================== */
+const CONFIG = {
+  DURATION_MIN: 30,            // exam length in minutes
+  START_PIN: '112233',         // PIN learners type to start (same PIN as the other assessments). '' = no PIN
+  TEACHER_PIN: '246810',       // PIN for teacher preview + marking memo
+  SHUFFLE_QUESTION_ORDER: true,// shuffle order of questions inside Q1 and Q2 for each learner
+  RESULT_ENDPOINT: '/api/learner-results/upsert',
+  ME_ENDPOINT: '/api/learner-results/me',
+  TITLE: 'Grade 4 English Mock Exam'
+};
+
+/* =====================================================================
+   SMALL HELPERS
+   ===================================================================== */
+const qs = new URLSearchParams(location.search);
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const cleanWord = w => String(w).replace(/[^A-Za-z0-9]/g, '').toLowerCase();
+function editDist(a, b){
+  const m = a.length, n = b.length; if (!m) return n; if (!n) return m;
+  let prev = Array.from({length: n + 1}, (_, j) => j);
+  for (let i = 1; i <= m; i++){
+    const cur = [i];
+    for (let j = 1; j <= n; j++){
+      cur[j] = Math.min(prev[j] + 1, cur[j-1] + 1, prev[j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return prev[n];
+}
+function hashStr(str){            // xmur3-style string hash -> 32 bit int
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++){ h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
+  h = Math.imul(h ^ (h >>> 16), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909);
+  return (h ^= h >>> 16) >>> 0;
+}
+function rngFrom(seed, salt){      // mulberry32, independent stream per salt
+  let a = hashStr(String(seed) + '|' + salt) >>> 0;
+  return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+function shuffle(arr, rng){ const a = arr.slice(); for (let i = a.length - 1; i > 0; i--){ const j = Math.floor(rng() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const fmtClock = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
+
+/* =====================================================================
+   QUESTION BANK
+   Item builders. Every item is worth `marks`.
+   ===================================================================== */
+const MC  = (prompt, ok, bad) => ({ type: 'mcq', marks: 1, prompt, options: [{ t: ok, ok: true }, ...bad.map(t => ({ t }))] });
+const TF  = (prompt, isTrue)  => ({ type: 'tf',  marks: 1, prompt, answer: isTrue ? 'T' : 'F' });
+const MUL = (prompt, good, bad) => ({ type: 'multi', marks: good.length, pick: good.length, prompt,
+                                      options: [...good.map(t => ({ t, ok: true })), ...bad.map(t => ({ t }))] });
+const TXT = (prompt, spec) => ({ type: 'text', marks: 1, prompt, spec });
+
+/* ---------- QUESTION 1: three comprehension passages (15 marks each) ---------- */
+const PASSAGES = [
+{
+  id: 'A', title: 'Thandi and the Little Puppy',
+  paras: [
+    'Thandi was walking home from school on a cold, rainy Tuesday. She was wearing her yellow raincoat and carrying her heavy school bag.',
+    'Near the school gate, she heard a soft cry. She looked under a big green bush and saw a tiny brown puppy. He was wet, thin and shivering.',
+    '“Poor little thing,” said Thandi. She picked him up gently and wrapped him in her scarf. She asked the other learners if the puppy belonged to them, but nobody knew him.',
+    'Thandi took the puppy home. Her mother gave him some warm milk and a soft blanket. Soon the puppy stopped shivering and began to wag his tail.',
+    'The next day, Thandi put up a notice at school. That afternoon, an old man called Mr Dlamini came running to the gate. He had been looking for his puppy, Bongo, for two days.',
+    'Mr Dlamini was so happy that he hugged Thandi. “Thank you for being so kind,” he said. Thandi felt proud. She knew that helping others made her feel good inside.'
+  ],
+  q: [
+    MC('What was the weather like when Thandi walked home?', 'Cold and rainy', ['Hot and sunny', 'Windy and dry', 'Cloudy but warm']),
+    TXT('Where did Thandi find the puppy?', { any: [['bush'], ['gate']] }),
+    MUL('Which TWO words describe the puppy when Thandi found him?', ['wet', 'thin'], ['angry', 'fat']),
+    MC('What did Thandi use to wrap the puppy?', 'Her scarf', ['Her raincoat', 'Her school bag', 'A blanket']),
+    TXT('Name ONE thing that Thandi’s mother gave the puppy.', { any: [['milk'], ['blanket']] }),
+    MC('Why did Thandi put up a notice at school?', 'To find the puppy’s owner', ['To sell the puppy', 'To say it was raining', 'To tell everyone she lost her scarf']),
+    MC('Which sentence shows that Thandi was kind?', '“She picked him up gently and wrapped him in her scarf.”',
+        ['“She was wearing her yellow raincoat.”', '“Near the school gate, she heard a soft cry.”', '“She was carrying her heavy school bag.”']),
+    MC('“Thandi felt proud.” What does this mean?', 'Thandi was pleased with what she had done.', ['Thandi was tired and sleepy.', 'Thandi was afraid of the puppy.']),
+    TF('The puppy’s name was Bongo.', true),
+    MC('What do you think “shivering” means (paragraph 2)?', 'Shaking because of the cold', ['Sleeping very deeply', 'Barking loudly', 'Running fast']),
+    MUL('Which TWO things did Thandi do to help the puppy?', ['She wrapped him in her scarf.', 'She put up a notice at school.'], ['She sold him to Mr Dlamini.', 'She left him under the bush.']),
+    MC('What do you think a “notice” is (paragraph 5)?', 'A written message put up for people to read', ['A loud noise', 'A kind of food', 'A school bag']),
+    MC('What is the lesson (moral) of this story?', 'Helping others makes us feel good.', ['It is best to walk home in the rain.', 'Puppies must stay at school.', 'Never talk to old people.'])
+  ],
+  sum: {
+    sentences: [
+      { t: 'Thandi heard a soft cry under a big green ____ near the school gate.', a: 'bush' },
+      { t: 'Thandi wrapped the wet puppy in her ____.', a: 'scarf' },
+      { t: 'Thandi put up a ____ at school to find the puppy’s owner.', a: 'notice' },
+      { t: 'Mr Dlamini ____ Thandi and thanked her for being so kind.', a: 'hugged' }
+    ],
+    extra: ['bag', 'chased']
+  }
+},
+{
+  id: 'B', title: 'Sipho’s Vegetable Garden',
+  paras: [
+    'Sipho’s class had a small garden behind the school. It was dry and full of weeds, and nobody wanted to work there.',
+    'One Monday, their teacher, Mrs Naidoo, gave each learner a packet of seeds. “Who will help me make our garden beautiful?” she asked. Sipho put up his hand first.',
+    'Every morning before school, Sipho pulled out the weeds and watered the soil. Some of his friends laughed at him. “Gardening is boring!” they said. But Sipho did not give up.',
+    'After two weeks, tiny green leaves popped out of the soil. After a month, there were juicy tomatoes, crunchy carrots and bright orange pumpkins.',
+    'Mrs Naidoo shared the vegetables with the whole school at lunch time. Sipho’s friends tasted the tomatoes and said, “Yum!” They felt sorry for laughing and asked if they could help in the garden too.',
+    'From that day, the whole class worked together every morning. Sipho smiled. His hard work had helped the garden grow, and it had brought his friends together too.'
+  ],
+  q: [
+    MC('Who gave the learners the seeds?', 'Mrs Naidoo', ['Sipho', 'The principal', 'Sipho’s mother']),
+    TXT('Where was the school garden?', { any: [['behind'], ['back']] }),
+    MUL('Which TWO things describe the garden at the start?', ['It was dry.', 'It was full of weeds.'], ['It was full of flowers.', 'It was very wet.']),
+    MC('When did Sipho work in the garden?', 'Every morning before school', ['Every night after supper', 'Only on Mondays', 'During lunch time']),
+    TXT('Name ONE vegetable that grew in the garden.', { any: [['tomato'], ['carrot'], ['pumpkin']] }),
+    MC('Why did Sipho’s friends laugh at him?', 'They thought gardening was boring.', ['He fell into the soil.', 'He wore a funny hat.', 'He dropped the seeds.']),
+    MC('Which sentence shows that Sipho was keen to help?', '“Sipho put up his hand first.”',
+        ['“Some of his friends laughed at him.”', '“It was dry and full of weeds.”', '“Mrs Naidoo shared the vegetables with the whole school.”']),
+    MC('“Sipho did not give up.” What does this mean?', 'Sipho kept on trying.', ['Sipho stopped working.', 'Sipho gave away his seeds.']),
+    TF('The vegetables were ready after two days.', false),
+    MC('What do you think “crunchy” means (paragraph 4)?', 'Makes a loud noise when you bite it', ['Soft and squishy', 'Very sour', 'Cold and wet']),
+    MUL('Which TWO things did Sipho do every morning?', ['He pulled out the weeds.', 'He watered the soil.'], ['He picked the tomatoes.', 'He played soccer.']),
+    MC('What do you think “weeds” are (paragraph 1)?', 'Wild plants that grow where we do not want them', ['Tools for digging', 'Seeds for planting', 'Fresh vegetables']),
+    MC('What is the lesson (moral) of this story?', 'Hard work and never giving up bring good results.', ['Vegetables are better than fruit.', 'Gardens only grow in winter.', 'It is best to laugh at your friends.'])
+  ],
+  sum: {
+    sentences: [
+      { t: 'Mrs Naidoo gave each learner a packet of ____.', a: 'seeds' },
+      { t: 'Every morning, Sipho pulled out the ____ and watered the soil.', a: 'weeds' },
+      { t: 'After a month, the garden had tomatoes, carrots and orange ____.', a: 'pumpkins' },
+      { t: 'Sipho’s friends said sorry and asked to ____ in the garden too.', a: 'help' }
+    ],
+    extra: ['books', 'sleep']
+  }
+},
+{
+  id: 'C', title: 'Tortoise and the Dry River',
+  paras: [
+    'Long ago in the African bush, there was a very long, hot summer. The river dried up until it was only a thin line of mud, and all the animals were thirsty.',
+    'Tortoise was the smallest and slowest animal in the bush, but he was also the cleverest. While the other animals grumbled, he quietly dug a deep hole near the riverbank.',
+    '“Why are you digging, Tortoise?” laughed Giraffe. “You will never find water that way!” Tortoise said nothing and kept on digging.',
+    'Soon, cool, clear water began to fill the hole. Tortoise drank until he was full.',
+    'Giraffe, Zebra and Monkey saw him and felt ashamed. “Please forgive us for laughing,” said Giraffe. “May we have some water too?”',
+    'Tortoise smiled kindly. “There is enough for everyone,” he said. Together they made the hole wider, and all the animals drank happily.'
+  ],
+  q: [
+    MC('Why were the animals thirsty?', 'The river had almost dried up.', ['The river was too full of fish.', 'They had eaten too much food.', 'Tortoise had taken all the water.']),
+    TXT('Which animal was the smallest and slowest?', { any: [['tortoise']] }),
+    MUL('Which TWO words describe Tortoise?', ['slow', 'clever'], ['greedy', 'rude']),
+    MC('Where did Tortoise dig the hole?', 'Near the riverbank', ['Under a big tree', 'Next to Giraffe’s home', 'On top of a hill']),
+    TXT('Name ONE animal that felt ashamed.', { any: [['giraffe'], ['zebra'], ['monkey']] }),
+    MC('Why did Giraffe laugh at Tortoise?', 'He thought Tortoise would never find water.', ['Tortoise was telling a funny story.', 'Tortoise had fallen into the mud.']),
+    MC('Which sentence shows that Tortoise was kind?', '“There is enough for everyone,” he said.',
+        ['“He quietly dug a deep hole near the riverbank.”', '“The river dried up until it was only a thin line of mud.”', '“Tortoise drank until he was full.”']),
+    MC('“Giraffe felt ashamed.” What does this mean?', 'Giraffe felt bad about what he had done.', ['Giraffe felt very proud.', 'Giraffe felt hungry.']),
+    TF('Tortoise refused to share the water.', false),
+    MC('What do you think “grumbled” means (paragraph 2)?', 'Complained in an unhappy way', ['Laughed out loud', 'Sang a happy song', 'Ran away quickly']),
+    MUL('Which TWO things happened after Tortoise dug the hole?', ['Cool, clear water filled the hole.', 'Tortoise drank until he was full.'], ['The river filled up with fish.', 'The animals ran away.']),
+    MC('What do you think “riverbank” means (paragraph 2)?', 'The land along the side of a river', ['A place where people keep money', 'A boat on the river', 'A very deep hole']),
+    MC('What is the lesson (moral) of this story?', 'Do not laugh at others. Be kind and willing to share.', ['Always run away from danger.', 'The biggest animals are always the cleverest.', 'Water is not important.'])
+  ],
+  sum: {
+    sentences: [
+      { t: 'The river dried up in the long, hot ____.', a: 'summer' },
+      { t: 'Tortoise dug a deep ____ near the riverbank.', a: 'hole' },
+      { t: 'Giraffe laughed at Tortoise, but Tortoise kept on ____.', a: 'digging' },
+      { t: 'In the end, Tortoise ____ the water with all the animals.', a: 'shared' }
+    ],
+    extra: ['winter', 'hiding']
+  }
+}
+];
+
+/* ---------- QUESTION 2: three adverts (10 marks each) ---------- */
+const ADS = [
+{
+  id: 'A', name: 'Story time advert',
+  html: `<div class="ad ad-book">
+    <div class="pics">📚 🦁 🌳</div>
+    <h3>Story Time at Bright Pages!</h3>
+    <div class="big">Come and listen to a LIVE reading of<br>“The Magic Baobab Tree”</div>
+    <div class="fine">Written by Nomsa Dube &nbsp;•&nbsp; Pictures by Peter Jacobs<br>Published by Sunrise Books</div>
+    <div class="box">
+      <div>📅 Saturday 14 March</div>
+      <div>⏰ 10:00 in the morning</div>
+      <div>📍 The Story Corner, Bright Pages Bookshop, Main Street</div>
+    </div>
+    <div class="burst">FREE entry!</div>
+    <div class="fine">A free bookmark for every child who comes. 🔖</div>
+    <div class="brand">Bright Pages Bookshop</div>
+  </div>`,
+  q: [
+    MC('Which shop is holding the live reading?', 'Bright Pages Bookshop', ['Sunrise Books', 'Main Street Books', 'The Story Corner Shop']),
+    MC('Which book will be read at the live reading?', 'The Magic Baobab Tree', ['The Brave Little Lion', 'Story Time at Bright Pages', 'The Story Corner']),
+    MC('Who is this advert mainly for? (target market)', 'Children who enjoy listening to stories', ['Adults who do not like books', 'People who want to buy a car', 'Only teachers']),
+    TXT('Name the company that published the book.', { any: [['sunrise']] }),
+    MC('What does an illustrator do in a book?', 'Draws the pictures', ['Writes the words', 'Prints the book', 'Sells the book']),
+    TXT('Who wrote the book? (the author)', { any: [['nomsa'], ['dube']] }),
+    MC('Where will the live reading take place?', 'At the Story Corner in Bright Pages Bookshop', ['In the school hall', 'At the Sunrise Books office', 'At the town library']),
+    TXT('On what date will the live reading take place?', { any: [['14', 'march'], ['14', '03']] }),
+    MC('How does this advert get the readers’ ATTENTION?', 'A big bold heading and bright, colourful pictures', ['Very small black writing', 'A long paragraph of text', 'A map of the town']),
+    MC('How does this advert get the readers’ INTEREST?', 'It offers free entry and a free bookmark', ['It lists the shop’s prices', 'It names the person who printed the book', 'It shows the weather'])
+  ],
+  memo: { 2: 'Sunrise Books' }
+},
+{
+  id: 'B', name: 'Fun run advert',
+  html: `<div class="ad ad-run">
+    <div class="pics">🏃‍♀️ 🏃‍♂️ 🏅</div>
+    <h3>Sunnyside Primary Fun Run!</h3>
+    <div class="big">Run, jog or walk 3 km with your friends!</div>
+    <div class="box">
+      <div>📅 Sunday 22 March</div>
+      <div>⏰ Starts at 07:00 sharp</div>
+      <div>📍 Start at the school gate, Park Road</div>
+      <div>💰 R20 per child (adults walk free)</div>
+    </div>
+    <div class="burst">Every runner wins a medal!</div>
+    <div class="fine">Free water for all runners 💧</div>
+    <div class="fine">Sponsored by Fresh Fields Dairy</div>
+    <div class="brand">To enter, phone Mrs Khumalo on 012 345 6789</div>
+  </div>`,
+  q: [
+    MC('Which school is holding the fun run?', 'Sunnyside Primary', ['Park Road Primary', 'Fresh Fields Primary', 'Khumalo Primary']),
+    MC('How far is the fun run?', '3 km', ['1 km', '10 km', '30 km']),
+    MC('Who is this advert mainly for? (target market)', 'Learners and families who enjoy fun and sport', ['People who dislike exercise', 'Only farmers', 'Babies and toddlers']),
+    TXT('Name the sponsor of the fun run.', { any: [['fresh', 'field']] }),
+    MC('What does a sponsor do?', 'Gives money or gifts to help an event happen', ['Wins the race', 'Draws the map', 'Runs the race for you']),
+    TXT('Who must you phone to enter the fun run?', { any: [['khumalo']] }),
+    MC('Where does the fun run start?', 'At the school gate in Park Road', ['At the Fresh Fields farm', 'In the school hall', 'At the finish line']),
+    TXT('At what time does the fun run start?', { words: ['7', '07', '7am', '0700', 'seven'], not: ['pm', 'evening', 'afternoon'] }),
+    MC('How does this advert get the readers’ ATTENTION?', 'A big bold heading with fun pictures and bright colours', ['Tiny writing at the bottom', 'No pictures at all', 'Only a telephone number']),
+    MC('How does this advert get the readers’ INTEREST?', 'Every runner wins a medal and gets free water', ['It tells you who the principal is', 'It lists the school fees', 'It shows a recipe'])
+  ],
+  memo: {}
+},
+{
+  id: 'C', name: 'Orange juice advert',
+  html: `<div class="ad ad-juice">
+    <div class="pics">🍊 🥤 ☀️</div>
+    <h3>Sunny Orange Juice</h3>
+    <div class="big">“Sip the sunshine!”</div>
+    <div class="fine">Made from 100% real oranges. No added sugar.</div>
+    <div class="burst">Buy 2, get 1 FREE this week!</div>
+    <div class="box">
+      <div>💰 Only R15 a bottle</div>
+      <div>🛒 Available at all Fresh Shop stores</div>
+    </div>
+    <div class="brand">Made by Sunfield Farms</div>
+  </div>`,
+  q: [
+    MC('Which product is being advertised?', 'Sunny Orange Juice', ['Fresh Shop', 'Sunfield Farms', 'Sunshine Sweets']),
+    MC('What is the slogan of this advert?', '“Sip the sunshine!”', ['“Only R15 a bottle”', '“Made by Sunfield Farms”', '“Buy 2, get 1 free”']),
+    MC('Who is this advert mainly for? (target market)', 'People who like healthy drinks', ['People who want to buy shoes', 'Only babies', 'People who dislike juice']),
+    TXT('Name the company that makes the juice.', { any: [['sunfield']] }),
+    MC('What is a slogan?', 'A short, catchy phrase that helps people remember a product', ['A list of ingredients', 'The price of a product', 'The name of a shop']),
+    TXT('How much does one bottle of juice cost?', { words: ['15', 'r15'] }),
+    MC('What is the juice made from?', '100% real oranges', ['Sugar and water', 'Apples and pears', 'Sunfield Farms']),
+    MC('Where can you buy this juice?', 'At all Fresh Shop stores', ['Only at Sunfield Farms', 'At the school tuck shop only', 'At the bus stop']),
+    MC('How does this advert get the readers’ ATTENTION?', 'Bright orange colours and big pictures of oranges and juice', ['A very long story', 'Small grey writing', 'A black and white photo']),
+    MC('How does this advert get the readers’ INTEREST?', 'It tells you about the special offer and the low price', ['It tells you how the bottle is made', 'It lists all the shops in town', 'It shows a map'])
+  ],
+  memo: {}
+}
+];
+
+/* ---------- QUESTION 4: language slots (10 marks). Each slot has 3 variants. ---------- */
+const SENT_TYPES = ['Simple', 'Compound', 'Complex'];
+const LANG = {
+  syn: [  // 4.1 (1)
+    MC('Choose the word that means the SAME as “big”.', 'huge', ['tiny', 'thin', 'slow']),
+    MC('Choose the word that means the SAME as “glad”.', 'happy', ['sad', 'angry', 'tired']),
+    MC('Choose the word that means the SAME as “begin”.', 'start', ['finish', 'stop', 'hide'])
+  ],
+  ant: [  // 4.2 (1)
+    MC('Choose the word that means the OPPOSITE of “hot”.', 'cold', ['tall', 'dry', 'quick']),
+    MC('Choose the word that means the OPPOSITE of “empty”.', 'full', ['tiny', 'dry', 'heavy']),
+    MC('Choose the word that means the OPPOSITE of “early”.', 'late', ['fast', 'first', 'quiet'])
+  ],
+  pos: [  // 4.3 (a)(b) (2)
+    { s: 'Thabo gave his book to Lerato.', pron: ['his'], prop: ['thabo', 'lerato'] },
+    { s: 'Anna and her mother went to the shop.', pron: ['her'], prop: ['anna'] },
+    { s: 'Sipho told us a funny story.', pron: ['us'], prop: ['sipho'] }
+  ],
+  deg: [  // 4.4 (1)
+    { pos: 'happy', cmp: 'happier', sup: 'happiest', miss: 'cmp' },
+    { pos: 'tall',  cmp: 'taller',  sup: 'tallest',  miss: 'cmp' },
+    { pos: 'big',   cmp: 'bigger',  sup: 'biggest',  miss: 'cmp' }
+  ],
+  stype: [ // 4.5 (a)(b) (2)
+    [{ s: 'The dog barked.', a: 'Simple' }, { s: 'The dog barked and the cat ran away.', a: 'Compound' }],
+    [{ s: 'Lerato likes apples.', a: 'Simple' }, { s: 'I wanted to play outside, but it was raining.', a: 'Compound' }],
+    [{ s: 'Mpho sang a song.', a: 'Simple' }, { s: 'We stayed inside because it was raining.', a: 'Complex' }]
+  ],
+  adj: [   // 4.6 (1)
+    { s: 'The tired farmer walked home.', ok: ['tired'] },
+    { s: 'Lindiwe wore a red dress.', ok: ['red'] },
+    { s: 'We saw a huge elephant.', ok: ['huge'] }
+  ],
+  punc: [  // 4.7 (2)
+    { wrong: 'sipho played with his brothers ball', target: 'Sipho played with his brother’s ball.' },
+    { wrong: 'thandi visited her grandmothers house on monday', target: 'Thandi visited her grandmother’s house on Monday.' },
+    { wrong: 'zinhle lost her sisters pencil in pretoria', target: 'Zinhle lost her sister’s pencil in Pretoria.' }
+  ]
+};
+
+/* =====================================================================
+   BUILD A PAPER  (same seed -> same paper, so a refresh never changes it)
+   ===================================================================== */
+function cloneItem(it){ return JSON.parse(JSON.stringify(it)); }
+
+function buildPaper(seed, force = {}){
+  const pick = (salt, n, forced) => Number.isInteger(forced) && forced >= 0 && forced < n ? forced : Math.floor(rngFrom(seed, salt)() * n);
+  const pIdx = pick('passage', PASSAGES.length, force.p);
+  const aIdx = pick('ad', ADS.length, force.a);
+  const P = PASSAGES[pIdx], A = ADS[aIdx];
+  const lv = {}; Object.keys(LANG).forEach(k => { lv[k] = pick('lang-' + k, LANG[k].length, force['l' + k]); });
+
+  // Q1 and Q2 : prepare items with shuffled option order
+  const prep = (list, key) => {
+    let items = list.map((it, i) => { const c = cloneItem(it); c.id = `${key}-${i}`; c.opt = c.options ? c.options.map((o, j) => ({ ...o, id: 'o' + j })) : null; return c; });
+    items.forEach(it => { if (it.opt) it.order = shuffle(it.opt.map(o => o.id), rngFrom(seed, 'opts-' + it.id)); });
+    if (CONFIG.SHUFFLE_QUESTION_ORDER) items = shuffle(items, rngFrom(seed, 'qorder-' + key));
+    items.forEach((it, i) => { it.label = (key.startsWith('q1') ? '1.' : '2.') + (i + 1); });
+    return items;
+  };
+  const q1 = prep(P.q, 'q1' + P.id);
+  const q2 = prep(A.q, 'q2' + A.id);
+
+  // Q3 summary : letters A-D are given to the sentences in a scrambled order
+  const sumSent = P.sum.sentences;
+  let perm = shuffle([0, 1, 2, 3], rngFrom(seed, 'sumorder'));
+  if (perm.every((v, i) => v === i)) perm = [1, 2, 3, 0];
+  const letters = ['A', 'B', 'C', 'D'];
+  const shown = perm.map((storyIdx, pos) => ({ letter: letters[pos], storyIdx, ...sumSent[storyIdx] }));
+  const correctOrder = [0, 1, 2, 3].map(story => shown.find(s => s.storyIdx === story).letter);
+  const bank = shuffle([...sumSent.map(s => s.a), ...P.sum.extra], rngFrom(seed, 'bank'));
+  const q3 = [{ id: 'q3-sum', type: 'summary', marks: 5, label: '3', prompt: 'Fill in the missing words. Then put the sentences in the order they happened in the story.', shown, bank, correctOrder }];
+
+  // Q4 : fixed order, variants chosen by seed
+  const q4 = [];
+  const syn = cloneItem(LANG.syn[lv.syn]); syn.id = 'q4-syn'; syn.label = '4.1'; syn.opt = syn.options.map((o, j) => ({ ...o, id: 'o' + j })); syn.order = shuffle(syn.opt.map(o => o.id), rngFrom(seed, 'opts-syn')); q4.push(syn);
+  const ant = cloneItem(LANG.ant[lv.ant]); ant.id = 'q4-ant'; ant.label = '4.2'; ant.opt = ant.options.map((o, j) => ({ ...o, id: 'o' + j })); ant.order = shuffle(ant.opt.map(o => o.id), rngFrom(seed, 'opts-ant')); q4.push(ant);
+  const pos = LANG.pos[lv.pos], words = pos.s.split(' ');
+  const idxOf = list => words.map((w, i) => list.includes(cleanWord(w)) ? i : -1).filter(i => i >= 0);
+  q4.push({ id: 'q4-pron', type: 'pick', marks: 1, label: '4.3 (a)', prompt: 'Tap the PRONOUN in the sentence.', words, ok: idxOf(pos.pron) });
+  q4.push({ id: 'q4-prop', type: 'pick', marks: 1, label: '4.3 (b)', prompt: 'Tap a PROPER NOUN in the sentence.', words, ok: idxOf(pos.prop) });
+  const dg = LANG.deg[lv.deg];
+  q4.push({ id: 'q4-deg', type: 'text', marks: 1, label: '4.4', degrees: dg, prompt: 'Write the missing word to complete the degrees of comparison.', spec: { exact: [dg.cmp] } });
+  const st = LANG.stype[lv.stype];
+  st.forEach((x, i) => q4.push({ id: 'q4-st' + i, type: 'select', marks: 1, label: '4.5 (' + 'ab'[i] + ')', sentence: x.s, prompt: 'Is this sentence simple, compound or complex?', choices: SENT_TYPES, correct: x.a }));
+  const ad = LANG.adj[lv.adj], aw = ad.s.split(' ');
+  q4.push({ id: 'q4-adj', type: 'pick', marks: 1, label: '4.6', prompt: 'Tap the ADJECTIVE (describing word) in the sentence.', words: aw, ok: aw.map((w, i) => ad.ok.includes(cleanWord(w)) ? i : -1).filter(i => i >= 0) });
+  const pc = LANG.punc[lv.punc];
+  q4.push({ id: 'q4-punc', type: 'rewrite', marks: 2, label: '4.7', prompt: 'Rewrite the sentence with the correct punctuation.', hint: 'Think about capital letters, an apostrophe (’) and a full stop.', wrong: pc.wrong, target: pc.target });
+
+  return {
+    seed, pIdx, aIdx, lv,
+    sections: [
+      { key: 'q1', title: 'QUESTION 1: COMPREHENSION', marks: 15, instr: 'Read the passage first. Then answer the questions.', passage: P, items: q1 },
+      { key: 'q2', title: 'QUESTION 2: VISUAL LITERACY', marks: 10, instr: 'Look at the advertisement carefully. Then answer the questions.', ad: A, items: q2 },
+      { key: 'q3', title: 'QUESTION 3: SUMMARY', marks: 5, instr: 'Use the word bank to complete each sentence.', items: q3 },
+      { key: 'q4', title: 'QUESTION 4: LANGUAGE STRUCTURES AND CONVENTIONS', marks: 10, instr: 'Answer all the questions.', items: q4 }
+    ]
+  };
+}
+
+/* =====================================================================
+   MARKING
+   ===================================================================== */
+function textCorrect(spec, raw){
+  const a = norm(raw);
+  if (!a) return false;
+  const words = a.split(' ');
+  if (spec.not && spec.not.some(w => words.includes(norm(w)))) return false;
+  if (spec.exact && spec.exact.some(e => a === norm(e))) return true;
+  if (spec.words && spec.words.some(w => words.includes(norm(w)))) return true;
+  if (spec.any){
+    for (const grp of spec.any){
+      const ok = grp.every(tok => {
+        const t = norm(tok);
+        if (a.includes(t)) return true;
+        return t.length >= 5 && !t.includes(' ') && words.some(w => Math.abs(w.length - t.length) <= 1 && editDist(w, t) <= 1); // forgive 1 spelling slip
+      });
+      if (ok) return true;
+    }
+  }
+  return false;
+}
+function rewriteParts(target, raw){
+  const t = String(raw || '').replace(/[‘’`´]/g, "'").replace(/[“”]/g, '"').replace(/\s+/g, ' ').trim();
+  const tg = String(target).replace(/[‘’`´]/g, "'");
+  const wordsOf = s => s.replace(/[^A-Za-z0-9\s]/g, '').split(/\s+/).filter(Boolean).join(' ');
+  const punctOf = s => s.replace(/[A-Za-z0-9\s]/g, '');
+  return { words: wordsOf(t) === wordsOf(tg), punct: punctOf(t) === punctOf(tg) };
+}
+function markItem(it, ans){
+  const out = { got: 0, max: it.marks };
+  switch (it.type){
+    case 'mcq': { const o = it.opt.find(o => o.id === ans); out.got = o && o.ok ? 1 : 0; break; }
+    case 'tf':  { out.got = ans && ans === it.answer ? 1 : 0; break; }
+    case 'multi': { const sel = Array.isArray(ans) ? ans : []; out.got = sel.filter(id => (it.opt.find(o => o.id === id) || {}).ok).length; break; }
+    case 'text': { out.got = textCorrect(it.spec, ans) ? 1 : 0; break; }
+    case 'pick': { out.got = Number.isInteger(ans) && it.ok.includes(ans) ? 1 : 0; break; }
+    case 'select': { out.got = ans && ans === it.correct ? 1 : 0; break; }
+    case 'rewrite': { const r = rewriteParts(it.target, ans); out.got = (r.words ? 1 : 0) + (r.punct ? 1 : 0); break; }
+    case 'summary': {
+      const a = ans || {}; a.b = a.b || {}; a.o = a.o || {};
+      let g = 0;
+      it.shown.forEach(s => { if (a.b[s.letter] && a.b[s.letter] === s.a) g++; });
+      if (it.correctOrder.every((L, i) => a.o[i] === L)) g++;
+      out.got = g; break;
+    }
+  }
+  return out;
+}
+function partsOf(it){ return it.type === 'summary' ? 5 : 1; }
+function answeredParts(it, ans){
+  switch (it.type){
+    case 'mcq': case 'tf': case 'select': return ans ? 1 : 0;
+    case 'multi': return Array.isArray(ans) && ans.length === it.pick ? 1 : 0;
+    case 'text': case 'rewrite': return String(ans || '').trim() ? 1 : 0;
+    case 'pick': return Number.isInteger(ans) ? 1 : 0;
+    case 'summary': { const a = ans || {}; let n = 0; it.shown.forEach(s => { if (a.b && a.b[s.letter]) n++; }); if (a.o && [0,1,2,3].every(i => a.o[i])) n++; return n; }
+  }
+  return 0;
+}
+function markPaper(paper, answers){
+  const sections = paper.sections.map(sec => {
+    let got = 0, max = 0; const missed = [];
+    sec.items.forEach(it => { const r = markItem(it, answers[it.id]); got += r.got; max += r.max; if (r.got < r.max) missed.push({ it, r }); });
+    return { key: sec.key, title: sec.title, got, max, missed };
+  });
+  const got = sections.reduce((s, x) => s + x.got, 0), max = sections.reduce((s, x) => s + x.max, 0);
+  return { got, max, sections };
+}
+const stem = s => { const t = String(s).replace(/\s+/g, ' ').trim(); return t.length > 55 ? t.slice(0, 52) + '…' : t; };
+function memoText(it){
+  switch (it.type){
+    case 'mcq': return it.opt.filter(o => o.ok).map(o => o.t).join(' / ');
+    case 'tf': return it.answer === 'T' ? 'True' : 'False';
+    case 'multi': return it.opt.filter(o => o.ok).map(o => o.t).join('  +  ');
+    case 'text': return it.spec.exact ? it.spec.exact.join(' / ') : (it.spec.words || []).concat((it.spec.any || []).map(g => g.join(' + '))).join(' / ') + (it.spec.not ? '' : '');
+    case 'pick': return it.ok.map(i => it.words[i]).join(' / ');
+    case 'select': return it.correct;
+    case 'rewrite': return it.target + '  (1 mark words/capitals, 1 mark punctuation)';
+    case 'summary': return it.shown.map(s => s.letter + ': ' + s.a).join(', ') + '  |  Order: ' + it.correctOrder.join(' ');
+  }
+  return '';
+}
+
+/* =====================================================================
+   CONTEXT  (assignment, learner, storage)
+   ===================================================================== */
+const CONTEXT_KEY = 'carissa_active_assignment_context_v1';
+function getAssignmentId(){
+  const fromQs = qs.get('assignment_id'); if (fromQs) return String(fromQs);
+  try { const ctx = JSON.parse(localStorage.getItem(CONTEXT_KEY) || 'null');
+    if (ctx && ctx.assignment_id && (Date.now() - Number(ctx.ts || 0)) < 10 * 60 * 1000) return String(ctx.assignment_id);
+  } catch (_e) {}
+  return '';
+}
+const ASSIGNMENT_ID = getAssignmentId();
+const LEARNER = (qs.get('learner') || '').trim();
+const ASSESS_KEY = String(qs.get('akey') || 'carissa_g4_english_mock_exam_v1').trim();
+const IS_PREVIEW_URL = qs.get('preview') === '1';
+const STORE_KEY = `${ASSESS_KEY}:${ASSIGNMENT_ID || 'preview'}`;
+const safeGet = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (_e) { return null; } };
+const safeSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_e) {} };
+
+/* =====================================================================
+   APP STATE
+   ===================================================================== */
+const root = $('#app');
+let S = null;            // { paper, answers, startTs, preview, leaves, finished, final }
+let tickId = null, saveTimer = null, locked = false, itemsById = {}, warned5 = false, warned1 = false;
+
+function currentUserLabel(){ return LEARNER || (S && S.preview ? 'Teacher preview' : ''); }
+function persist(){
+  if (!S) return;
+  safeSet(STORE_KEY, { seed: S.paper.seed, force: S.force || null, startTs: S.startTs, answers: S.answers, leaves: S.leaves, finished: !!S.finished, final: S.final || null, preview: !!S.preview });
+}
+function schedulePersist(){ clearTimeout(saveTimer); saveTimer = setTimeout(persist, 250); }
+
+/* =====================================================================
+   RENDER  - start screen
+   ===================================================================== */
+function showStart(note){
+  const hasAssign = !!ASSIGNMENT_ID;
+  root.innerHTML = `
+  <div class="wrap">
+    <div class="card hero">
+      <h1>📝 ${esc(CONFIG.TITLE)}</h1>
+      <p>Carissa Primary School &nbsp;•&nbsp; 40 marks &nbsp;•&nbsp; ${CONFIG.DURATION_MIN} minutes</p>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <h2 style="margin-bottom:6px">Before you start</h2>
+      <ol class="rules">
+        <li>This test has 4 questions: <b>Comprehension</b>, <b>Visual Literacy</b>, <b>Summary</b> and <b>Language</b>.</li>
+        <li>You have <b>${CONFIG.DURATION_MIN} minutes</b>. The clock at the top shows how much time is left.</li>
+        <li>Read the passage first, then answer. Tap or click your answers. Some answers you must type.</li>
+        <li>You can change your answers until you hand in or the time runs out.</li>
+        <li><b>When the time is up, the test locks by itself</b> and your marks are sent to your teacher.</li>
+        <li>Do not close this page or press refresh during the test.</li>
+      </ol>
+      <div id="startNote">${note ? `<div class="msg-err">${note}</div>` : ''}</div>
+      ${hasAssign ? `
+      <div style="margin-top:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        ${CONFIG.START_PIN ? `<div><div class="small" style="margin-bottom:4px">Type the exam PIN from your teacher</div><input id="pinIn" class="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="12" aria-label="Exam PIN"></div>` : ''}
+        <button class="btn green" id="startBtn" type="button">Start the test ▶</button>
+      </div>
+      <div class="small" style="margin-top:10px">${LEARNER ? 'Learner: ' + esc(LEARNER) : ''}</div>`
+      : `<div class="msg-err">This test must be opened from your <b>Learner Dashboard</b> so that your teacher receives your marks.</div>`}
+      <details class="teacher" ${IS_PREVIEW_URL ? 'open' : ''}>
+        <summary>Teacher options</summary>
+        <div style="margin-top:10px">
+          <div class="small" style="margin-bottom:4px">Teacher PIN</div>
+          <input id="tpin" class="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="12" aria-label="Teacher PIN">
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <select id="pvP" class="sel" style="width:auto"><option value="">Any passage</option>${PASSAGES.map((p, i) => `<option value="${i}">Passage ${p.id}: ${esc(p.title)}</option>`).join('')}</select>
+            <select id="pvA" class="sel" style="width:auto"><option value="">Any advert</option>${ADS.map((a, i) => `<option value="${i}">Advert ${a.id}: ${esc(a.name)}</option>`).join('')}</select>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn ghost" id="pvBtn" type="button">👀 Preview the test (no marks saved)</button>
+            <button class="btn ghost" id="memoBtn" type="button">📋 Marking memo (all versions)</button>
+          </div>
+          <div id="tmsg"></div>
+        </div>
+      </details>
+    </div>
+  </div>`;
+  const sb = $('#startBtn');
+  if (sb) sb.onclick = onStartClick;
+  const pin = $('#pinIn'); if (pin) pin.addEventListener('keydown', e => { if (e.key === 'Enter') onStartClick(); });
+  $('#pvBtn').onclick = () => teacherGate(() => {
+    const f = {}; const p = $('#pvP').value, a = $('#pvA').value;
+    if (p !== '') f.p = +p; if (a !== '') f.a = +a;
+    startExam({ preview: true, force: f });
+  });
+  $('#memoBtn').onclick = () => teacherGate(showMemo);
+}
+function teacherGate(fn){
+  const v = ($('#tpin').value || '').trim();
+  if (v !== CONFIG.TEACHER_PIN){ $('#tmsg').innerHTML = '<div class="msg-err">Wrong teacher PIN.</div>'; return; }
+  fn();
+}
+async function onStartClick(){
+  const btn = $('#startBtn');
+  if (CONFIG.START_PIN && ($('#pinIn').value || '').trim() !== CONFIG.START_PIN){
+    $('#startNote').innerHTML = '<div class="msg-err">That PIN is not right. Please ask your teacher for the exam PIN.</div>'; return;
+  }
+  btn.disabled = true;
+  // Last server check so nobody can start twice
+  if (await alreadyCompletedOnServer()){ btn.disabled = false; return; }
+  startExam({ preview: false });
+}
+async function alreadyCompletedOnServer(showMsg = true){
+  if (!ASSIGNMENT_ID) return false;
+  try {
+    const res = await fetch(CONFIG.ME_ENDPOINT, { credentials: 'include' });
+    if (!res.ok) return false;
+    const data = await res.json();
+    const rows = Array.isArray(data && data.results) ? data.results : [];
+    const row = rows.find(r => String(r.assignment_id) === String(ASSIGNMENT_ID));
+    if (row && String(row.result_status || '').toLowerCase() === 'completed'){
+      if (showMsg) showAlreadyDone(row);
+      return true;
+    }
+  } catch (_e) {}
+  return false;
+}
+function showAlreadyDone(row){
+  root.innerHTML = `<div class="wrap"><div class="card hero"><h1>✅ Test already handed in</h1><p>${esc(CONFIG.TITLE)}</p></div>
+    <div class="card" style="margin-top:14px">
+      <div class="msg-ok">You have already completed this test${row && row.max_score ? ` and scored <b>${esc(row.score)}/${esc(row.max_score)}</b>` : ''}.</div>
+      <p class="note">If you need another try, please ask your teacher to reset your mark.</p>
+      <div style="margin-top:14px"><button class="btn dark" onclick="try{window.close()}catch(e){}">Close</button></div></div></div>`;
+}
+
+/* =====================================================================
+   RENDER  - the exam
+   ===================================================================== */
+function renderItem(it, ans){
+  const qn = `<div class="qh"><span class="qn">${esc(it.label)}</span><span class="mk">(${it.marks})</span></div>`;
+  const wrap = body => `<div class="q" id="card-${it.id}" data-card="${it.id}">${qn}${body}</div>`;
+  switch (it.type){
+    case 'mcq': {
+      const opts = it.order.map(id => { const o = it.opt.find(x => x.id === id);
+        return `<label class="opt"><input type="radio" name="${it.id}" value="${o.id}" data-q="${it.id}" ${ans === o.id ? 'checked' : ''}><span class="box">${esc(o.t)}</span></label>`; }).join('');
+      return wrap(`<div class="qt">${esc(it.prompt)}</div><div class="opts">${opts}</div>`);
+    }
+    case 'tf': {
+      const opts = [['T', 'True'], ['F', 'False']].map(([v, l]) => `<label class="opt"><input type="radio" name="${it.id}" value="${v}" data-q="${it.id}" ${ans === v ? 'checked' : ''}><span class="box">${l}</span></label>`).join('');
+      return wrap(`<div class="qt">${esc(it.prompt)} <span class="small">(True or False?)</span></div><div class="opts">${opts}</div>`);
+    }
+    case 'multi': {
+      const sel = Array.isArray(ans) ? ans : [];
+      const opts = it.order.map(id => { const o = it.opt.find(x => x.id === id);
+        return `<label class="opt chk"><input type="checkbox" value="${o.id}" data-q="${it.id}" ${sel.includes(o.id) ? 'checked' : ''}><span class="box">${esc(o.t)}</span></label>`; }).join('');
+      return wrap(`<div class="qt">${esc(it.prompt)}</div><div class="hint">Choose ${it.pick === 2 ? 'TWO' : it.pick} answers.</div><div class="opts">${opts}</div>`);
+    }
+    case 'text': {
+      let extra = '';
+      if (it.degrees){ const d = it.degrees;
+        extra = `<table style="border-collapse:collapse;margin:6px 0 10px;font-weight:800;width:100%;text-align:center"><tr style="background:#e0f2fe"><td style="padding:6px;border:2px solid #bae6fd">POSITIVE</td><td style="padding:6px;border:2px solid #bae6fd">COMPARATIVE</td><td style="padding:6px;border:2px solid #bae6fd">SUPERLATIVE</td></tr><tr><td style="padding:6px;border:2px solid #bae6fd">${esc(d.pos)}</td><td style="padding:6px;border:2px solid #bae6fd;color:#7c3aed">?</td><td style="padding:6px;border:2px solid #bae6fd">${esc(d.sup)}</td></tr></table>`; }
+      return wrap(`<div class="qt">${esc(it.prompt)}</div>${extra}<input class="txt" type="text" data-q="${it.id}" value="${esc(ans || '')}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type your answer here">`);
+    }
+    case 'pick': {
+      const chips = it.words.map((w, i) => `<button type="button" class="chip" data-q="${it.id}" data-i="${i}" aria-pressed="${ans === i}">${esc(w)}</button>`).join('');
+      return wrap(`<div class="qt">${esc(it.prompt)}</div><div class="chips">${chips}</div>`);
+    }
+    case 'select': {
+      const o = it.choices.map(c => `<option value="${c}" ${ans === c ? 'selected' : ''}>${c}</option>`).join('');
+      return wrap(`<div class="sentence">${esc(it.sentence)}</div><div class="qt">${esc(it.prompt)}</div><select class="sel" data-q="${it.id}"><option value="">— choose —</option>${o}</select>`);
+    }
+    case 'rewrite': {
+      return wrap(`<div class="qt">${esc(it.prompt)}</div><div class="sentence">${esc(it.wrong)}</div><div class="hint">${esc(it.hint)}</div><textarea class="txt" rows="2" data-q="${it.id}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Write the sentence again here">${esc(ans || '')}</textarea>`);
+    }
+    case 'summary': {
+      const a = ans || { b: {}, o: {} }; a.b = a.b || {}; a.o = a.o || {};
+      const bank = it.bank.map(w => `<b>${esc(w)}</b>`).join('');
+      const optsHtml = cur => `<option value="">— word —</option>` + it.bank.map(w => `<option value="${esc(w)}" ${cur === w ? 'selected' : ''}>${esc(w)}</option>`).join('');
+      const lines = it.shown.map(s => {
+        const [pre, post] = s.t.split('____');
+        return `<div class="sline"><span class="ltr">${s.letter}</span>${esc(pre)}<select class="sel inl" data-q="${it.id}" data-k="b:${s.letter}">${optsHtml(a.b[s.letter])}</select>${esc(post || '')}</div>`;
+      }).join('');
+      const L = ['', 'A', 'B', 'C', 'D'];
+      const ord = [0, 1, 2, 3].map(i => `<span>${['1st', '2nd', '3rd', '4th'][i]}: <select class="sel inl" style="min-width:90px" data-q="${it.id}" data-k="o:${i}"><option value="">—</option>${'ABCD'.split('').map(l => `<option value="${l}" ${a.o[i] === l ? 'selected' : ''}>${l}</option>`).join('')}</select></span>`).join('');
+      return wrap(`<div class="qt">${esc(it.prompt)}</div><div class="small">Word bank:</div><div class="bank">${bank}</div>${lines}
+        <div class="qt" style="margin-top:12px">Which sentence happened 1st, 2nd, 3rd and 4th in the story? Choose the letters.</div><div class="orderrow">${ord}</div>`);
+    }
+  }
+  return '';
+}
+function renderExam(){
+  const P = S.paper; itemsById = {};
+  P.sections.forEach(sec => sec.items.forEach(it => itemsById[it.id] = it));
+  const secHtml = P.sections.map(sec => {
+    const items = sec.items.map(it => renderItem(it, S.answers[it.id])).join('');
+    let inner;
+    if (sec.passage){
+      const ps = sec.passage;
+      const pHtml = `<div class="card passage stick"><h3>${esc(ps.title)}</h3>${ps.paras.map((p, i) => `<p><span class="pn">${i + 1}</span>${esc(p)}</p>`).join('')}<div class="small" style="margin-top:8px">${ps.paras.join(' ').split(/\s+/).length} words</div></div>`;
+      inner = `<div class="split">${pHtml}<div class="qs">${items}</div></div>`;
+    } else if (sec.ad){
+      inner = `<div class="split"><div class="stick">${sec.ad.html}</div><div class="qs">${items}</div></div>`;
+    } else inner = `<div class="qs">${items}</div>`;
+    return `<section class="sec" id="sec-${sec.key}"><div class="sec-h"><h2>${esc(sec.title)}</h2><span class="tot">${sec.marks} marks</span></div><div class="instr">${esc(sec.instr)}</div>${inner}</section>`;
+  }).join('');
+  root.innerHTML = `
+    <div class="topbar"><div class="topbar-in">
+      <div><div class="tb-title">📝 ${esc(CONFIG.TITLE)}${S.preview ? ' — TEACHER PREVIEW' : ''}</div><div class="tb-name">${esc(currentUserLabel())} <span id="progTxt"></span></div></div>
+      <div class="timer" id="timer" aria-live="off">--:--</div>
+      <button class="btn dark" id="handIn" type="button" style="padding:9px 16px;font-size:15px">Hand in ✔</button>
+    </div><div class="prog"><i id="progBar"></i></div></div>
+    <div class="wrap" id="examBody">${secHtml}
+      <div class="card" style="margin-top:20px;text-align:center"><p style="font-weight:800;margin-bottom:10px">Finished? Check your answers, then hand in.</p><button class="btn green" id="handIn2" type="button">Hand in my test ✔</button></div>
+    </div>`;
+  $('#handIn').onclick = $('#handIn2').onclick = askHandIn;
+  const body = $('#examBody');
+  body.addEventListener('change', onField); body.addEventListener('input', onField); body.addEventListener('click', onChip);
+  updateProgress();
+}
+
+/* =====================================================================
+   ANSWER HANDLING
+   ===================================================================== */
+function setAnswer(id, val){
+  if (locked) return;
+  S.answers[id] = val;
+  schedulePersist(); updateProgress();
+  const card = document.getElementById('card-' + id);
+  if (card) card.classList.toggle('answered', answeredParts(itemsById[id], val) === partsOf(itemsById[id]));
+}
+function onField(e){
+  const el = e.target; const id = el.dataset && el.dataset.q; if (!id || locked) return;
+  const it = itemsById[id]; if (!it) return;
+  if (el.classList.contains('chip')) return;
+  if (it.type === 'mcq' || it.type === 'tf'){ if (e.type === 'change') setAnswer(id, el.value); return; }
+  if (it.type === 'multi'){
+    if (e.type !== 'change') return;
+    const boxes = [...document.querySelectorAll(`input[data-q="${id}"]:checked`)];
+    if (boxes.length > it.pick){ el.checked = false; toast(`Choose only ${it.pick === 2 ? 'TWO' : it.pick} answers`); return; }
+    setAnswer(id, boxes.map(b => b.value)); return;
+  }
+  if (it.type === 'text' || it.type === 'rewrite'){ setAnswer(id, el.value); return; }
+  if (it.type === 'select'){ if (e.type === 'change') setAnswer(id, el.value); return; }
+  if (it.type === 'summary'){
+    if (e.type !== 'change') return;
+    const cur = S.answers[id] || { b: {}, o: {} }; cur.b = cur.b || {}; cur.o = cur.o || {};
+    const [kind, key] = el.dataset.k.split(':');
+    if (kind === 'b') cur.b[key] = el.value; else cur.o[+key] = el.value;
+    setAnswer(id, JSON.parse(JSON.stringify(cur)));
+  }
+}
+function onChip(e){
+  const el = e.target.closest && e.target.closest('.chip'); if (!el || locked) return;
+  const id = el.dataset.q, i = +el.dataset.i;
+  const now = S.answers[id] === i ? null : i;
+  document.querySelectorAll(`.chip[data-q="${id}"]`).forEach(c => c.setAttribute('aria-pressed', String(+c.dataset.i === now)));
+  setAnswer(id, now);
+}
+function updateProgress(){
+  if (!S) return;
+  let a = 0, t = 0;
+  S.paper.sections.forEach(sec => sec.items.forEach(it => { t += partsOf(it); a += answeredParts(it, S.answers[it.id]); }));
+  const bar = $('#progBar'), tx = $('#progTxt');
+  if (bar) bar.style.width = (t ? Math.round(a / t * 100) : 0) + '%';
+  if (tx) tx.textContent = `• ${a} of ${t} answered`;
+  return { a, t };
+}
+function toast(msg){
+  const old = $('.toast'); if (old) old.remove();
+  const d = document.createElement('div'); d.className = 'toast'; d.textContent = msg; document.body.appendChild(d);
+  setTimeout(() => d.remove(), 3200);
+}
+
+/* =====================================================================
+   TIMER + LOCK
+   ===================================================================== */
+const durationMs = () => CONFIG.DURATION_MIN * 60 * 1000;
+function tick(){
+  if (!S || S.finished) return;
+  const left = S.startTs + durationMs() - Date.now();
+  const tEl = $('#timer');
+  if (tEl){
+    tEl.textContent = '⏱ ' + fmtClock(left);
+    tEl.className = 'timer' + (left <= 60000 ? ' danger' : left <= 5 * 60000 ? ' warn' : '');
+  }
+  if (!warned5 && left <= 5 * 60000 && left > 60000){ warned5 = true; toast('⏰ 5 minutes left'); }
+  if (!warned1 && left <= 60000 && left > 0){ warned1 = true; toast('⏰ 1 minute left!'); }
+  if (left <= 0) finish('time');
+}
+function lockInputs(){
+  locked = true;
+  document.querySelectorAll('#examBody input, #examBody select, #examBody textarea, #examBody button').forEach(el => { el.disabled = true; });
+  const hb = $('#handIn'); if (hb) hb.disabled = true;
+  document.body.classList.add('locked');
+}
+
+function askHandIn(){
+  if (locked || !S || S.finished) return;
+  const p = updateProgress();
+  const left = p.t - p.a;
+  const ov = document.createElement('div'); ov.className = 'overlay'; ov.id = 'handOv';
+  ov.innerHTML = `<div class="modal"><h2>Hand in your test?</h2>
+    <p>${left > 0 ? `You have <b>${left}</b> part${left === 1 ? '' : 's'} not answered yet.` : 'You have answered everything. Well done!'}</p>
+    <p class="small" style="margin-top:6px">After you hand in, you cannot change your answers.</p>
+    <div class="row"><button class="btn ghost" id="keepOn" type="button">Keep working</button><button class="btn green" id="yesIn" type="button">Yes, hand in</button></div></div>`;
+  document.body.appendChild(ov);
+  $('#keepOn').onclick = () => ov.remove();
+  $('#yesIn').onclick = () => { ov.remove(); finish('manual'); };
+}
+
+/* =====================================================================
+   FINISH  - lock, mark, send
+   ===================================================================== */
+function buildNotes(res, reason){
+  const P = S.paper, pct = Math.round(res.got / res.max * 100);
+  const secName = { q1: 'Q1 Comprehension', q2: 'Q2 Visual Literacy', q3: 'Q3 Summary', q4: 'Q4 Language' };
+  const usedMs = Math.min(durationMs(), Math.max(0, Date.now() - S.startTs));
+  const used = `${Math.floor(usedMs / 60000)}m ${String(Math.floor(usedMs / 1000) % 60).padStart(2, '0')}s`;
+  const missed = [];
+  res.sections.forEach(sec => sec.missed.forEach(m => missed.push(`${m.it.label} ${stem(m.it.prompt || m.it.sentence || '')} (${m.r.got}/${m.r.max})`)));
+  let n = `Grade 4 English Mock Exam: ${res.got}/${res.max} (${pct}%). ` + res.sections.map(s => `${secName[s.key]} ${s.got}/${s.max}`).join(', ') + '. ' +
+    `Paper: passage ${PASSAGES[P.pIdx].id} (${PASSAGES[P.pIdx].title}), advert ${ADS[P.aIdx].id}. ` +
+    `Time used: ${used}${reason === 'time' ? ' (time ran out, auto-submitted)' : ''}.` +
+    (S.leaves ? ` Left the exam page ${S.leaves} time${S.leaves === 1 ? '' : 's'}.` : '') +
+    (missed.length ? ` Marks lost on: ${missed.join('; ')}.` : ' Full marks!');
+  return n.slice(0, 4800);
+}
+function finish(reason){
+  if (!S || S.finished) return;
+  S.finished = true; clearInterval(tickId);
+  const ao = $('#handOv'); if (ao) ao.remove();
+  lockInputs();
+  const res = markPaper(S.paper, S.answers);
+  S.final = { got: res.got, max: res.max, reason, notes: buildNotes(res, reason), sent: false };
+  S.res = res;
+  persist();
+  if (reason === 'time'){
+    const ov = document.createElement('div'); ov.className = 'overlay'; ov.id = 'timeOv';
+    ov.innerHTML = `<div class="modal"><h2>⏰ Time is up!</h2><p>The test is locked. Your answers are being marked…</p></div>`;
+    document.body.appendChild(ov);
+    setTimeout(() => { ov.remove(); showResult(); }, 1800);
+  } else showResult();
+  if (!S.preview) sendResult();
+}
+const pctOf = (g, m) => Math.round(g / m * 100);
+function showResult(){
+  window.scrollTo(0, 0);
+  const f = S.final, res = S.res || markPaper(S.paper, S.answers);
+  const names = { q1: 'Comprehension', q2: 'Visual Literacy', q3: 'Summary', q4: 'Language' };
+  const first = (LEARNER.split(' ')[0] || '').trim();
+  root.innerHTML = `
+  <div class="wrap">
+    <div class="card hero" style="text-align:center">
+      <h1>${f.reason === 'time' ? '⏰ Time is up!' : '🎉 Test handed in!'}</h1>
+      <p>${first ? 'Well done, ' + esc(first) + '!' : 'Well done!'}</p>
+      <div class="bigscore">${f.got} / ${f.max}</div>
+      <p>${pctOf(f.got, f.max)}%</p>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="res-grid">${res.sections.map(s => `<div class="res-box"><div class="small">${names[s.key]}</div><b>${s.got}/${s.max}</b></div>`).join('')}</div>
+      <div id="sendState" style="margin-top:14px"></div>
+      ${S.preview ? '<div class="note">Teacher preview: nothing was saved. The answers are shown below.</div>' : ''}
+      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap"><button class="btn dark" id="closeBtn" type="button">Close</button>${S.preview ? '<button class="btn ghost" onclick="location.reload()">Preview again</button>' : ''}</div>
+    </div>
+    ${S.preview ? reviewHtml(res) : ''}
+  </div>`;
+  $('#closeBtn').onclick = () => { try { window.close(); } catch (_e) {} };
+  renderSendState();
+}
+function reviewHtml(res){
+  const rows = S.paper.sections.map(sec => `<h3 style="margin:14px 0 6px">${esc(sec.title)}</h3>` + sec.items.map(it => {
+    const r = markItem(it, S.answers[it.id]);
+    return `<div class="memo-q"><b>${esc(it.label)}</b> ${esc(it.prompt || it.sentence || '')} <span class="${r.got === r.max ? 'ans' : 'bad'}">[${r.got}/${r.max}]</span><br><span class="small">Memo: </span><span class="ans">${esc(memoText(it))}</span></div>`;
+  }).join('')).join('');
+  return `<div class="card" style="margin-top:14px"><h2>Memo for this version</h2>${rows}</div>`;
+}
+
+/* ---------- sending the mark to the teacher ---------- */
+let sendTries = 0, sending = false, retryTimer = null;
+function renderSendState(){
+  const el = $('#sendState'); if (!el || !S || S.preview) return;
+  if (S.final.sent) el.innerHTML = '<div class="msg-ok">✓ Your mark has been sent to your teacher.</div>';
+  else if (sending) el.innerHTML = '<div class="msg-ok" style="background:#eff6ff;border-color:#bfdbfe;color:#1e40af">Sending your mark to your teacher…</div>';
+  else el.innerHTML = `<div class="msg-err">Your mark could not be sent yet. ${esc(S.final.err || '')}<br><span class="small">Keep this page open. We will try again. You can also press the button.</span><div style="margin-top:8px"><button class="btn" id="retryBtn" type="button">Send my mark again</button></div></div>`;
+  const rb = $('#retryBtn'); if (rb) rb.onclick = () => { sendTries = 0; sendResult(); };
+}
+async function sendResult(){
+  if (!S || S.preview || !S.final || S.final.sent || sending) return;
+  sending = true; renderSendState(); clearTimeout(retryTimer);
+  const f = S.final;
+  const body = { assignment_id: ASSIGNMENT_ID, score: f.got, max_score: f.max, result_status: 'completed', learner_notes: f.notes, submitted_at: new Date().toISOString() };
+  try {
+    const res = await fetch(CONFIG.RESULT_ENDPOINT, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (res.ok || res.status === 409){ f.sent = true; f.err = ''; persist(); notifyDashboard(); }
+    else { let m = ''; try { m = (await res.json()).error || ''; } catch (_e) {} throw new Error(res.status === 401 ? 'Your login has expired. Log in again on the Learner Dashboard.' : (m || 'Server error ' + res.status)); }
+  } catch (e) {
+    f.err = (e && e.message) || 'No connection.';
+    fallbackHandoff(f);
+    sendTries++;
+    if (sendTries < 20) retryTimer = setTimeout(sendResult, 15000);
+  }
+  sending = false; renderSendState();
+}
+function fallbackHandoff(f){      // same hand-off the typing games use: the open dashboard saves the mark
+  const payload = { type: 'assignment_activity_result', assignment_id: ASSIGNMENT_ID, wpm: 0, accuracy: pctOf(f.got, f.max), typed_chars: 0, errors: 0,
+    duration_sec: Math.round(Math.min(durationMs(), Date.now() - S.startTs) / 1000), activity_title: CONFIG.TITLE, stars: 0, time_label: '', result_summary: f.notes };
+  try { if (window.opener) window.opener.postMessage(payload, window.location.origin); } catch (_e) {}
+  try { localStorage.setItem('carissa_assignment_result_pending', JSON.stringify(payload)); } catch (_e) {}
+}
+function notifyDashboard(){
+  const msg = { type: 'carissa_exam_saved', assignment_id: ASSIGNMENT_ID };
+  try { if (window.opener) window.opener.postMessage(msg, window.location.origin); } catch (_e) {}
+  try { localStorage.setItem('carissa_exam_saved_ping', JSON.stringify({ ...msg, ts: Date.now() })); } catch (_e) {}
+}
+
+/* =====================================================================
+   START / RESUME
+   ===================================================================== */
+function startExam({ preview, force = {} }){
+  const seed = preview ? (qs.get('seed') || String(Math.floor(Math.random() * 1e9))) : hashStr(ASSIGNMENT_ID + '|' + LEARNER.toLowerCase());
+  S = { paper: buildPaper(seed, force), force, answers: {}, startTs: Date.now(), preview: !!preview, leaves: 0, finished: false, final: null };
+  locked = false; warned5 = warned1 = false;
+  persist(); renderExam();
+  clearInterval(tickId); tickId = setInterval(tick, 500); tick();
+  window.scrollTo(0, 0);
+}
+function resumeIfAny(){
+  if (!ASSIGNMENT_ID) return false;
+  const st = safeGet(STORE_KEY);
+  if (!st || !st.startTs || st.preview) return false;
+  S = { paper: buildPaper(st.seed, st.force || {}), force: st.force || {}, answers: st.answers || {}, startTs: st.startTs, preview: false, leaves: st.leaves || 0, finished: !!st.finished, final: st.final || null };
+  if (S.finished && S.final){      // already handed in on this device
+    locked = true; S.res = markPaper(S.paper, S.answers);
+    showResult();
+    if (!S.final.sent) sendResult();
+    return true;
+  }
+  locked = false; renderExam();
+  clearInterval(tickId); tickId = setInterval(tick, 500); tick();
+  return true;
+}
+
+/* =====================================================================
+   TEACHER MEMO  (all versions)
+   ===================================================================== */
+function showMemo(){
+  const blocks = [];
+  PASSAGES.forEach((P, pi) => {
+    const items = P.q.map((q, i) => { const c = cloneItem(q); c.opt = c.options ? c.options.map((o, j) => ({ ...o, id: 'o' + j })) : null; c.label = '1.' + (i + 1); return c; });
+    blocks.push(`<div class="card" style="margin-top:14px"><h2>Q1 Passage ${P.id}: ${esc(P.title)} (15 marks)</h2>
+      ${P.paras.map((p, i) => `<p class="small" style="font-weight:600">${i + 1}. ${esc(p)}</p>`).join('')}
+      ${items.map(it => `<div class="memo-q"><b>${it.label}</b> ${esc(it.prompt)} <span class="small">(${it.marks})</span><br><span class="ans">${esc(memoText(it))}</span></div>`).join('')}
+      <h3 style="margin-top:12px">Q3 Summary for Passage ${P.id} (5 marks)</h3>
+      ${P.sum.sentences.map((s, i) => `<div class="memo-q">Story order ${i + 1}: ${esc(s.t.replace('____', '[ ' + s.a + ' ]'))}</div>`).join('')}
+      <div class="small">Word bank also has: ${P.sum.extra.join(', ')}. 4 marks for the missing words (1 each) + 1 mark for the whole order correct. Letters A–D are scrambled for each learner.</div></div>`);
+  });
+  ADS.forEach(A => {
+    const items = A.q.map((q, i) => { const c = cloneItem(q); c.opt = c.options ? c.options.map((o, j) => ({ ...o, id: 'o' + j })) : null; c.label = '2.' + (i + 1); return c; });
+    blocks.push(`<div class="card" style="margin-top:14px"><h2>Q2 Advert ${A.id}: ${esc(A.name)} (10 marks)</h2><div style="max-width:520px;margin:8px 0">${A.html}</div>
+      ${items.map(it => `<div class="memo-q"><b>${it.label}</b> ${esc(it.prompt)}<br><span class="ans">${esc(memoText(it))}</span></div>`).join('')}</div>`);
+  });
+  const lang = [];
+  const addL = (label, arr, fn) => lang.push(`<h3 style="margin-top:10px">${label}</h3>` + arr.map((v, i) => `<div class="memo-q">Version ${i + 1}: ${fn(v)}</div>`).join(''));
+  addL('4.1 Synonym (1)', LANG.syn, v => `${esc(v.prompt)} → <span class="ans">${esc(v.options[0].t)}</span>`);
+  addL('4.2 Antonym (1)', LANG.ant, v => `${esc(v.prompt)} → <span class="ans">${esc(v.options[0].t)}</span>`);
+  addL('4.3 Parts of speech (2: 1 + 1)', LANG.pos, v => `${esc(v.s)} → pronoun: <span class="ans">${esc(v.pron.join('/'))}</span>; proper noun: <span class="ans">${esc(v.prop.join(' or '))}</span>`);
+  addL('4.4 Degrees of comparison (1)', LANG.deg, v => `${esc(v.pos)} → <span class="ans">${esc(v.cmp)}</span> → ${esc(v.sup)}`);
+  addL('4.5 Sentence types (2: 1 + 1)', LANG.stype, v => v.map(x => `${esc(x.s)} → <span class="ans">${x.a}</span>`).join('<br>'));
+  addL('4.6 Adjective (1)', LANG.adj, v => `${esc(v.s)} → <span class="ans">${esc(v.ok.join('/'))}</span>`);
+  addL('4.7 Punctuation (2)', LANG.punc, v => `${esc(v.wrong)} → <span class="ans">${esc(v.target)}</span><br><span class="small">1 mark for words + capital letters, 1 mark for the punctuation (apostrophe and full stop).</span>`);
+  blocks.push(`<div class="card" style="margin-top:14px"><h2>Q4 Language Structures and Conventions (10 marks)</h2>${lang.join('')}</div>`);
+  root.innerHTML = `<div class="wrap"><div class="card hero"><h1>📋 Marking memo: ${esc(CONFIG.TITLE)}</h1><p>All versions. 40 marks. Each learner gets one passage, one advert and one version of each Q4 item.</p></div>
+    <div style="margin-top:10px"><button class="btn dark" onclick="location.reload()">← Back</button> <button class="btn ghost" onclick="window.print()">🖨 Print memo</button></div>${blocks.join('')}</div>`;
+}
+
+/* =====================================================================
+   BOOT
+   ===================================================================== */
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && S && !S.finished && !locked){ S.leaves = (S.leaves || 0) + 1; persist(); }
+  if (!document.hidden && S && !S.finished) tick();
+});
+window.addEventListener('beforeunload', e => { if (S && !S.finished && !S.preview){ persist(); e.preventDefault(); e.returnValue = ''; } });
+
+(async function boot(){
+  if (qs.get('memo') === '1'){
+    root.innerHTML = `<div class="wrap"><div class="card"><h2>Marking memo</h2><p class="note">Enter the teacher PIN.</p><input id="tpin" class="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="12"><div style="margin-top:10px"><button class="btn" id="go" type="button">Open memo</button></div><div id="tmsg"></div></div></div>`;
+    $('#go').onclick = () => teacherGate(showMemo); return;
+  }
+  if (resumeIfAny()) return;
+  if (ASSIGNMENT_ID && await alreadyCompletedOnServer()) return;
+  showStart();
+})();
+})();
+</script>
+</body>
+</html>
