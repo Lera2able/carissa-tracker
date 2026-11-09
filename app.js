@@ -8195,10 +8195,15 @@ ${sectionsHtml}
     const openAdmin = () => {
       requestAdminAccess && requestAdminAccess((teacherAuth == null ? void 0 : teacherAuth.email) || "");
     };
-    const teacherLogin = async () => {
+    const teacherLogin = async (override) => {
       setLoginErr("");
-      const email = loginEmail.trim().toLowerCase();
-      const pin = loginPin.trim();
+      const hasOverride = !!(override && typeof override.email === "string");
+      const email = (hasOverride ? override.email : loginEmail).trim().toLowerCase();
+      const pin = (hasOverride ? override.pin : loginPin).trim();
+      if (hasOverride) {
+        setLoginEmail(email);
+        setLoginPin(pin);
+      }
       if (!email || !pin) {
         setLoginErr("Please enter both your email address and your password/PIN.");
         return;
@@ -8243,6 +8248,19 @@ ${sectionsHtml}
       }
       setLoginBusy(false);
     };
+    useEffect(() => {
+      try {
+        const m = /^#sso=([A-Za-z0-9+/=_-]+)$/.exec(window.location.hash || "");
+        if (!m) return;
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+        if (TEACHER_SESSION) return;
+        const decoded = decodeURIComponent(escape(atob(m[1].replace(/-/g, "+").replace(/_/g, "/"))));
+        const i = decoded.indexOf("\n");
+        if (i < 1) return;
+        teacherLogin({ email: decoded.slice(0, i), pin: decoded.slice(i + 1) });
+      } catch (e) {
+      }
+    }, []);
     const teacherLogout = async () => {
       logTeacherAudit("logout", selClass);
       try {
