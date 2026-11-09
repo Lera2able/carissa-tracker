@@ -92,8 +92,8 @@ function loadScript(src){return new Promise(function(res,rej){var s=document.cre
 function boot(){
   api("data").then(function(d){DATA=d;role=d.role;}).catch(function(){role=null;}).then(function(){
     if(!role){M.innerHTML='<div class="card"><h2>Please sign in first</h2><p>Open <a href="onti.html">your dashboard</a> and sign in, then come back to this practice exam.</p></div>';return;}
-    if(!paperKey){return loadScript("onti-banks/index.js?v=1").then(function(){menu();});}
-    return loadScript("onti-banks/"+encodeURIComponent(paperKey)+".js?v=1").then(function(){B=ONTI_BANK;if(!B)throw new Error("Paper not found");
+    if(!paperKey){return loadScript("onti-banks/index.js?v=2").then(function(){menu();});}
+    return loadScript("onti-banks/"+encodeURIComponent(paperKey)+".js?v=2").then(function(){B=ONTI_BANK;if(!B)throw new Error("Paper not found");
       $("ttl").textContent=B.emoji+" "+B.title;
       if(attemptId){var a=(DATA.attempts||[]).filter(function(x){return x.id===attemptId;})[0];if(!a){M.innerHTML='<div class="card">Attempt not found.</div>';return;}reviewSaved(a);return;}
       intro();
