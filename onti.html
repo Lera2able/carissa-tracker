@@ -108,6 +108,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
     h+='</main>';
     app.innerHTML=h;bind();
     Array.prototype.forEach.call(app.querySelectorAll("[data-h]"),function(b){b.onclick=function(){htab=b.getAttribute("data-h");if(htab==="plan")logEvent("view_plan");render();};});
+    var ap=document.getElementById("allpractice"); if(ap) ap.onclick=function(){htab="practice";render();};
     Array.prototype.forEach.call(app.querySelectorAll(".subj"),function(el){el.onclick=function(){subjId=el.getAttribute("data-id");tab="scope";view="subj";render();};});
     Array.prototype.forEach.call(app.querySelectorAll("[data-blk]"),function(c){c.onchange=function(){localStorage.setItem("onti_blk_"+c.getAttribute("data-blk"),c.checked?"1":"");if(c.checked)logEvent("block_done",{block:c.getAttribute("data-blk")});render();};});
     Array.prototype.forEach.call(app.querySelectorAll("[data-go]"),function(b){b.onclick=function(){logEvent("open_practice",{bank:b.getAttribute("data-go")});location.href="onti-practice.html?paper="+b.getAttribute("data-go");};});
@@ -120,7 +121,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
   function overviewHtml(){
     var subs=D.subjects.slice().sort(function(a,b){return (a.exam_date||"9")>(b.exam_date||"9")?1:-1;});
     var next=subs.filter(function(s){var d=daysTo(s.exam_date);return d!=null&&d>=0;})[0];
-    var h='';
+    var h='<div class="card" style="background:linear-gradient(135deg,#ede5fb,#fff7d6)"><div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><div style="font-size:2.4rem">🎯</div><div style="flex:1;min-width:200px"><b>Practice exams are ready</b><div class="muted">'+(window.ONTI_BANKS_INDEX||[]).length+' fun, auto-marked papers. Pick a subject below or open them all.</div></div><button id="allpractice" style="padding:12px 22px">See all practice exams</button></div></div>';
     if(next){var d=daysTo(next.exam_date);
       h+='<div class="card"><div class="muted">Next exam</div><div class="big">'+esc(subjName(next))+'</div><div>'+esc(nice(next.exam_date))+' &middot; '+(d===0?'<b>today</b>':d===1?'tomorrow':'in '+d+' days')+'</div></div>';
     } else h+='<div class="card"><b>All exams done. Well done, Onti!</b></div>';
@@ -131,7 +132,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
       var a=avg(s.id),n=openActs.filter(function(x){return x.subject_id===s.id;}).length;
       var topics=(s.scope||[]).length;
       h+='<div class="subj" data-id="'+s.id+'"><h3>'+esc(subjName(s))+'</h3><span class="pill '+pc+'">'+esc(nice(s.exam_date))+(s.total_marks?' &middot; '+s.total_marks+' marks':'')+'</span>'+
-        '<div class="muted" style="margin-top:6px">'+(topics?topics+' scope topics':'Scope not added yet')+(n?' &middot; '+n+' to do':'')+(a!=null?' &middot; avg '+a+'%':'')+'</div></div>';
+        '<div style="margin-top:6px">'+(bankFor(s)?'<span class="pill" style="background:#fff1c2;color:#8a5a00">🎯 Practice exam</span>':'')+'</div><div class="muted" style="margin-top:6px">'+(topics?topics+' scope topics':'Scope not added yet')+(n?' &middot; '+n+' to do':'')+(a!=null?' &middot; avg '+a+'%':'')+'</div></div>';
     });
     h+='</div></div>';
     if(owner()){
@@ -304,6 +305,10 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
     var s=D.subjects.filter(function(x){return x.id===subjId;})[0];
     if(!s){view="home";return render();}
     var h=header()+'<main><div class="card"><h2 style="margin:0">'+esc(subjName(s))+'</h2><div class="muted">'+esc(nice(s.exam_date))+(s.total_marks?' &middot; '+s.total_marks+' marks':'')+'</div></div>';
+    var bk=bankFor(s);
+    if(bk){var n=(D.attempts||[]).filter(function(x){return x.bank_key===bk.key;}).length,best=bestFor(bk.key);
+      h+='<div class="card" style="background:linear-gradient(135deg,#ede5fb,#fff7d6)"><div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><div style="font-size:2.4rem">'+esc(bk.emoji)+'</div><div style="flex:1;min-width:200px"><b>Practice exam ready</b><div class="muted">'+esc(bk.title)+' &middot; '+bk.count+' questions &middot; about '+bk.minutes+' min'+(n?' &middot; best '+best+'%':'')+'</div></div><button data-go="'+bk.key+'" style="font-size:1.05rem;padding:12px 22px">'+(n?'Try again 🔁':'Start practice exam 🚀')+'</button></div></div>';
+    } else h+='<div class="card muted">No practice exam for this subject yet.</div>';
     h+='<div class="tabs"><button data-t="scope" class="'+(tab==="scope"?'on':'')+'">Scope</button><button data-t="acts" class="'+(tab==="acts"?'on':'')+'">Activities</button><button data-t="marks" class="'+(tab==="marks"?'on':'')+'">Marks</button>'+(owner()?'<button data-t="edit" class="'+(tab==="edit"?'on':'')+'">Edit subject</button>':'')+'</div><div class="card">';
     if(tab==="scope"){
       if(!(s.scope||[]).length) h+='<p class="muted">The scope for this subject has not been added yet.</p>';
@@ -311,6 +316,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
     }
     if(tab==="acts"){
       var acts=D.activities.filter(function(a){return a.subject_id===s.id;});
+      h+='<p class="muted">Activities are a to-do list for extra work (worksheets, past papers, homework). Practice exams start from the purple card above.</p>';
       if(!acts.length) h+='<p class="muted">No activities yet.</p>';
       acts.forEach(function(a){
         h+='<div class="chk '+(a.done?'done':'')+'"><input type="checkbox" data-a="'+a.id+'" '+(a.done?'checked':'')+'><span>'+esc(a.title)+(a.kind?' <span class="pill">'+esc(a.kind)+'</span>':'')+(a.due_on?' <span class="muted">due '+esc(nice(a.due_on))+'</span>':'')+(a.notes?'<br><span class="muted">'+esc(a.notes)+'</span>':'')+'</span>'+(owner()?'<button class="danger small" data-da="'+a.id+'">Delete</button>':'')+'</div>';
@@ -334,6 +340,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
     h+='</div></main>';
     app.innerHTML=h;bind();
     Array.prototype.forEach.call(app.querySelectorAll(".tabs button"),function(b){b.onclick=function(){tab=b.getAttribute("data-t");render();};});
+    Array.prototype.forEach.call(app.querySelectorAll("[data-go]"),function(b){b.onclick=function(){logEvent("open_practice",{bank:b.getAttribute("data-go")});location.href="onti-practice.html?paper="+b.getAttribute("data-go");};});
     Array.prototype.forEach.call(app.querySelectorAll("input[data-a]"),function(c){c.onchange=function(){save("update","activity",c.getAttribute("data-a"),{done:c.checked});};});
     Array.prototype.forEach.call(app.querySelectorAll("[data-da]"),function(b){b.onclick=function(){if(confirm("Delete this activity?"))save("delete","activity",b.getAttribute("data-da"));};});
     Array.prototype.forEach.call(app.querySelectorAll("[data-dm]"),function(b){b.onclick=function(){if(confirm("Delete this mark?"))save("delete","mark",b.getAttribute("data-dm"));};});
