@@ -8754,7 +8754,6 @@ ${sectionsHtml}
       ["assessments", `\u{1F4DD} Assessments`],
       ...teacherAuth ? [["sasams_marks", "\u{1F9EE} SASAMS Marks"]] : [],
       ...teacherAuth ? [["sasams_reports", "\u{1F4D8} Learner Reports"]] : [],
-      ["progress", `\u{1F4C8} Track Progress (${classAssignments.length})`],
       ...teacherAuth ? [["classlist", `\u{1F465} Classlist (${(CLASS_DATA[selClass] || []).length})`]] : [],
       ...teacherAuth ? [["discipline", "\u2696\uFE0F Discipline"]] : [],
       ...moderationAccess ? [["moderation", "\u{1F5C2} Moderation Tools"]] : [],
