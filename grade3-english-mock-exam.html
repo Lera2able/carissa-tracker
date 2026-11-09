@@ -1108,7 +1108,7 @@ function reviewSuggestions(paper, answers, ad){
     else if (pct < 100) out.push(`<b>${names[s.key]} (${s.got}/${s.max}):</b> Good effort. Go through the questions marked in orange or red below and let the learner explain their thinking.`);
   });
   const lg = res.sections.filter(s => s.key === 'q3' || s.key === 'q4');
-  if (lg.some(x => x.missed.length)){ const seen = new Set(); lg.forEach(x => x.missed).length; lg.forEach(x => x.missed.forEach(m => { const t = tipFor(m.it); if (t && !seen.has(t)){ seen.add(t); out.push(`<b>${esc(m.it.label)}:</b> ${esc(t)}`); } })); }
+  if (lg.some(x => x.missed.length)){ const seen = new Set(); lg.forEach(x => x.missed.forEach(m => { const t = tipFor(m.it); if (t && !seen.has(t)){ seen.add(t); out.push(`<b>${esc(m.it.label)}:</b> ${esc(t)}`); } })); }
   let blanks = 0, total = 0; paper.sections.forEach(sec => sec.items.forEach(it => { total += partsOf(it); blanks += partsOf(it) - answeredParts(it, answers[it.id]); }));
   if (blanks >= 4) out.push(`<b>Unanswered questions (${blanks}):</b> The learner left several answers blank. Encourage them to always try an answer, to underline key words in the question, and to check for unanswered questions before handing in.`);
   if (ad){

@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="en-ZA">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Grade 2 English Mock Exam — Carissa Primary</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#1E4E5E; --teal:#2FA9BC; --teal-dark:#157A8C; --cream:#FBF4E4;
+    --sun:#FFC93C; --coral:#FF6B6B; --green:#3BB273; --purple:#7c3aed; --blue:#2563eb; --ink:#23414d;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:'Nunito',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:var(--ink);
+    min-height:100vh;font-size:18px;line-height:1.5;
+    background:linear-gradient(180deg,#EAF7F5 0%,var(--cream) 60%,#FDF8EC 100%)}
+  h1,h2,h3,.fk{font-family:'Fredoka','Nunito',system-ui,sans-serif}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px 14px 70px}
+  .card{background:#fff;border-radius:20px;padding:18px 18px;border:2px solid rgba(21,122,140,.12);
+    box-shadow:0 5px 0 rgba(30,78,94,.10),0 12px 24px rgba(30,78,94,.08)}
+  .hero{background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;border:none}
+  .hero h1{font-size:clamp(24px,4vw,34px);line-height:1.1}
+  .hero p{font-weight:800;opacity:.95;margin-top:6px;font-size:16px}
+  .btn{border:none;border-radius:14px;padding:13px 18px;font-weight:900;cursor:pointer;font-size:17px;font-family:inherit;
+    background:linear-gradient(135deg,var(--sun),#ffb703);color:#1f2937;box-shadow:0 5px 0 rgba(180,83,9,.2)}
+  .btn:active{transform:translateY(1px)}
+  .btn.dark{background:#0f172a;color:#fff;box-shadow:none}
+  .btn.green{background:linear-gradient(135deg,#34d399,#10b981);color:#fff;box-shadow:0 5px 0 rgba(4,120,87,.25)}
+  .btn.ghost{background:#eef2ff;color:#3730a3;box-shadow:none}
+  .btn:disabled{opacity:.55;cursor:not-allowed}
+  .note{margin-top:12px;font-size:15px;color:#475569;font-weight:700}
+  .small{font-size:13px;color:#64748b;font-weight:700}
+  .msg-err{margin-top:12px;background:#fef2f2;border:2px solid #fecaca;border-radius:14px;padding:12px;color:#b91c1c;font-weight:800}
+  .msg-ok{margin-top:12px;background:#ecfdf5;border:2px solid #bbf7d0;border-radius:14px;padding:12px;color:#166534;font-weight:800}
+  .rules{margin:12px 0 0 22px;font-weight:700}
+  .rules li{margin:5px 0}
+  input.pin{font-size:22px;letter-spacing:6px;text-align:center;padding:10px;border:3px solid #cbd5e1;border-radius:14px;width:190px;font-family:inherit}
+
+  /* exam header */
+  .topbar{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.96);backdrop-filter:blur(6px);
+    border-bottom:3px solid #e2e8f0;box-shadow:0 4px 14px rgba(0,0,0,.06)}
+  .topbar-in{max-width:1100px;margin:0 auto;padding:8px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between}
+  .tb-title{font-weight:900;font-size:15px;color:var(--navy)}
+  .tb-name{font-size:13px;color:#64748b;font-weight:800}
+  .timer{font-family:'Fredoka',sans-serif;font-size:26px;font-weight:700;padding:4px 14px;border-radius:12px;background:#ecfeff;color:#0e7490;border:2px solid #a5f3fc;min-width:120px;text-align:center}
+  .timer.warn{background:#fff7ed;color:#c2410c;border-color:#fdba74}
+  .timer.danger{background:#fef2f2;color:#b91c1c;border-color:#fca5a5;animation:pulse 1s infinite}
+  @keyframes pulse{50%{opacity:.65}}
+  .prog{height:8px;background:#e2e8f0}
+  .prog > i{display:block;height:100%;width:0;background:linear-gradient(90deg,#34d399,#10b981);transition:width .3s}
+
+  /* sections */
+  .sec{margin-top:18px}
+  .sec-h{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
+    background:linear-gradient(135deg,#1E4E5E,#157A8C);color:#fff;border-radius:16px;padding:12px 16px}
+  .sec-h h2{font-size:clamp(18px,3vw,24px)}
+  .sec-h .tot{font-weight:900;background:rgba(255,255,255,.18);border-radius:999px;padding:4px 14px}
+  .instr{margin:10px 2px;font-weight:800;color:#475569}
+  .split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
+  .stick{position:sticky;top:78px;max-height:calc(100vh - 96px);overflow:auto}
+  @media(max-width:860px){.split{grid-template-columns:minmax(0,1fr)}.stick{position:static;max-height:none}}
+  .passage h3{font-size:22px;margin-bottom:8px;color:var(--navy)}
+  .passage p{margin:9px 0;font-size:18px}
+  .passage .pn{display:inline-block;min-width:24px;font-weight:900;color:var(--teal-dark)}
+  .qs{display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}
+  .qs > .q{min-width:0;overflow-wrap:anywhere}
+  textarea.txt{resize:vertical}
+  .q table{table-layout:fixed}
+  .q{background:#fff;border-radius:16px;padding:14px 14px;border:2px solid #e2e8f0}
+  .q.answered{border-color:#86efac;background:#f7fef9}
+  .qh{display:flex;justify-content:space-between;gap:8px;margin-bottom:6px}
+  .qn{font-weight:900;color:#fff;background:var(--teal-dark);border-radius:10px;padding:1px 10px;font-size:15px;height:fit-content}
+  .mk{font-weight:900;color:#64748b;font-size:15px}
+  .qt{font-weight:800;margin-bottom:8px}
+  .hint{font-size:14px;color:#7c3aed;font-weight:800;margin-bottom:6px}
+  .opts{display:grid;gap:8px}
+  label.opt{display:block;cursor:pointer}
+  label.opt input{position:absolute;opacity:0;pointer-events:none}
+  label.opt span.box{display:flex;gap:10px;align-items:center;border:3px solid #e2e8f0;border-radius:14px;padding:10px 12px;font-weight:700;background:#f8fafc}
+  label.opt span.box::before{content:"";flex:0 0 22px;height:22px;border-radius:50%;border:3px solid #94a3b8;background:#fff}
+  label.opt.chk span.box::before{border-radius:6px}
+  label.opt input:checked + span.box{border-color:var(--blue);background:#eff6ff}
+  label.opt input:checked + span.box::before{background:var(--blue);border-color:var(--blue);box-shadow:inset 0 0 0 4px #fff}
+  label.opt.chk input:checked + span.box::before{box-shadow:inset 0 0 0 3px #fff}
+  label.opt input:focus-visible + span.box{outline:3px solid #fbbf24}
+  input.txt,textarea.txt,select.sel{width:100%;font-size:18px;padding:10px 12px;border:3px solid #cbd5e1;border-radius:12px;font-family:inherit;font-weight:700;color:var(--ink);background:#fff}
+  input.txt:focus,textarea.txt:focus,select.sel:focus{outline:none;border-color:var(--blue)}
+  select.sel.inl{width:auto;min-width:130px;padding:4px 8px;font-size:17px;display:inline-block;margin:0 4px}
+  .sentence{font-size:20px;font-weight:800;background:#f1f5f9;border-radius:12px;padding:10px 12px;margin-bottom:8px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:3px solid #cbd5e1;background:#fff;border-radius:12px;padding:6px 12px;font-size:19px;font-weight:800;cursor:pointer;font-family:inherit;color:var(--ink)}
+  .chip[aria-pressed="true"]{border-color:var(--blue);background:#dbeafe}
+  .bank{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px}
+  .bank b{background:#fef3c7;border:2px dashed #f59e0b;border-radius:10px;padding:3px 12px}
+  .sline{background:#f8fafc;border:2px solid #e2e8f0;border-radius:12px;padding:10px 12px;margin:8px 0;font-weight:700;line-height:2.1}
+  .sline .ltr{display:inline-block;background:#7c3aed;color:#fff;border-radius:8px;padding:0 9px;margin-right:6px;font-weight:900}
+  .orderrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px;font-weight:800}
+
+  /* adverts */
+  .ad{border-radius:18px;overflow:hidden;border:4px solid #1f2937;text-align:center;padding:18px 14px;color:#1f2937}
+  .ad h3{font-family:'Fredoka',sans-serif;font-size:clamp(26px,4.2vw,40px);line-height:1.05;text-transform:uppercase;letter-spacing:.5px}
+  .ad .pics{font-size:44px;margin:6px 0;letter-spacing:6px}
+  .ad .big{font-size:22px;font-weight:900;margin:6px 0}
+  .ad .fine{font-size:15px;font-weight:700;margin:4px 0}
+  .ad .box{display:inline-block;text-align:left;background:rgba(255,255,255,.85);border-radius:14px;padding:10px 14px;margin:8px 0;font-weight:800;border:2px solid rgba(0,0,0,.15)}
+  .ad .box div{margin:3px 0}
+  .ad .burst{display:inline-block;background:#ef4444;color:#fff;font-family:'Fredoka',sans-serif;font-weight:700;border-radius:999px;padding:6px 18px;font-size:22px;transform:rotate(-3deg);margin:6px 0;border:3px solid #fff;box-shadow:0 3px 0 rgba(0,0,0,.2)}
+  .ad .brand{font-weight:900;margin-top:8px;font-size:17px}
+  .ad-book{background:linear-gradient(160deg,#fde68a,#fdba74)}
+  .ad-run{background:linear-gradient(160deg,#a7f3d0,#7dd3fc)}
+  .ad-juice{background:linear-gradient(160deg,#fed7aa,#fb923c)}
+
+  /* overlays */
+  .overlay{position:fixed;inset:0;background:rgba(15,23,42,.62);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px}
+  .modal{background:#fff;border-radius:22px;max-width:520px;width:100%;padding:22px;text-align:center}
+  .modal h2{margin-bottom:8px}
+  .modal .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#0f172a;color:#fff;padding:12px 20px;border-radius:14px;font-weight:900;z-index:120;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+  .locked .q,.locked .card{opacity:.97}
+  .res-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:14px}
+  .res-box{background:#f8fafc;border:2px solid #e2e8f0;border-radius:14px;padding:12px;text-align:center}
+  .res-box b{display:block;font-size:26px;font-family:'Fredoka',sans-serif;color:var(--navy)}
+  .bigscore{font-family:'Fredoka',sans-serif;font-size:56px;font-weight:700;color:#fff}
+  .memo-q{border-bottom:1px solid #e2e8f0;padding:6px 0;font-size:16px}
+  .memo-q .ans{color:#166534;font-weight:900}
+  .memo-q .bad{color:#b91c1c;font-weight:900}
+  details.teacher{margin-top:16px;border-top:2px dashed #cbd5e1;padding-top:10px}
+  details.teacher summary{cursor:pointer;font-weight:900;color:#64748b;font-size:14px}
+  .rv-bar{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+  .rv-q{border-left:6px solid #94a3b8;background:#fff;border-radius:10px;padding:10px 14px;margin:10px 0;box-shadow:0 1px 4px rgba(0,0,0,.06);break-inside:avoid}
+  .rv-q.ok{border-left-color:#16a34a}.rv-q.part{border-left-color:#f59e0b}.rv-q.bad{border-left-color:#dc2626}
+  .rv-h{display:flex;justify-content:space-between;gap:10px;font-weight:900}
+  .rv-pill{padding:2px 10px;border-radius:999px;font-size:13px;font-weight:900;white-space:nowrap}
+  .rv-pill.ok{background:#dcfce7;color:#166534}.rv-pill.part{background:#fef3c7;color:#92400e}.rv-pill.bad{background:#fee2e2;color:#b91c1c}
+  .rv-row{margin-top:6px;font-size:15px}.rv-row b{display:inline-block;min-width:130px;color:#475569}
+  .rv-learner{background:#eff6ff;border-radius:8px;padding:4px 8px;font-weight:800}
+  .rv-correct{background:#f0fdf4;border-radius:8px;padding:4px 8px;font-weight:800;color:#166534}
+  .rv-tip{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:6px 10px;margin-top:8px;font-size:14px}
+  .rv-sug li{margin:6px 0;line-height:1.5}
+  .rv-ctx{background:#f8fafc;border:2px solid #e2e8f0;border-radius:12px;padding:10px 14px;margin:8px 0}
+  @media print{.topbar,.btn,.rv-bar,details.teacher{display:none!important}body{background:#fff;font-size:13px}.card{box-shadow:none;break-inside:avoid}.stick{position:static;max-height:none;overflow:visible}.rv-q{box-shadow:none}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<noscript><div style="padding:30px;font-weight:800">Please turn on JavaScript to take this exam.</div></noscript>
+
+<script>
+(() => {
+'use strict';
+
+/* =====================================================================
+   SETTINGS  (teacher can change these)
+   ===================================================================== */
+const CONFIG = {
+  DURATION_MIN: 30,            // exam length in minutes
+  START_PIN: '',               // no PIN: learners are already signed in on their dashboard
+  SHUFFLE_QUESTION_ORDER: true,// shuffle order of questions inside Q1 and Q2 for each learner
+  RESULT_ENDPOINT: '/api/learner-results/upsert',
+  ME_ENDPOINT: '/api/learner-results/me',
+  TITLE: 'Grade 2 English Mock Exam'
+};
+
+/* =====================================================================
+   SMALL HELPERS
+   ===================================================================== */
+const qs = new URLSearchParams(location.search);
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const cleanWord = w => String(w).replace(/[^A-Za-z0-9]/g, '').toLowerCase();
+function editDist(a, b){
+  const m = a.length, n = b.length; if (!m) return n; if (!n) return m;
+  let prev = Array.from({length: n + 1}, (_, j) => j);
+  for (let i = 1; i <= m; i++){
+    const cur = [i];
+    for (let j = 1; j <= n; j++){
+      cur[j] = Math.min(prev[j] + 1, cur[j-1] + 1, prev[j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return prev[n];
+}
+function hashStr(str){            // xmur3-style string hash -> 32 bit int
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++){ h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
+  h = Math.imul(h ^ (h >>> 16), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909);
+  return (h ^= h >>> 16) >>> 0;
+}
+function rngFrom(seed, salt){      // mulberry32, independent stream per salt
+  let a = hashStr(String(seed) + '|' + salt) >>> 0;
+  return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+function shuffle(arr, rng){ const a = arr.slice(); for (let i = a.length - 1; i > 0; i--){ const j = Math.floor(rng() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const fmtClock = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
+
+/* =====================================================================
+   QUESTION BANK
+   Item builders. Every item is worth `marks`.
+   ===================================================================== */
+const MC  = (prompt, ok, bad) => ({ type: 'mcq', marks: 1, prompt, options: [{ t: ok, ok: true }, ...bad.map(t => ({ t }))] });
+const TF  = (prompt, isTrue)  => ({ type: 'tf',  marks: 1, prompt, answer: isTrue ? 'T' : 'F' });
+const MUL = (prompt, good, bad) => ({ type: 'multi', marks: good.length, pick: good.length, prompt,
+                                      options: [...good.map(t => ({ t, ok: true })), ...bad.map(t => ({ t }))] });
+const TXT = (prompt, spec) => ({ type: 'text', marks: 1, prompt, spec });
+
+/* ---------- Extra item builders for Grade 2 ---------- */
+const ORD = (prompt, sentences) => ({ type: 'order', marks: 2, prompt, sentences });   // sentences are written in the correct story order
+
+/* ---------- QUESTION 1: three short stories (10 marks each) ---------- */
+const PASSAGES = [
+{
+  id: 'A', title: 'Thandi’s Birthday', pic: '🎂🎈🎁🎉',
+  paras: [
+    'Today is Thandi’s birthday. She is seven years old.',
+    'Her mother bakes a big chocolate cake. Her gogo gives her a new red bag.',
+    'Her friends come to play. They sing and dance in the garden.',
+    'Thandi blows out the candles. “Thank you! This is the best day,” she says.'
+  ],
+  q: [
+    MC('Whose birthday is it?', 'Thandi’s', ['Gogo’s', 'Mother’s']),
+    TXT('How old is Thandi?', { words: ['seven', '7'] }),
+    MC('What does Thandi’s mother bake?', 'A chocolate cake', ['Some bread', 'A pie']),
+    MC('What does gogo give Thandi?', 'A red bag', ['A blue hat', 'A big ball']),
+    TF('The friends play in the house.', false),
+    MC('Where do the friends sing and dance?', 'In the garden', ['At school', 'In the car']),
+    MC('What does Thandi blow out?', 'The candles', ['The lights', 'The fire']),
+    MC('How does Thandi feel at the end?', 'Happy', ['Sad', 'Cross']),
+    ORD('Put the sentences in the order they happened in the story.',
+        ['Mother bakes a cake.', 'Friends come to play.', 'Thandi blows out the candles.', 'Thandi says thank you.'])
+  ]
+},
+{
+  id: 'B', title: 'The Little Frog', pic: '🐸💧🪰🌿',
+  paras: [
+    'A little frog lives near a pond. He is green and he can jump high.',
+    'One hot day, the frog sits on a log. He sees a big fly.',
+    'He jumps and catches the fly with his long tongue. Yum!',
+    'Then he jumps into the cool water. Splash! He swims home.'
+  ],
+  q: [
+    MC('Where does the frog live?', 'Near a pond', ['In a house', 'On a bus']),
+    MC('What colour is the frog?', 'Green', ['Red', 'Yellow']),
+    TXT('What does the frog see on the log?', { words: ['fly'] }),
+    MC('How does the frog catch the fly?', 'With his long tongue', ['With his hands', 'With a net']),
+    TF('It was a cold day.', false),
+    MC('Where does the frog sit?', 'On a log', ['On a chair', 'On a rock in the sea']),
+    MC('Which word is the sound of the water?', 'Splash', ['Yum', 'Jump']),
+    MC('What does the frog do at the end?', 'He swims home.', ['He goes to sleep.', 'He flies away.']),
+    ORD('Put the sentences in the order they happened in the story.',
+        ['The frog sits on a log.', 'The frog sees a fly.', 'The frog catches the fly.', 'The frog swims home.'])
+  ]
+},
+{
+  id: 'C', title: 'Market Day', pic: '🧺🍎🍌🍞',
+  paras: [
+    'On Saturday, Dad and I go to the market. It is full of people.',
+    'We buy red apples, yellow bananas and fresh bread. Dad pays the lady.',
+    'I carry the bread in my bag. It is still warm!',
+    'At home, we eat the bread with butter. It is so nice.'
+  ],
+  q: [
+    MC('On which day do they go to the market?', 'Saturday', ['Monday', 'Friday']),
+    MC('Who goes to the market with the child?', 'Dad', ['Mum', 'The teacher']),
+    MC('What colour are the apples?', 'Red', ['Green', 'Blue']),
+    TXT('Name ONE thing that they buy.', { words: ['apples', 'apple', 'bananas', 'banana', 'bread'] }),
+    MC('Who carries the bread?', 'The child', ['Dad', 'The lady']),
+    TF('The bread is cold.', false),
+    MC('What do they eat the bread with?', 'Butter', ['Jam only', 'Milk']),
+    MC('Where do they eat the bread?', 'At home', ['At the market', 'At school']),
+    ORD('Put the sentences in the order they happened in the story.',
+        ['They go to the market.', 'They buy fruit and bread.', 'The child carries the bread.', 'They eat the bread at home.'])
+  ]
+}
+];
+
+/* ---------- QUESTION 2: three pictures (6 marks each) ---------- */
+const BOX = (pic, label, n) => `<div style="background:#fff;border:3px solid #94a3b8;border-radius:12px;padding:6px 10px;text-align:center;min-width:110px"><div style="font-size:${n > 3 ? 30 : 36}px;line-height:1.15">${pic}</div><div style="font-weight:800;color:#1E4E5E">${label}</div></div>`;
+const WRAP = (title, inner, note) => `<div class="card" style="padding:12px;background:#f0f9ff"><div style="font-family:'Fredoka',sans-serif;font-size:22px;font-weight:700;color:#1E4E5E;text-align:center;margin-bottom:8px">${title}</div><div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">${inner}</div>${note ? `<div class="small" style="margin-top:8px;text-align:center">${note}</div>` : ''}</div>`;
+const DAY = (d, pic) => `<div style="background:#fff;border:3px solid #94a3b8;border-radius:12px;padding:6px 8px;text-align:center;width:84px"><div style="font-weight:900;color:#1E4E5E">${d}</div><div style="font-size:38px">${pic}</div></div>`;
+const ADS = [
+{ id: 'A', name: 'On the farm',
+  html: WRAP('ON THE FARM', BOX('🐄🐄', 'cows', 2) + BOX('🐑🐑🐑', 'sheep', 3) + BOX('🐔🐔', 'chickens', 2), 'Look at the animals on the farm.'),
+  q: [
+    MC('How many cows are on the farm?', '2', ['3', '4']),
+    MC('How many sheep are on the farm?', '3', ['2', '5']),
+    MC('Which animal gives us milk?', 'The cow', ['The sheep', 'The chicken']),
+    MC('Which animal gives us wool?', 'The sheep', ['The cow', 'The chicken']),
+    TF('There are 4 chickens on the farm.', false),
+    MC('Which animals are the most?', 'The sheep', ['The cows', 'The chickens'])
+  ] },
+{ id: 'B', name: 'Weather chart',
+  html: WRAP('OUR WEATHER THIS WEEK', DAY('Mon', '☀️') + DAY('Tue', '🌧️') + DAY('Wed', '☁️') + DAY('Thu', '☀️') + DAY('Fri', '🌧️'), '☀️ sunny &nbsp; 🌧️ rainy &nbsp; ☁️ cloudy'),
+  q: [
+    MC('What is the weather on Tuesday?', 'Rainy', ['Sunny', 'Cloudy']),
+    MC('On which day is it cloudy?', 'Wednesday', ['Monday', 'Thursday']),
+    MC('How many sunny days are there?', '2', ['1', '3']),
+    MC('How many rainy days are there?', '2', ['1', '4']),
+    TF('Friday is sunny.', false),
+    MC('Which day comes after Thursday?', 'Friday', ['Wednesday', 'Monday'])
+  ] },
+{ id: 'C', name: 'Food picture',
+  html: WRAP('FOOD', BOX('🍎', 'apple', 1) + BOX('🍌', 'banana', 1) + BOX('🥕', 'carrot', 1) + BOX('🥛', 'milk', 1) + BOX('🍞', 'bread', 1) + BOX('🍬', 'sweet', 1), 'Look at the food.'),
+  q: [
+    MC('Which food is a vegetable?', 'Carrot', ['Apple', 'Bread']),
+    MC('Which one do we drink?', 'Milk', ['Bread', 'Banana']),
+    MC('Which food is NOT very healthy to eat a lot?', 'Sweet', ['Apple', 'Carrot']),
+    MC('How many fruits are in the picture?', '2', ['1', '4']),
+    MC('Which food is made from wheat?', 'Bread', ['Milk', 'Banana']),
+    TF('A banana is yellow.', true)
+  ] }
+];
+
+/* ---------- QUESTION 3 and 4: language slots. Each slot has 3 variants. ---------- */
+const LANG = {
+  spell: [
+    [['🐑', ['sheep', 'sheap', 'shep'], 'sheep'], ['🍞', ['bread', 'bred', 'breed'], 'bread'], ['🐸', ['frog', 'frogg', 'frag'], 'frog']],
+    [['🐟', ['fish', 'fich', 'fiss'], 'fish'], ['🌳', ['tree', 'tre', 'trea'], 'tree'], ['🐄', ['cow', 'kow', 'cou'], 'cow']],
+    [['🐶', ['dog', 'dogg', 'dag'], 'dog'], ['🏠', ['house', 'hous', 'howse'], 'house'], ['🍎', ['apple', 'aple', 'appel'], 'apple']]
+  ],
+  dig: [
+    { sh: 'The sheep ran down the hill.', shok: ['sheep'], ch: 'I had chips for lunch.', chok: ['chips'] },
+    { sh: 'She put on her shoes.', shok: ['she', 'shoes'], ch: 'A chick sat in the nest.', chok: ['chick'] },
+    { sh: 'The ship sailed far away.', shok: ['ship'], ch: 'My chair is by the window.', chok: ['chair'] }
+  ],
+  plural: [
+    [['dog', 'dogs'], ['cup', 'cups'], ['hat', 'hats']],
+    [['cat', 'cats'], ['pen', 'pens'], ['bag', 'bags']],
+    [['book', 'books'], ['bed', 'beds'], ['egg', 'eggs']]
+  ],
+  isare: [
+    { s: 'The dogs ____ running.', a: 'are' },
+    { s: 'The cat ____ sleeping.', a: 'is' },
+    { s: 'My friends ____ here.', a: 'are' }
+  ],
+  aan: [
+    { s: 'I have ____ egg.', a: 'an' },
+    { s: 'She has ____ dog.', a: 'a' },
+    { s: 'He eats ____ apple.', a: 'an' }
+  ],
+  endm: [
+    { s: 'Where is my bag', a: '?' },
+    { s: 'The sun is hot', a: '.' },
+    { s: 'What is your name', a: '?' }
+  ],
+  opp: [
+    { w: 'up', a: ['down'] },
+    { w: 'hot', a: ['cold'] },
+    { w: 'big', a: ['small', 'little'] }
+  ],
+  noun: [
+    { c: ['dog', 'run', 'big'], a: 'dog' },
+    { c: ['table', 'jump', 'red'], a: 'table' },
+    { c: ['girl', 'eat', 'happy'], a: 'girl' }
+  ],
+  verb: [
+    { c: ['jump', 'tree', 'blue'], a: 'jump' },
+    { c: ['sing', 'book', 'green'], a: 'sing' },
+    { c: ['swim', 'chair', 'tall'], a: 'swim' }
+  ]
+};
+
+/* =====================================================================
+   BUILD A PAPER  (same seed -> same paper, so a refresh never changes it)
+   ===================================================================== */
+function cloneItem(it){ return JSON.parse(JSON.stringify(it)); }
+
+function buildPaper(seed, force = {}){
+  const pick = (salt, n, forced) => Number.isInteger(forced) && forced >= 0 && forced < n ? forced : Math.floor(rngFrom(seed, salt)() * n);
+  const pIdx = pick('passage', PASSAGES.length, force.p);
+  const aIdx = pick('ad', ADS.length, force.a);
+  const P = PASSAGES[pIdx], A = ADS[aIdx];
+  const lv = {}; Object.keys(LANG).forEach(k => { lv[k] = pick('lang-' + k, LANG[k].length, force['l' + k]); });
+
+  // finish one item: id, label, shuffled options (and shuffled choices when asked)
+  const fin = (it, id, label, shuffleChoices) => {
+    it.id = id; it.label = label;
+    if (it.options){ it.opt = it.options.map((o, j) => ({ ...o, id: 'o' + j })); it.order = shuffle(it.opt.map(o => o.id), rngFrom(seed, 'opts-' + id)); }
+    if (shuffleChoices && it.choices) it.choices = shuffle(it.choices, rngFrom(seed, 'ch-' + id));
+    if (it.type === 'order'){
+      const sent = it.sentences.map((t, i) => ({ k: 's' + i, t, n: i + 1 }));
+      let sh = shuffle(sent, rngFrom(seed, 'ord-' + id));
+      if (sh.every((x, i) => x.n === i + 1)) sh = [sh[1], sh[2], sh[3], sh[0]];
+      it.sent = sh;
+    }
+    return it;
+  };
+  const prep = (list, key, prefix) => {
+    let items = list.map((it, i) => fin(cloneItem(it), `${key}-${i}`, '', true));
+    const ord = items.filter(it => it.type === 'order'), rest = items.filter(it => it.type !== 'order');
+    items = (CONFIG.SHUFFLE_QUESTION_ORDER ? shuffle(rest, rngFrom(seed, 'qorder-' + key)) : rest).concat(ord);
+    items.forEach((it, i) => { it.label = prefix + (i + 1); });
+    return items;
+  };
+  const q1 = prep(P.q, 'q1' + P.id, '1.');
+  const q2 = prep(A.q, 'q2' + A.id, '2.');
+
+  // Q3 spelling and phonics (8)
+  const q3 = []; let n3 = 0;
+  const L3 = () => '3.' + (++n3);
+  LANG.spell[lv.spell].forEach((x, i) => q3.push(fin({ type: 'select', marks: 1, big: true, sentence: x[0], prompt: 'Look at the picture. Choose the correct spelling.', choices: x[1], correct: x[2] }, 'q3-sp' + i, L3(), true)));
+  const dg = LANG.dig[lv.dig];
+  const mkPick = (id, prompt, sentence, okList) => { const words = sentence.split(' '); return { id, type: 'pick', marks: 1, label: L3(), prompt, words, ok: words.map((w, i) => okList.includes(cleanWord(w)) ? i : -1).filter(i => i >= 0) }; };
+  q3.push(mkPick('q3-sh', 'Tap a word that starts with SH.', dg.sh, dg.shok));
+  q3.push(mkPick('q3-ch', 'Tap a word that starts with CH.', dg.ch, dg.chok));
+  LANG.plural[lv.plural].forEach((x, i) => q3.push({ id: 'q3-pl' + i, type: 'text', marks: 1, label: L3(), prompt: `Make it more than one. Add s to the word “${x[0]}”. Write the new word.`, spec: { exact: [x[1]] } }));
+
+  // Q4 language (6)
+  const q4 = []; let n4 = 0;
+  const L4 = () => '4.' + (++n4);
+  const ia = LANG.isare[lv.isare];
+  q4.push(fin({ type: 'select', marks: 1, sentence: ia.s, prompt: 'Choose the correct word.', choices: ['is', 'are', 'am'], correct: ia.a }, 'q4-ia', L4(), true));
+  const an = LANG.aan[lv.aan];
+  q4.push(fin({ type: 'select', marks: 1, sentence: an.s, prompt: 'Choose a or an.', choices: ['a', 'an'], correct: an.a }, 'q4-an', L4(), false));
+  const em = LANG.endm[lv.endm];
+  q4.push(fin({ type: 'select', marks: 1, sentence: em.s + ' ___', prompt: 'Choose the correct end mark (. or ?).', choices: ['.', '?', '!'], correct: em.a }, 'q4-em', L4(), false));
+  const op = LANG.opp[lv.opp];
+  q4.push({ id: 'q4-op', type: 'text', marks: 1, label: L4(), prompt: `Write the opposite of “${op.w}”.`, spec: { exact: op.a } });
+  const nn = LANG.noun[lv.noun];
+  q4.push(fin({ type: 'select', marks: 1, prompt: 'Which word is a naming word (a noun)?', choices: nn.c, correct: nn.a }, 'q4-nn', L4(), true));
+  const vb = LANG.verb[lv.verb];
+  q4.push(fin({ type: 'select', marks: 1, prompt: 'Which word is a doing word (a verb)?', choices: vb.c, correct: vb.a }, 'q4-vb', L4(), true));
+
+  return {
+    seed, pIdx, aIdx, lv,
+    sections: [
+      { key: 'q1', title: 'QUESTION 1: READING', marks: 10, instr: 'Read the story first. Then answer the questions.', passage: P, items: q1 },
+      { key: 'q2', title: 'QUESTION 2: LOOK AT THE PICTURE', marks: 6, instr: 'Look at the picture carefully. Then answer the questions.', ad: A, items: q2 },
+      { key: 'q3', title: 'QUESTION 3: SPELLING AND PHONICS', marks: 8, instr: 'Answer all the questions.', items: q3 },
+      { key: 'q4', title: 'QUESTION 4: LANGUAGE', marks: 6, instr: 'Answer all the questions.', items: q4 }
+    ]
+  };
+}
+
+/* =====================================================================
+   MARKING
+   ===================================================================== */
+function textCorrect(spec, raw){
+  const a = norm(raw);
+  if (!a) return false;
+  const words = a.split(' ');
+  if (spec.not && spec.not.some(w => words.includes(norm(w)))) return false;
+  if (spec.exact && spec.exact.some(e => a === norm(e))) return true;
+  if (spec.words && spec.words.some(w => words.includes(norm(w)))) return true;
+  if (spec.any){
+    for (const grp of spec.any){
+      const ok = grp.every(tok => {
+        const t = norm(tok);
+        if (a.includes(t)) return true;
+        return t.length >= 5 && !t.includes(' ') && words.some(w => Math.abs(w.length - t.length) <= 1 && editDist(w, t) <= 1); // forgive 1 spelling slip
+      });
+      if (ok) return true;
+    }
+  }
+  return false;
+}
+function rewriteParts(target, raw){
+  const t = String(raw || '').replace(/[‘’`´]/g, "'").replace(/[“”]/g, '"').replace(/\s+/g, ' ').trim();
+  const tg = String(target).replace(/[‘’`´]/g, "'");
+  const wordsOf = s => s.replace(/[^A-Za-z0-9\s]/g, '').split(/\s+/).filter(Boolean).join(' ');
+  const punctOf = s => s.replace(/[A-Za-z0-9\s]/g, '');
+  return { words: wordsOf(t) === wordsOf(tg), punct: punctOf(t) === punctOf(tg) };
+}
+function markItem(it, ans){
+  const out = { got: 0, max: it.marks };
+  switch (it.type){
+    case 'mcq': { const o = it.opt.find(o => o.id === ans); out.got = o && o.ok ? 1 : 0; break; }
+    case 'tf':  { out.got = ans && ans === it.answer ? 1 : 0; break; }
+    case 'multi': { const sel = Array.isArray(ans) ? ans : []; out.got = sel.filter(id => (it.opt.find(o => o.id === id) || {}).ok).length; break; }
+    case 'text': { out.got = textCorrect(it.spec, ans) ? 1 : 0; break; }
+    case 'pick': { out.got = Number.isInteger(ans) && it.ok.includes(ans) ? 1 : 0; break; }
+    case 'select': { out.got = ans && ans === it.correct ? 1 : 0; break; }
+    case 'order': { const a = ans || {}; const n = it.sent.filter(x => a[x.k] === String(x.n)).length; out.got = n === 4 ? 2 : n >= 2 ? 1 : 0; break; }
+    case 'rewrite': { const r = rewriteParts(it.target, ans); out.got = (r.words ? 1 : 0) + (r.punct ? 1 : 0); break; }
+    case 'summary': {
+      const a = ans || {}; a.b = a.b || {}; a.o = a.o || {};
+      let g = 0;
+      it.shown.forEach(s => { if (a.b[s.letter] && a.b[s.letter] === s.a) g++; });
+      if (it.correctOrder.every((L, i) => a.o[i] === L)) g++;
+      out.got = g; break;
+    }
+  }
+  return out;
+}
+function partsOf(it){ return 1; }
+function answeredParts(it, ans){
+  switch (it.type){
+    case 'mcq': case 'tf': case 'select': return ans ? 1 : 0;
+    case 'multi': return Array.isArray(ans) && ans.length === it.pick ? 1 : 0;
+    case 'text': case 'rewrite': return String(ans || '').trim() ? 1 : 0;
+    case 'pick': return Number.isInteger(ans) ? 1 : 0;
+    case 'order': { const a = ans || {}; return it.sent.every(x => a[x.k]) ? 1 : 0; }
+    case 'summary': { const a = ans || {}; let n = 0; it.shown.forEach(s => { if (a.b && a.b[s.letter]) n++; }); if (a.o && [0,1,2,3].every(i => a.o[i])) n++; return n; }
+  }
+  return 0;
+}
+function markPaper(paper, answers){
+  const sections = paper.sections.map(sec => {
+    let got = 0, max = 0; const missed = [];
+    sec.items.forEach(it => { const r = markItem(it, answers[it.id]); got += r.got; max += r.max; if (r.got < r.max) missed.push({ it, r }); });
+    return { key: sec.key, title: sec.title, got, max, missed };
+  });
+  const got = sections.reduce((s, x) => s + x.got, 0), max = sections.reduce((s, x) => s + x.max, 0);
+  return { got, max, sections };
+}
+const stem = s => { const t = String(s).replace(/\s+/g, ' ').trim(); return t.length > 55 ? t.slice(0, 52) + '…' : t; };
+function memoText(it){
+  switch (it.type){
+    case 'mcq': return it.opt.filter(o => o.ok).map(o => o.t).join(' / ');
+    case 'tf': return it.answer === 'T' ? 'True' : 'False';
+    case 'multi': return it.opt.filter(o => o.ok).map(o => o.t).join('  +  ');
+    case 'text': return it.spec.exact ? it.spec.exact.join(' / ') : (it.spec.words || []).concat((it.spec.any || []).map(g => g.join(' + '))).join(' / ') + (it.spec.not ? '' : '');
+    case 'pick': return it.ok.map(i => it.words[i]).join(' / ');
+    case 'select': return it.correct;
+    case 'order': return it.sent.slice().sort((a, b) => a.n - b.n).map(x => x.n + '. ' + x.t).join('  |  ');
+    case 'rewrite': return it.target + '  (1 mark words/capitals, 1 mark punctuation)';
+    case 'summary': return it.shown.map(s => s.letter + ': ' + s.a).join(', ') + '  |  Order: ' + it.correctOrder.join(' ');
+  }
+  return '';
+}
+
+/* =====================================================================
+   CONTEXT  (assignment, learner, storage)
+   ===================================================================== */
+const CONTEXT_KEY = 'carissa_active_assignment_context_v1';
+function getAssignmentId(){
+  const fromQs = qs.get('assignment_id'); if (fromQs) return String(fromQs);
+  try { const ctx = JSON.parse(localStorage.getItem(CONTEXT_KEY) || 'null');
+    if (ctx && ctx.assignment_id && (Date.now() - Number(ctx.ts || 0)) < 10 * 60 * 1000) return String(ctx.assignment_id);
+  } catch (_e) {}
+  return '';
+}
+const ASSIGNMENT_ID = getAssignmentId();
+const LEARNER = (qs.get('learner') || '').trim();
+const ASSESS_KEY = String(qs.get('akey') || 'carissa_g2_english_mock_exam_v1').trim();
+const IS_PREVIEW_URL = qs.get('preview') === '1';
+const STORE_KEY = `${ASSESS_KEY}:${ASSIGNMENT_ID || 'preview'}`;
+const safeGet = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (_e) { return null; } };
+const safeSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_e) {} };
+
+/* =====================================================================
+   APP STATE
+   ===================================================================== */
+const root = $('#app');
+let S = null;            // { paper, answers, startTs, preview, leaves, finished, final }
+let tickId = null, saveTimer = null, locked = false, itemsById = {}, warned5 = false, warned1 = false;
+
+function currentUserLabel(){ return LEARNER || (S && S.preview ? 'Teacher preview' : ''); }
+function persist(){
+  if (!S) return;
+  safeSet(STORE_KEY, { seed: S.paper.seed, force: S.force || null, startTs: S.startTs, answers: S.answers, leaves: S.leaves, finished: !!S.finished, final: S.final || null, preview: !!S.preview });
+}
+function schedulePersist(){ clearTimeout(saveTimer); saveTimer = setTimeout(persist, 250); }
+
+/* =====================================================================
+   RENDER  - start screen
+   ===================================================================== */
+function showStart(note){
+  const hasAssign = !!ASSIGNMENT_ID;
+  root.innerHTML = `
+  <div class="wrap">
+    <div class="card hero">
+      <h1>📝 ${esc(CONFIG.TITLE)}</h1>
+      <p>Carissa Primary School &nbsp;•&nbsp; 30 marks &nbsp;•&nbsp; ${CONFIG.DURATION_MIN} minutes</p>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <h2 style="margin-bottom:6px">Before you start</h2>
+      <ol class="rules">
+        <li>This test has 4 parts: <b>Reading</b>, <b>Picture</b>, <b>Spelling and Phonics</b> and <b>Language</b>.</li>
+        <li>You have <b>${CONFIG.DURATION_MIN} minutes</b>. The clock at the top shows how much time is left.</li>
+        <li>Read the story first, then answer. Tap your answers. Some answers you must type.</li>
+        <li>You can change your answers until you hand in or the time runs out.</li>
+        <li><b>When the time is up, the test locks by itself</b> and your marks are sent to your teacher.</li>
+        <li>Do not close this page or press refresh during the test.</li>
+      </ol>
+      <div id="startNote">${note ? `<div class="msg-err">${note}</div>` : ''}</div>
+      ${hasAssign ? `
+      <div style="margin-top:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        ${CONFIG.PIN_LOCKED ? `<div class="msg-err">This test is locked. Your teacher will give you the password when it is time to start. Then close this page and open the test again.</div>` : ''}
+        ${CONFIG.START_PIN ? `<div><div class="small" style="margin-bottom:4px">Type the exam password from your teacher</div><input id="pinIn" class="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="12" aria-label="Exam PIN"></div>` : ''}
+        <button class="btn green" id="startBtn" type="button" ${CONFIG.PIN_LOCKED ? 'disabled' : ''}>Start the test ▶</button>
+      </div>
+      <div class="small" style="margin-top:10px">${LEARNER ? 'Learner: ' + esc(LEARNER) : ''}</div>`
+      : `<div class="msg-err">This test must be opened from your <b>Learner Dashboard</b> so that your teacher receives your marks.</div>`}
+      ${TEACHER_OK && !hasAssign ? `<details class="teacher" open>
+        <summary>Teacher options</summary>
+        <div style="margin-top:10px">
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <select id="pvP" class="sel" style="width:auto"><option value="">Any story</option>${PASSAGES.map((p, i) => `<option value="${i}">Story ${p.id}: ${esc(p.title)}</option>`).join('')}</select>
+            <select id="pvA" class="sel" style="width:auto"><option value="">Any picture</option>${ADS.map((a, i) => `<option value="${i}">Picture ${a.id}: ${esc(a.name)}</option>`).join('')}</select>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn ghost" id="pvBtn" type="button">👀 Preview the test (no marks saved)</button>
+            <button class="btn ghost" id="memoBtn" type="button">📋 Marking memo (all versions)</button>
+          </div>
+          <div id="tmsg"></div>
+        </div>
+      </details>` : ''}
+    </div>
+  </div>`;
+  const sb = $('#startBtn');
+  if (sb) sb.onclick = onStartClick;
+  const pin = $('#pinIn'); if (pin) pin.addEventListener('keydown', e => { if (e.key === 'Enter') onStartClick(); });
+  if ($('#pvBtn')){
+    $('#pvBtn').onclick = () => teacherGate(() => {
+      const f = {}; const p = $('#pvP').value, a = $('#pvA').value;
+      if (p !== '') f.p = +p; if (a !== '') f.a = +a;
+      startExam({ preview: true, force: f });
+    });
+    $('#memoBtn').onclick = () => teacherGate(showMemo);
+  }
+}
+function teacherGate(fn){ if (!TEACHER_OK){ return; } fn(); }
+// Teacher tools show only to people who are NOT signed in as a learner (a learner session means a learner).
+let TEACHER_OK = false;
+async function detectTeacher(){
+  try { const r = await fetch(CONFIG.ME_ENDPOINT, { credentials: 'include' }); TEACHER_OK = (r.status === 401 || r.status === 403); }
+  catch (_e) { TEACHER_OK = false; }
+}
+async function onStartClick(){
+  const btn = $('#startBtn');
+  if (CONFIG.PIN_LOCKED) return;
+  if (CONFIG.START_PIN){
+    let st = 'wrong';
+    try { st = await checkPin(($('#pinIn').value || '').trim()); } catch (_e) {}
+    if (st === 'locked'){ CONFIG.PIN_LOCKED = true; showStart(); return; }
+    if (st !== 'ok'){ $('#startNote').innerHTML = '<div class="msg-err">That password is not right. Please ask your teacher for the exam password.</div>'; return; }
+  }
+  btn.disabled = true;
+  // Last server check so nobody can start twice
+  if (await alreadyCompletedOnServer()){ btn.disabled = false; return; }
+  startExam({ preview: false });
+}
+async function alreadyCompletedOnServer(showMsg = true){
+  if (!ASSIGNMENT_ID) return false;
+  try {
+    const res = await fetch(CONFIG.ME_ENDPOINT, { credentials: 'include' });
+    if (!res.ok) return false;
+    const data = await res.json();
+    const rows = Array.isArray(data && data.results) ? data.results : [];
+    const row = rows.find(r => String(r.assignment_id) === String(ASSIGNMENT_ID));
+    if (row && String(row.result_status || '').toLowerCase() === 'completed'){
+      if (showMsg) showAlreadyDone(row);
+      return true;
+    }
+  } catch (_e) {}
+  return false;
+}
+function showAlreadyDone(row){
+  root.innerHTML = `<div class="wrap"><div class="card hero"><h1>✅ Test already handed in</h1><p>${esc(CONFIG.TITLE)}</p></div>
+    <div class="card" style="margin-top:14px">
+      <div class="msg-ok">You have already completed this test${row && row.max_score ? ` and scored <b>${esc(row.score)}/${esc(row.max_score)}</b>` : ''}.</div>
+      <p class="note">If you need another try, please ask your teacher to reset your mark.</p>
+      <div style="margin-top:14px"><button class="btn dark" onclick="try{window.close()}catch(e){}">Close</button></div></div></div>`;
+}
+
+/* =====================================================================
+   RENDER  - the exam
+   ===================================================================== */
+function renderItem(it, ans){
+  const qn = `<div class="qh"><span class="qn">${esc(it.label)}</span><span class="mk">(${it.marks})</span></div>`;
+  const wrap = body => `<div class="q" id="card-${it.id}" data-card="${it.id}">${qn}${body}</div>`;
+  switch (it.type){
+    case 'mcq': {
+      const opts = it.order.map(id => { const o = it.opt.find(x => x.id === id);
+        return `<label class="opt"><input type="radio" name="${it.id}" value="${o.id}" data-q="${it.id}" ${ans === o.id ? 'checked' : ''}><span class="box">${esc(o.t)}</span></label>`; }).join('');
+      return wrap(`<div class="qt">${esc(it.prompt)}</div><div class="opts">${opts}</div>`);
+    }
+    case 'tf': {
+      const opts = [['T', 'True'], ['F', 'False']].map(([v, l]) => `<label class="opt"><input type="radio" name="${it.id}" value="${v}" data-q="${it.id}" ${ans === v ? 'checked' : ''}><span class="box">${l}</span></label>`).join('');
+      return wrap(`<div class="qt">${esc(it.prompt)} <span class="small">(True or False?)</span></div><div class="opts">${opts}</div>`);
+    }
+    case 'multi': {
+      const sel = Array.isArray(ans) ? ans : [];
+      const opts = it.order.map(id => { const o = it.opt.find(x => x.id === id);
+        return `<label class="opt chk"><input type="checkbox" value="${o.id}" data-q="${it.id}" ${sel.includes(o.id) ? 'checked' : ''}><span class="box">${esc(o.t)}</span></label>`; }).join('');
+      return wrap(`<div class="qt">${esc(it.prompt)}</div><div class="hint">Choose ${it.pick === 2 ? 'TWO' : it.pick} answers.</div><div class="opts">${opts}</div>`);
+    }
+    case 'text': {
+      let extra = '';
+      if (it.degrees){ const d = it.degrees;
+        extra = `<table style="border-collapse:collapse;margin:6px 0 10px;font-weight:800;width:100%;text-align:center"><tr style="background:#e0f2fe"><td style="padding:6px;border:2px solid #bae6fd">POSITIVE</td><td style="padding:6px;border:2px solid #bae6fd">COMPARATIVE</td><td style="padding:6px;border:2px solid #bae6fd">SUPERLATIVE</td></tr><tr><td style="padding:6px;border:2px solid #bae6fd">${esc(d.pos)}</td><td style="padding:6px;border:2px solid #bae6fd;color:#7c3aed">?</td><td style="padding:6px;border:2px solid #bae6fd">${esc(d.sup)}</td></tr></table>`; }
+      if (it.sentence) extra = `<div class="sentence">${esc(it.sentence)}</div>`;
+      return wrap(`<div class="qt">${esc(it.prompt)}</div>${extra}<input class="txt" type="text" data-q="${it.id}" value="${esc(ans || '')}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type your answer here">`);
+    }
+    case 'pick': {
+      const chips = it.words.map((w, i) => `<button type="button" class="chip" data-q="${it.id}" data-i="${i}" aria-pressed="${ans === i}">${esc(w)}</button>`).join('');
+      return wrap(`<div class="qt">${esc(it.prompt)}</div><div class="chips">${chips}</div>`);
+    }
+    case 'select': {
+      const o = it.choices.map(c => `<option value="${c}" ${ans === c ? 'selected' : ''}>${c}</option>`).join('');
+      return wrap(`${it.sentence ? `<div class="sentence"${it.big ? ' style="font-size:52px;text-align:center;line-height:1.2"' : ''}>${esc(it.sentence)}</div>` : ''}<div class="qt">${esc(it.prompt)}</div><select class="sel" data-q="${it.id}"><option value="">— choose —</option>${o}</select>`);
+    }
+    case 'order': {
+      const a = ans || {};
+      const rows = it.sent.map(x => `<div class="sline"><select class="sel inl" style="min-width:84px" data-q="${it.id}" data-k="o:${x.k}"><option value="">— no. —</option>${[1, 2, 3, 4].map(n => `<option value="${n}" ${a[x.k] === String(n) ? 'selected' : ''}>${n}</option>`).join('')}</select> ${esc(x.t)}</div>`).join('');
+      return wrap(`<div class="qt">${esc(it.prompt)}</div><div class="hint">Write 1 for what happened FIRST, 2 for SECOND, 3 for THIRD and 4 for LAST. Use each number once.</div>${rows}`);
+    }
+    case 'rewrite': {
+      return wrap(`<div class="qt">${esc(it.prompt)}</div><div class="sentence">${esc(it.wrong)}</div><div class="hint">${esc(it.hint)}</div><textarea class="txt" rows="2" data-q="${it.id}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Write the sentence again here">${esc(ans || '')}</textarea>`);
+    }
+    case 'summary': {
+      const a = ans || { b: {}, o: {} }; a.b = a.b || {}; a.o = a.o || {};
+      const bank = it.bank.map(w => `<b>${esc(w)}</b>`).join('');
+      const optsHtml = cur => `<option value="">— word —</option>` + it.bank.map(w => `<option value="${esc(w)}" ${cur === w ? 'selected' : ''}>${esc(w)}</option>`).join('');
+      const lines = it.shown.map(s => {
+        const [pre, post] = s.t.split('____');
+        return `<div class="sline"><span class="ltr">${s.letter}</span>${esc(pre)}<select class="sel inl" data-q="${it.id}" data-k="b:${s.letter}">${optsHtml(a.b[s.letter])}</select>${esc(post || '')}</div>`;
+      }).join('');
+      const L = ['', 'A', 'B', 'C', 'D'];
+      const ord = [0, 1, 2, 3].map(i => `<span>${['1st', '2nd', '3rd', '4th'][i]}: <select class="sel inl" style="min-width:90px" data-q="${it.id}" data-k="o:${i}"><option value="">—</option>${'ABCD'.split('').map(l => `<option value="${l}" ${a.o[i] === l ? 'selected' : ''}>${l}</option>`).join('')}</select></span>`).join('');
+      return wrap(`<div class="qt">${esc(it.prompt)}</div><div class="small">Word bank:</div><div class="bank">${bank}</div>${lines}
+        <div class="qt" style="margin-top:12px">Which sentence happened 1st, 2nd, 3rd and 4th in the story? Choose the letters.</div><div class="orderrow">${ord}</div>`);
+    }
+  }
+  return '';
+}
+function renderExam(){
+  const P = S.paper; itemsById = {};
+  P.sections.forEach(sec => sec.items.forEach(it => itemsById[it.id] = it));
+  const secHtml = P.sections.map(sec => {
+    const items = sec.items.map(it => renderItem(it, S.answers[it.id])).join('');
+    let inner;
+    if (sec.passage){
+      const ps = sec.passage;
+      const pHtml = `<div class="card passage stick"><div style="font-size:34px;text-align:center">${ps.pic || ''}</div><h3>${esc(ps.title)}</h3>${ps.paras.map((p, i) => `<p><span class="pn">${i + 1}</span>${esc(p)}</p>`).join('')}<div class="small" style="margin-top:8px">${ps.paras.join(' ').split(/\s+/).length} words</div></div>`;
+      inner = `<div class="split">${pHtml}<div class="qs">${items}</div></div>`;
+    } else if (sec.ad){
+      inner = `<div class="split"><div class="stick">${sec.ad.html}</div><div class="qs">${items}</div></div>`;
+    } else inner = `<div class="qs">${items}</div>`;
+    return `<section class="sec" id="sec-${sec.key}"><div class="sec-h"><h2>${esc(sec.title)}</h2><span class="tot">${sec.marks} marks</span></div><div class="instr">${esc(sec.instr)}</div>${inner}</section>`;
+  }).join('');
+  root.innerHTML = `
+    <div class="topbar"><div class="topbar-in">
+      <div><div class="tb-title">📝 ${esc(CONFIG.TITLE)}${S.preview ? ' — TEACHER PREVIEW' : ''}</div><div class="tb-name">${esc(currentUserLabel())} <span id="progTxt"></span></div></div>
+      <div class="timer" id="timer" aria-live="off">--:--</div>
+      <button class="btn dark" id="handIn" type="button" style="padding:9px 16px;font-size:15px">Hand in ✔</button>
+    </div><div class="prog"><i id="progBar"></i></div></div>
+    <div class="wrap" id="examBody">${secHtml}
+      <div class="card" style="margin-top:20px;text-align:center"><p style="font-weight:800;margin-bottom:10px">Finished? Check your answers, then hand in.</p><button class="btn green" id="handIn2" type="button">Hand in my test ✔</button></div>
+    </div>`;
+  $('#handIn').onclick = $('#handIn2').onclick = askHandIn;
+  const body = $('#examBody');
+  body.addEventListener('change', onField); body.addEventListener('input', onField); body.addEventListener('click', onChip);
+  updateProgress();
+}
+
+/* =====================================================================
+   ANSWER HANDLING
+   ===================================================================== */
+function setAnswer(id, val){
+  if (locked) return;
+  S.answers[id] = val;
+  schedulePersist(); updateProgress();
+  const card = document.getElementById('card-' + id);
+  if (card) card.classList.toggle('answered', answeredParts(itemsById[id], val) === partsOf(itemsById[id]));
+}
+function onField(e){
+  const el = e.target; const id = el.dataset && el.dataset.q; if (!id || locked) return;
+  const it = itemsById[id]; if (!it) return;
+  if (el.classList.contains('chip')) return;
+  if (it.type === 'mcq' || it.type === 'tf'){ if (e.type === 'change') setAnswer(id, el.value); return; }
+  if (it.type === 'multi'){
+    if (e.type !== 'change') return;
+    const boxes = [...document.querySelectorAll(`input[data-q="${id}"]:checked`)];
+    if (boxes.length > it.pick){ el.checked = false; toast(`Choose only ${it.pick === 2 ? 'TWO' : it.pick} answers`); return; }
+    setAnswer(id, boxes.map(b => b.value)); return;
+  }
+  if (it.type === 'text' || it.type === 'rewrite'){ setAnswer(id, el.value); return; }
+  if (it.type === 'select'){ if (e.type === 'change') setAnswer(id, el.value); return; }
+  if (it.type === 'order'){
+    if (e.type !== 'change') return;
+    const cur = Object.assign({}, S.answers[id] || {}); cur[el.dataset.k.split(':')[1]] = el.value; setAnswer(id, cur); return;
+  }
+  if (it.type === 'summary'){
+    if (e.type !== 'change') return;
+    const cur = S.answers[id] || { b: {}, o: {} }; cur.b = cur.b || {}; cur.o = cur.o || {};
+    const [kind, key] = el.dataset.k.split(':');
+    if (kind === 'b') cur.b[key] = el.value; else cur.o[+key] = el.value;
+    setAnswer(id, JSON.parse(JSON.stringify(cur)));
+  }
+}
+function onChip(e){
+  const el = e.target.closest && e.target.closest('.chip'); if (!el || locked) return;
+  const id = el.dataset.q, i = +el.dataset.i;
+  const now = S.answers[id] === i ? null : i;
+  document.querySelectorAll(`.chip[data-q="${id}"]`).forEach(c => c.setAttribute('aria-pressed', String(+c.dataset.i === now)));
+  setAnswer(id, now);
+}
+function updateProgress(){
+  if (!S) return;
+  let a = 0, t = 0;
+  S.paper.sections.forEach(sec => sec.items.forEach(it => { t += partsOf(it); a += answeredParts(it, S.answers[it.id]); }));
+  const bar = $('#progBar'), tx = $('#progTxt');
+  if (bar) bar.style.width = (t ? Math.round(a / t * 100) : 0) + '%';
+  if (tx) tx.textContent = `• ${a} of ${t} answered`;
+  return { a, t };
+}
+function toast(msg){
+  const old = $('.toast'); if (old) old.remove();
+  const d = document.createElement('div'); d.className = 'toast'; d.textContent = msg; document.body.appendChild(d);
+  setTimeout(() => d.remove(), 3200);
+}
+
+/* =====================================================================
+   TIMER + LOCK
+   ===================================================================== */
+const durationMs = () => CONFIG.DURATION_MIN * 60 * 1000;
+function tick(){
+  if (!S || S.finished) return;
+  const left = S.startTs + durationMs() - Date.now();
+  const tEl = $('#timer');
+  if (tEl){
+    tEl.textContent = '⏱ ' + fmtClock(left);
+    tEl.className = 'timer' + (left <= 60000 ? ' danger' : left <= 5 * 60000 ? ' warn' : '');
+  }
+  if (!warned5 && left <= 5 * 60000 && left > 60000){ warned5 = true; toast('⏰ 5 minutes left'); }
+  if (!warned1 && left <= 60000 && left > 0){ warned1 = true; toast('⏰ 1 minute left!'); }
+  if (left <= 0) finish('time');
+}
+function lockInputs(){
+  locked = true;
+  document.querySelectorAll('#examBody input, #examBody select, #examBody textarea, #examBody button').forEach(el => { el.disabled = true; });
+  const hb = $('#handIn'); if (hb) hb.disabled = true;
+  document.body.classList.add('locked');
+}
+
+function askHandIn(){
+  if (locked || !S || S.finished) return;
+  const p = updateProgress();
+  const left = p.t - p.a;
+  const ov = document.createElement('div'); ov.className = 'overlay'; ov.id = 'handOv';
+  ov.innerHTML = `<div class="modal"><h2>Hand in your test?</h2>
+    <p>${left > 0 ? `You have <b>${left}</b> part${left === 1 ? '' : 's'} not answered yet.` : 'You have answered everything. Well done!'}</p>
+    <p class="small" style="margin-top:6px">After you hand in, you cannot change your answers.</p>
+    <div class="row"><button class="btn ghost" id="keepOn" type="button">Keep working</button><button class="btn green" id="yesIn" type="button">Yes, hand in</button></div></div>`;
+  document.body.appendChild(ov);
+  $('#keepOn').onclick = () => ov.remove();
+  $('#yesIn').onclick = () => { ov.remove(); finish('manual'); };
+}
+
+/* =====================================================================
+   FINISH  - lock, mark, send
+   ===================================================================== */
+function buildNotes(res, reason){
+  const P = S.paper, pct = Math.round(res.got / res.max * 100);
+  const secName = { q1: 'Q1 Reading', q2: 'Q2 Picture', q3: 'Q3 Spelling & Phonics', q4: 'Q4 Language' };
+  const usedMs = Math.min(durationMs(), Math.max(0, Date.now() - S.startTs));
+  const used = `${Math.floor(usedMs / 60000)}m ${String(Math.floor(usedMs / 1000) % 60).padStart(2, '0')}s`;
+  const missed = [];
+  res.sections.forEach(sec => sec.missed.forEach(m => missed.push(`${m.it.label} ${stem(m.it.prompt || m.it.sentence || '')} (${m.r.got}/${m.r.max})`)));
+  let n = `Grade 2 English Mock Exam: ${res.got}/${res.max} (${pct}%). ` + res.sections.map(s => `${secName[s.key]} ${s.got}/${s.max}`).join(', ') + '. ' +
+    `Paper: story ${PASSAGES[P.pIdx].id} (${PASSAGES[P.pIdx].title}), picture ${ADS[P.aIdx].id}. ` +
+    `Time used: ${used}${reason === 'time' ? ' (time ran out, auto-submitted)' : ''}.` +
+    (S.leaves ? ` Left the exam page ${S.leaves} time${S.leaves === 1 ? '' : 's'}.` : '') +
+    (missed.length ? ` Marks lost on: ${missed.join('; ')}.` : ' Full marks!');
+  return n.slice(0, 4800);
+}
+function finish(reason){
+  if (!S || S.finished) return;
+  S.finished = true; clearInterval(tickId);
+  const ao = $('#handOv'); if (ao) ao.remove();
+  lockInputs();
+  const res = markPaper(S.paper, S.answers);
+  S.final = { got: res.got, max: res.max, reason, notes: buildNotes(res, reason), sent: false };
+  S.res = res;
+  persist();
+  if (reason === 'time'){
+    const ov = document.createElement('div'); ov.className = 'overlay'; ov.id = 'timeOv';
+    ov.innerHTML = `<div class="modal"><h2>⏰ Time is up!</h2><p>The test is locked. Your answers are being marked…</p></div>`;
+    document.body.appendChild(ov);
+    setTimeout(() => { ov.remove(); showResult(); }, 1800);
+  } else showResult();
+  if (!S.preview) sendResult();
+}
+const pctOf = (g, m) => Math.round(g / m * 100);
+function showResult(){
+  window.scrollTo(0, 0);
+  const f = S.final, res = S.res || markPaper(S.paper, S.answers);
+  const names = { q1: 'Reading', q2: 'Picture', q3: 'Spelling & Phonics', q4: 'Language' };
+  const first = (LEARNER.split(' ')[0] || '').trim();
+  root.innerHTML = `
+  <div class="wrap">
+    <div class="card hero" style="text-align:center">
+      <h1>${f.reason === 'time' ? '⏰ Time is up!' : '🎉 Test handed in!'}</h1>
+      <p>${first ? 'Well done, ' + esc(first) + '!' : 'Well done!'}</p>
+      <div class="bigscore">${f.got} / ${f.max}</div>
+      <p>${pctOf(f.got, f.max)}%</p>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="res-grid">${res.sections.map(s => `<div class="res-box"><div class="small">${names[s.key]}</div><b>${s.got}/${s.max}</b></div>`).join('')}</div>
+      <div id="sendState" style="margin-top:14px"></div>
+      ${S.preview ? '<div class="note">Teacher preview: nothing was saved. The answers are shown below.</div>' : ''}
+      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap"><button class="btn dark" id="closeBtn" type="button">Close</button>${S.preview ? '<button class="btn ghost" onclick="location.reload()">Preview again</button>' : ''}</div>
+    </div>
+    ${S.preview ? reviewHtml(res) : ''}
+  </div>`;
+  $('#closeBtn').onclick = () => { try { window.close(); } catch (_e) {} };
+  renderSendState();
+}
+function reviewHtml(res){
+  const rows = S.paper.sections.map(sec => `<h3 style="margin:14px 0 6px">${esc(sec.title)}</h3>` + sec.items.map(it => {
+    const r = markItem(it, S.answers[it.id]);
+    return `<div class="memo-q"><b>${esc(it.label)}</b> ${esc(it.prompt || it.sentence || '')} <span class="${r.got === r.max ? 'ans' : 'bad'}">[${r.got}/${r.max}]</span><br><span class="small">Memo: </span><span class="ans">${esc(memoText(it))}</span></div>`;
+  }).join('')).join('');
+  return `<div class="card" style="margin-top:14px"><h2>Memo for this version</h2>${rows}</div>`;
+}
+
+/* ---------- sending the mark to the teacher ---------- */
+let sendTries = 0, sending = false, retryTimer = null;
+function renderSendState(){
+  const el = $('#sendState'); if (!el || !S || S.preview) return;
+  if (S.final.sent) el.innerHTML = '<div class="msg-ok">✓ Your mark has been sent to your teacher.</div>';
+  else if (sending) el.innerHTML = '<div class="msg-ok" style="background:#eff6ff;border-color:#bfdbfe;color:#1e40af">Sending your mark to your teacher…</div>';
+  else el.innerHTML = `<div class="msg-err">Your mark could not be sent yet. ${esc(S.final.err || '')}<br><span class="small">Keep this page open. We will try again. You can also press the button.</span><div style="margin-top:8px"><button class="btn" id="retryBtn" type="button">Send my mark again</button></div></div>`;
+  const rb = $('#retryBtn'); if (rb) rb.onclick = () => { sendTries = 0; sendResult(); };
+}
+async function sendResult(){
+  if (!S || S.preview || !S.final || S.final.sent || sending) return;
+  sending = true; renderSendState(); clearTimeout(retryTimer);
+  const f = S.final;
+  const body = { assignment_id: ASSIGNMENT_ID, score: f.got, max_score: f.max, result_status: 'completed', learner_notes: f.notes, submitted_at: new Date().toISOString(),
+    answer_data: { v: 1, seed: S.paper.seed, force: S.force || null, answers: S.answers, startTs: S.startTs, usedSec: Math.round(Math.min(durationMs(), Math.max(0, Date.now() - S.startTs)) / 1000), reason: f.reason, leaves: S.leaves || 0 } };
+  try {
+    const res = await fetch(CONFIG.RESULT_ENDPOINT, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (res.ok || res.status === 409){ f.sent = true; f.err = ''; persist(); notifyDashboard(); }
+    else { let m = ''; try { m = (await res.json()).error || ''; } catch (_e) {} throw new Error(res.status === 401 ? 'Your login has expired. Log in again on the Learner Dashboard.' : (m || 'Server error ' + res.status)); }
+  } catch (e) {
+    f.err = (e && e.message) || 'No connection.';
+    fallbackHandoff(f);
+    sendTries++;
+    if (sendTries < 20) retryTimer = setTimeout(sendResult, 15000);
+  }
+  sending = false; renderSendState();
+}
+function fallbackHandoff(f){      // same hand-off the typing games use: the open dashboard saves the mark
+  const payload = { type: 'assignment_activity_result', assignment_id: ASSIGNMENT_ID, wpm: 0, accuracy: pctOf(f.got, f.max), typed_chars: 0, errors: 0,
+    duration_sec: Math.round(Math.min(durationMs(), Date.now() - S.startTs) / 1000), activity_title: CONFIG.TITLE, stars: 0, time_label: '', result_summary: f.notes };
+  try { if (window.opener) window.opener.postMessage(payload, window.location.origin); } catch (_e) {}
+  try { localStorage.setItem('carissa_assignment_result_pending', JSON.stringify(payload)); } catch (_e) {}
+}
+function notifyDashboard(){
+  const msg = { type: 'carissa_exam_saved', assignment_id: ASSIGNMENT_ID };
+  try { if (window.opener) window.opener.postMessage(msg, window.location.origin); } catch (_e) {}
+  try { localStorage.setItem('carissa_exam_saved_ping', JSON.stringify({ ...msg, ts: Date.now() })); } catch (_e) {}
+}
+
+/* =====================================================================
+   START / RESUME
+   ===================================================================== */
+function startExam({ preview, force = {} }){
+  const seed = preview ? (qs.get('seed') || String(Math.floor(Math.random() * 1e9))) : hashStr(ASSIGNMENT_ID + '|' + LEARNER.toLowerCase() + '|' + Date.now());
+  S = { paper: buildPaper(seed, force), force, answers: {}, startTs: Date.now(), preview: !!preview, leaves: 0, finished: false, final: null };
+  locked = false; warned5 = warned1 = false;
+  persist(); renderExam();
+  clearInterval(tickId); tickId = setInterval(tick, 500); tick();
+  window.scrollTo(0, 0);
+}
+function resumeIfAny(){
+  if (!ASSIGNMENT_ID) return false;
+  const st = safeGet(STORE_KEY);
+  if (!st || !st.startTs || st.preview) return false;
+  S = { paper: buildPaper(st.seed, st.force || {}), force: st.force || {}, answers: st.answers || {}, startTs: st.startTs, preview: false, leaves: st.leaves || 0, finished: !!st.finished, final: st.final || null };
+  if (S.finished && S.final){      // already handed in on this device
+    locked = true; S.res = markPaper(S.paper, S.answers);
+    showResult();
+    if (!S.final.sent) sendResult();
+    return true;
+  }
+  locked = false; renderExam();
+  clearInterval(tickId); tickId = setInterval(tick, 500); tick();
+  return true;
+}
+
+/* =====================================================================
+   TEACHER MEMO  (all versions)
+   ===================================================================== */
+function showMemo(){
+  const blocks = [];
+  PASSAGES.forEach(P => {
+    const items = P.q.map((q, i) => { const c = cloneItem(q); c.opt = c.options ? c.options.map((o, j) => ({ ...o, id: 'o' + j })) : null; if (c.type === 'order') c.sent = c.sentences.map((t, k) => ({ k: 's' + k, t, n: k + 1 })); c.label = '1.' + (i + 1); return c; });
+    blocks.push(`<div class="card" style="margin-top:14px"><h2>Q1 Story ${P.id}: ${esc(P.title)} (10 marks)</h2>
+      ${P.paras.map((p, i) => `<p class="small" style="font-weight:600">${i + 1}. ${esc(p)}</p>`).join('')}
+      ${items.map(it => `<div class="memo-q"><b>${it.label}</b> ${esc(it.prompt)} <span class="small">(${it.marks})</span><br><span class="ans">${esc(memoText(it))}</span></div>`).join('')}
+      <div class="small">Putting the story in order: 2 marks for all four correct, 1 mark for two or three correct. Questions are shuffled for each learner.</div></div>`);
+  });
+  ADS.forEach(A => {
+    const items = A.q.map((q, i) => { const c = cloneItem(q); c.opt = c.options ? c.options.map((o, j) => ({ ...o, id: 'o' + j })) : null; c.label = '2.' + (i + 1); return c; });
+    blocks.push(`<div class="card" style="margin-top:14px"><h2>Q2 Picture ${A.id}: ${esc(A.name)} (6 marks)</h2><div style="max-width:520px;margin:8px 0">${A.html}</div>
+      ${items.map(it => `<div class="memo-q"><b>${it.label}</b> ${esc(it.prompt)}<br><span class="ans">${esc(memoText(it))}</span></div>`).join('')}</div>`);
+  });
+  const lang = [];
+  const addL = (label, arr, fn) => lang.push(`<h3 style="margin-top:10px">${label}</h3>` + arr.map((v, i) => `<div class="memo-q">Version ${i + 1}: ${fn(v)}</div>`).join(''));
+  addL('3.1 to 3.3 Spelling with pictures (3: 1 each)', LANG.spell, v => v.map(x => `${x[0]} → <span class="ans">${esc(x[2])}</span>`).join(' &nbsp; '));
+  addL('3.4 and 3.5 sh and ch words (2: 1 each)', LANG.dig, v => `${esc(v.sh)} → <span class="ans">${esc(v.shok.join('/'))}</span><br>${esc(v.ch)} → <span class="ans">${esc(v.chok.join('/'))}</span>`);
+  addL('3.6 to 3.8 Plurals (3: 1 each)', LANG.plural, v => v.map(x => `${esc(x[0])} → <span class="ans">${esc(x[1])}</span>`).join(' &nbsp; '));
+  addL('4.1 is / are (1)', LANG.isare, v => `${esc(v.s)} → <span class="ans">${esc(v.a)}</span>`);
+  addL('4.2 a / an (1)', LANG.aan, v => `${esc(v.s)} → <span class="ans">${esc(v.a)}</span>`);
+  addL('4.3 End marks (1)', LANG.endm, v => `${esc(v.s)} → <span class="ans">${esc(v.a)}</span>`);
+  addL('4.4 Opposites (1)', LANG.opp, v => `${esc(v.w)} → <span class="ans">${esc(v.a.join(' / '))}</span>`);
+  addL('4.5 Naming word (1)', LANG.noun, v => `${esc(v.c.join(', '))} → <span class="ans">${esc(v.a)}</span>`);
+  addL('4.6 Doing word (1)', LANG.verb, v => `${esc(v.c.join(', '))} → <span class="ans">${esc(v.a)}</span>`);
+  blocks.push(`<div class="card" style="margin-top:14px"><h2>Q3 Spelling and Phonics (8 marks) and Q4 Language (6 marks)</h2>${lang.join('')}</div>`);
+  root.innerHTML = `<div class="wrap"><div class="card hero"><h1>📋 Marking memo: ${esc(CONFIG.TITLE)}</h1><p>All versions. 30 marks. Each learner gets one story, one picture and one version of each Q3 and Q4 item.</p></div>
+    <div style="margin-top:10px"><button class="btn dark" onclick="location.reload()">← Back</button> <button class="btn ghost" onclick="window.print()">🖨 Print memo</button></div>${blocks.join('')}</div>`;
+}
+
+
+/* =====================================================================
+   TEACHER REVIEW  (the learner's own paper, answers, corrections, suggestions)
+   ===================================================================== */
+const TIPS = {
+  q1: 'Read the story aloud with the learner, one sentence at a time. Ask the learner to point to the sentence that gives the answer. Practise "who, what, where" questions with very short stories.',
+  q2: 'Practise reading pictures and charts in class. Ask: What can you see? How many are there? Count together with a finger.',
+  'q3-sp': 'Use look, say, cover, write, check for 3 words a week. Match picture cards to word cards.',
+  'q3-s': 'Make word cards for sh and ch (ship, shoe, chair, chips). Sort pictures by their first sound.',
+  'q3-pl': 'Show one and many with real objects (one pen, two pens). Write both words on cards.',
+  'q4-ia': 'Say sentences aloud: one dog is, two dogs are. Let the learner hear which sounds right.',
+  'q4-an': 'Use an before the sounds a, e, i, o, u (an egg, an apple). Use a before other sounds (a dog).',
+  'q4-em': 'A telling sentence ends with a full stop. A asking sentence ends with a question mark. Sort sentence strips into two groups.',
+  'q4-op': 'Play an opposites game with actions (up and down, hot and cold, big and small).',
+  'q4-nn': 'Go on a naming word walk: name 10 things you can see in the classroom. Then act out doing words.',
+  'q4-vb': 'Play "Simon says" to practise doing words (jump, sing, swim). Ask: Can you do it? Then it is a doing word.'
+};
+function tipFor(it){
+  const id = it.id;
+  if (id.startsWith('q1')) return TIPS.q1;
+  if (id.startsWith('q2')) return TIPS.q2;
+  const k = Object.keys(TIPS).filter(k => k.startsWith('q3-') || k.startsWith('q4-')).sort((a, b) => b.length - a.length).find(k => id.startsWith(k));
+  return k ? TIPS[k] : '';
+}
+function ansText(it, ans){
+  switch (it.type){
+    case 'mcq': { const o = it.opt.find(o => o.id === ans); return o ? o.t : ''; }
+    case 'tf': return ans === 'T' ? 'True' : ans === 'F' ? 'False' : '';
+    case 'multi': return (Array.isArray(ans) ? ans : []).map(id => (it.opt.find(o => o.id === id) || {}).t).filter(Boolean).join('  +  ');
+    case 'text': case 'rewrite': return String(ans || '').trim();
+    case 'pick': return Number.isInteger(ans) ? it.words[ans] : '';
+    case 'select': return ans || '';
+    case 'order': { const a = ans || {}; return it.sent.map(x => (a[x.k] || '?') + ' = ' + x.t).join('  |  '); }
+  }
+  return '';
+}
+function reviewItemHtml(it, ans){
+  const r = markItem(it, ans);
+  const cls = r.got === r.max ? 'ok' : r.got > 0 ? 'part' : 'bad';
+  const stemTxt = it.type === 'summary' ? it.prompt : (it.sentence ? it.sentence + ' - ' : '') + (it.prompt || '');
+  let body = '';
+  if (it.type === 'summary'){
+    const a = ans || {}; const b = a.b || {}, o = a.o || {};
+    body = it.shown.map(s => {
+      const pre = (s.t.split('____')[0] || ''), post = (s.t.split('____')[1] || '');
+      const ok = b[s.letter] && b[s.letter] === s.a;
+      return `<div class="rv-row"><b>Sentence ${s.letter}</b> ${esc(pre)}<span class="rv-learner">${esc(b[s.letter] || '(blank)')}</span>${esc(post)} ${ok ? '✔' : `✘ <span class="rv-correct">${esc(s.a)}</span>`}</div>`;
+    }).join('');
+    const mine = [0, 1, 2, 3].map(i => o[i] || '-').join(' ');
+    const okOrd = it.correctOrder.every((L, i) => o[i] === L);
+    body += `<div class="rv-row"><b>Order (1st to 4th)</b> <span class="rv-learner">${esc(mine)}</span> ${okOrd ? '✔' : `✘ correct: <span class="rv-correct">${esc(it.correctOrder.join(' '))}</span>`}</div>`;
+  } else if (it.type === 'order'){
+    const a = ans || {};
+    body = it.sent.slice().sort((x, y) => x.n - y.n).map(x => { const ok = a[x.k] === String(x.n); return `<div class="rv-row"><b>${x.n}.</b> ${esc(x.t)} &nbsp; learner: <span class="rv-learner">${esc(a[x.k] || '-')}</span> ${ok ? '✔' : '✘'}</div>`; }).join('');
+  } else {
+    const mine = ansText(it, ans);
+    body = `<div class="rv-row"><b>Learner wrote</b> <span class="rv-learner">${esc(mine || '(no answer)')}</span></div>`;
+    if (r.got < r.max) body += `<div class="rv-row"><b>Correct answer</b> <span class="rv-correct">${esc(memoText(it))}</span></div>`;
+    if (it.type === 'rewrite' && mine){ const p = rewriteParts(it.target, ans);
+      body += `<div class="rv-row"><b>Words and capitals</b> ${p.words ? '✔ correct' : '✘ not correct'} &nbsp; <b style="min-width:0">Punctuation</b> ${p.punct ? '✔ correct' : '✘ not correct'}</div>`; }
+    if (it.type === 'multi' && it.pick > 1) body += `<div class="rv-row small">This question needs ${it.pick} correct answers.</div>`;
+  }
+  if (r.got < r.max){ const t = tipFor(it); if (t) body += `<div class="rv-tip">💡 <b>What to do:</b> ${esc(t)}</div>`; }
+  return `<div class="rv-q ${cls}"><div class="rv-h"><span>${esc(it.label)} &nbsp; ${esc(stemTxt)}</span><span class="rv-pill ${cls}">${r.got}/${r.max}</span></div>${body}</div>`;
+}
+function reviewSuggestions(paper, answers, ad){
+  const res = markPaper(paper, answers);
+  const out = [];
+  const names = { q1: 'Reading', q2: 'Picture', q3: 'Spelling & Phonics', q4: 'Language' };
+  res.sections.forEach(s => {
+    const pct = Math.round(s.got / s.max * 100);
+    if (pct < 60) out.push(`<b>${names[s.key]} (${s.got}/${s.max}, ${pct}%):</b> ${esc(TIPS[s.key] || 'Revise the lost marks below with the learner and practise a few similar questions.')}`);
+    else if (pct < 100) out.push(`<b>${names[s.key]} (${s.got}/${s.max}):</b> Good effort. Go through the questions marked in orange or red below and let the learner explain their thinking.`);
+  });
+  const lg = res.sections.filter(s => s.key === 'q3' || s.key === 'q4');
+  if (lg.some(x => x.missed.length)){ const seen = new Set(); lg.forEach(x => x.missed.forEach(m => { const t = tipFor(m.it); if (t && !seen.has(t)){ seen.add(t); out.push(`<b>${esc(m.it.label)}:</b> ${esc(t)}`); } })); }
+  let blanks = 0, total = 0; paper.sections.forEach(sec => sec.items.forEach(it => { total += partsOf(it); blanks += partsOf(it) - answeredParts(it, answers[it.id]); }));
+  if (blanks >= 4) out.push(`<b>Unanswered questions (${blanks}):</b> The learner left several answers blank. Encourage them to always try an answer, to underline key words in the question, and to check for unanswered questions before handing in.`);
+  if (ad){
+    if (ad.usedSec && ad.usedSec < 600 && res.got / res.max < 0.5) out.push('<b>Time:</b> The learner finished in under 10 minutes with a low mark. They may have rushed. Remind them to read the story twice and use the full 30 minutes.');
+    if (ad.leaves >= 2) out.push(`<b>Focus:</b> The learner left the test page ${ad.leaves} times. Sit with them for the next assessment to help them stay focused.`);
+  }
+  if (!out.length) out.push('Excellent work. Challenge the learner with a longer story and ask them to tell it back in their own words.');
+  out.push('<b>Next step:</b> Print this review, go through the red and orange questions with the learner, and let them correct each one in their own words. Re-test the same skills in a few weeks.');
+  return out;
+}
+async function showReview(){
+  const aid = String(qs.get('assignment_id') || '');
+  const fail = m => { root.innerHTML = `<div class="wrap"><div class="card"><div class="msg-err">${m}</div></div></div>`; };
+  if (!aid) return fail('No test was selected. Open this page from the Teacher Dashboard: Assessments, then Details.');
+  let row = null;
+  try {
+    const r = await fetch('/api/learner-results/teacher', { credentials: 'include' });
+    if (r.status === 401 || r.status === 403) return fail('Please log in on the Teacher Dashboard first, then open the test from Assessments.');
+    if (!r.ok) throw new Error('Could not load the result.');
+    const d = await r.json();
+    row = (d.results || []).find(x => String(x.assignment_id) === aid) || null;
+  } catch (e) { return fail(esc((e && e.message) || 'Could not load the result.')); }
+  if (!row) return fail('No submitted test was found for this learner yet.');
+  const name = `${row.firstname || ''} ${row.surname || ''}`.trim();
+  const when = row.submitted_at ? new Date(row.submitted_at).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' }) : '';
+  const ad = row.answer_data;
+  if (!ad || !ad.answers){
+    root.innerHTML = `<div class="wrap"><div class="card hero"><h1>📄 ${esc(name)}</h1><p>${esc(row.class_name || '')} &nbsp;•&nbsp; ${esc(row.score)}/${esc(row.max_score)}</p></div>
+      <div class="card" style="margin-top:14px"><div class="msg-err">The individual answers were not saved for this attempt (it was written before this feature was added). Only the marks summary is available. Reset the mark if you would like the learner to write the test again.</div>
+      <p class="note" style="margin-top:10px">${esc(row.learner_notes || '')}</p></div></div>`;
+    return;
+  }
+  const paper = buildPaper(ad.seed, ad.force || {});
+  const res = markPaper(paper, ad.answers);
+  const pct = Math.round(res.got / res.max * 100);
+  const used = ad.usedSec ? `${Math.floor(ad.usedSec / 60)}m ${String(ad.usedSec % 60).padStart(2, '0')}s` : '';
+  const names = { q1: 'Reading', q2: 'Picture', q3: 'Spelling & Phonics', q4: 'Language' };
+  const secs = paper.sections.map(sec => {
+    let ctx = '';
+    if (sec.passage) ctx = `<div class="rv-ctx"><h3>${esc(sec.passage.title)}</h3>${sec.passage.paras.map((p, i) => `<p><span class="pn">${i + 1}</span>${esc(p)}</p>`).join('')}</div>`;
+    else if (sec.ad) ctx = `<div class="rv-ctx" style="max-width:560px">${sec.ad.html}</div>`;
+    const s = res.sections.find(z => z.key === sec.key);
+    return `<section style="margin-top:18px"><div class="sec-h"><h2>${esc(sec.title)}</h2><span class="tot">${s.got}/${s.max}</span></div>${ctx}${sec.items.map(it => reviewItemHtml(it, ad.answers[it.id])).join('')}</section>`;
+  }).join('');
+  const sug = reviewSuggestions(paper, ad.answers, ad);
+  root.innerHTML = `<div class="wrap">
+    <div class="rv-bar"><button class="btn dark" id="rvPrint" type="button">🖨 Print / Save as PDF</button><button class="btn ghost" id="rvDl" type="button">⬇ Download (HTML file)</button></div>
+    <div id="reviewDoc">
+      <div class="card hero"><h1>📝 ${esc(CONFIG.TITLE)}: Review</h1><p>${esc(name)} &nbsp;•&nbsp; ${esc(row.class_name || '')} &nbsp;•&nbsp; ${esc(when)}</p>
+        <div class="bigscore">${res.got} / ${res.max}</div><p>${pct}%${used ? ' &nbsp;•&nbsp; Time used: ' + esc(used) : ''}${ad.reason === 'time' ? ' (time ran out)' : ''}</p></div>
+      <div class="card" style="margin-top:14px"><div class="res-grid">${res.sections.map(s => `<div class="res-box"><div class="small">${names[s.key]}</div><b>${s.got}/${s.max}</b></div>`).join('')}</div></div>
+      <div class="card" style="margin-top:14px"><h2>💡 How can the teacher help this learner?</h2><ul class="rv-sug">${sug.map(t => `<li>${t}</li>`).join('')}</ul></div>
+      ${secs}
+    </div></div>`;
+  $('#rvPrint').onclick = () => window.print();
+  $('#rvDl').onclick = () => {
+    const css = (document.querySelector('style') || {}).textContent || '';
+    const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(CONFIG.TITLE)} - ${esc(name)}</title><style>${css}</style></head><body><div class="wrap">${document.getElementById('reviewDoc').outerHTML}</div></body></html>`;
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+    a.download = `Grade2-English-Mock-${(row.surname || '').replace(/\W+/g, '')}-${(row.firstname || '').replace(/\W+/g, '')}.html`;
+    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  };
+}
+async function dropStaleLocal(){     // a teacher reset the mark: forget the old finished attempt on this device
+  if (!ASSIGNMENT_ID) return;
+  const st = safeGet(STORE_KEY);
+  if (!st || !st.finished || !st.final || !st.final.sent) return;
+  try {
+    const res = await fetch(CONFIG.ME_ENDPOINT, { credentials: 'include' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const rows = Array.isArray(data && data.results) ? data.results : [];
+    const row = rows.find(r => String(r.assignment_id) === String(ASSIGNMENT_ID) && String(r.result_status || '').toLowerCase() === 'completed');
+    if (!row) { try { localStorage.removeItem(STORE_KEY); } catch (_e) {} }
+  } catch (_e) {}
+}
+
+/* =====================================================================
+   BOOT
+   ===================================================================== */
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && S && !S.finished && !locked){ S.leaves = (S.leaves || 0) + 1; persist(); }
+  if (!document.hidden && S && !S.finished) tick();
+});
+window.addEventListener('beforeunload', e => { if (S && !S.finished && !S.preview){ persist(); e.preventDefault(); e.returnValue = ''; } });
+
+
+/* Teacher-created password (set in Teacher Dashboard > Assessments). Checked on the server. */
+async function checkPin(pin){
+  const body = { assignment_id: ASSIGNMENT_ID };
+  if (pin !== undefined) body.pin = pin;
+  const r = await fetch('/api/mock-exam/check', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error('check failed');
+  return (await r.json()).state;
+}
+async function loadClassPin(){
+  CONFIG.PIN_LOCKED = false; CONFIG.START_PIN = '';
+  if (!ASSIGNMENT_ID) return;
+  try {
+    const st = await checkPin();
+    if (st === 'required') CONFIG.START_PIN = 'server'; else CONFIG.PIN_LOCKED = true;
+  } catch (_e) { CONFIG.PIN_LOCKED = true; }
+}
+
+(async function boot(){
+  if (qs.get('memo') === '1'){
+    await detectTeacher();
+    if (TEACHER_OK) showMemo(); else root.innerHTML = '<div class="wrap"><div class="card"><div class="msg-err">The marking memo is for teachers only.</div></div></div>';
+    return;
+  }
+  if (qs.get('review') === '1'){ await showReview(); return; }
+  await detectTeacher();
+  await dropStaleLocal();
+  if (resumeIfAny()) return;
+  if (ASSIGNMENT_ID && await alreadyCompletedOnServer()) return;
+  await loadClassPin();
+  showStart();
+})();
+})();
+</script>
+</body>
+</html>

@@ -141,8 +141,8 @@
   const RESOURCE_TYPES = [{ v: "link", l: "\u{1F517} Link", icon: "\u{1F517}" }, { v: "typing", l: "\u{1F3AE} Interactive Activity", icon: "\u{1F3AE}" }, { v: "exam", l: "\u{1F4DD} Mock Exam", icon: "\u{1F4DD}" }, { v: "pdf", l: "\u{1F4C4} PDF", icon: "\u{1F4C4}" }, { v: "word", l: "\u{1F4DD} Word Doc", icon: "\u{1F4DD}" }, { v: "video", l: "\u{1F3AC} Video", icon: "\u{1F3AC}" }];
   const TRACKED_ACTIVITY_STORAGE_KEYS = ["typing_speed_result_pending", "carissa_assignment_result_pending"];
   const TRACKED_ACTIVITY_RESULT_TYPES = ["typing_speed_result", "assignment_activity_result"];
-  const mockGrade = (cls) => { const m = /grade\s*([34567])\b/i.exec(String(cls || "")); return m ? m[1] : "4"; };
-  const mockMarks = (cls) => mockGrade(cls) === "3" ? 30 : 40;
+  const mockGrade = (cls) => { const m = /grade\s*([234567])\b/i.exec(String(cls || "")); return m ? m[1] : "4"; };
+  const mockMarks = (cls) => mockGrade(cls) === "3" || mockGrade(cls) === "2" ? 30 : 40;
   const isMockExamUrl = (url) => /mock-exam/i.test(String(url || ""));
   const isTrackableActivityUrl = (url) => {
     try {
@@ -287,6 +287,17 @@
       subject: "English",
       grade_range: "Grade 7",
       description: "Digital CAPS-style mock exam (40 marks, 30 minutes): Comprehension, Visual Text and Poetry, Summary and Language. Every learner gets a different scrambled paper. The test locks when time is up and is marked automatically.",
+      uploaded_by: "System",
+      builtin: true
+    },
+    {
+      id: "builtin-grade2-english-mock-exam",
+      title: "Grade 2 English Mock Exam",
+      type: "link",
+      url: "./grade2-english-mock-exam.html",
+      subject: "English",
+      grade_range: "Grade 2",
+      description: "Digital CAPS-style mock exam (30 marks, 30 minutes) in very simple English: Reading, Pictures, Spelling and Phonics and Language. Every learner gets a different scrambled paper. The test locks when time is up and is marked automatically.",
       uploaded_by: "System",
       builtin: true
     },
@@ -13055,7 +13066,7 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
       let alive = true;
       setSaved(null);
       setPin("");
-      if (!/grade\s*[34567]\b/i.test(String(selClass || ""))) return;
+      if (!/grade\s*[234567]\b/i.test(String(selClass || ""))) return;
       apiRequest(`/mock-exam/password?class_name=${encodeURIComponent(selClass)}`).then((r) => {
         if (!alive) return;
         const v = String((r == null ? void 0 : r.pin) || "");
@@ -13078,7 +13089,7 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
       }
       setBusy(false);
     };
-    if (!teacherAuth || !/grade\s*[34567]\b/i.test(String(selClass || ""))) return null;
+    if (!teacherAuth || !/grade\s*[234567]\b/i.test(String(selClass || ""))) return null;
     const box = { background: "white", padding: "20px", borderRadius: "12px", boxShadow: "0 4px 14px rgba(0,0,0,0.06)", marginBottom: "16px", border: "2px solid #ddd6fe" };
     const ok = /^[A-Za-z0-9]{3,12}$/.test(pin.trim());
     return /* @__PURE__ */ React.createElement("div", { style: box }, /* @__PURE__ */ React.createElement("h3", { style: { margin: "0 0 6px", color: "#0f172a" } }, "\u{1F511} Create password: Grade " + mockGrade(selClass) + " English Mock Exam"), /* @__PURE__ */ React.createElement("p", { style: { fontSize: "13px", color: "#475569", lineHeight: 1.55, margin: "0 0 12px" } }, "Set the password for ", /* @__PURE__ */ React.createElement("b", null, selClass), ". Learners must type it before they can start the test. Tell the class the password only when you are ready for them to begin. With no password saved, the test stays locked. Learners who have already submitted cannot sit it again."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React.createElement("input", { value: pin, onChange: (e) => setPin(e.target.value), placeholder: "3 to 12 letters or numbers", maxLength: 12, style: { padding: "10px 12px", borderRadius: "8px", border: "2px solid #cbd5e1", fontSize: "16px", fontWeight: 700, letterSpacing: "2px" } }), /* @__PURE__ */ React.createElement("button", { disabled: busy || !ok, onClick: () => save(pin.trim()), style: { padding: "10px 16px", borderRadius: "8px", border: "none", background: ok ? "#16a34a" : "#94a3b8", color: "white", fontWeight: 800, cursor: ok ? "pointer" : "not-allowed" } }, "Save password"), saved && /* @__PURE__ */ React.createElement("button", { disabled: busy, onClick: () => save(""), style: { padding: "10px 16px", borderRadius: "8px", border: "none", background: "#dc2626", color: "white", fontWeight: 800, cursor: "pointer" } }, "Remove (lock exam)")), /* @__PURE__ */ React.createElement("div", { style: { marginTop: "10px", fontSize: "13px", fontWeight: 700, color: saved ? "#166534" : "#b45309" } }, saved === null ? "Loading..." : saved ? `Current password for ${selClass}: ${saved}` : "No password set. The exam is locked."));
@@ -13086,7 +13097,7 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
   function MockExamPanel({ resources, selClass, teacherAuth, assignments, setAssignments, learnerResults, resetMark, showMsg }) {
     const [busy, setBusy] = useState(false);
     const [openNotes, setOpenNotes] = useState({});
-    if (!/grade\s*[34567]\b/i.test(String(selClass || ""))) return null;
+    if (!/grade\s*[234567]\b/i.test(String(selClass || ""))) return null;
     const examIds = new Set((resources || []).filter((r) => isMockExamUrl(r == null ? void 0 : r.url) && !String((r == null ? void 0 : r.id) || "").startsWith("builtin-")).map((r) => String(r.id)));
     const roster = CLASS_DATA[selClass] || [];
     const examAssignments = (assignments || []).filter((a) => a.class_name === selClass && examIds.has(String(a.resource_id)));
