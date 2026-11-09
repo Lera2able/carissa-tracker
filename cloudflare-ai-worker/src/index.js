@@ -656,7 +656,7 @@ async function handleLearnerResultUpsert(request, env, corsOrigin) {
         const resource = Array.isArray(resourceRows) ? resourceRows[0] : null;
         const t = String(resource?.title || "").toLowerCase();
         const u = String(resource?.url || "").toLowerCase();
-        isAssessment = t.includes("assessment") || u.includes("assessment");
+        isAssessment = t.includes("assessment") || u.includes("assessment") || u.includes("mock-exam");
       }
     } catch (_e) {}
     if (isAssessment) {
