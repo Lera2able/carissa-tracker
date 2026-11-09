@@ -686,8 +686,11 @@ async function detectTeacher(){
 async function onStartClick(){
   const btn = $('#startBtn');
   if (CONFIG.PIN_LOCKED) return;
-  if (CONFIG.START_PIN && ($('#pinIn').value || '').trim().toLowerCase() !== String(CONFIG.START_PIN).toLowerCase()){
-    $('#startNote').innerHTML = '<div class="msg-err">That password is not right. Please ask your teacher for the exam password.</div>'; return;
+  if (CONFIG.START_PIN){
+    let st = 'wrong';
+    try { st = await checkPin(($('#pinIn').value || '').trim()); } catch (_e) {}
+    if (st === 'locked'){ CONFIG.PIN_LOCKED = true; showStart(); return; }
+    if (st !== 'ok'){ $('#startNote').innerHTML = '<div class="msg-err">That password is not right. Please ask your teacher for the exam password.</div>'; return; }
   }
   btn.disabled = true;
   // Last server check so nobody can start twice
@@ -1067,24 +1070,20 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('beforeunload', e => { if (S && !S.finished && !S.preview){ persist(); e.preventDefault(); e.returnValue = ''; } });
 
 
-/* Teacher-created password (set in Teacher Dashboard > Create Password) */
-const SB_URL = 'https://vousucfboetqtppjywlg.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZvdXN1Y2Zib2V0cXRwcGp5d2xnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNjE1NTIsImV4cCI6MjA5MzkzNzU1Mn0.bdwEPpWrazC1KDVG58MnbBy6Lr4YhO8gUyEuK1VykU4';
-async function sbGet(path){
-  const r = await fetch(SB_URL + '/rest/v1/' + path, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } });
-  if (!r.ok) throw new Error('lookup failed');
-  return r.json();
+/* Teacher-created password (set in Teacher Dashboard > Assessments). Checked on the server. */
+async function checkPin(pin){
+  const body = { assignment_id: ASSIGNMENT_ID };
+  if (pin !== undefined) body.pin = pin;
+  const r = await fetch('/api/mock-exam/check', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error('check failed');
+  return (await r.json()).state;
 }
 async function loadClassPin(){
   CONFIG.PIN_LOCKED = false; CONFIG.START_PIN = '';
   if (!ASSIGNMENT_ID) return;
   try {
-    const a = await sbGet('carissa_resource_assignments?id=eq.' + encodeURIComponent(ASSIGNMENT_ID) + '&select=class_name');
-    const cls = a && a[0] && a[0].class_name;
-    if (!cls) throw new Error('no class');
-    const c = await sbGet('carissa_config?key=eq.' + encodeURIComponent('mock_exam_pin::' + cls) + '&select=value');
-    const pin = c && c[0] ? String(c[0].value || '').trim() : '';
-    if (pin) CONFIG.START_PIN = pin; else CONFIG.PIN_LOCKED = true;
+    const st = await checkPin();
+    if (st === 'required') CONFIG.START_PIN = 'server'; else CONFIG.PIN_LOCKED = true;
   } catch (_e) { CONFIG.PIN_LOCKED = true; }
 }
 

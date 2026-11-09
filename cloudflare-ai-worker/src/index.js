@@ -990,6 +990,62 @@ async function handleTeacherLearnerNameUpdate(request, env, corsOrigin) {
   return jsonResponse({ ok: true, result }, 200, corsOrigin);
 }
 
+async function mockExamPinRow(env, className) {
+  const key = `mock_exam_pin::${className}`;
+  const rows = await supabaseGet(env, "carissa_config", { key: `eq.${key}`, select: "*", limit: "1" });
+  return { key, row: Array.isArray(rows) ? rows[0] : null };
+}
+
+async function handleMockExamPasswordTeacher(request, env, corsOrigin) {
+  const session = await getTeacherSession(request, env);
+  if (!session) return jsonResponse({ error: "Teacher session required." }, 401, corsOrigin);
+  const url = new URL(request.url);
+  let className;
+  let body = null;
+  if (request.method === "POST") {
+    body = await readJsonBody(request);
+    className = String(body?.class_name || "").trim();
+  } else {
+    className = String(url.searchParams.get("class_name") || "").trim();
+  }
+  if (!className || !session.class_names.includes(className)) {
+    return jsonResponse({ error: "You do not have access to that class." }, 403, corsOrigin);
+  }
+  const { key, row } = await mockExamPinRow(env, className);
+  if (request.method === "GET") {
+    return jsonResponse({ pin: row ? String(row.value || "") : "" }, 200, corsOrigin);
+  }
+  const pin = String(body?.pin || "").trim();
+  if (pin && !/^[A-Za-z0-9]{3,12}$/.test(pin)) {
+    return jsonResponse({ error: "Use 3 to 12 letters or numbers." }, 400, corsOrigin);
+  }
+  if (row) {
+    await supabasePatch(env, "carissa_config", { key: `eq.${key}` }, { value: pin, updated_at: new Date().toISOString() });
+  } else if (pin) {
+    await supabasePost(env, "carissa_config", { key, value: pin }, "return=minimal");
+  }
+  return jsonResponse({ ok: true, pin }, 200, corsOrigin);
+}
+
+async function handleMockExamCheck(request, env, corsOrigin) {
+  const session = await getLearnerSession(request, env);
+  if (!session) return jsonResponse({ error: "Learner session required." }, 401, corsOrigin);
+  const body = await readJsonBody(request);
+  const assignmentId = String(body?.assignment_id || "").trim();
+  if (!assignmentId) return jsonResponse({ error: "Missing assignment_id." }, 400, corsOrigin);
+  const rows = await supabaseGet(env, "carissa_resource_assignments", { id: `eq.${assignmentId}`, select: "class_name", limit: "1" });
+  const className = Array.isArray(rows) && rows[0] ? String(rows[0].class_name || "").trim() : "";
+  if (!className || className !== session.class_name) {
+    return jsonResponse({ error: "That test is not assigned to you." }, 403, corsOrigin);
+  }
+  const { row } = await mockExamPinRow(env, className);
+  const pin = row ? String(row.value || "").trim() : "";
+  if (!pin) return jsonResponse({ state: "locked" }, 200, corsOrigin);
+  if (body?.pin === undefined || body?.pin === null) return jsonResponse({ state: "required" }, 200, corsOrigin);
+  const ok = String(body.pin).trim().toLowerCase() === pin.toLowerCase();
+  return jsonResponse({ state: ok ? "ok" : "wrong" }, 200, corsOrigin);
+}
+
 async function handleTeacherResultReset(request, env, corsOrigin) {
   const session = await getTeacherSession(request, env);
   if (!session) return jsonResponse({ error: "Teacher session required." }, 401, corsOrigin);
@@ -2460,6 +2516,22 @@ export default {
         return await handleTerm3TypingSync(request, env, corsOrigin);
       } catch (error) {
         return jsonResponse({ error: error?.message || "Term 3 sync failed" }, 500, corsOrigin);
+      }
+    }
+    if (url.pathname === "/api/mock-exam/password") {
+      if (request.method !== "GET" && request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handleMockExamPasswordTeacher(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Password request failed" }, 500, corsOrigin);
+      }
+    }
+    if (url.pathname === "/api/mock-exam/check") {
+      if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handleMockExamCheck(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Password check failed" }, 500, corsOrigin);
       }
     }
     if (url.pathname === "/api/learner-results/reset") {

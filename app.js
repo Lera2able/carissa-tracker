@@ -12930,30 +12930,28 @@ th{background:#f8fafc;color:#111827;font-weight:900;}
     const [pin, setPin] = useState("");
     const [saved, setSaved] = useState(null);
     const [busy, setBusy] = useState(false);
-    const cfgKey = `mock_exam_pin::${selClass}`;
     useEffect(() => {
       let alive = true;
       setSaved(null);
       setPin("");
-      db.get("carissa_config", `key=eq.${encodeURIComponent(cfgKey)}`).then((r) => {
+      if (!/grade\s*4/i.test(String(selClass || ""))) return;
+      apiRequest(`/mock-exam/password?class_name=${encodeURIComponent(selClass)}`).then((r) => {
         if (!alive) return;
-        const v = r && r[0] ? String(r[0].value || "") : "";
+        const v = String((r == null ? void 0 : r.pin) || "");
         setSaved(v);
         setPin(v);
       }).catch(() => alive && setSaved(""));
       return () => {
         alive = false;
       };
-    }, [cfgKey]);
+    }, [selClass]);
     const save = async (value) => {
       setBusy(true);
       try {
-        const exists = await db.get("carissa_config", `key=eq.${encodeURIComponent(cfgKey)}&select=key`);
-        if (exists && exists.length) await db.patch("carissa_config", `key=eq.${encodeURIComponent(cfgKey)}`, { value, updated_at: (/* @__PURE__ */ new Date()).toISOString() });
-        else await db.post("carissa_config", [{ key: cfgKey, value }], "return=minimal");
+        await apiRequest("/mock-exam/password", { method: "POST", body: { class_name: selClass, pin: value } });
         setSaved(value);
         setPin(value);
-        showMsg && showMsg(value ? `✓ Password saved for ${selClass}.` : `✓ Password removed. The exam is locked for ${selClass}.`);
+        showMsg && showMsg(value ? `\u2713 Password saved for ${selClass}.` : `\u2713 Password removed. The exam is locked for ${selClass}.`);
       } catch (e) {
         alert("Could not save the password: " + ((e == null ? void 0 : e.message) || "Unknown error"));
       }
