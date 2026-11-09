@@ -642,8 +642,9 @@ function showStart(note){
       <div id="startNote">${note ? `<div class="msg-err">${note}</div>` : ''}</div>
       ${hasAssign ? `
       <div style="margin-top:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-        ${CONFIG.START_PIN ? `<div><div class="small" style="margin-bottom:4px">Type the exam PIN from your teacher</div><input id="pinIn" class="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="12" aria-label="Exam PIN"></div>` : ''}
-        <button class="btn green" id="startBtn" type="button">Start the test ▶</button>
+        ${CONFIG.PIN_LOCKED ? `<div class="msg-err">This test is locked. Your teacher will give you the password when it is time to start. Then close this page and open the test again.</div>` : ''}
+        ${CONFIG.START_PIN ? `<div><div class="small" style="margin-bottom:4px">Type the exam password from your teacher</div><input id="pinIn" class="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="12" aria-label="Exam PIN"></div>` : ''}
+        <button class="btn green" id="startBtn" type="button" ${CONFIG.PIN_LOCKED ? 'disabled' : ''}>Start the test ▶</button>
       </div>
       <div class="small" style="margin-top:10px">${LEARNER ? 'Learner: ' + esc(LEARNER) : ''}</div>`
       : `<div class="msg-err">This test must be opened from your <b>Learner Dashboard</b> so that your teacher receives your marks.</div>`}
@@ -684,8 +685,9 @@ async function detectTeacher(){
 }
 async function onStartClick(){
   const btn = $('#startBtn');
-  if (CONFIG.START_PIN && ($('#pinIn').value || '').trim() !== CONFIG.START_PIN){
-    $('#startNote').innerHTML = '<div class="msg-err">That PIN is not right. Please ask your teacher for the exam PIN.</div>'; return;
+  if (CONFIG.PIN_LOCKED) return;
+  if (CONFIG.START_PIN && ($('#pinIn').value || '').trim().toLowerCase() !== String(CONFIG.START_PIN).toLowerCase()){
+    $('#startNote').innerHTML = '<div class="msg-err">That password is not right. Please ask your teacher for the exam password.</div>'; return;
   }
   btn.disabled = true;
   // Last server check so nobody can start twice
@@ -1064,6 +1066,28 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('beforeunload', e => { if (S && !S.finished && !S.preview){ persist(); e.preventDefault(); e.returnValue = ''; } });
 
+
+/* Teacher-created password (set in Teacher Dashboard > Create Password) */
+const SB_URL = 'https://vousucfboetqtppjywlg.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZvdXN1Y2Zib2V0cXRwcGp5d2xnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNjE1NTIsImV4cCI6MjA5MzkzNzU1Mn0.bdwEPpWrazC1KDVG58MnbBy6Lr4YhO8gUyEuK1VykU4';
+async function sbGet(path){
+  const r = await fetch(SB_URL + '/rest/v1/' + path, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } });
+  if (!r.ok) throw new Error('lookup failed');
+  return r.json();
+}
+async function loadClassPin(){
+  CONFIG.PIN_LOCKED = false; CONFIG.START_PIN = '';
+  if (!ASSIGNMENT_ID) return;
+  try {
+    const a = await sbGet('carissa_resource_assignments?id=eq.' + encodeURIComponent(ASSIGNMENT_ID) + '&select=class_name');
+    const cls = a && a[0] && a[0].class_name;
+    if (!cls) throw new Error('no class');
+    const c = await sbGet('carissa_config?key=eq.' + encodeURIComponent('mock_exam_pin::' + cls) + '&select=value');
+    const pin = c && c[0] ? String(c[0].value || '').trim() : '';
+    if (pin) CONFIG.START_PIN = pin; else CONFIG.PIN_LOCKED = true;
+  } catch (_e) { CONFIG.PIN_LOCKED = true; }
+}
+
 (async function boot(){
   if (qs.get('memo') === '1'){
     await detectTeacher();
@@ -1073,6 +1097,7 @@ window.addEventListener('beforeunload', e => { if (S && !S.finished && !S.previe
   await detectTeacher();
   if (resumeIfAny()) return;
   if (ASSIGNMENT_ID && await alreadyCompletedOnServer()) return;
+  await loadClassPin();
   showStart();
 })();
 })();
