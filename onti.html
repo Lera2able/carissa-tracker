@@ -65,13 +65,14 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
   function loginScreen(msg){
     app.innerHTML='<div class="card login"><h2 style="margin-top:0">Onti\'s study dashboard</h2><p class="muted">Sign in to see your exam timetable and what to study.</p>'+
       '<label>Username</label><input id="u" autocomplete="username" value="onti">'+
-      '<label>PIN</label><input id="p" type="password" inputmode="numeric" autocomplete="current-password">'+
+      '<div id="pinrow"><label>PIN</label><input id="p" type="password" inputmode="numeric" autocomplete="current-password"></div>'+
       '<p class="err" id="e">'+esc(msg||"")+'</p><button id="go">Sign in</button>'+
       '<p class="muted" style="margin-top:14px">Parent? Sign in as a teacher on the Carissa tracker first, then open this page again.</p></div>';
     function go(){api("login","POST",{username:document.getElementById("u").value,pin:document.getElementById("p").value})
       .then(load).then(render).catch(function(e){document.getElementById("e").textContent=e.message;});}
+    api("status").then(function(j){if(j&&j.pin_required===false){document.getElementById("pinrow").style.display="none";document.getElementById("p").value="";}}).catch(function(){});
     document.getElementById("go").onclick=go;
-    document.getElementById("p").onkeydown=function(e){if(e.key==="Enter")go();};
+    document.getElementById("u").onkeydown=document.getElementById("p").onkeydown=function(e){if(e.key==="Enter")go();};
   }
 
   function header(){

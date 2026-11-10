@@ -610,7 +610,7 @@ async function handleOntiSave(request, env, corsOrigin) {
   if (op === "set_pin") {
     if (role !== "owner") return jsonResponse({ error: "Not allowed." }, 403, corsOrigin);
     const pin = String(body?.pin || "").trim();
-    if (!/^\d{4,8}$/.test(pin)) return jsonResponse({ error: "PIN must be 4 to 8 digits." }, 400, corsOrigin);
+    if (pin !== "" && !/^\d{4,8}$/.test(pin)) return jsonResponse({ error: "PIN must be 4 to 8 digits, or empty for no PIN." }, 400, corsOrigin);
     await supabasePatch(env, "onti_settings", { id: "eq.1" }, { pin });
     return jsonResponse({ ok: true }, 200, corsOrigin);
   }
@@ -687,6 +687,12 @@ async function handleOntiModerate(request, env, corsOrigin) {
   };
   const rows = await supabasePatch(env, "onti_attempts", { id: `eq.${b.id}` }, vals);
   return jsonResponse({ row: Array.isArray(rows) ? rows[0] : rows }, 200, corsOrigin);
+}
+
+async function handleOntiStatus(_request, env, corsOrigin) {
+  const rows = await supabaseGet(env, "onti_settings", { select: "pin", limit: "1" });
+  const pin = Array.isArray(rows) && rows[0] ? String(rows[0].pin || "") : "x";
+  return jsonResponse({ pin_required: pin !== "" }, 200, corsOrigin);
 }
 
 async function handleOntiLogout(_request, _env, corsOrigin) {
@@ -2632,7 +2638,7 @@ export default {
       return handleTeacherLogout(request, env, corsOrigin);
     }
     if (url.pathname.startsWith("/api/onti/")) {
-      const routes = { "/api/onti/login": ["POST", handleOntiLogin], "/api/onti/data": ["GET", handleOntiData], "/api/onti/save": ["POST", handleOntiSave], "/api/onti/logout": ["POST", handleOntiLogout], "/api/onti/attempt": ["POST", handleOntiAttempt], "/api/onti/event": ["POST", handleOntiEvent], "/api/onti/moderate": ["POST", handleOntiModerate] };
+      const routes = { "/api/onti/login": ["POST", handleOntiLogin], "/api/onti/status": ["GET", handleOntiStatus], "/api/onti/data": ["GET", handleOntiData], "/api/onti/save": ["POST", handleOntiSave], "/api/onti/logout": ["POST", handleOntiLogout], "/api/onti/attempt": ["POST", handleOntiAttempt], "/api/onti/event": ["POST", handleOntiEvent], "/api/onti/moderate": ["POST", handleOntiModerate] };
       const r = routes[url.pathname];
       if (!r) return jsonResponse({ error: "Not found" }, 404, corsOrigin);
       if (request.method !== r[0]) return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
