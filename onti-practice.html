@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Practice Exam | Onti</title>
+<title>Practice Exam | Carissa eLearning</title>
 <style>
 :root{--bg:#f4f1fa;--card:#fff;--ink:#2a2340;--mute:#6f6888;--pri:#6d3fc0;--pri2:#ede5fb;--ok:#1f8a4c;--okbg:#e6f6ed;--bad:#c0392b;--badbg:#fdeceb;--line:#e3dcf1;--gold:#f2b705}
 *{box-sizing:border-box}
@@ -53,11 +53,12 @@ input:focus,textarea:focus{outline:0;border-color:var(--pri)}
 .links a{display:inline-block;margin:3px 6px 3px 0;padding:5px 11px;border-radius:99px;background:var(--pri2);color:var(--pri);text-decoration:none;font-size:.88rem}
 .mod{background:#fff9e0;border:2px dashed var(--gold)}
 canvas#conf{position:fixed;inset:0;pointer-events:none;z-index:50}
+body.kid{font-size:19px}body.kid .q{font-size:1.35rem}body.kid .opt{padding:16px 16px;font-size:1.15rem}body.kid button{font-size:1.1rem;padding:13px 22px}body.kid input[type=text],body.kid input[type=number]{font-size:1.3rem}body.kid .passage{max-height:none;font-size:1.15rem}
 @media print{header,.nav,.noprint,canvas{display:none}.card{box-shadow:none}}
 </style>
 </head>
 <body>
-<header><h1 id="ttl">Practice exam</h1><a href="onti.html">&larr; My dashboard</a></header>
+<header><h1 id="ttl">Practice exam</h1><a id="homelink" href="onti.html">&larr; My dashboard</a></header>
 <main id="m"><div class="card">Loading&hellip;</div></main>
 <canvas id="conf"></canvas>
 <script>
@@ -79,21 +80,27 @@ function shuffle(a,r){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor
 var $=function(id){return document.getElementById(id);};
 var M=$("m");
 var params=new URLSearchParams(location.search);
+var PROFILE=(params.get("p")||"onti").toLowerCase().replace(/[^a-z0-9_-]/g,"")||"onti";
+if(PROFILE!=="onti")document.body.classList.add("kid");
+var HOME="onti.html"+(PROFILE==="onti"?"":"?p="+encodeURIComponent(PROFILE));
+$("homelink").href=HOME;
 var paperKey=params.get("paper"), attemptId=params.get("attempt");
 var role=null, DATA=null, B=null, Q=[], ans={}, flags={}, hints={}, cur=0, t0=0, startedAt=null, timer=null, seed=0, hintUsed=0;
 
 function api(path,method,body){
-  return fetch("/api/onti/"+path,{method:method||"GET",credentials:"include",headers:{"content-type":"application/json"},body:body?JSON.stringify(body):undefined})
+  return fetch("/api/onti/"+path+"?p="+encodeURIComponent(PROFILE),{method:method||"GET",credentials:"include",headers:{"content-type":"application/json"},body:body?JSON.stringify(body):undefined})
    .then(function(r){return r.json().catch(function(){return {};}).then(function(j){if(!r.ok){var e=new Error(j.error||"Request failed");e.status=r.status;throw e;}return j;});});
 }
 function loadScript(src){return new Promise(function(res,rej){var s=document.createElement("script");s.src=src;s.onload=res;s.onerror=function(){rej(new Error("Could not load "+src));};document.head.appendChild(s);});}
 
 /* ------------ start ------------ */
 function boot(){
-  api("data").then(function(d){DATA=d;role=d.role;}).catch(function(){role=null;}).then(function(){
-    if(!role){M.innerHTML='<div class="card"><h2>Please sign in first</h2><p>Open <a href="onti.html">your dashboard</a> and sign in, then come back to this practice exam.</p></div>';return;}
-    if(!paperKey){return loadScript("onti-banks/index.js?v=3").then(function(){menu();});}
-    return loadScript("onti-banks/"+encodeURIComponent(paperKey)+".js?v=3").then(function(){B=ONTI_BANK;if(!B)throw new Error("Paper not found");
+  api("data").catch(function(){
+    return api("status").then(function(st){if(st&&st.pin_required===false)return api("login","POST",{username:PROFILE,pin:""}).then(function(){return api("data");});throw new Error("no");});
+  }).then(function(d){DATA=d;role=d.role;}).catch(function(){role=null;}).then(function(){
+    if(!role){M.innerHTML='<div class="card"><h2>Please sign in first</h2><p>Open <a href="'+HOME+'">your dashboard</a> and sign in, then come back to this practice exam.</p></div>';return;}
+    if(!paperKey){return loadScript("onti-banks/index"+(PROFILE==="onti"?"":"-"+PROFILE)+".js?v=4").then(function(){menu();});}
+    return loadScript("onti-banks/"+encodeURIComponent(paperKey)+".js?v=4").then(function(){B=ONTI_BANK;if(!B)throw new Error("Paper not found");
       $("ttl").textContent=B.emoji+" "+B.title;
       if(attemptId){var a=(DATA.attempts||[]).filter(function(x){return x.id===attemptId;})[0];if(!a){M.innerHTML='<div class="card">Attempt not found.</div>';return;}reviewSaved(a);return;}
       intro();
@@ -235,7 +242,7 @@ function results(a,fresh,att){
      (mod?'<div class="mod" style="margin-top:6px;padding:6px 8px">Parent mark: <input type="number" step="0.5" min="0" max="'+r.max+'" data-ov="'+esc(r.id)+'" value="'+(ov!=null?ov:r.marks)+'" style="width:80px;display:inline-block"> / '+r.max+'</div>':'')+'</div>';});
   h+='</div>';
   if(mod){h+='<div class="card mod"><h3 style="margin-top:0">Moderation (only you can see this)</h3><p class="muted">Change a mark if an answer was right but worded differently, or wrong but a good try. Add a comment for Onti.</p><textarea id="mcom" rows="3" placeholder="Comment for Onti...">'+esc(att.mod_comment||"")+'</textarea><p><button id="msave">Save moderation</button> <span id="mmsg" class="muted"></span></p></div>';}
-  h+='<div class="card noprint" style="text-align:center">'+(att?'':'<button id="again">Try again (new order) 🔁</button> ')+'<button class="ghost" onclick="window.print()">🖨 Print</button> <button class="ghost" onclick="location.href=\'onti.html\'">Back to dashboard</button></div>';
+  h+='<div class="card noprint" style="text-align:center">'+(att?'':'<button id="again">Try again (new order) 🔁</button> ')+'<button class="ghost" onclick="window.print()">🖨 Print</button> <button class="ghost" onclick="location.href=HOME">Back to dashboard</button></div>';
   M.innerHTML=h;window.scrollTo(0,0);
   if($("again"))$("again").onclick=intro;
   if(pct>=60&&fresh)confetti();

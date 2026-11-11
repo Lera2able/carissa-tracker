@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Onti's Study Dashboard | Carissa eLearning</title>
+<title>Study Dashboard | Carissa eLearning</title>
 <style>
 :root{--bg:#f4f1fa;--card:#fff;--ink:#2a2340;--mute:#6f6888;--pri:#6d3fc0;--pri2:#ede5fb;--ok:#1f8a4c;--warn:#c77700;--bad:#c0392b;--line:#e3dcf1}
 *{box-sizing:border-box}
@@ -43,16 +43,21 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
 </head>
 <body>
 <div id="app"></div>
-<script src="onti-banks/index.js?v=3"></script>
 <script>
 (function(){
+  var PROFILE = (new URLSearchParams(location.search).get("p")||"onti").toLowerCase().replace(/[^a-z0-9_-]/g,"")||"onti";
+  var NAME = PROFILE.charAt(0).toUpperCase()+PROFILE.slice(1);
+  var KID = PROFILE!=="onti";
+  document.title = NAME+"'s Study Dashboard | Carissa eLearning";
+  if(KID) document.body.classList.add("kid");
   var API = "/api/onti/";
+  var QS = "?p="+encodeURIComponent(PROFILE);
   var D = null, view = "home", subjId = null, tab = "scope", htab = "overview";
   var app = document.getElementById("app");
 
   function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
   function api(path, method, body){
-    return fetch(API+path,{method:method||"GET",credentials:"include",headers:{"content-type":"application/json"},body:body?JSON.stringify(body):undefined})
+    return fetch(API+path+QS,{method:method||"GET",credentials:"include",headers:{"content-type":"application/json"},body:body?JSON.stringify(body):undefined})
       .then(function(r){return r.json().catch(function(){return {};}).then(function(j){if(!r.ok){var e=new Error(j.error||"Request failed");e.status=r.status;throw e;}return j;});});
   }
   function load(){return api("data").then(function(j){D=j;});}
@@ -63,20 +68,20 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
   function owner(){return D&&D.role==="owner";}
 
   function loginScreen(msg){
-    app.innerHTML='<div class="card login"><h2 style="margin-top:0">Onti\'s study dashboard</h2><p class="muted">Sign in to see your exam timetable and what to study.</p>'+
+    app.innerHTML='<div class="card login"><h2 style="margin-top:0">'+esc(NAME)+'\'s study dashboard</h2><p class="muted">Sign in to see your exam timetable and what to study.</p>'+
       '<label>Username</label><input id="u" autocomplete="username" value="onti">'+
       '<div id="pinrow"><label>PIN</label><input id="p" type="password" inputmode="numeric" autocomplete="current-password"></div>'+
       '<p class="err" id="e">'+esc(msg||"")+'</p><button id="go">Sign in</button>'+
       '<p class="muted" style="margin-top:14px">Parent? Sign in as a teacher on the Carissa tracker first, then open this page again.</p></div>';
     function go(){api("login","POST",{username:document.getElementById("u").value,pin:document.getElementById("p").value})
       .then(load).then(render).catch(function(e){document.getElementById("e").textContent=e.message;});}
-    api("status").then(function(j){if(j&&j.pin_required===false){document.getElementById("pinrow").style.display="none";document.getElementById("p").value="";}}).catch(function(){});
+    api("status").then(function(j){if(j&&j.pin_required===false){document.getElementById("pinrow").style.display="none";document.getElementById("p").value="";if(!msg&&!window.__triedAuto){window.__triedAuto=true;go();}}}).catch(function(){});
     document.getElementById("go").onclick=go;
     document.getElementById("u").onkeydown=document.getElementById("p").onkeydown=function(e){if(e.key==="Enter")go();};
   }
 
   function header(){
-    return '<header><div><h1>Onti\'s Study Dashboard</h1><small>Grade 7 final assessments 2026'+(owner()?' &middot; parent view':'')+'</small></div><div>'+
+    return '<header><div><h1>'+esc(NAME)+'\'s Study Dashboard</h1><small>'+(KID?'Grade 3 practice':'Grade 7 final assessments 2026')+(owner()?' &middot; parent view':'')+'</small></div><div>'+
       (view!=="home"?'<button class="ghost" id="back">&larr; All subjects</button> ':'')+
       (D.role==="onti"?'<button class="ghost" id="out">Sign out</button>':'')+'</div></header>';
   }
@@ -112,7 +117,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
     var ap=document.getElementById("allpractice"); if(ap) ap.onclick=function(){htab="practice";render();};
     Array.prototype.forEach.call(app.querySelectorAll(".subj"),function(el){el.onclick=function(){subjId=el.getAttribute("data-id");tab="scope";view="subj";render();};});
     Array.prototype.forEach.call(app.querySelectorAll("[data-blk]"),function(c){c.onchange=function(){localStorage.setItem("onti_blk_"+c.getAttribute("data-blk"),c.checked?"1":"");if(c.checked)logEvent("block_done",{block:c.getAttribute("data-blk")});render();};});
-    Array.prototype.forEach.call(app.querySelectorAll("[data-go]"),function(b){b.onclick=function(){logEvent("open_practice",{bank:b.getAttribute("data-go")});location.href="onti-practice.html?paper="+b.getAttribute("data-go");};});
+    Array.prototype.forEach.call(app.querySelectorAll("[data-go]"),function(b){b.onclick=function(){logEvent("open_practice",{bank:b.getAttribute("data-go")});location.href="onti-practice.html?p="+encodeURIComponent(PROFILE)+"&paper="+b.getAttribute("data-go");};});
     if(owner()&&htab==="overview"){
       document.getElementById("savepin").onclick=function(){api("save","POST",{op:"set_pin",pin:document.getElementById("pin").value}).then(function(){alert("PIN changed.");return load();}).then(render).catch(function(e){alert(e.message);});};
       document.getElementById("addsub").onclick=function(){var n=prompt("Subject name?");if(!n)return;save("create","subject",null,{name:n,sort:D.subjects.length+1});};
@@ -125,7 +130,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
     var h='<div class="card" style="background:linear-gradient(135deg,#ede5fb,#fff7d6)"><div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><div style="font-size:2.4rem">🎯</div><div style="flex:1;min-width:200px"><b>Practice exams are ready</b><div class="muted">'+(window.ONTI_BANKS_INDEX||[]).length+' fun, auto-marked papers. Pick a subject below or open them all.</div></div><button id="allpractice" style="padding:12px 22px">See all practice exams</button></div></div>';
     if(next){var d=daysTo(next.exam_date);
       h+='<div class="card"><div class="muted">Next exam</div><div class="big">'+esc(subjName(next))+'</div><div>'+esc(nice(next.exam_date))+' &middot; '+(d===0?'<b>today</b>':d===1?'tomorrow':'in '+d+' days')+'</div></div>';
-    } else h+='<div class="card"><b>All exams done. Well done, Onti!</b></div>';
+    } else h+='<div class="card"><b>'+(D.subjects.some(function(x){return x.exam_date;})?'All exams done. Well done, '+esc(NAME)+'!':'No test dates added yet. Practise any paper below whenever you like!')+'</b></div>';
     var openActs=D.activities.filter(function(a){return !a.done;});
     h+='<div class="card"><h3 style="margin-top:0">Exam timetable and subjects</h3><div class="grid">';
     subs.forEach(function(s){
@@ -137,9 +142,9 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
     });
     h+='</div></div>';
     if(owner()){
-      h+='<div class="card noprint"><h3 style="margin-top:0">Parent settings</h3><div class="row"><div><label>Onti\'s username</label><input value="'+esc(D.username)+'" disabled></div>'+
-        '<div><label>Onti\'s PIN</label><input id="pin" value="'+esc(D.pin)+'"></div><div style="align-self:end"><button id="savepin">Change PIN</button></div></div>'+
-        '<p class="muted">Only you (signed in as a teacher) and Onti can open this page. Nothing here is visible to learners or other teachers.</p>'+
+      h+='<div class="card noprint"><h3 style="margin-top:0">Parent settings</h3><div class="row"><div><label>'+esc(NAME)+'\'s username</label><input value="'+esc(D.username)+'" disabled></div>'+
+        '<div><label>'+esc(NAME)+'\'s PIN (leave empty for none)</label><input id="pin" value="'+esc(D.pin)+'"></div><div style="align-self:end"><button id="savepin">Change PIN</button></div></div>'+
+        '<p class="muted">Only you (signed in as a teacher) can change anything here. Nothing here is visible to learners or other teachers.</p>'+
         '<button class="ghost small" id="addsub">+ Add subject</button></div>';
     }
     return h;
@@ -242,7 +247,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
         var hints=(a.answers||[]).filter(function(r){return r.hint;}).length;
         h+='<tr><td>'+esc(new Date(a.finished_at).toLocaleString("en-ZA",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))+'</td><td>'+esc(a.bank_title||a.bank_key)+'</td><td><b>'+sc+'/'+a.total+'</b> ('+pc+'%)'+(a.final_score!=null?' ✔':'')+'</td><td>'+Math.round((a.seconds||0)/60)+' min</td>'+
           (isOwner?'<td>'+hints+'</td><td>'+(a.moderated_at?'Moderated':'<span class="pill soon">To check</span>')+'</td>':'<td class="muted">'+esc(a.mod_comment||'')+'</td>')+
-          '<td><a href="onti-practice.html?paper='+esc(a.bank_key)+'&attempt='+esc(a.id)+'">'+(isOwner?'Review and moderate':'Review')+'</a></td></tr>';
+          '<td><a href="onti-practice.html?p='+encodeURIComponent(PROFILE)+'&paper='+esc(a.bank_key)+'&attempt='+esc(a.id)+'">'+(isOwner?'Review and moderate':'Review')+'</a></td></tr>';
       });
       h+='</table>';
     }
@@ -341,7 +346,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
     h+='</div></main>';
     app.innerHTML=h;bind();
     Array.prototype.forEach.call(app.querySelectorAll(".tabs button"),function(b){b.onclick=function(){tab=b.getAttribute("data-t");render();};});
-    Array.prototype.forEach.call(app.querySelectorAll("[data-go]"),function(b){b.onclick=function(){logEvent("open_practice",{bank:b.getAttribute("data-go")});location.href="onti-practice.html?paper="+b.getAttribute("data-go");};});
+    Array.prototype.forEach.call(app.querySelectorAll("[data-go]"),function(b){b.onclick=function(){logEvent("open_practice",{bank:b.getAttribute("data-go")});location.href="onti-practice.html?p="+encodeURIComponent(PROFILE)+"&paper="+b.getAttribute("data-go");};});
     Array.prototype.forEach.call(app.querySelectorAll("input[data-a]"),function(c){c.onchange=function(){save("update","activity",c.getAttribute("data-a"),{done:c.checked});};});
     Array.prototype.forEach.call(app.querySelectorAll("[data-da]"),function(b){b.onclick=function(){if(confirm("Delete this activity?"))save("delete","activity",b.getAttribute("data-da"));};});
     Array.prototype.forEach.call(app.querySelectorAll("[data-dm]"),function(b){b.onclick=function(){if(confirm("Delete this mark?"))save("delete","mark",b.getAttribute("data-dm"));};});
@@ -357,7 +362,10 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;border-bottom:1p
     if(view==="subj") subject(); else home();
   }
 
-  load().then(render).catch(function(){loginScreen();});
+  var idx=document.createElement("script");
+  idx.src="onti-banks/index"+(PROFILE==="onti"?"":"-"+PROFILE)+".js?v=4";
+  function startApp(){load().then(render).catch(function(){loginScreen();});}
+  idx.onload=startApp; idx.onerror=startApp; document.head.appendChild(idx);
 })();
 </script>
 </body>
