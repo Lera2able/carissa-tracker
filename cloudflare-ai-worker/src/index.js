@@ -547,49 +547,60 @@ async function handleLearnerLogout(_request, _env, corsOrigin) {
 
 
 // ---------- Onti private dashboard (owner + Onti only) ----------
+function ontiProfile(request) {
+  const p = String(new URL(request.url).searchParams.get("p") || "onti").toLowerCase();
+  return /^[a-z0-9_-]{1,20}$/.test(p) ? p : "onti";
+}
+function ontiCookieName(profile) {
+  return profile === "onti" ? COOKIE_NAMES.onti : `${COOKIE_NAMES.onti}_${profile}`;
+}
+
 async function getOntiAccess(request, env) {
+  const profile = ontiProfile(request);
   const cookies = parseCookies(request.headers.get("Cookie") || "");
   const teacher = await decodeSignedSession(env, cookies[COOKIE_NAMES.teacher]);
-  const rows = await supabaseGet(env, "onti_settings", { select: "*", limit: "1" });
+  const rows = await supabaseGet(env, "onti_settings", { select: "*", profile: `eq.${profile}`, limit: "1" });
   const settings = Array.isArray(rows) ? rows[0] : null;
-  if (!settings) return { role: null, settings: null };
+  if (!settings) return { role: null, settings: null, profile };
   if (teacher && String(teacher.email || "").toLowerCase() === String(settings.owner_email).toLowerCase()) {
-    return { role: "owner", settings };
+    return { role: "owner", settings, profile };
   }
-  const onti = await decodeSignedSession(env, cookies[COOKIE_NAMES.onti]);
-  if (onti && onti.type === "onti") return { role: "onti", settings };
-  return { role: null, settings };
+  const onti = await decodeSignedSession(env, cookies[ontiCookieName(profile)]);
+  if (onti && onti.type === "onti" && (onti.profile || "onti") === profile) return { role: "onti", settings, profile };
+  return { role: null, settings, profile };
 }
 
 async function handleOntiLogin(request, env, corsOrigin) {
   const body = await readJsonBody(request);
   const username = String(body?.username || "").trim().toLowerCase();
   const pin = String(body?.pin || "").trim();
-  const rows = await supabaseGet(env, "onti_settings", { select: "*", limit: "1" });
+  const profile = ontiProfile(request);
+  const rows = await supabaseGet(env, "onti_settings", { select: "*", profile: `eq.${profile}`, limit: "1" });
   const settings = Array.isArray(rows) ? rows[0] : null;
   if (!settings || !username || username !== String(settings.username).toLowerCase() || pin !== String(settings.pin)) {
     return jsonResponse({ error: "Invalid login." }, 401, corsOrigin);
   }
   const maxAge = 60 * 60 * 24 * 14;
-  const session = buildSessionPayload({ type: "onti", username: settings.username }, maxAge);
-  const cookie = await createSessionCookie(env, COOKIE_NAMES.onti, session, maxAge);
-  try { await supabasePost(env, "onti_events", { kind: "login", detail: {} }); } catch {}
+  const session = buildSessionPayload({ type: "onti", profile, username: settings.username }, maxAge);
+  const cookie = await createSessionCookie(env, ontiCookieName(profile), session, maxAge);
+  try { await supabasePost(env, "onti_events", { kind: "login", detail: {}, profile }); } catch {}
   return jsonResponse({ role: "onti" }, 200, corsOrigin, { "Set-Cookie": cookie });
 }
 
 async function handleOntiData(request, env, corsOrigin) {
-  const { role, settings } = await getOntiAccess(request, env);
+  const { role, settings, profile } = await getOntiAccess(request, env);
   if (!role) return jsonResponse({ error: "Not signed in." }, 401, corsOrigin);
+  const pf = { profile: `eq.${profile}` };
   const [subjects, marks, activities] = await Promise.all([
-    supabaseGet(env, "onti_subjects", { select: "*", order: "sort.asc" }),
-    supabaseGet(env, "onti_marks", { select: "*", order: "taken_on.desc.nullslast,created_at.desc" }),
-    supabaseGet(env, "onti_activities", { select: "*", order: "due_on.asc.nullslast,created_at.asc" }),
+    supabaseGet(env, "onti_subjects", { select: "*", ...pf, order: "sort.asc" }),
+    supabaseGet(env, "onti_marks", { select: "*", ...pf, order: "taken_on.desc.nullslast,created_at.desc" }),
+    supabaseGet(env, "onti_activities", { select: "*", ...pf, order: "due_on.asc.nullslast,created_at.asc" }),
   ]);
-  const attempts = await supabaseGet(env, "onti_attempts", { select: "*", order: "finished_at.desc", limit: "200" });
+  const attempts = await supabaseGet(env, "onti_attempts", { select: "*", ...pf, order: "finished_at.desc", limit: "200" });
   const out = { role, subjects, marks, activities, attempts, username: settings.username };
   if (role === "owner") {
     out.pin = settings.pin;
-    out.events = await supabaseGet(env, "onti_events", { select: "*", order: "created_at.desc", limit: "150" });
+    out.events = await supabaseGet(env, "onti_events", { select: "*", ...pf, order: "created_at.desc", limit: "150" });
   }
   return jsonResponse(out, 200, corsOrigin);
 }
@@ -602,7 +613,7 @@ const ONTI_FIELDS = {
 };
 
 async function handleOntiSave(request, env, corsOrigin) {
-  const { role } = await getOntiAccess(request, env);
+  const { role, profile } = await getOntiAccess(request, env);
   if (!role) return jsonResponse({ error: "Not signed in." }, 401, corsOrigin);
   const body = await readJsonBody(request);
   const op = String(body?.op || "");
@@ -611,7 +622,7 @@ async function handleOntiSave(request, env, corsOrigin) {
     if (role !== "owner") return jsonResponse({ error: "Not allowed." }, 403, corsOrigin);
     const pin = String(body?.pin || "").trim();
     if (pin !== "" && !/^\d{4,8}$/.test(pin)) return jsonResponse({ error: "PIN must be 4 to 8 digits, or empty for no PIN." }, 400, corsOrigin);
-    await supabasePatch(env, "onti_settings", { id: "eq.1" }, { pin });
+    await supabasePatch(env, "onti_settings", { profile: `eq.${profile}` }, { pin });
     return jsonResponse({ ok: true }, 200, corsOrigin);
   }
   const table = ONTI_TABLES[entity];
@@ -627,15 +638,15 @@ async function handleOntiSave(request, env, corsOrigin) {
     if (body?.values && k in body.values) values[k] = body.values[k] === "" ? null : body.values[k];
   }
   if (op === "create") {
-    const rows = await supabasePost(env, table, values);
+    const rows = await supabasePost(env, table, { ...values, profile });
     return jsonResponse({ row: Array.isArray(rows) ? rows[0] : rows }, 200, corsOrigin);
   }
   if (op === "update" && body?.id) {
-    const rows = await supabasePatch(env, table, { id: `eq.${body.id}` }, values);
+    const rows = await supabasePatch(env, table, { id: `eq.${body.id}`, profile: `eq.${profile}` }, values);
     return jsonResponse({ row: Array.isArray(rows) ? rows[0] : rows }, 200, corsOrigin);
   }
   if (op === "delete" && body?.id) {
-    await supabaseDelete(env, table, { id: `eq.${body.id}` });
+    await supabaseDelete(env, table, { id: `eq.${body.id}`, profile: `eq.${profile}` });
     return jsonResponse({ ok: true }, 200, corsOrigin);
   }
   return jsonResponse({ error: "Bad request." }, 400, corsOrigin);
@@ -643,7 +654,7 @@ async function handleOntiSave(request, env, corsOrigin) {
 
 
 async function handleOntiAttempt(request, env, corsOrigin) {
-  const { role } = await getOntiAccess(request, env);
+  const { role, profile } = await getOntiAccess(request, env);
   if (role !== "onti" && role !== "owner") return jsonResponse({ error: "Not signed in." }, 401, corsOrigin);
   const b = await readJsonBody(request);
   if (!b?.bank_key) return jsonResponse({ error: "Missing paper." }, 400, corsOrigin);
@@ -656,26 +667,27 @@ async function handleOntiAttempt(request, env, corsOrigin) {
     seconds: Math.max(0, Math.round(Number(b.seconds) || 0)),
     answers: Array.isArray(b.answers) ? b.answers.slice(0, 200) : [],
     started_at: b.started_at || null,
+    profile,
   };
   const rows = await supabasePost(env, "onti_attempts", row);
   try {
-    await supabasePost(env, "onti_events", { kind: role === "owner" ? "owner_attempt" : "finish", detail: { bank: row.bank_key, score: row.score, total: row.total, seconds: row.seconds } });
+    await supabasePost(env, "onti_events", { kind: role === "owner" ? "owner_attempt" : "finish", detail: { bank: row.bank_key, score: row.score, total: row.total, seconds: row.seconds }, profile });
   } catch {}
   return jsonResponse({ row: Array.isArray(rows) ? rows[0] : rows }, 200, corsOrigin);
 }
 
 async function handleOntiEvent(request, env, corsOrigin) {
-  const { role } = await getOntiAccess(request, env);
+  const { role, profile } = await getOntiAccess(request, env);
   if (role !== "onti") return jsonResponse({ ok: true }, 200, corsOrigin);
   const b = await readJsonBody(request);
   const kind = String(b?.kind || "").slice(0, 40);
   if (!["open_practice", "start", "block_done", "view_plan"].includes(kind)) return jsonResponse({ error: "Unknown event." }, 400, corsOrigin);
-  await supabasePost(env, "onti_events", { kind, detail: b?.detail && typeof b.detail === "object" ? b.detail : {} });
+  await supabasePost(env, "onti_events", { kind, detail: b?.detail && typeof b.detail === "object" ? b.detail : {}, profile });
   return jsonResponse({ ok: true }, 200, corsOrigin);
 }
 
 async function handleOntiModerate(request, env, corsOrigin) {
-  const { role } = await getOntiAccess(request, env);
+  const { role, profile } = await getOntiAccess(request, env);
   if (role !== "owner") return jsonResponse({ error: "Not allowed." }, 403, corsOrigin);
   const b = await readJsonBody(request);
   if (!b?.id) return jsonResponse({ error: "Missing attempt." }, 400, corsOrigin);
@@ -685,18 +697,18 @@ async function handleOntiModerate(request, env, corsOrigin) {
     final_score: b.final_score == null ? null : Number(b.final_score),
     moderated_at: new Date().toISOString(),
   };
-  const rows = await supabasePatch(env, "onti_attempts", { id: `eq.${b.id}` }, vals);
+  const rows = await supabasePatch(env, "onti_attempts", { id: `eq.${b.id}`, profile: `eq.${profile}` }, vals);
   return jsonResponse({ row: Array.isArray(rows) ? rows[0] : rows }, 200, corsOrigin);
 }
 
-async function handleOntiStatus(_request, env, corsOrigin) {
-  const rows = await supabaseGet(env, "onti_settings", { select: "pin", limit: "1" });
+async function handleOntiStatus(request, env, corsOrigin) {
+  const rows = await supabaseGet(env, "onti_settings", { select: "pin", profile: `eq.${ontiProfile(request)}`, limit: "1" });
   const pin = Array.isArray(rows) && rows[0] ? String(rows[0].pin || "") : "x";
   return jsonResponse({ pin_required: pin !== "" }, 200, corsOrigin);
 }
 
-async function handleOntiLogout(_request, _env, corsOrigin) {
-  return jsonResponse({ ok: true }, 200, corsOrigin, { "Set-Cookie": clearCookie(COOKIE_NAMES.onti) });
+async function handleOntiLogout(request, _env, corsOrigin) {
+  return jsonResponse({ ok: true }, 200, corsOrigin, { "Set-Cookie": clearCookie(ontiCookieName(ontiProfile(request))) });
 }
 
 async function fetchAllLearnerResults(env) {

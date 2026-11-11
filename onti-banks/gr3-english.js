@@ -1,0 +1,62 @@
+(function(){
+function sv(w,h,i,l){return '<svg viewBox="0 0 '+w+' '+h+'" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="'+l+'" font-family="sans-serif">'+i+'</svg>';}
+var farm=sv(360,150,'<rect x="2" y="2" width="356" height="146" rx="14" fill="#e8f6ff" stroke="#2a8bd8" stroke-width="3"/><text x="40" y="70" font-size="50">🐴</text><text x="150" y="70" font-size="50">🐌</text><text x="260" y="70" font-size="50">🏁</text><text x="40" y="110" font-size="14" fill="#2a2340">Horse</text><text x="150" y="110" font-size="14" fill="#2a2340">Snail</text><text x="250" y="110" font-size="14" fill="#2a2340">Finish line</text>','The horse, the snail and the finish line');
+var cat=sv(300,110,'<text x="10" y="70" font-size="60">🐱</text><text x="110" y="70" font-size="60">🐶</text><text x="210" y="70" font-size="60">🐰</text><text x="20" y="100" font-size="14">cat</text><text x="120" y="100" font-size="14">dog</text><text x="220" y="100" font-size="14">rabbit</text>','A cat, a dog and a rabbit');
+ONTI_REGISTER({key:"gr3-english",subject:"English Home Language",title:"Grade 3 English: Reading Adventure",emoji:"📖",minutes:30,
+blurb:"Read the stories, answer the questions, then play with words: sentences, spelling, opposites and more. Answer in full sentences when you can!",
+topics:{
+ comp:{label:"Reading and comprehension",tips:["Read the story twice. Then read each question slowly.","Look back in the story to find the answer. It is hiding there!","Answer in a full sentence that starts with a capital letter and ends with a full stop."],search:["comprehension for grade 3","reading comprehension stories for kids"]},
+ words:{label:"Word meaning",tips:["A synonym means nearly the same (big and large). An antonym means the opposite (hot and cold).","If you do not know a word, read the sentence around it for clues."],search:["synonyms and antonyms for kids","opposites for grade 3"]},
+ sent:{label:"Sentences and punctuation",tips:["A sentence starts with a capital letter. It ends with . or ? or !","A statement tells. A question asks. A command tells you to do something.","Names of people and places start with capital letters."],search:["statements questions commands grade 3","capital letters and full stops"]},
+ gram:{label:"Grammar",tips:["Nouns name things. Verbs are doing words. Adjectives describe nouns. Adverbs tell how you do something.","One = singular. Many = plural (cat, cats).","Contractions: do not = don't. I am = I'm."],search:["nouns verbs adjectives for kids","plurals grade 3","contractions for kids"]},
+ spell:{label:"Spelling and sounds",tips:["Say the word slowly and listen to each sound.","Rhyming words end with the same sound (cat, hat).","Learn the tricky ones: said, because, friend, where."],search:["spelling for grade 3","rhyming words for kids","phonics digraphs sh ch th"]}
+},
+passages:{
+ horse:{title:"The Horse and the Snail",text:"There once lived a horse on a farm. He was very proud of himself and always made fun of the other animals. He boasted about how fast he could run.\n\nOne day he saw a snail near the stables, looking for something to nibble on. The horse started teasing him. \"Hey Snail! Shall we have a race?\" he asked. The snail was very angry. \"Okay! We will race on Sunday,\" said the snail.\n\nThe snail went home and called all the snails to a meeting in the vegetable garden. Since all the snails looked alike, they decided to trick the horse.\n\nOn Sunday they hid in places all the way from the start to the finish. The race started. The horse ran a little and looked down. There was a snail ahead of him! He ran harder and faster, but a snail was still ahead. At last the poor horse gave up.\n\n\"Okay, I lose!\" said the humbled horse. From that day he never teased any animal again."},
+ horsepic:{title:"The race",svg:farm},
+ beach:{title:"A Day at the Beach",text:"On Saturday, Thandi and her little brother Sipho went to the beach with Dad. The sun was hot and the sea was blue. Thandi built a big sandcastle with a tall tower. Sipho filled his red bucket with water and ran to the castle.\n\n\"Be careful!\" shouted Thandi. But it was too late. Splash! The water made the tower fall down. Thandi felt sad, but then she laughed. \"Let's build another one together,\" she said. By lunchtime they had built the best castle on the beach.\n\nThey ate sandwiches and drank cold juice. Dad put cream on their noses so they would not get sunburnt. When the sun went down they packed up and went home, tired but very happy."},
+ pets:{title:"Our pets",svg:cat}
+},
+questions:[
+ MC("comp","How did the horse feel about himself?",["Shy","Proud","Sad","Scared"],1,"The story says he was very proud of himself.",{p:"horse"}),
+ MC("comp","On which day did the race take place?",["Monday","Friday","Saturday","Sunday"],3,"The snail said, “We will race on Sunday.”",{p:"horse"}),
+ MC("comp","Where did the snails have their meeting?",["In the stables","In the vegetable garden","On the road","In the river"],1,"They met in the vegetable garden.",{p:"horse"}),
+ TX("comp","Why was the snail angry with the horse? Write one short answer.",["teased","tease","made fun","laughed","teasing","he teased him","he made fun of him","was mean","unkind"],"The horse was teasing him and making fun of him because he was slow.",{p:"horse",kw:["tease","fun"],need:1,show:"The horse teased the snail."}),
+ TX("comp","What did the snails do to trick the horse? Write a short answer.",["hid","hiding","they hid","hid along the road","hid all the way","hid at the start and finish"],"The snails hid along the road, so the horse always saw one ahead of him.",{p:"horse",kw:["hid"],need:1,show:"They hid along the road."}),
+ ORDER("comp","Put the story in the right order.",["The horse was very proud.","The horse teased the snail.","The snails hid along the road.","The horse said, “I lose!”"],"This is the order things happened in the story.",{p:"horse"}),
+ MC("comp","What lesson does the story teach us?",["Run fast always","Do not tease others","Snails are fast","Never go to meetings"],1,"The horse learned never to tease anyone again.",{p:"horse"}),
+ TX("comp","Think! Write your own title for the story.",["the clever snails","clever snails","the race","the proud horse","the horse and the snails","snails win","the snail race","the big race","the clever snail"],"Any sensible title is good. Your parent can mark it.",{p:"horse",kw:["snail","horse","race","clever","proud"],need:1,show:"The Clever Snails"}),
+ MC("comp","Look at the picture. Who is the winner of the race in the story?",["The horse","The snails","Nobody","The farmer"],1,"The snails tricked the horse and won.",{p:"horsepic"}),
+ MC("comp","What did Sipho carry water in?",["A cup","A red bucket","A hat","A bottle"],1,"He filled his red bucket.",{p:"beach"}),
+ MC("comp","Why did the tower fall down?",["The wind blew","Sipho poured water on it","Dad kicked it","A wave came"],1,"Sipho's water made the tower fall.",{p:"beach"}),
+ MC("comp","How did Thandi feel at first when the tower fell?",["Sad","Angry at Dad","Hungry","Sleepy"],0,"Thandi felt sad, but then she laughed.",{p:"beach"}),
+ TX("comp","Why did Dad put cream on their noses?",["so they would not get sunburnt","sunburn","not get sunburnt","to stop sunburn","sunburnt","so they would not burn","protect from the sun"],"The cream protects their skin from the sun.",{p:"beach",kw:["sun","burn"],need:1,show:"So they would not get sunburnt."}),
+ TF("comp","Thandi and Sipho went to the beach on Sunday.",false,"They went on Saturday.",{p:"beach"}),
+ MC("words","Which word means the OPPOSITE of “win”?",["Lose","Run","Jump","Race"],0,"Win and lose are opposites."),
+ MC("words","Which word means the OPPOSITE of “hot”?",["Warm","Sunny","Cold","Small"],2,"Hot and cold are opposites."),
+ MC("words","Which word means the SAME as “big”?",["Tiny","Large","Thin","Short"],1,"Big and large mean nearly the same."),
+ MC("words","In the story, “nibble” means to ...",["Eat small bites","Run fast","Sleep","Shout"],0,"To nibble is to eat with small bites.",{p:"horse"}),
+ MATCH("words","Match each word to its opposite.",[["up","down"],["happy","sad"],["day","night"],["big","small"]],"Opposites are words with the opposite meaning."),
+ MC("sent","Which sentence is written correctly?",["the dog ran home","The dog ran home.","the Dog ran home.","The dog ran home"],1,"A sentence starts with a capital letter and ends with a full stop."),
+ MC("sent","Which one is a QUESTION?",["Close the door.","What is your name?","I like pizza.","The sun is hot."],1,"A question asks something and ends with a question mark."),
+ MC("sent","“Please sit down.” is a ...",["Statement","Question","Command","Name"],2,"A command tells someone to do something."),
+ MC("sent","“The horse increased his pace.” is a ...",["Statement","Question","Command","Poem"],0,"It tells us something, so it is a statement."),
+ MC("sent","Which words need capital letters? “on monday thandi went to durban.”",["on, monday, thandi, durban","went, to","only on","none of them"],0,"Days, names and places start with capital letters."),
+ MC("gram","Which word is a NOUN (a naming word)?",["run","blue","dog","quickly"],2,"A dog is a thing or animal, so it is a noun."),
+ MC("gram","Which word is a VERB (a doing word)?",["jump","tall","table","happy"],0,"Jump is something you do."),
+ MC("gram","Choose the adjective (describing word): “The big dog barked.”",["big","dog","barked","The"],0,"Big describes the dog."),
+ MC("gram","Choose the correct plural of “box”.",["boxs","boxes","boxies","boxen"],1,"Words ending in x add -es."),
+ MC("gram","What is the plural of “child”?",["childs","childes","children","childrens"],2,"Child is an irregular plural: children."),
+ MC("gram","Fill in the adverb: The snail moved ___.",["slowly","slow","slower","sloww"],0,"Slowly tells us how the snail moved."),
+ TX("gram","Write the contraction for “do not”.",["don't","don’t"],"do not = don't"),
+ TX("gram","Write the contraction for “can not”.",["can't","can’t","cannot"],"can not = can't"),
+ MC("gram","Choose the right word: She ___ to school every day.",["go","goes","going","gone"],1,"With “she” we say goes."),
+ MC("gram","Choose the right word: Yesterday we ___ to the park.",["go","goes","went","going"],2,"Went is the past of go."),
+ MC("spell","Which word rhymes with “cat”?",["cap","hat","cot","cut"],1,"Cat and hat end with -at."),
+ MC("spell","Which word has the “sh” sound at the start?",["chip","ship","thin","whip"],1,"Ship begins with sh."),
+ MC("spell","Which word is spelt correctly?",["frend","friend","freind","fiend"],1,"Friend: f-r-i-e-n-d."),
+ MC("spell","Which word is spelt correctly?",["becuase","becaus","because","becose"],2,"Because: b-e-c-a-u-s-e."),
+ MC("spell","Which animal name is spelt correctly?",["elefant","elephant","elaphant","elepant"],1,"Elephant has a ph that sounds like f."),
+ TX("spell","Unscramble the letters to make an animal: g o d",["dog"],"d-o-g spells dog."),
+ MC("spell","Look at the picture. Which words rhyme?",["cat and dog","dog and rabbit","none of them","cat and rabbit"],2,"None of these rhyme. Cat, dog and rabbit all end with different sounds.",{p:"pets"})
+]});})();
