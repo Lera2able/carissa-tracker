@@ -118,7 +118,8 @@ body.embed .top{display:none}
 <div id="welcome" class="wrap hide">
   <div class="card">
     <h2>Welcome to your practical assessment</h2>
-    <p>Before you begin, please enter your full name and surname exactly as they appear on your application.</p>
+    <p>Before you begin, please enter the access code you were given, then your full name and surname exactly as they appear on your application.</p>
+    <div class="row"><div><label for="ac">Access code</label><input id="ac" type="text" maxlength="40" autocomplete="off" placeholder="For example: candidate 1"></div></div>
     <div class="row">
       <div><label for="fn">Name</label><input id="fn" type="text" maxlength="80" autocomplete="given-name"></div>
       <div><label for="sn">Surname</label><input id="sn" type="text" maxlength="80" autocomplete="family-name"></div>
@@ -256,10 +257,23 @@ function persistSoon(){clearTimeout(saveT);saveT=setTimeout(persist,300)}
 function initWelcome(){
   show("welcome");
   $("startBtn").onclick=function(){
-    var fn=$("fn").value.trim(), sn=$("sn").value.trim(), e=$("werr");
-    if(!fn||!sn){e.textContent="Please enter both your name and your surname.";e.classList.remove("hide");return}
-    e.classList.add("hide");
-    S=newState(fn,sn);persist();startTest();
+    var fn=$("fn").value.trim(), sn=$("sn").value.trim(), ac=$("ac").value.trim(), e=$("werr");
+    function bad(t){e.textContent=t;e.classList.remove("hide");$("startBtn").disabled=false}
+    if(!ac){bad("Please enter your access code.");return}
+    if(!fn||!sn){bad("Please enter both your name and your surname.");return}
+    e.classList.add("hide");$("startBtn").disabled=true;
+    fetch(SB_URL+"/rest/v1/rpc/carissa_staff_assessment_start",{method:"POST",
+      headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"Content-Type":"application/json"},
+      body:JSON.stringify({p_code:ac,p_name:fn,p_surname:sn})
+    }).then(function(r){return r.json()}).then(function(j){
+      if(!j||!j.ok){
+        var why=j&&j.reason;
+        bad(why==="used"?"This access code has already been used. Each code can only be used once.":
+            why==="in_progress"?"This access code has already been started. Please ask the panel for help.":
+            "That access code was not recognised. Please check it and try again.");
+        return}
+      S=newState(fn,sn);S.code=j.code;persist();startTest();
+    }).catch(function(){bad("Could not check your code. Please check your internet connection and try again.")});
   };
 }
 
@@ -814,13 +828,16 @@ function submitTest(auto){
 }
 function send(){
   $("retryRow").classList.add("hide");$("doneErr").classList.add("hide");
-  fetch(SB_URL+"/rest/v1/carissa_staff_assessments",{
+  fetch(SB_URL+"/rest/v1/rpc/carissa_staff_assessment_submit",{
     method:"POST",
-    headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"Content-Type":"application/json","Prefer":"return=minimal"},
-    body:JSON.stringify(payload)
+    headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"Content-Type":"application/json"},
+    body:JSON.stringify({p_code:S.code||"",p_payload:payload})
   }).then(function(r){
     if(!r.ok)throw new Error("HTTP "+r.status);
-    lsSet(DONEKEY,"1");lsDel(STORE);
+    return r.json();
+  }).then(function(j){
+    if(!j||!j.ok)throw new Error("rejected");
+    lsDel(STORE);
     thanks();
   }).catch(function(){
     $("doneH").textContent="Your test could not be sent yet";
@@ -838,7 +855,9 @@ function thanks(){
 }
 
 /* ---------- admin results ---------- */
-var ROWS=[], PIN="";
+var ROWS=[], PIN="", CODES=[];
+function rpc(name,body){return fetch(SB_URL+"/rest/v1/rpc/"+name,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})})}
+function codeCall(name,body){rpc(name,body).then(function(o){if(o.ok){CODES=o.j||[];renderList()}})}
 function initAdmin(){
   show("admin");
   if(/embed=1/.test(location.search))document.body.classList.add("embed");
@@ -857,7 +876,8 @@ function loadResults(){
   }).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})}).then(function(o){
     $("apinBtn").disabled=false;
     if(!o.ok){try{sessionStorage.removeItem("csa_pin")}catch(x){}e.textContent="That PIN was not accepted.";e.classList.remove("hide");return}
-    try{sessionStorage.setItem("csa_pin",PIN)}catch(x){}ROWS=o.j||[];$("adminLogin").classList.add("hide");renderList();
+    try{sessionStorage.setItem("csa_pin",PIN)}catch(x){}ROWS=o.j||[];
+    rpc("carissa_staff_assessment_codes_list",{p_pin:PIN}).then(function(c){CODES=c.ok?(c.j||[]):[];$("adminLogin").classList.add("hide");renderList()});
   }).catch(function(){$("apinBtn").disabled=false;e.textContent="Could not load results. Check your connection.";e.classList.remove("hide")});
 }
 function renderList(){
@@ -870,7 +890,17 @@ function renderList(){
     h+='<button class="list-btn" data-i="'+i+'"><span><strong>'+esc(r.candidate_name+" "+r.candidate_surname)+'</strong><br><span style="color:var(--mut);font-size:.85rem">'+esc(when)+'</span></span><span>'+sc+'</span></button>';
   });
   h+='<p><button class="sec sm" id="refreshBtn">Refresh</button></p></div>';
+  h+='<div class="card"><h2>Candidate access codes</h2><p style="color:var(--mut);font-size:.9rem">Give each candidate one code. A code works once: after that candidate submits, it is locked. Candidates type the code on the first page of the assessment.</p>';
+  h+='<table class="times"><tr><th>Code</th><th>Status</th><th>Candidate</th><th></th></tr>';
+  CODES.forEach(function(c){
+    var st=c.status==="submitted"?'<span class="pill" style="background:#d1fadf;color:var(--green)">Submitted</span>':c.status==="started"?'<span class="pill" style="background:#fff1d6;color:var(--amber)">In progress</span>':'<span class="pill">Unused</span>';
+    h+='<tr><td><strong>'+esc(c.code)+'</strong></td><td>'+st+'</td><td>'+esc(c.candidate_name||"")+'</td><td>'+(c.status==="started"?'<button class="sec sm" data-reopen="'+esc(c.code)+'" title="Use only if the candidate\'s device failed before they could submit">Reopen</button>':'')+'</td></tr>';
+  });
+  h+='</table><p><button class="sec sm" id="addCodeBtn">Add next code</button> <button class="sec sm" id="addCode5Btn">Add 5 codes</button></p></div>';
   L.innerHTML=h;
+  L.querySelectorAll("[data-reopen]").forEach(function(b){b.onclick=function(){codeCall("carissa_staff_assessment_codes_reopen",{p_pin:PIN,p_code:b.dataset.reopen})}});
+  $("addCodeBtn").onclick=function(){codeCall("carissa_staff_assessment_codes_add",{p_pin:PIN,p_count:1})};
+  $("addCode5Btn").onclick=function(){codeCall("carissa_staff_assessment_codes_add",{p_pin:PIN,p_count:5})};
   L.querySelectorAll(".list-btn").forEach(function(b){b.onclick=function(){renderDetail(+b.dataset.i)}});
   $("refreshBtn").onclick=function(){$("adminLogin").classList.remove("hide");$("apin").value=PIN;L.classList.add("hide");loadResults()};
 }
@@ -948,7 +978,6 @@ function gridHtml(a){
 function boot(){
   var q=location.search+location.hash;
   if(/view=results|#results/.test(q)){initAdmin();return}
-  if(lsGet(DONEKEY)==="1"){S=null;show("done");$("doneH").textContent="Thank you";$("doneP").textContent="Your assessment has already been submitted from this device. The panel will be in touch.";return}
   var saved=lsGet(STORE);
   if(saved){
     try{S=JSON.parse(saved)}catch(e){S=null}

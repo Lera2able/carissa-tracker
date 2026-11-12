@@ -62,3 +62,13 @@ grant execute on function public.carissa_staff_assessment_results(text) to anon;
 -- To change the results PIN later:
 -- update public.carissa_staff_assessment_admin
 --   set pin_hash = extensions.crypt('NEWPIN', extensions.gen_salt('bf')), updated_at = now() where id = 1;
+
+-- ---------------------------------------------------------------
+-- Access codes (applied later): each candidate needs a one-time code
+-- such as "candidate 1". Candidates can no longer insert directly; they use
+-- carissa_staff_assessment_start(code,name,surname) and
+-- carissa_staff_assessment_submit(code,payload). Admin helpers (PIN checked):
+-- carissa_staff_assessment_codes_list / _codes_add / _codes_reopen.
+-- Table: public.carissa_staff_assessment_codes (code, status unused|started|submitted).
+-- To add codes by hand:
+-- insert into public.carissa_staff_assessment_codes(code) values ('candidate 11');
