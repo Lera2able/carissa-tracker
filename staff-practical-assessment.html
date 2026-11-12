@@ -760,41 +760,109 @@ function updateTaskChips(){
   chip("c4",r.usedDupTool,r.usedDupTool?"Checked":"Not yet");
 }
 
-/* ---------- provisional keyword marking (panel + Claude confirm the final marks) ---------- */
+/* ---------- instant marking against the marking guide ---------- */
+var MODEL={
+ ex1q1:"Desktop computer 00127 was not found. Projector 00129 was found but its asset tag is missing.",
+ ex1q2:"Check the asset register and earlier verification records; ask the custodian or user; check transfer or movement forms; search the last known location; if still not found, complete a discrepancy or loss report and report to the supervisor following the procedure.",
+ ex1q3:"Verify the asset by its serial number against the register and the purchase documents, confirm it is the same projector, attach a new tag and update the register.",
+ ex1q4:"Reconciliation compares physical assets with the register to confirm they match, finds discrepancies, supports accurate financial reporting and audit, and keeps assets safeguarded and accountable.",
+ ex1q5:"A short report with the date, assets verified (5), missing item (00127), missing tag (00129), actions taken, recommendations, and the name and signature of the person who prepared it.",
+ ex2t1:"Headings Asset number, Description, Serial number, Location, Condition in row 1, and the five assets 001 to 005 below.",
+ ex2t2:"Assets sorted by asset number: 001, 002, 003, 004, 005.",
+ ex2t3:"Filter on Condition = Poor, showing 003 (Desktop) and 005 (Projector). The candidate lists 003 and 005.",
+ ex2t4:"There are no duplicate asset numbers, so the answer is 'none', ideally after running the duplicate check on column A.",
+ ex2t5:"Five assets in total; two are in poor condition (003 Desktop and 005 Projector); they should be inspected for repair or replacement.",
+ ex3q1:"Missing laptops: investigate, check records and movements, report formally. Moved computers: obtain or create transfer documentation and update the register. Damaged printer: record the damage and report it for repair or write-off. Asset not on the register: investigate ownership and, once confirmed, add it to the register.",
+ ex3q2:"Transfer forms, purchase orders, invoices, delivery notes, verification sheets, incident or loss reports, repair or maintenance reports.",
+ ex3q3:"The supervisor, the asset management unit or the principal (accounting officer).",
+ ex3q4:"Regular verification, tagging every asset, keeping the register up to date, formal transfer procedures, assigning custodians, and monitoring and reporting.",
+ ex3q5:"A short polite email: greeting, what was found (three missing laptops, two moved computers, a damaged printer, one unregistered asset), what you need from the supervisor, and a closing."
+};
+function rub(m,id,items){
+  var t=norm(S.answers[id]),got=0,hit=[],miss=[];
+  items.forEach(function(it){
+    var ok=false;try{ok=it.f?it.f(t):anyOf(t,it.re)}catch(e){}
+    if(ok){got+=it.w;hit.push(it.l)}else miss.push(it.l);
+  });
+  var mk=Math.min(Q[id].max,r05(got));
+  m[id]={mark:mk,max:Q[id].max,note:(!t?"No answer given.":(hit.length?"Covered: "+hit.join("; ")+".":"None of the expected points were found.")+(miss.length?" Missing: "+miss.join("; ")+".":""))};
+}
 function anyOf(t,list){return list.some(function(re){return re.test(t)})}
-function grp(t,groups){return groups.filter(function(g){return anyOf(t,g)}).length}
+var NEG=/not found|missing|cannot|can't|couldn't|could not|unable|not locat|not there|absent|unaccounted|lost|not verified|not physically|did not find|didn't find/;
 function autoMark(){
-  var A=S.answers, m={}, t;
-  function put(id,score,note){m[id]={mark:Math.min(Q[id].max,Math.max(0,r05(score))),max:Q[id].max,note:note}}
-  t=norm(A.ex1q1);
-  put("ex1q1",(/00127|desktop/.test(t)&&/not found|missing|could not|cannot|can't|unable|not locat|not there|absent/.test(t)?1.5:0)+(/00129|projector/.test(t)&&/tag|label/.test(t)?1.5:0),"Looks for both discrepancies (00127 not found, 00129 tag missing)");
-  t=norm(A.ex1q2);
-  put("ex1q2",grp(t,[[/register|record/],[/custodian|responsible|official|user/],[/transfer|moved|relocat/],[/last known|location|search|investigat/],[/report|supervisor|procedure|incident|discrepancy/]])*0.75,"Keyword check of investigation and reporting steps");
-  t=norm(A.ex1q3);
-  put("ex1q3",grp(t,[[/serial/],[/document|invoice|purchase|record/],[/confirm|verify|check|match|compare/],[/replace|new tag|re-?tag|attach|label|tag/]])*0.75,"Keyword check of verification and re-tagging steps");
-  t=norm(A.ex1q4);
-  put("ex1q4",grp(t,[[/physical/,/exist/,/match|correspond|agree|compare/],[/discrepanc|difference|error|missing/],[/audit|financial|report|accura/],[/accountab|safeguard|control|protect/]])*0.75,"Keyword check of reconciliation purpose");
-  t=norm(A.ex1q5);
-  put("ex1q5",grp(t,[[/date/],[/assets? verified|verified|assets/],[/missing|not found|00127|desktop/],[/tag/],[/action/],[/recommend/],[/name|signature|signed|prepared by/]])*0.5,"Keyword check of report components");
+  var m={},A=S.answers;
+  rub(m,"ex1q1",[
+   {l:"desktop computer 00127 not found",w:1.5,f:function(t){return (/00127|desktop/.test(t))&&NEG.test(t)}},
+   {l:"projector 00129 has its tag missing",w:1.5,f:function(t){return (/00129|projector/.test(t))&&/tag|label|sticker|barcode|identif/.test(t)}}]);
+  rub(m,"ex1q2",[
+   {l:"check the register and records",w:.5,re:[/register|records?|previous|history|log/]},
+   {l:"ask the custodian or user",w:.5,re:[/custodian|responsible|official|user|owner|employee|staff|ask|contact/]},
+   {l:"check transfer or movement documents",w:.5,re:[/transfer|moved|movement|relocat|another (office|department)/]},
+   {l:"search the last known location",w:.5,re:[/last known|location|search|look for|trace/]},
+   {l:"investigate and follow up",w:.5,re:[/investigat|follow.?up|find out|establish|verify|confirm/]},
+   {l:"report to the supervisor with a discrepancy or loss report",w:.5,re:[/report|supervisor|manager|incident|discrepanc|loss|escalat|principal|inform|notify/]}]);
+  rub(m,"ex1q3",[
+   {l:"check the serial number",w:1,re:[/serial/]},
+   {l:"verify against the register, invoice or documents",w:.75,re:[/register|invoice|purchase|document|records?|asset (list|number)|compare|match|confirm|verify|check/]},
+   {l:"attach or issue a new tag",w:.75,re:[/new tag|re-?tag|replace.*tag|attach|issue.*tag|print.*tag|label|barcode|tag it|tag the|tagging/]},
+   {l:"update the register or report it",w:.5,re:[/update|record|register|report|supervisor|inform/]}]);
+  rub(m,"ex1q4",[
+   {l:"compares physical assets with the register",w:1,f:function(t){return /physical|actual|on site/.test(t)&&/register|records?|list|books/.test(t)||/match|agree|correspond|compare|tally/.test(t)}},
+   {l:"identifies discrepancies or errors",w:.75,re:[/discrepanc|difference|error|mismatch|missing|loss|variance/]},
+   {l:"accurate records, financial reporting or audit",w:.75,re:[/accura|audit|financial|reliable|correct|up.?to.?date|reporting|statements|value|amount/]},
+   {l:"accountability, safeguarding or preventing loss",w:.5,re:[/accountab|safeguard|control|protect|theft|prevent|responsib|secur/]}]);
+  rub(m,"ex1q5",[
+   {l:"date",w:.4,re:[/date|20\d\d|\d{1,2}[\/\-.]\d{1,2}/]},
+   {l:"assets verified",w:.4,re:[/verified|verification|assets|five|\b5\b|checked/]},
+   {l:"missing item 00127",w:.5,f:function(t){return /00127|desktop/.test(t)&&NEG.test(t)}},
+   {l:"missing tag 00129",w:.5,f:function(t){return /00129|projector/.test(t)&&/tag|label/.test(t)}},
+   {l:"actions taken",w:.4,re:[/action/,/taken|done|investigat|reported|contacted|checked/]},
+   {l:"recommendations",w:.4,re:[/recommend|suggest|should|propose/]},
+   {l:"name or signature of the preparer",w:.4,re:[/name|signature|signed|prepared by|regards|clerk|asset control/]}]);
   var x=ex2Check();
-  put("ex2t1",x.cap,x.units+" of 6 items matched (headings + five assets)");
-  put("ex2t2",x.sort,x.usedSortTool?"Sort tool used on the sheet":"Sort tool not used");
-  put("ex2t3",x.filter,(x.usedFilterTool?"Filter on Condition = Poor applied. ":"Filter not applied correctly. ")+(x.filterList?"Poor assets listed correctly.":"Poor assets list incomplete or wrong."));
-  put("ex2t4",x.dup,(x.usedDupTool?"Duplicate check used. ":"Duplicate tool not used. ")+(x.dupAnswerOk?"Correctly reported none.":"Answer not 'none'."));
-  t=norm(A.ex2t5);
-  put("ex2t5",grp(t,[[/\b(5|five)\b|total/],[/\b(2|two)\b|003|005|poor/],[/desktop/,/projector/],[/inspect|repair|maintenance|replace|attention/]]),"Keyword check of summary content");
-  t=norm(A.ex3q1);
-  put("ex3q1",grp(t,[[/laptop/],[/transfer|moved|computers/],[/printer|damaged/],[/not (on|in) the (asset )?register|unrecorded|not recorded|does not appear/]])*0.75,"Keyword check across the four situations");
-  t=norm(A.ex3q2);
-  put("ex3q2",Math.min(2,grp(t,[[/transfer/],[/purchase order|\bpo\b/],[/invoice/],[/delivery/],[/verification sheet|verification/],[/incident/],[/maintenance|repair/]])*0.4),"Keyword check of documents listed");
-  t=norm(A.ex3q3);
-  put("ex3q3",anyOf(t,[/supervisor|manager|asset management|unit|practitioner|principal|head/])?1:0,"Names a suitable person or unit");
-  t=norm(A.ex3q4);
-  put("ex3q4",Math.min(2,grp(t,[[/verification|stock ?take|count/],[/tag/],[/record|register|update/],[/transfer/],[/custodian|assign/],[/monitor|report/]])*0.5),"Keyword check of preventive measures");
-  t=norm(A.ex3q5);
-  put("ex3q5",grp(t,[[/dear|hi |hello|good (morning|day|afternoon)/],[/laptop/,/missing/],[/transfer|printer|damaged|register/],[/please|request|kindly|need|advise|assist|regards|thank/]])*0.5,"Keyword check of email structure and content");
+  m.ex2t1={mark:x.cap,max:4,note:x.units+" of 6 items captured correctly (headings plus five assets)."};
+  m.ex2t2={mark:x.sort,max:2,note:x.usedSortTool?(x.sort>=2?"Sorted by asset number using the sort tool.":"Sort tool used, but the assets are not in ascending order of asset number."):"The sort tool was not used."};
+  m.ex2t3={mark:x.filter,max:3,note:(x.usedFilterTool?"Filter applied on Condition = Poor. ":"Filter on Condition = Poor was not applied. ")+(x.filterList?"Poor assets 003 and 005 listed correctly.":"The list of poor assets is missing or wrong.")};
+  m.ex2t4={mark:x.dup,max:2,note:(x.usedDupTool?"Duplicate check run on column A. ":"Duplicate check was not run. ")+(x.dupAnswerOk?"Correctly reported that there are none.":"The answer should say there are no duplicates.")};
+  rub(m,"ex2t5",[
+   {l:"total of five assets",w:1,re:[/\b(5|five)\b|total/]},
+   {l:"two assets in poor condition",w:1,re:[/\b(2|two)\b|003|005|poor/]},
+   {l:"names the desktop and the projector",w:1,f:function(t){return /desktop/.test(t)&&/projector/.test(t)}},
+   {l:"recommends inspection, repair or replacement",w:1,re:[/inspect|repair|maintenance|replace|attention|service|check/]}]);
+  rub(m,"ex3q1",[
+   {l:"missing laptops: investigate and report",w:.75,f:function(t){return /laptop/.test(t)&&/investigat|report|search|trace|records?|find|locate|police|follow/.test(t)}},
+   {l:"moved computers: transfer documentation",w:.75,f:function(t){return /transfer|moved|movement|relocat/.test(t)&&/document|form|record|register|update|approval|authori/.test(t)}},
+   {l:"damaged printer: record, repair or write-off",w:.75,f:function(t){return /printer|damag/.test(t)&&/repair|write.?off|dispos|record|report|maintenance|condemn/.test(t)}},
+   {l:"asset not on the register: investigate and add",w:.75,f:function(t){return /not (on|in) the (asset )?register|unrecorded|not recorded|does not appear|no record|not captured|unregistered|not listed/.test(t)||/(add|capture|record|update).*register/.test(t)}}]);
+  rub(m,"ex3q2",[
+   {l:"transfer forms",w:.4,re:[/transfer/]},{l:"purchase orders",w:.4,re:[/purchase order|\bpo\b|order/]},
+   {l:"invoices",w:.4,re:[/invoice/]},{l:"delivery notes",w:.4,re:[/delivery/]},
+   {l:"verification sheets or the register",w:.4,re:[/verification|asset register|register/]},
+   {l:"incident, loss or damage reports",w:.4,re:[/incident|loss|damage report|police|case number/]},
+   {l:"repair or maintenance reports",w:.4,re:[/maintenance|repair/]}]);
+  rub(m,"ex3q3",[{l:"names a suitable person or unit",w:1,re:[/supervisor|manager|asset management|unit|practitioner|principal|head|accounting officer|chief financial|cfo|line manager|finance/]}]);
+  rub(m,"ex3q4",[
+   {l:"regular verification or stocktake",w:.4,re:[/verification|stock ?take|count|audit|spot check|inspection/]},
+   {l:"tagging assets",w:.4,re:[/tag|label|barcode/]},
+   {l:"keeping the register up to date",w:.4,re:[/record|register|update|database/]},
+   {l:"formal transfer procedures",w:.4,re:[/transfer|movement|approval|authori/]},
+   {l:"assigning custodians",w:.4,re:[/custodian|assign|responsib|accountab|sign/]},
+   {l:"monitoring, training or reporting",w:.4,re:[/monitor|report|train|policy|procedure|control/]}]);
+  rub(m,"ex3q5",[
+   {l:"greeting",w:.4,re:[/dear|hi |hello|good (morning|day|afternoon)/]},
+   {l:"reports the missing laptops",w:.5,f:function(t){return /laptop/.test(t)&&/missing|not found|lost/.test(t)}},
+   {l:"mentions the transfers, printer or register issue",w:.5,re:[/transfer|moved|printer|damag|not (on|in) the (asset )?register|register/]},
+   {l:"states what is needed from the supervisor",w:.4,re:[/please|request|kindly|need|advise|assist|approv|guidance|permission|authori/]},
+   {l:"polite closing",w:.2,re:[/regards|sincerely|thank|yours|faithfully/]}]);
   var tot=0;for(var k in m)tot+=m[k].mark;
   return {items:m,total:r05(tot)};
+}
+/* result band: below 50% Fail, 50% to 65% Amber, above 65% Green */
+function band(total){
+  var pct=total/40*100;
+  if(pct<50)return {k:"fail",label:"FAIL",txt:"Below 50%: did not pass the practical",bg:"#fde0dd",fg:"#b42318"};
+  if(pct<=65)return {k:"amber",label:"AMBER",txt:"50% to 65%: borderline, panel to consider",bg:"#fff1d6",fg:"#b54708"};
+  return {k:"green",label:"GREEN",txt:"Above 65%: passed the practical",bg:"#d1fadf",fg:"#067647"};
 }
 
 /* ---------- modal ---------- */
@@ -886,7 +954,8 @@ function renderList(){
   if(!ROWS.length)h+='<p>No assessments have been submitted yet.</p>';
   ROWS.forEach(function(r,i){
     var when=new Date(r.submitted_at).toLocaleString("en-ZA");
-    var sc=r.status==="marked"?'<span class="pill" style="background:#d1fadf;color:var(--green)">Marked: '+r.final_total+' / 40</span>':'<span class="pill" style="background:#fff1d6;color:var(--amber)">Awaiting marking &middot; provisional '+(r.auto_total==null?"?":r.auto_total)+' / 40</span>';
+    var tt=r.status==="marked"?+r.final_total:+(r.auto_total||0),bd=band(tt);
+    var sc='<span class="pill" style="background:'+bd.bg+';color:'+bd.fg+'">'+bd.label+' &middot; '+tt+' / 40 ('+Math.round(tt/40*100)+'%)</span>';
     h+='<button class="list-btn" data-i="'+i+'"><span><strong>'+esc(r.candidate_name+" "+r.candidate_surname)+'</strong><br><span style="color:var(--mut);font-size:.85rem">'+esc(when)+'</span></span><span>'+sc+'</span></button>';
   });
   h+='<p><button class="sec sm" id="refreshBtn">Refresh</button></p></div>';
@@ -916,8 +985,9 @@ function renderDetail(i){
   var h='<div class="card"><p class="noprint"><button class="sec sm" id="backBtn">&larr; All submissions</button> <button class="sec sm" id="printBtn">Print</button> <button class="sec sm" id="delBtn" style="color:var(--red);border-color:var(--red)">Delete this paper</button></p>'+
    '<h2>'+esc(r.candidate_name+" "+r.candidate_surname)+'</h2>'+
    '<p>Position: '+esc(r.position_title)+'<br>Submitted: '+esc(new Date(r.submitted_at).toLocaleString("en-ZA"))+' &middot; Time used: '+mins+' min '+secs+' s'+(r.auto_submitted?' (submitted automatically when the time ended)':'')+'</p>';
+  var tt=marked?+r.final_total:+(r.auto_total||0),bd=band(tt);
+  h+='<div class="score">'+tt+' / 40 <span style="font-size:1rem;color:var(--mut)">('+Math.round(tt/40*100)+'%)</span> <span class="pill" style="font-size:1rem;background:'+bd.bg+';color:'+bd.fg+'">'+bd.label+'</span></div><p style="margin:2px 0 8px;color:'+bd.fg+';font-weight:600">'+bd.txt+'</p>';
   if(marked){
-    h+='<div class="score">'+r.final_total+' / 40 <span style="font-size:1rem;color:var(--mut)">('+Math.round(r.final_total/40*100)+'%)</span></div>';
     if(rep){
       if(rep.exercise_totals){h+='<p>'+Object.keys(rep.exercise_totals).map(function(k){var s=SECTIONS.filter(function(x){return x.id===k})[0];return esc(s?s.title.replace(/ of 3/,""):k)+': <strong>'+rep.exercise_totals[k]+' / '+(s?s.marks:"")+'</strong>'}).join('<br>')+'</p>'}
       if(rep.summary)h+='<h3>Overall assessment</h3><p>'+esc(rep.summary)+'</p>';
@@ -927,7 +997,7 @@ function renderDetail(i){
       if(rep.notes)h+='<div class="note">'+esc(rep.notes)+'</div>';
     }
   } else {
-    h+='<div class="note"><strong>Awaiting marking.</strong> Provisional keyword marks are shown ('+(r.auto_total==null?"?":r.auto_total)+' / 40). They are only a first check. The full marking with justification and suggestions will appear here once it has been done.</div>';
+    h+='<div class="note"><strong>Instant result.</strong> This paper was marked automatically against the marking guide the moment it was submitted. Each question below shows what was found, what was missing and the model answer. The panel can review any answer and adjust it.</div>';
   }
   h+='</div>';
   SECTIONS.forEach(function(sec){
@@ -937,7 +1007,7 @@ function renderDetail(i){
       var mk=it?it.mark:(pm?pm.mark:null);
       var a=ans[k];
       if(k==="ex2t3"){a=(ans.ex2t3b||"")}
-      h+='<div class="res-item"><div class="hd"><span>'+esc(q.text)+'</span><span>'+(mk==null?"?":mk)+' / '+q.max+(it?'':' <span style="font-weight:400;color:var(--mut)">(provisional)</span>')+'</span></div>';
+      h+='<div class="res-item"><div class="hd"><span>'+esc(q.text)+'</span><span>'+(mk==null?"?":mk)+' / '+q.max+(it?'':' <span style="font-weight:400;color:var(--mut)">(instant)</span>')+'</span></div>';
       if(k==="ex2t1"||k==="ex2t2"){
         h+='<div class="lbl">Candidate\'s spreadsheet (final state)</div>'+gridHtml(r.answers)
       } else {
@@ -947,7 +1017,9 @@ function renderDetail(i){
         if(it.model_answer)h+='<div class="lbl">Model answer (memorandum)</div><div class="memo">'+esc(it.model_answer)+'</div>';
         if(it.justification)h+='<div class="lbl">How it was marked</div><div class="just">'+esc(it.justification)+'</div>';
         if(it.suggestion)h+='<div class="lbl">Suggestion</div><div class="sug">'+esc(it.suggestion)+'</div>';
-      } else if(pm){h+='<div style="font-size:.85rem;color:var(--mut)">'+esc(pm.note)+'</div>'}
+      } else if(pm){
+        if(MODEL[k])h+='<div class="lbl">Model answer (memorandum)</div><div class="memo">'+esc(MODEL[k])+'</div>';
+        h+='<div class="lbl">How it was marked</div><div class="just">'+esc(pm.note)+' Mark: '+pm.mark+' out of '+pm.max+'.</div>'}
       h+='</div>';
     });
     h+='</div>';
