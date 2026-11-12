@@ -76,3 +76,4 @@ grant execute on function public.carissa_staff_assessment_results(text) to anon;
 -- Admin reset (PIN checked): carissa_staff_assessment_codes_reset(pin, code) makes a code usable again
 -- (any submitted paper is kept, renamed "candidate N (reset ...)"), and
 -- carissa_staff_assessment_delete(pin, id) permanently removes one paper.
+-- Update: carissa_staff_assessment_codes_reset now DELETES the paper submitted with that code (the page asks for confirmation).

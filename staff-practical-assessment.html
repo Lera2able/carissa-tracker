@@ -981,7 +981,7 @@ function renderList(){
   L.innerHTML=h;
   L.querySelectorAll("[data-reset]").forEach(function(b){b.onclick=function(){
     var code=b.dataset.reset;
-    modal("Reset "+code+"?","The code can then be used again from the start. Any paper already submitted with this code stays in the list, marked as reset, so nothing is lost.","Yes, reset","Cancel",function(){codeCall("carissa_staff_assessment_codes_reset",{p_pin:PIN,p_code:code})});
+    modal("Reset "+code+"?","The code can then be used again from the start. Any paper submitted with this code is permanently deleted. This cannot be undone.","Yes, reset","Cancel",function(){rpc("carissa_staff_assessment_codes_reset",{p_pin:PIN,p_code:code}).then(function(){loadResults()})});
   }});
   $("addCodeBtn").onclick=function(){codeCall("carissa_staff_assessment_codes_add",{p_pin:PIN,p_count:1})};
   $("addCode5Btn").onclick=function(){codeCall("carissa_staff_assessment_codes_add",{p_pin:PIN,p_count:5})};
