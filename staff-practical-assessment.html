@@ -105,6 +105,7 @@ table.ss tr.hidden{display:none}
 .fpanel label.fi{font-weight:400;margin:2px 0;display:flex;gap:6px;align-items:center}
 .fpanel input[type=checkbox]{width:auto}
 body.embed .top{display:none}
+.clip{position:absolute;left:-9999px;top:0;width:1px;height:1px;opacity:0;border:0;padding:0}
 @media print{.top,.bar,button,.noprint{display:none!important}body{background:#fff}.card{border:0;padding:0}}
 </style>
 </head>
@@ -382,7 +383,7 @@ function ex2Html(){
    '<span class="tl" style="margin-left:auto">Cell</span><strong id="nameBox">A1</strong><span class="fx" id="formulaBar"></span>'+
   '</div>'+
   '<div class="smsg" id="sheetMsg" aria-live="polite"></div>'+
-  '<div class="sheet-wrap" id="sheetWrap" tabindex="0"><div class="sheet-inner" id="sheetInner"></div></div>'+
+  '<div class="sheet-wrap" id="sheetWrap" tabindex="0"><textarea id="clip" class="clip" aria-hidden="true" tabindex="-1" autocomplete="off"></textarea><div class="sheet-inner" id="sheetInner"></div></div>'+
   '<h3>Tasks</h3>'+
   '<div class="task"><span class="chip no" id="c1">Not yet</span><div><strong>Task 1</strong> (4 marks): capture the headings and all five assets correctly in the sheet.</div></div>'+
   '<div class="task"><span class="chip no" id="c2">Not yet</span><div><strong>Task 2</strong> (2 marks): sort the assets by asset number (select a cell in column A, then press Sort A&rarr;Z).</div></div>'+
@@ -635,11 +636,14 @@ function findDup(){
 function clearDup(){S.dupCol=null;persist();renderGrid();msg("Highlights cleared.")}
 
 /* clipboard */
-function onCopy(e){
-  if(EDIT)return;
+function selText(){
   var b=selBounds(),lines=[];
   for(var r=b.r1;r<=b.r2;r++){var row=[];for(var c=b.c1;c<=b.c2;c++)row.push(rawAt(r,c));lines.push(row.join("\t"))}
-  if(e.clipboardData){e.clipboardData.setData("text/plain",lines.join("\n"));e.preventDefault()}
+  return lines.join("\n");
+}
+function onCopy(e){
+  if(EDIT)return;
+  if(e.clipboardData){e.clipboardData.setData("text/plain",selText());e.preventDefault()}
 }
 function onPaste(e){
   if(EDIT||!e.clipboardData)return;
@@ -647,7 +651,7 @@ function onPaste(e){
   e.preventDefault();
   var b=selBounds(),rows=t.replace(/\r/g,"").replace(/\n$/,"").split("\n");
   rows.forEach(function(line,i){line.split("\t").forEach(function(v,j){
-    var r=b.r1+i,c=b.c1+j;if(r<S.grid.length&&c<COLS.length)S.grid[r][c]=v})});
+    var r=b.r1+i,c=b.c1+j;while(r>=S.grid.length&&S.grid.length<200)S.grid.push(Array(COLS.length).fill(""));if(r<S.grid.length&&c<COLS.length)S.grid[r][c]=v})});
   persist();renderGrid();updateTaskChips();
 }
 
@@ -655,12 +659,22 @@ function onPaste(e){
 function onSheetKey(e){
   if(EDIT)return;
   var k=e.key,mod=e.ctrlKey||e.metaKey;
+  if(e.target&&e.target.id==="clip"&&!mod)return;
   if(mod&&!e.altKey){
     var kl=k.toLowerCase();
     if(kl==="b"){toggleFmt("b");e.preventDefault();return}
     if(kl==="i"){toggleFmt("i");e.preventDefault();return}
     if(kl==="u"){toggleFmt("u");e.preventDefault();return}
     if(kl==="a"){SEL={r1:0,c1:0,r2:S.grid.length-1,c2:COLS.length-1};paintSel();e.preventDefault();return}
+    var clip=$("clip"),wrap=$("sheetWrap");
+    if(kl==="c"||kl==="x"){
+      clip.value=selText();clip.focus();clip.select();
+      setTimeout(function(){if(kl==="x")clearSel();wrap.focus()},60);
+      return}
+    if(kl==="v"){
+      clip.value="";clip.focus();
+      setTimeout(function(){wrap.focus()},120);
+      return}
     return;
   }
   var mv={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]};
@@ -703,7 +717,6 @@ function bindSheet(){
   wrap.addEventListener("keydown",onSheetKey);
   wrap.addEventListener("copy",onCopy);
   wrap.addEventListener("paste",onPaste);
-  wrap.addEventListener("cut",function(e){onCopy(e);if(!EDIT)clearSel()});
   if(!MOUSEUP){MOUSEUP=true;document.addEventListener("mouseup",function(){DRAG=false})}
 }
 function bindTools(){
