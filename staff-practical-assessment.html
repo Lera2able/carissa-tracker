@@ -894,11 +894,14 @@ function renderList(){
   h+='<table class="times"><tr><th>Code</th><th>Status</th><th>Candidate</th><th></th></tr>';
   CODES.forEach(function(c){
     var st=c.status==="submitted"?'<span class="pill" style="background:#d1fadf;color:var(--green)">Submitted</span>':c.status==="started"?'<span class="pill" style="background:#fff1d6;color:var(--amber)">In progress</span>':'<span class="pill">Unused</span>';
-    h+='<tr><td><strong>'+esc(c.code)+'</strong></td><td>'+st+'</td><td>'+esc(c.candidate_name||"")+'</td><td>'+(c.status==="started"?'<button class="sec sm" data-reopen="'+esc(c.code)+'" title="Use only if the candidate\'s device failed before they could submit">Reopen</button>':'')+'</td></tr>';
+    h+='<tr><td><strong>'+esc(c.code)+'</strong></td><td>'+st+'</td><td>'+esc(c.candidate_name||"")+'</td><td>'+(c.status!=="unused"?'<button class="sec sm" data-reset="'+esc(c.code)+'" title="Make this code usable again">Reset</button>':'')+'</td></tr>';
   });
   h+='</table><p><button class="sec sm" id="addCodeBtn">Add next code</button> <button class="sec sm" id="addCode5Btn">Add 5 codes</button></p></div>';
   L.innerHTML=h;
-  L.querySelectorAll("[data-reopen]").forEach(function(b){b.onclick=function(){codeCall("carissa_staff_assessment_codes_reopen",{p_pin:PIN,p_code:b.dataset.reopen})}});
+  L.querySelectorAll("[data-reset]").forEach(function(b){b.onclick=function(){
+    var code=b.dataset.reset;
+    modal("Reset "+code+"?","The code can then be used again from the start. Any paper already submitted with this code stays in the list, marked as reset, so nothing is lost.","Yes, reset","Cancel",function(){codeCall("carissa_staff_assessment_codes_reset",{p_pin:PIN,p_code:code})});
+  }});
   $("addCodeBtn").onclick=function(){codeCall("carissa_staff_assessment_codes_add",{p_pin:PIN,p_count:1})};
   $("addCode5Btn").onclick=function(){codeCall("carissa_staff_assessment_codes_add",{p_pin:PIN,p_count:5})};
   L.querySelectorAll(".list-btn").forEach(function(b){b.onclick=function(){renderDetail(+b.dataset.i)}});
@@ -910,7 +913,7 @@ function renderDetail(i){
   $("adminList").classList.add("hide");var D=$("adminDetail");D.classList.remove("hide");
   var marked=r.status==="marked";
   var mins=Math.floor((r.time_used_seconds||0)/60), secs=(r.time_used_seconds||0)%60;
-  var h='<div class="card"><p class="noprint"><button class="sec sm" id="backBtn">&larr; All submissions</button> <button class="sec sm" id="printBtn">Print</button></p>'+
+  var h='<div class="card"><p class="noprint"><button class="sec sm" id="backBtn">&larr; All submissions</button> <button class="sec sm" id="printBtn">Print</button> <button class="sec sm" id="delBtn" style="color:var(--red);border-color:var(--red)">Delete this paper</button></p>'+
    '<h2>'+esc(r.candidate_name+" "+r.candidate_surname)+'</h2>'+
    '<p>Position: '+esc(r.position_title)+'<br>Submitted: '+esc(new Date(r.submitted_at).toLocaleString("en-ZA"))+' &middot; Time used: '+mins+' min '+secs+' s'+(r.auto_submitted?' (submitted automatically when the time ended)':'')+'</p>';
   if(marked){
@@ -950,7 +953,9 @@ function renderDetail(i){
     h+='</div>';
   });
   D.innerHTML=h;
-  $("backBtn").onclick=renderList;$("printBtn").onclick=function(){try{window.print()}catch(e){}};
+  $("backBtn").onclick=renderList;
+  $("delBtn").onclick=function(){modal("Delete this paper?","This permanently removes "+r.candidate_name+" "+r.candidate_surname+"'s submission. This cannot be undone.","Yes, delete","Cancel",function(){
+    rpc("carissa_staff_assessment_delete",{p_pin:PIN,p_id:r.id}).then(function(o){if(o.ok){ROWS=ROWS.filter(function(x){return x.id!==r.id});renderList()}})})};$("printBtn").onclick=function(){try{window.print()}catch(e){}};
 }
 function gridHtml(a){
   var g=(a&&a.grid)||[],fm=(a&&a.fmt)||{},acts=(a&&a.actions)||[];

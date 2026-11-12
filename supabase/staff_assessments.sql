@@ -72,3 +72,7 @@ grant execute on function public.carissa_staff_assessment_results(text) to anon;
 -- Table: public.carissa_staff_assessment_codes (code, status unused|started|submitted).
 -- To add codes by hand:
 -- insert into public.carissa_staff_assessment_codes(code) values ('candidate 11');
+
+-- Admin reset (PIN checked): carissa_staff_assessment_codes_reset(pin, code) makes a code usable again
+-- (any submitted paper is kept, renamed "candidate N (reset ...)"), and
+-- carissa_staff_assessment_delete(pin, id) permanently removes one paper.
