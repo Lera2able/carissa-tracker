@@ -5125,9 +5125,17 @@ footer{text-align:center;margin-top:10px;font-size:9px;color:#888;border-top:1px
     ["assistant", "\u{1F916} TRAE Assistant"],
     ["email", "\u{1F4E7} Email"],
     ["chats", "\u{1F4AC} Chats"],
-    ["audit", "\u{1F6E1} Audit & Recovery"]
+    ["staff_assessments", "\u{1F4DD} Staff Assessments"],
+  ["audit", "\u{1F6E1} Audit & Recovery"]
   ];
-  function SasamsAdminSubmissionsTab({ adminUser }) {
+  function StaffAssessmentsTab() {
+  return React.createElement("div", null,
+    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap", margin: "0 0 10px" } },
+      React.createElement("div", { style: { fontSize: "13px", color: "#5b6b72" } }, "Candidate assessment results for the Administrative Clerk: Asset Control interview. Enter the results PIN once per session."),
+      React.createElement("a", { href: "/staff-practical-assessment.html?view=results", target: "_blank", rel: "noopener", style: { fontSize: "13px", fontWeight: 600 } }, "Open in a new tab")),
+    React.createElement("iframe", { src: "/staff-practical-assessment.html?view=results&embed=1", title: "Staff assessment results", style: { width: "100%", height: "80vh", border: "1px solid #d5e0e3", borderRadius: "12px", background: "#fff" } }));
+}
+function SasamsAdminSubmissionsTab({ adminUser }) {
     var _a;
     const [batches, setBatches] = useState([]);
     const [subjects, setSubjects] = useState([]);
@@ -7524,7 +7532,7 @@ ${sectionsHtml}
         exportClassSummary,
         onProjectTest: (phase) => setProjectMode({ phase })
       }
-    ), subTab === "sasams_submits" && /* @__PURE__ */ React.createElement(SasamsAdminSubmissionsTab, { adminUser }), subTab === "reading" && /* @__PURE__ */ React.createElement(ReadingResultsTab, { reading }), subTab === "discipline" && /* @__PURE__ */ React.createElement(DisciplineAdminTab, { adminUser }), subTab === "learners" && /* @__PURE__ */ React.createElement(LearnersAdminTab, { overrides, setOverrides, setAssessments }), subTab === "moderation" && /* @__PURE__ */ React.createElement(ModerationToolsTab, { adminAccess: true }), subTab === "registrations" && /* @__PURE__ */ React.createElement(TeacherRegistrationsTab, null), subTab === "teacher_audit" && /* @__PURE__ */ React.createElement(TeacherAuditTab, { events: auditEvents, setEvents: setAuditEvents }), subTab === "assistant" && /* @__PURE__ */ React.createElement(TraeAssistantTab, null), subTab === "email" && /* @__PURE__ */ React.createElement(EmailAdminTab, null), subTab === "chats" && /* @__PURE__ */ React.createElement(ChatsAdminTab, { chats, setChats }), subTab === "audit" && /* @__PURE__ */ React.createElement(AuditAdminTab, null), projectMode && /* @__PURE__ */ React.createElement(
+    ), subTab === "sasams_submits" && /* @__PURE__ */ React.createElement(SasamsAdminSubmissionsTab, { adminUser }), subTab === "staff_assessments" && /* @__PURE__ */ React.createElement(StaffAssessmentsTab, null), subTab === "reading" && /* @__PURE__ */ React.createElement(ReadingResultsTab, { reading }), subTab === "discipline" && /* @__PURE__ */ React.createElement(DisciplineAdminTab, { adminUser }), subTab === "learners" && /* @__PURE__ */ React.createElement(LearnersAdminTab, { overrides, setOverrides, setAssessments }), subTab === "moderation" && /* @__PURE__ */ React.createElement(ModerationToolsTab, { adminAccess: true }), subTab === "registrations" && /* @__PURE__ */ React.createElement(TeacherRegistrationsTab, null), subTab === "teacher_audit" && /* @__PURE__ */ React.createElement(TeacherAuditTab, { events: auditEvents, setEvents: setAuditEvents }), subTab === "assistant" && /* @__PURE__ */ React.createElement(TraeAssistantTab, null), subTab === "email" && /* @__PURE__ */ React.createElement(EmailAdminTab, null), subTab === "chats" && /* @__PURE__ */ React.createElement(ChatsAdminTab, { chats, setChats }), subTab === "audit" && /* @__PURE__ */ React.createElement(AuditAdminTab, null), projectMode && /* @__PURE__ */ React.createElement(
       ProjectTestView,
       {
         initialPhase: projectMode.phase,

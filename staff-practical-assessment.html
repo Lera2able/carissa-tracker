@@ -73,6 +73,38 @@ table.grid th.sel{background:#cfe9ec}
 .lbl{font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);font-weight:700}
 .list-btn{display:flex;justify-content:space-between;gap:10px;width:100%;text-align:left;background:#fff;color:var(--ink);border:1px solid var(--line);margin:6px 0}
 .score{font-size:2rem;font-weight:800;color:var(--teal-d)}
+
+.sheet-tools.t2{border-radius:0;border-top:0}
+.sheet-tools .tl{font-size:.8rem;color:var(--mut);margin-left:6px}
+.sheet-tools button.fb{min-width:34px}
+.sheet-tools button.on{background:var(--teal);color:#fff}
+.swatch{width:22px;height:22px;padding:0;border:1px solid #8aa0a5;border-radius:5px;font-size:.8rem;line-height:1;color:#888}
+.fx{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.85rem;background:#fff;border:1px solid var(--line);border-radius:6px;padding:3px 8px;min-width:120px;min-height:26px}
+.smsg{min-height:1.4em;font-size:.88rem;color:var(--teal-d);padding:4px 2px}
+.sheet-wrap{max-height:420px;position:relative;outline:none}
+.sheet-wrap:focus{box-shadow:0 0 0 3px #7cc4cb}
+.sheet-inner{position:relative;display:inline-block;min-width:100%}
+table.ss{border-collapse:collapse;table-layout:fixed;min-width:100%;user-select:none}
+table.ss th{background:#e9eff1;border:1px solid #c3d0d4;font-weight:600;font-size:.82rem;padding:3px 6px;color:#44565c;position:sticky;top:0;z-index:2}
+table.ss th.rh{position:sticky;left:0;width:40px;text-align:center;z-index:1;top:auto;cursor:pointer}
+table.ss th.corner{left:0;z-index:3;width:40px}
+table.ss th.hs{background:#cfe9ec}
+table.ss td.cell{border:1px solid #d3dde0;padding:0 6px;height:30px;min-width:120px;width:150px;position:relative;white-space:nowrap;overflow:hidden;font-size:.95rem;cursor:cell}
+table.ss td .cv{overflow:hidden;text-overflow:ellipsis;padding-right:16px}
+table.ss td.sel{background-image:linear-gradient(rgba(14,111,120,.14),rgba(14,111,120,.14))}
+table.ss td.act{outline:2px solid var(--teal);outline-offset:-2px}
+table.ss td.dup{box-shadow:inset 0 0 0 100px rgba(255,170,60,.45)}
+table.ss td.errv{color:var(--red)}
+table.ss tr.hidden{display:none}
+.fbtn{position:absolute;right:1px;top:50%;transform:translateY(-50%);padding:0 4px;font-size:.8rem;line-height:18px;background:#fff;color:var(--teal-d);border:1px solid #9fb4b9;border-radius:4px}
+.fbtn.on{background:var(--teal);color:#fff}
+#cellEd{position:absolute;z-index:6;border:2px solid var(--teal);padding:0 6px;font:inherit;border-radius:0;background:#fff;box-sizing:border-box}
+.fpanel{position:absolute;z-index:8;width:230px;background:#fff;border:1px solid #8aa0a5;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.2);padding:10px;font-size:.9rem}
+.fpanel .flist{max-height:160px;overflow:auto;border:1px solid var(--line);border-radius:6px;padding:4px 6px;margin:6px 0}
+.fpanel .frow{display:flex;gap:6px;flex-wrap:wrap}
+.fpanel label.fi{font-weight:400;margin:2px 0;display:flex;gap:6px;align-items:center}
+.fpanel input[type=checkbox]{width:auto}
+body.embed .top{display:none}
 @media print{.top,.bar,button,.noprint{display:none!important}body{background:#fff}.card{border:0;padding:0}}
 </style>
 </head>
@@ -104,7 +136,7 @@ table.grid th.sel{background:#cfe9ec}
     <ul>
       <li>Each exercise has its own countdown. When the time runs out the test moves on to the next exercise by itself, so use your time well.</li>
       <li>You can finish an exercise early, but you cannot go back to it afterwards.</li>
-      <li>The spreadsheet is built into the page, so you do not need Microsoft Excel. It lets you type in cells, sort, filter and highlight duplicates.</li>
+      <li>The spreadsheet is built into the page, so you do not need Microsoft Excel. It works like a normal spreadsheet: select cells, make them bold, add colour, sort, filter and highlight duplicates.</li>
       <li>Your answers are saved on this device as you type. If the page reloads, your clock keeps running and your answers come back.</li>
       <li>When you finish, or when the last timer ends, your test is submitted automatically.</li>
       <li>Work on your own and answer in your own words. Short, clear and practical answers score best.</li>
@@ -196,7 +228,7 @@ var EXPECT = [
  ["004","Laptop","SN1004","HR","Good"],
  ["005","Projector","SN1005","Finance","Poor"]
 ];
-var COLS = ["A","B","C","D","E"], NROWS = 12;
+var COLS = ["A","B","C","D","E"], NROWS = 14;
 
 /* ---------- helpers ---------- */
 function $(id){return document.getElementById(id)}
@@ -215,7 +247,7 @@ var S = null, tickTimer = null, saveT = null;
 function blankGrid(){var g=[];for(var r=0;r<NROWS;r++){g.push(["","","","",""])}return g}
 function newState(fn,sn){
   return {name:fn,surname:sn,startedAt:Date.now(),sec:0,secEnds:[Date.now()+SECTIONS[0].mins*60000,null,null],
-          answers:{},grid:blankGrid(),actions:[],filter:null,dupCol:null,selCol:0,submitted:false};
+          answers:{},grid:blankGrid(),fmt:{},filters:{},filterOn:false,actions:[],dupCol:null,submitted:false};
 }
 function persist(){lsSet(STORE,JSON.stringify(S))}
 function persistSoon(){clearTimeout(saveT);saveT=setTimeout(persist,300)}
@@ -273,7 +305,7 @@ function renderSection(){
   };
   window.scrollTo(0,0);
   bindAnswerInputs();
-  if(sec.id==="ex2"){renderGrid();updateTaskChips()}
+  if(sec.id==="ex2"){bindTools();bindSheet();renderGrid();updateTaskChips();var w=$("sheetWrap");if(w)w.focus()}
 }
 function qBlock(id,extra){
   var q=Q[id];
@@ -306,116 +338,398 @@ function ex3Html(){
   qBlock("ex3q1")+qBlock("ex3q2")+qBlock("ex3q3")+qBlock("ex3q4")+qBlock("ex3q5")+'</div>';
 }
 function ex2Html(){
-  var d=EXPECT;
-  var rows="";for(var i=0;i<d.length;i++){rows+="<tr>"+d[i].map(function(c){return (i===0?"<th>":"<td>")+esc(c)+(i===0?"</th>":"</td>")}).join("")+"</tr>"}
+  var d=EXPECT, rows="";
+  for(var i=0;i<d.length;i++){rows+="<tr>"+d[i].map(function(c){return (i===0?"<th>":"<td>")+esc(c)+(i===0?"</th>":"</td>")}).join("")+"</tr>"}
+  var sw=function(list,kind){return list.map(function(c){return '<button type="button" class="swatch" data-'+kind+'="'+c+'" title="'+(c?c:"No colour")+'" style="background:'+(c?c:"#fff")+'">'+(c?"":"&times;")+'</button>'}).join("")};
   return '<div class="card"><h2>Exercise 2: Spreadsheet <span class="pill">15 marks &middot; 25 minutes</span></h2>'+
-  '<p>Create a spreadsheet with the information below. Type the headings in row 1 and the five assets underneath, then complete the tasks. Use the toolbar above the sheet to sort, filter and highlight duplicates.</p>'+
+  '<p>Create a spreadsheet with the information below. Type the headings in row 1 and the five assets underneath, then complete the tasks.</p>'+
   '<table class="reg">'+rows+'</table>'+
+  '<div class="note" style="margin:10px 0"><strong>How the sheet works.</strong> Click a cell to select it and drag to select a block. Double-click a cell, press F2, or just start typing to edit. Press Enter to confirm. Use the toolbar to make text <b>bold</b>, change colours and highlight cells. '+
+  '<strong>Filter</strong> hides the rows you do not want to see (it never deletes anything): press <em>Filter</em>, click the &#9662; arrow on a heading, tick only the values you want and press OK. Press <em>Clear filters</em> to see every row again. '+
+  'You can also use simple formulas such as <code>=SUM(A1:A5)</code> or <code>=COUNTA(A2:A6)</code>.</div>'+
   '<div class="sheet-tools" id="tools">'+
-   '<span style="font-weight:700;color:var(--teal-d)">Spreadsheet</span>'+
-   '<button class="sec sm" id="bSortA" title="Sort the data rows by the selected column, smallest to largest">Sort A&rarr;Z</button>'+
-   '<button class="sec sm" id="bSortD" title="Sort the data rows by the selected column, largest to smallest">Sort Z&rarr;A</button>'+
-   '<span style="margin-left:6px;font-size:.9rem">Filter column</span><select id="fCol">'+COLS.map(function(c){return '<option>'+c+'</option>'}).join("")+'</select>'+
-   '<span style="font-size:.9rem">shows</span><input type="text" id="fVal" placeholder="e.g. Good" size="10">'+
-   '<button class="sec sm" id="bFilter">Apply filter</button><button class="sec sm" id="bClear">Clear filter</button>'+
-   '<button class="sec sm" id="bDup" title="Highlight repeated values in the selected column">Highlight duplicates</button>'+
-   '<button class="sec sm" id="bAdd">Add row</button>'+
-   '<span style="font-size:.85rem;color:var(--mut)" id="selInfo"></span>'+
-  '</div><div class="sheet-wrap"><table class="grid" id="grid"></table></div>'+
+   '<button type="button" class="sec sm fb" id="tB" title="Bold (Ctrl+B)"><b>B</b></button>'+
+   '<button type="button" class="sec sm fb" id="tI" title="Italic (Ctrl+I)"><i>I</i></button>'+
+   '<button type="button" class="sec sm fb" id="tU" title="Underline (Ctrl+U)"><u>U</u></button>'+
+   '<span class="tl">Highlight</span>'+sw(FILLS,"fill")+
+   '<span class="tl">Text colour</span>'+sw(FONTS,"fg")+
+   '<button type="button" class="sec sm" id="tAL" title="Align left">Left</button><button type="button" class="sec sm" id="tAC" title="Centre">Centre</button><button type="button" class="sec sm" id="tAR" title="Align right">Right</button>'+
+   '<button type="button" class="sec sm" id="tBd">Borders</button><button type="button" class="sec sm" id="tNb">No borders</button><button type="button" class="sec sm" id="tCf">Clear formatting</button>'+
+  '</div>'+
+  '<div class="sheet-tools t2">'+
+   '<button type="button" class="sec sm" id="tSortA" title="Sort the data rows by the selected column">Sort A&rarr;Z</button>'+
+   '<button type="button" class="sec sm" id="tSortD">Sort Z&rarr;A</button>'+
+   '<button type="button" class="sec sm" id="tFilter">Filter</button>'+
+   '<button type="button" class="sec sm" id="tClearF">Clear filters</button>'+
+   '<button type="button" class="sec sm" id="tDup" title="Highlight repeated values in the selected column">Find duplicates</button>'+
+   '<button type="button" class="sec sm" id="tClearDup">Clear highlights</button>'+
+   '<button type="button" class="sec sm" id="tAdd">Add row</button>'+
+   '<span class="tl" style="margin-left:auto">Cell</span><strong id="nameBox">A1</strong><span class="fx" id="formulaBar"></span>'+
+  '</div>'+
+  '<div class="smsg" id="sheetMsg" aria-live="polite"></div>'+
+  '<div class="sheet-wrap" id="sheetWrap" tabindex="0"><div class="sheet-inner" id="sheetInner"></div></div>'+
   '<h3>Tasks</h3>'+
   '<div class="task"><span class="chip no" id="c1">Not yet</span><div><strong>Task 1</strong> (4 marks): capture the headings and all five assets correctly in the sheet.</div></div>'+
-  '<div class="task"><span class="chip no" id="c2">Not yet</span><div><strong>Task 2</strong> (2 marks): sort the assets by asset number (select a cell in column A, then use Sort A&rarr;Z).</div></div>'+
-  '<div class="task"><span class="chip no" id="c3">Not yet</span><div><strong>Task 3</strong> (3 marks): filter the assets that are in poor condition (use the filter on the Condition column).</div></div>'+
+  '<div class="task"><span class="chip no" id="c2">Not yet</span><div><strong>Task 2</strong> (2 marks): sort the assets by asset number (select a cell in column A, then press Sort A&rarr;Z).</div></div>'+
+  '<div class="task"><span class="chip no" id="c3">Not yet</span><div><strong>Task 3</strong> (3 marks): filter the assets that are in poor condition. Press Filter, click the &#9662; arrow on the Condition heading, tick only <em>Poor</em> and press OK.</div></div>'+
   '<div class="q"><label for="a_ex2t3b" style="margin-top:0">Task 3: write down the asset numbers that are in poor condition.</label><input type="text" id="a_ex2t3b" data-q="ex2t3b" placeholder="For example: 001, 002"></div>'+
-  '<div class="task" style="margin-top:14px"><span class="chip no" id="c4">Not yet</span><div><strong>Task 4</strong> (2 marks): identify duplicate asset numbers (use Highlight duplicates on column A).</div></div>'+
+  '<div class="task" style="margin-top:14px"><span class="chip no" id="c4">Not yet</span><div><strong>Task 4</strong> (2 marks): identify duplicate asset numbers (select a cell in column A and press Find duplicates).</div></div>'+
   '<div class="q" style="margin-top:4px"><label for="a_ex2t4" style="margin-top:0">Task 4: which asset numbers are duplicated? Write "none" if there are no duplicates.</label><input type="text" id="a_ex2t4" data-q="ex2t4" placeholder="Your answer"></div>'+
   '<div class="q"><span class="pill m">4 marks</span><label for="a_ex2t5" style="margin-top:0">Task 5: write a short summary of the assets that need attention.</label>'+
   '<textarea id="a_ex2t5" data-q="ex2t5" placeholder="Type your summary here"></textarea></div></div>';
 }
 
 /* ---------- spreadsheet ---------- */
-function renderGrid(){
-  var g=S.grid,t=$("grid");
-  var h="<tr><th class='rn'></th>"+COLS.map(function(c,i){return "<th class='"+(i===S.selCol?"sel":"")+"'>"+c+"</th>"}).join("")+"</tr>";
-  var dupSet={};
-  if(S.dupCol!=null){
-    var seen={};for(var r=1;r<g.length;r++){var v=norm(g[r][S.dupCol]);if(v){seen[v]=(seen[v]||0)+1}}
-    for(var k in seen){if(seen[k]>1)dupSet[k]=true}
+var FILLS=["","#fff2a8","#c8f0c8","#bfe3ff","#ffd0d0","#e6d4ff","#ffd9a8","#d9d9d9"];
+var FONTS=["","#c00000","#0b5394","#006100","#7f6000","#7030a0","#808080","#000000"];
+var SEL={r1:0,c1:0,r2:0,c2:0}, EDIT=null, DRAG=false, FPANEL=null, MOUSEUP=false;
+
+function key(r,c){return r+","+c}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function rawAt(r,c){return (S.grid[r]&&S.grid[r][c])||""}
+function parseRef(s){var m=/^([A-E])(\d{1,3})$/i.exec(String(s).trim());return m?{c:COLS.indexOf(m[1].toUpperCase()),r:parseInt(m[2],10)-1}:null}
+function toNum(v){if(typeof v==="number")return v;var s=String(v).trim();if(s===""||!/^-?\d*\.?\d+$/.test(s))return null;return parseFloat(s)}
+function valAt(r,c,d){var raw=rawAt(r,c);if(String(raw).charAt(0)==="=")return evalF(String(raw).slice(1),d+1);return raw}
+function rangeVals(s,d){
+  var p=String(s).split(":"),a=parseRef(p[0]);
+  if(!a)return [];
+  var b=p.length>1?parseRef(p[1]):a;if(!b)return [];
+  var out=[];
+  for(var r=Math.min(a.r,b.r);r<=Math.max(a.r,b.r);r++)for(var c=Math.min(a.c,b.c);c<=Math.max(a.c,b.c);c++)out.push(valAt(r,c,d));
+  return out;
+}
+function arith(s,d){
+  var i=0;
+  function ws(){while(s.charAt(i)===" ")i++}
+  function expr(){var v=term();ws();while(s.charAt(i)==="+"||s.charAt(i)==="-"){var o=s.charAt(i++);var t=term();v=o==="+"?v+t:v-t;ws()}return v}
+  function term(){var v=fac();ws();while(s.charAt(i)==="*"||s.charAt(i)==="/"){var o=s.charAt(i++);var f=fac();if(o==="/"&&f===0)throw new Error("DIV0");v=o==="*"?v*f:v/f;ws()}return v}
+  function fac(){
+    ws();var ch=s.charAt(i);
+    if(ch==="-"){i++;return -fac()}
+    if(ch==="("){i++;var v=expr();ws();if(s.charAt(i)!==")")throw new Error("PAREN");i++;return v}
+    var m=/^(\d+\.?\d*|\.\d+)/.exec(s.slice(i));
+    if(m){i+=m[0].length;return parseFloat(m[0])}
+    var rm=/^[A-Ea-e]\d{1,3}/.exec(s.slice(i));
+    if(rm){i+=rm[0].length;var p=parseRef(rm[0]);var n=toNum(valAt(p.r,p.c,d));return n===null?0:n}
+    throw new Error("SYNTAX");
   }
-  for(var r2=0;r2<g.length;r2++){
-    var hidden=false;
-    if(S.filter&&r2>0&&norm(S.filter.val)!==""){hidden=norm(g[r2][S.filter.col]).indexOf(norm(S.filter.val))===-1}
-    h+="<tr class='"+(hidden?"hidden":"")+"'><th class='rn'>"+(r2+1)+"</th>";
-    for(var c2=0;c2<5;c2++){
-      var isDup=S.dupCol===c2&&r2>0&&dupSet[norm(g[r2][c2])];
-      h+="<td class='"+(isDup?"dup":"")+"'><input type='text' data-r='"+r2+"' data-c='"+c2+"' value='"+esc(g[r2][c2])+"' aria-label='Cell "+COLS[c2]+(r2+1)+"'></td>";
+  var out=expr();ws();if(i<s.length)throw new Error("SYNTAX");return out;
+}
+function evalF(e,d){
+  if(d>8)return "#LOOP!";
+  e=String(e).trim();
+  try{
+    var fm=/^(SUM|COUNT|COUNTA|AVERAGE|MIN|MAX|COUNTIF)\((.*)\)$/i.exec(e);
+    if(fm){
+      var fn=fm[1].toUpperCase(),args=fm[2],vals;
+      if(fn==="COUNTIF"){var ix=args.lastIndexOf(",");if(ix<0)return "#ARGS!";var crit=args.slice(ix+1).trim().replace(/^"|"$/g,"").toLowerCase();return rangeVals(args.slice(0,ix).trim(),d).filter(function(v){return String(v).trim().toLowerCase()===crit}).length}
+      vals=[];args.split(",").forEach(function(a){vals=vals.concat(rangeVals(a.trim(),d))});
+      if(fn==="COUNTA")return vals.filter(function(v){return String(v).trim()!==""}).length;
+      var nums=vals.map(toNum).filter(function(n){return n!==null});
+      if(fn==="COUNT")return nums.length;
+      if(!nums.length)return fn==="SUM"?0:"#DIV/0!";
+      var sum=nums.reduce(function(a,b){return a+b},0);
+      var res=fn==="SUM"?sum:fn==="AVERAGE"?sum/nums.length:fn==="MIN"?Math.min.apply(null,nums):Math.max.apply(null,nums);
+      return Math.round(res*1e8)/1e8;
+    }
+    return Math.round(arith(e,d)*1e8)/1e8;
+  }catch(x){return x.message==="DIV0"?"#DIV/0!":"#ERROR!"}
+}
+function dispAt(r,c){return String(valAt(r,c,0))}
+function lastRow(){for(var r=S.grid.length-1;r>=0;r--){if(S.grid[r].some(function(c){return norm(c)!==""}))return r}return 0}
+function dataRows(){
+  var out=[],L=lastRow();
+  for(var r=1;r<=L;r++){var row=[];for(var c=0;c<COLS.length;c++)row.push(dispAt(r,c));if(row.some(function(x){return norm(x)!==""}))out.push(row)}
+  return out;
+}
+function rowHidden(r){
+  if(r===0)return false;
+  for(var c in S.filters){if(S.filters[c].indexOf(norm(dispAt(r,+c)))===-1)return true}
+  return false;
+}
+function dupSet(){
+  var set={};if(S.dupCol==null)return set;
+  var seen={};for(var r=1;r<=lastRow();r++){var v=norm(dispAt(r,S.dupCol));if(v)seen[v]=(seen[v]||0)+1}
+  for(var k in seen)if(seen[k]>1)set[k]=seen[k];
+  return set;
+}
+function fmtStyle(f){
+  if(!f)return "";var st="";
+  if(f.b)st+="font-weight:700;";if(f.i)st+="font-style:italic;";if(f.u)st+="text-decoration:underline;";
+  if(f.bg)st+="background:"+f.bg+";";if(f.fg)st+="color:"+f.fg+";";if(f.al)st+="text-align:"+f.al+";";
+  if(f.bd)st+="border:1.5px solid #222;";
+  return st;
+}
+function act(t,o){o=o||{};o.t=t;S.actions.push(o);if(S.actions.length>300)S.actions.shift()}
+function msg(t){var m=$("sheetMsg");if(m)m.textContent=t||""}
+
+function renderGrid(){
+  var inner=$("sheetInner");if(!inner)return;FPANEL=null;
+  var dset=dupSet(),h="<table class='ss'><thead><tr><th class='corner'></th>";
+  for(var c=0;c<COLS.length;c++)h+="<th class='ch' data-c='"+c+"'>"+COLS[c]+"</th>";
+  h+="</tr></thead><tbody>";
+  for(var r=0;r<S.grid.length;r++){
+    h+="<tr class='"+(rowHidden(r)?"hidden":"")+"'><th class='rh' data-r='"+r+"'>"+(r+1)+"</th>";
+    for(var c2=0;c2<COLS.length;c2++){
+      var txt=dispAt(r,c2),isDup=S.dupCol===c2&&r>0&&dset[norm(txt)];
+      var cls="cell"+(isDup?" dup":"")+(txt.charAt(0)==="#"?" errv":"");
+      var btn="";
+      if(S.filterOn&&r===0)btn="<button type='button' class='fbtn"+(S.filters[c2]?" on":"")+"' data-fc='"+c2+"' title='Filter this column'>&#9662;</button>";
+      h+="<td class='"+cls+"' data-r='"+r+"' data-c='"+c2+"' style='"+fmtStyle(S.fmt[key(r,c2)])+"'><div class='cv'>"+esc(txt)+"</div>"+btn+"</td>";
     }
     h+="</tr>";
   }
-  t.innerHTML=h;
-  $("selInfo").textContent="Selected column: "+COLS[S.selCol];
-  if(S.filter){$("fCol").value=COLS[S.filter.col];$("fVal").value=S.filter.val}
-  var inputs=t.querySelectorAll("input");
-  inputs.forEach(function(el){
-    el.addEventListener("input",function(){S.grid[+el.dataset.r][+el.dataset.c]=el.value;persistSoon();updateTaskChips()});
-    el.addEventListener("focus",function(){
-      var c=+el.dataset.c;if(c!==S.selCol){S.selCol=c;
-        t.querySelectorAll("tr:first-child th").forEach(function(th,i){th.classList.toggle("sel",i-1===c)});
-        $("selInfo").textContent="Selected column: "+COLS[c]}
-    });
-  });
-  $("bSortA").onclick=function(){sortBy(1)};
-  $("bSortD").onclick=function(){sortBy(-1)};
-  $("bFilter").onclick=function(){
-    S.filter={col:COLS.indexOf($("fCol").value),val:$("fVal").value};
-    S.actions.push({t:"filter",col:S.filter.col,val:S.filter.val});persist();renderGrid();updateTaskChips()};
-  $("bClear").onclick=function(){S.filter=null;$("fVal").value="";persist();renderGrid()};
-  $("bDup").onclick=function(){S.dupCol=S.selCol;S.actions.push({t:"dup",col:S.selCol});persist();renderGrid();updateTaskChips()};
-  $("bAdd").onclick=function(){S.grid.push(["","","","",""]);persist();renderGrid()};
+  h+="</tbody></table><input type='text' id='cellEd' class='hide' autocomplete='off' spellcheck='false'>";
+  inner.innerHTML=h;
+  var tf=$("tFilter");if(tf)tf.classList.toggle("on",!!S.filterOn);
+  paintSel();
 }
-function cmp(a,b,dir){
+function selBounds(){return {r1:Math.min(SEL.r1,SEL.r2),r2:Math.max(SEL.r1,SEL.r2),c1:Math.min(SEL.c1,SEL.c2),c2:Math.max(SEL.c1,SEL.c2)}}
+function paintSel(){
+  var b=selBounds();
+  document.querySelectorAll("#sheetInner td.cell").forEach(function(td){
+    var r=+td.dataset.r,c=+td.dataset.c;
+    td.classList.toggle("sel",r>=b.r1&&r<=b.r2&&c>=b.c1&&c<=b.c2);
+    td.classList.toggle("act",r===SEL.r1&&c===SEL.c1);
+  });
+  document.querySelectorAll("#sheetInner th.ch").forEach(function(th){th.classList.toggle("hs",+th.dataset.c>=b.c1&&+th.dataset.c<=b.c2)});
+  document.querySelectorAll("#sheetInner th.rh").forEach(function(th){th.classList.toggle("hs",+th.dataset.r>=b.r1&&+th.dataset.r<=b.r2)});
+  var nb=$("nameBox");if(nb)nb.textContent=(b.r1===b.r2&&b.c1===b.c2)?COLS[b.c1]+(b.r1+1):COLS[b.c1]+(b.r1+1)+":"+COLS[b.c2]+(b.r2+1);
+  var fb=$("formulaBar");if(fb)fb.textContent=rawAt(SEL.r1,SEL.c1);
+}
+function moveSel(dr,dc){
+  var nr=clamp(SEL.r1+dr,0,S.grid.length-1),nc=clamp(SEL.c1+dc,0,COLS.length-1);
+  while(dr!==0&&rowHidden(nr)&&nr+dr>=0&&nr+dr<S.grid.length)nr+=dr;
+  if(rowHidden(nr))nr=SEL.r1;
+  SEL={r1:nr,c1:nc,r2:nr,c2:nc};paintSel();
+  var td=document.querySelector("#sheetInner td.cell[data-r='"+nr+"'][data-c='"+nc+"']");
+  if(td&&td.scrollIntoView)td.scrollIntoView({block:"nearest",inline:"nearest"});
+}
+function startEdit(r,c,ch){
+  if(rowHidden(r))return;
+  var td=document.querySelector("#sheetInner td.cell[data-r='"+r+"'][data-c='"+c+"']");if(!td)return;
+  var ed=$("cellEd");EDIT={r:r,c:c};
+  ed.style.left=td.offsetLeft+"px";ed.style.top=td.offsetTop+"px";ed.style.width=td.offsetWidth+"px";ed.style.height=td.offsetHeight+"px";
+  ed.classList.remove("hide");
+  ed.value=ch==null?rawAt(r,c):ch;
+  ed.focus();
+  ed.setSelectionRange(ed.value.length,ed.value.length);
+  ed.onkeydown=function(e){
+    if(e.key==="Enter"){e.preventDefault();commitEdit();moveSel(1,0)}
+    else if(e.key==="Tab"){e.preventDefault();commitEdit();moveSel(0,e.shiftKey?-1:1)}
+    else if(e.key==="Escape"){e.preventDefault();cancelEdit()}
+    e.stopPropagation();
+  };
+  ed.oninput=function(){var fb=$("formulaBar");if(fb)fb.textContent=ed.value};
+  ed.onblur=function(){if(EDIT)commitEdit()};
+}
+function commitEdit(){
+  if(!EDIT)return;var e=EDIT;EDIT=null;
+  var ed=$("cellEd"),v=ed.value;ed.onblur=null;ed.classList.add("hide");
+  if(S.grid[e.r][e.c]!==v){S.grid[e.r][e.c]=v;persist()}
+  renderGrid();updateTaskChips();
+  var w=$("sheetWrap");if(w)w.focus();
+}
+function cancelEdit(){EDIT=null;var ed=$("cellEd");ed.onblur=null;ed.classList.add("hide");paintSel();var w=$("sheetWrap");if(w)w.focus()}
+
+/* formatting */
+function eachSel(fn){var b=selBounds();for(var r=b.r1;r<=b.r2;r++)for(var c=b.c1;c<=b.c2;c++)fn(r,c)}
+function setFmt(r,c,k,v){
+  var kk=key(r,c),o=S.fmt[kk]||(S.fmt[kk]={});
+  if(v===null||v===false||v===""||v===undefined)delete o[k];else o[k]=v;
+  if(!Object.keys(o).length)delete S.fmt[kk];
+}
+function toggleFmt(k){
+  var all=true;eachSel(function(r,c){var f=S.fmt[key(r,c)];if(!(f&&f[k]))all=false});
+  eachSel(function(r,c){setFmt(r,c,k,!all)});
+  act("fmt",{k:k});persist();renderGrid();
+}
+function setFmtRange(k,v){eachSel(function(r,c){setFmt(r,c,k,v)});act("fmt",{k:k});persist();renderGrid()}
+function clearFmt(){eachSel(function(r,c){delete S.fmt[key(r,c)]});act("fmt",{k:"clear"});persist();renderGrid()}
+function clearSel(){eachSel(function(r,c){S.grid[r][c]=""});persist();renderGrid();updateTaskChips()}
+
+/* sort */
+function cmpv(a,b,dir){
   var ea=norm(a)==="",eb=norm(b)==="";
   if(ea&&eb)return 0;if(ea)return 1;if(eb)return -1;
-  var na=parseFloat(a),nb=parseFloat(b);
-  if(!isNaN(na)&&!isNaN(nb)&&/^\s*-?\d/.test(a)&&/^\s*-?\d/.test(b)&&String(na)!==""&&na!==nb)return (na-nb)*dir;
+  var na=toNum(a),nb=toNum(b);
+  if(na!==null&&nb!==null)return (na-nb)*dir;
   return String(a).localeCompare(String(b),undefined,{numeric:true,sensitivity:"base"})*dir;
 }
-function sortBy(dir){
-  var col=S.selCol,head=S.grid[0],body=S.grid.slice(1);
-  body.sort(function(x,y){return cmp(x[col],y[col],dir)});
-  S.grid=[head].concat(body);
-  S.actions.push({t:"sort",col:col,dir:dir>0?"asc":"desc"});
+function sortCol(c,dir){
+  var L=lastRow();if(L<2){msg("There is not enough data to sort yet.");return}
+  var idx=[];for(var r=1;r<=L;r++)idx.push(r);
+  idx.sort(function(a,b){return cmpv(dispAt(a,c),dispAt(b,c),dir)||(a-b)});
+  var ng=S.grid.slice(),nf={};
+  Object.keys(S.fmt).forEach(function(k){var p=k.split(",");if(+p[0]===0||+p[0]>L)nf[k]=S.fmt[k]});
+  idx.forEach(function(oldR,i){var nr=i+1;ng[nr]=S.grid[oldR].slice();for(var cc=0;cc<COLS.length;cc++){var fk=oldR+","+cc;if(S.fmt[fk])nf[nr+","+cc]=S.fmt[fk]}});
+  S.grid=ng;S.fmt=nf;
+  act("sort",{col:c,dir:dir>0?"asc":"desc"});
+  persist();renderGrid();updateTaskChips();
+  msg("Sorted column "+COLS[c]+(dir>0?" from smallest to largest (A to Z).":" from largest to smallest (Z to A)."));
+}
+
+/* filter */
+function toggleFilter(){
+  S.filterOn=!S.filterOn;
+  if(!S.filterOn){S.filters={}}
+  closeFilterPanel();persist();renderGrid();
+  msg(S.filterOn?"Filter is on. Click the ▾ arrow on a heading to choose what to show.":"Filter is off. All rows are showing.");
+}
+function clearFilters(){S.filters={};closeFilterPanel();persist();renderGrid();msg("All filters cleared. Every row is showing.")}
+function closeFilterPanel(){FPANEL=null;var p=$("fpanel");if(p&&p.parentNode)p.parentNode.removeChild(p)}
+function openFilterPanel(c){
+  closeFilterPanel();FPANEL=c;
+  var vals={},L=lastRow();
+  for(var r=1;r<=L;r++){var v=dispAt(r,c),k=norm(v);if(!(k in vals))vals[k]=v}
+  var keys=Object.keys(vals).sort(function(a,b){return cmpv(a,b,1)});
+  var cur=S.filters[c];
+  var h="<div class='fpanel' id='fpanel'><div style='font-weight:700;margin-bottom:6px'>Filter column "+COLS[c]+"</div>"+
+   "<div class='frow'><button type='button' class='sec sm' data-fa='asc'>Sort A&rarr;Z</button><button type='button' class='sec sm' data-fa='desc'>Sort Z&rarr;A</button></div>"+
+   "<label class='fi' style='margin-top:8px'><input type='checkbox' id='fAll'> (Select all)</label><div class='flist'>";
+  keys.forEach(function(k){var on=!cur||cur.indexOf(k)!==-1;h+="<label class='fi'><input type='checkbox' class='fv' data-k=\""+esc(k)+"\""+(on?" checked":"")+"> "+(k===""?"(Blanks)":esc(vals[k]))+"</label>"});
+  h+="</div><div class='frow'><button type='button' data-fa='ok'>OK</button><button type='button' class='sec' data-fa='clear'>Clear</button><button type='button' class='sec' data-fa='cancel'>Cancel</button></div></div>";
+  var td=document.querySelector("#sheetInner td.cell[data-r='0'][data-c='"+c+"']");
+  $("sheetInner").insertAdjacentHTML("beforeend",h);
+  var p=$("fpanel");
+  p.style.left=Math.max(0,Math.min(td.offsetLeft,$("sheetInner").offsetWidth-240))+"px";p.style.top=(td.offsetTop+td.offsetHeight)+"px";
+  var fa=$("fAll");if(fa)fa.checked=!document.querySelector("#fpanel .fv:not(:checked)");
+}
+function filterAction(a){
+  var c=FPANEL;
+  if(a==="asc"||a==="desc"){closeFilterPanel();sortCol(c,a==="asc"?1:-1);return}
+  if(a==="cancel"){closeFilterPanel();return}
+  if(a==="clear"){delete S.filters[c];closeFilterPanel();persist();renderGrid();msg("Filter removed from column "+COLS[c]+".");return}
+  if(a==="ok"){
+    var boxes=document.querySelectorAll("#fpanel .fv"),chosen=[];
+    boxes.forEach(function(x){if(x.checked)chosen.push(x.dataset.k)});
+    if(chosen.length===boxes.length){delete S.filters[c];msg("Showing all rows.")}
+    else{S.filters[c]=chosen;act("filter",{col:c,vals:chosen})}
+    closeFilterPanel();persist();renderGrid();updateTaskChips();
+    if(S.filters[c]){var shown=0,tot=0;for(var r=1;r<=lastRow();r++){tot++;if(!rowHidden(r))shown++}msg("Filter applied. Showing "+shown+" of "+tot+" rows. The other rows are hidden, not deleted.")}
+  }
+}
+
+/* duplicates */
+function findDup(){
+  S.dupCol=SEL.c1;act("dup",{col:SEL.c1});
+  var d=dupSet(),keys=Object.keys(d);
+  msg(keys.length?("Duplicates found in column "+COLS[S.dupCol]+": "+keys.map(function(k){return k+" ("+d[k]+" times)"}).join(", ")+". They are highlighted in orange."):("No duplicate values found in column "+COLS[S.dupCol]+"."));
   persist();renderGrid();updateTaskChips();
 }
-function dataRows(){return S.grid.slice(1).filter(function(r){return r.some(function(c){return norm(c)!==""})})}
+function clearDup(){S.dupCol=null;persist();renderGrid();msg("Highlights cleared.")}
+
+/* clipboard */
+function onCopy(e){
+  if(EDIT)return;
+  var b=selBounds(),lines=[];
+  for(var r=b.r1;r<=b.r2;r++){var row=[];for(var c=b.c1;c<=b.c2;c++)row.push(rawAt(r,c));lines.push(row.join("\t"))}
+  if(e.clipboardData){e.clipboardData.setData("text/plain",lines.join("\n"));e.preventDefault()}
+}
+function onPaste(e){
+  if(EDIT||!e.clipboardData)return;
+  var t=e.clipboardData.getData("text");if(!t)return;
+  e.preventDefault();
+  var b=selBounds(),rows=t.replace(/\r/g,"").replace(/\n$/,"").split("\n");
+  rows.forEach(function(line,i){line.split("\t").forEach(function(v,j){
+    var r=b.r1+i,c=b.c1+j;if(r<S.grid.length&&c<COLS.length)S.grid[r][c]=v})});
+  persist();renderGrid();updateTaskChips();
+}
+
+/* keyboard + mouse */
+function onSheetKey(e){
+  if(EDIT)return;
+  var k=e.key,mod=e.ctrlKey||e.metaKey;
+  if(mod&&!e.altKey){
+    var kl=k.toLowerCase();
+    if(kl==="b"){toggleFmt("b");e.preventDefault();return}
+    if(kl==="i"){toggleFmt("i");e.preventDefault();return}
+    if(kl==="u"){toggleFmt("u");e.preventDefault();return}
+    if(kl==="a"){SEL={r1:0,c1:0,r2:S.grid.length-1,c2:COLS.length-1};paintSel();e.preventDefault();return}
+    return;
+  }
+  var mv={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]};
+  if(mv[k]){
+    e.preventDefault();
+    if(e.shiftKey){SEL.r2=clamp(SEL.r2+mv[k][0],0,S.grid.length-1);SEL.c2=clamp(SEL.c2+mv[k][1],0,COLS.length-1);paintSel()}
+    else moveSel(mv[k][0],mv[k][1]);
+    return;
+  }
+  if(k==="Tab"){e.preventDefault();moveSel(0,e.shiftKey?-1:1);return}
+  if(k==="Enter"){e.preventDefault();moveSel(e.shiftKey?-1:1,0);return}
+  if(k==="F2"){e.preventDefault();startEdit(SEL.r1,SEL.c1,null);return}
+  if(k==="Delete"||k==="Backspace"){e.preventDefault();clearSel();return}
+  if(k.length===1&&!e.altKey){e.preventDefault();startEdit(SEL.r1,SEL.c1,k)}
+}
+function bindSheet(){
+  var wrap=$("sheetWrap");if(!wrap)return;
+  wrap.addEventListener("mousedown",function(e){
+    var ed=$("cellEd");if(e.target===ed)return;
+    var fb=e.target.closest(".fbtn");
+    if(fb){e.preventDefault();if(EDIT)commitEdit();var c=+fb.dataset.fc;if(FPANEL===c)closeFilterPanel();else openFilterPanel(c);return}
+    if(e.target.closest(".fpanel"))return;
+    if(FPANEL!==null)closeFilterPanel();
+    if(EDIT)commitEdit();
+    var td=e.target.closest("td.cell"),ch=e.target.closest("th.ch"),rh=e.target.closest("th.rh");
+    if(td){
+      var r=+td.dataset.r,c2=+td.dataset.c;
+      if(e.shiftKey){SEL.r2=r;SEL.c2=c2}else SEL={r1:r,c1:c2,r2:r,c2:c2};
+      DRAG=true;paintSel();wrap.focus();e.preventDefault();
+    }else if(ch){var c3=+ch.dataset.c;SEL={r1:0,c1:c3,r2:S.grid.length-1,c2:c3};paintSel();wrap.focus();e.preventDefault()}
+    else if(rh){var r3=+rh.dataset.r;SEL={r1:r3,c1:0,r2:r3,c2:COLS.length-1};paintSel();wrap.focus();e.preventDefault()}
+  });
+  wrap.addEventListener("mouseover",function(e){if(!DRAG)return;var td=e.target.closest("td.cell");if(td){SEL.r2=+td.dataset.r;SEL.c2=+td.dataset.c;paintSel()}});
+  wrap.addEventListener("dblclick",function(e){var td=e.target.closest("td.cell");if(td&&!e.target.closest(".fbtn"))startEdit(+td.dataset.r,+td.dataset.c,null)});
+  wrap.addEventListener("click",function(e){
+    var b=e.target.closest("#fpanel [data-fa]");if(b){filterAction(b.dataset.fa);return}
+    var all=e.target.closest("#fAll");
+    if(all){document.querySelectorAll("#fpanel .fv").forEach(function(x){x.checked=all.checked})}
+  });
+  wrap.addEventListener("keydown",onSheetKey);
+  wrap.addEventListener("copy",onCopy);
+  wrap.addEventListener("paste",onPaste);
+  wrap.addEventListener("cut",function(e){onCopy(e);if(!EDIT)clearSel()});
+  if(!MOUSEUP){MOUSEUP=true;document.addEventListener("mouseup",function(){DRAG=false})}
+}
+function bindTools(){
+  $("tB").onclick=function(){toggleFmt("b")};$("tI").onclick=function(){toggleFmt("i")};$("tU").onclick=function(){toggleFmt("u")};
+  document.querySelectorAll("#tools [data-fill]").forEach(function(b){b.onclick=function(){setFmtRange("bg",b.dataset.fill||null)}});
+  document.querySelectorAll("#tools [data-fg]").forEach(function(b){b.onclick=function(){setFmtRange("fg",b.dataset.fg||null)}});
+  $("tAL").onclick=function(){setFmtRange("al","left")};$("tAC").onclick=function(){setFmtRange("al","center")};$("tAR").onclick=function(){setFmtRange("al","right")};
+  $("tBd").onclick=function(){setFmtRange("bd",true)};$("tNb").onclick=function(){setFmtRange("bd",null)};$("tCf").onclick=clearFmt;
+  $("tSortA").onclick=function(){sortCol(SEL.c1,1)};$("tSortD").onclick=function(){sortCol(SEL.c1,-1)};
+  $("tFilter").onclick=toggleFilter;$("tClearF").onclick=clearFilters;
+  $("tDup").onclick=findDup;$("tClearDup").onclick=clearDup;
+  $("tAdd").onclick=function(){S.grid.push(Array(COLS.length).fill(""));persist();renderGrid()};
+  /* keep the sheet selection when a toolbar button is pressed */
+  document.querySelectorAll("#tools button,.sheet-tools.t2 button").forEach(function(b){b.addEventListener("mousedown",function(e){e.preventDefault()})});
+}
 function sameCell(a,b,isNum){
   a=norm(a);b=norm(b);if(isNum&&/^\d+$/.test(a)&&/^\d+$/.test(b))return parseInt(a,10)===parseInt(b,10);return a===b
 }
 function ex2Check(){
-  var res={units:0,unitsMax:6,rowsOk:0,headerOk:false};
-  var h=S.grid[0],hd=EXPECT[0];
-  var hok=true;for(var i=0;i<5;i++){if(norm(h[i])!==norm(hd[i]))hok=false}
+  var res={units:0,unitsMax:6};
+  var hd=EXPECT[0],hok=true;
+  for(var i=0;i<5;i++){if(norm(dispAt(0,i))!==norm(hd[i]))hok=false}
   res.headerOk=hok;if(hok)res.units++;
   var rows=dataRows();
   for(var e=1;e<EXPECT.length;e++){
     var found=rows.some(function(r){for(var i=0;i<5;i++){if(!sameCell(r[i],EXPECT[e][i],i===0))return false}return true});
-    if(found){res.rowsOk++;res.units++}
+    if(found){res.units++}
   }
   res.cap=r05(4*res.units/res.unitsMax);
-  /* sort */
   var sortA=S.actions.filter(function(a){return a.t==="sort"&&a.col===0});
-  var usedAsc=sortA.some(function(a){return a.dir==="asc"}), usedDesc=sortA.some(function(a){return a.dir==="desc"});
+  var usedAsc=sortA.some(function(a){return a.dir==="asc"}),usedDesc=sortA.some(function(a){return a.dir==="desc"});
   var nums=dataRows().map(function(r){return parseInt(r[0],10)}).filter(function(n){return !isNaN(n)});
   var ordered=nums.length>1&&nums.every(function(n,i){return i===0||nums[i-1]<=n});
-  res.sort= usedAsc&&ordered?2:(usedAsc||(usedDesc)?1:(ordered?1:(S.actions.some(function(a){return a.t==="sort"})?0.5:0)));
+  res.sort=usedAsc&&ordered?2:(usedAsc||usedDesc?1:(ordered?1:(S.actions.some(function(a){return a.t==="sort"})?0.5:0)));
   res.usedSortTool=S.actions.some(function(a){return a.t==="sort"});
-  /* filter */
-  var fl=S.actions.filter(function(a){return a.t==="filter"&&a.col===4&&norm(a.val)==="poor"});
+  var fl=S.actions.filter(function(a){return a.t==="filter"&&a.col===4&&a.vals&&a.vals.length===1&&norm(a.vals[0])==="poor"});
+  var anyF=S.actions.some(function(a){return a.t==="filter"});
   var ans=norm(S.answers.ex2t3b);
   var hasList=/003/.test(ans)&&/005/.test(ans)&&!/00[124]/.test(ans.replace(/003|005/g,""));
-  res.filter=(fl.length?2:(S.actions.some(function(a){return a.t==="filter"})?0.5:0))+(hasList?1:0);
+  res.filter=(fl.length?2:(anyF?0.5:0))+(hasList?1:0);
   res.usedFilterTool=fl.length>0;res.filterList=hasList;
-  /* duplicates */
   var d=norm(S.answers.ex2t4);
   var noneOk=/\bnone\b|no duplicate|no dupl|\bnil\b|^0$|not any|there are no/.test(d);
   var usedDup=S.actions.some(function(a){return a.t==="dup"&&a.col===0});
@@ -490,7 +804,7 @@ function submitTest(auto){
     started_at:new Date(S.startedAt).toISOString(),
     time_used_seconds:Math.min(20000,Math.round((Date.now()-S.startedAt)/1000)),
     auto_submitted:!!auto,
-    answers:{answers:S.answers,grid:S.grid,actions:S.actions,filter:S.filter,sections:SECTIONS.map(function(s){return {id:s.id,mins:s.mins}})},
+    answers:{answers:S.answers,grid:S.grid,fmt:S.fmt,filters:S.filters,dupCol:S.dupCol,actions:S.actions,sections:SECTIONS.map(function(s){return {id:s.id,mins:s.mins}})},
     auto_marks:am.items,auto_total:am.total,status:"submitted"
   };
   show("done");
@@ -527,6 +841,9 @@ function thanks(){
 var ROWS=[], PIN="";
 function initAdmin(){
   show("admin");
+  if(/embed=1/.test(location.search))document.body.classList.add("embed");
+  var sp=null;try{sp=sessionStorage.getItem("csa_pin")}catch(e){}
+  if(sp){$("apin").value=sp;setTimeout(loadResults,0)}
   $("apinBtn").onclick=loadResults;
   $("apin").addEventListener("keydown",function(e){if(e.key==="Enter")loadResults()});
 }
@@ -539,8 +856,8 @@ function loadResults(){
     body:JSON.stringify({p_pin:PIN})
   }).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})}).then(function(o){
     $("apinBtn").disabled=false;
-    if(!o.ok){e.textContent="That PIN was not accepted.";e.classList.remove("hide");return}
-    ROWS=o.j||[];$("adminLogin").classList.add("hide");renderList();
+    if(!o.ok){try{sessionStorage.removeItem("csa_pin")}catch(x){}e.textContent="That PIN was not accepted.";e.classList.remove("hide");return}
+    try{sessionStorage.setItem("csa_pin",PIN)}catch(x){}ROWS=o.j||[];$("adminLogin").classList.add("hide");renderList();
   }).catch(function(){$("apinBtn").disabled=false;e.textContent="Could not load results. Check your connection.";e.classList.remove("hide")});
 }
 function renderList(){
@@ -606,15 +923,25 @@ function renderDetail(i){
   $("backBtn").onclick=renderList;$("printBtn").onclick=function(){try{window.print()}catch(e){}};
 }
 function gridHtml(a){
-  var g=(a&&a.grid)||[],acts=(a&&a.actions)||[];
-  var rows=g.filter(function(r){return r.some(function(c){return String(c).trim()!==""})});
-  var h='<table class="reg">'+rows.map(function(r,i){return '<tr>'+r.map(function(c){return (i===0?'<th>':'<td>')+esc(c)+(i===0?'</th>':'</td>')}).join("")+'</tr>'}).join("")+'</table>';
-  var an=acts.map(function(x){
+  var g=(a&&a.grid)||[],fm=(a&&a.fmt)||{},acts=(a&&a.actions)||[];
+  var last=-1;g.forEach(function(r,i){if(r.some(function(c){return String(c).trim()!==""}))last=i});
+  var h='<table class="reg">';
+  for(var r=0;r<=last;r++){
+    h+="<tr>";
+    for(var c=0;c<(g[r]||[]).length;c++){
+      var st=fmtStyle(fm[r+","+c]),v=String(g[r][c]);
+      h+=(r===0?"<th":"<td")+(st?' style="'+st+'"':"")+">"+esc(v)+(r===0?"</th>":"</td>");
+    }
+    h+="</tr>";
+  }
+  h+="</table>";
+  var nf=Object.keys(fm).length;
+  var an=acts.filter(function(x){return x.t!=="fmt"}).map(function(x){
     if(x.t==="sort")return "Sorted column "+COLS[x.col]+" ("+x.dir+")";
-    if(x.t==="filter")return "Filtered column "+COLS[x.col]+' for "'+x.val+'"';
+    if(x.t==="filter")return "Filtered column "+COLS[x.col]+" to show: "+((x.vals||[x.val]).map(function(v){return v===""?"(blanks)":v}).join(", "));
     if(x.t==="dup")return "Highlighted duplicates in column "+COLS[x.col];
     return x.t}).join("; ");
-  return h+'<div style="font-size:.85rem;color:var(--mut)">Actions used: '+(an?esc(an):"none")+'</div>';
+  return h+'<div style="font-size:.85rem;color:var(--mut)">Actions used: '+(an?esc(an):"none")+'. Cells formatted: '+nf+'.</div>';
 }
 
 /* ---------- boot ---------- */
@@ -625,6 +952,7 @@ function boot(){
   var saved=lsGet(STORE);
   if(saved){
     try{S=JSON.parse(saved)}catch(e){S=null}
+    if(S){S.fmt=S.fmt||{};S.filters=S.filters||{};S.filterOn=!!S.filterOn;S.actions=S.actions||[]}
     if(S&&S.name&&!S.submitted){
       while(S.sec<SECTIONS.length&&S.secEnds[S.sec]&&Date.now()>S.secEnds[S.sec]){
         if(S.sec>=SECTIONS.length-1){startTest();return}
