@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en-ZA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Practical Assessment: Administrative Clerk (Asset Control) | Carissa Primary School</title>
+<style>
+:root{--teal:#0e6f78;--teal-d:#0a535a;--teal-l:#e3f3f4;--ink:#16252b;--mut:#5b6b72;--line:#d5e0e3;--bg:#f4f8f9;--red:#b42318;--amber:#b54708;--green:#067647;--white:#fff}
+*{box-sizing:border-box}
+html{font-size:16px}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.5}
+.wrap{max-width:980px;margin:0 auto;padding:16px}
+.top{background:var(--teal);color:#fff;padding:12px 16px}
+.top .in{max-width:980px;margin:0 auto;display:flex;align-items:center;gap:12px}
+.top img{height:44px;width:auto;background:#fff;border-radius:8px;padding:3px}
+.top h1{font-size:1rem;margin:0;line-height:1.25}
+.top small{opacity:.85;display:block;font-weight:400}
+.card{background:var(--white);border:1px solid var(--line);border-radius:14px;padding:20px;margin:14px 0}
+h2{margin:0 0 8px;font-size:1.25rem;color:var(--teal-d)}
+h3{margin:18px 0 6px;font-size:1.05rem;color:var(--teal-d)}
+p{margin:6px 0}
+label{font-weight:600;display:block;margin:12px 0 4px}
+input[type=text],input[type=password],textarea,select{width:100%;padding:10px 12px;border:1px solid #b9c9cd;border-radius:9px;font:inherit;background:#fff;color:var(--ink)}
+textarea{min-height:92px;resize:vertical}
+input:focus,textarea:focus,select:focus,button:focus-visible{outline:3px solid #7cc4cb;outline-offset:1px}
+button{font:inherit;cursor:pointer;border-radius:9px;border:1px solid var(--teal);background:var(--teal);color:#fff;padding:10px 18px;font-weight:600}
+button.sec{background:#fff;color:var(--teal-d)}
+button.sm{padding:6px 12px;font-size:.9rem}
+button:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>*{flex:1 1 220px}
+.times{width:100%;border-collapse:collapse;margin:8px 0}
+.times th,.times td{border:1px solid var(--line);padding:8px 10px;text-align:left;font-size:.95rem}
+.times th{background:var(--teal-l)}
+.note{background:#fff8e6;border:1px solid #f1d58a;border-radius:10px;padding:10px 12px;font-size:.95rem}
+.err{color:var(--red);font-weight:600;margin-top:8px}
+.hide{display:none!important}
+.bar{position:sticky;top:0;z-index:20;background:#fff;border-bottom:2px solid var(--teal);padding:8px 16px}
+.bar .in{max-width:980px;margin:0 auto;display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.timer{font-variant-numeric:tabular-nums;font-size:1.6rem;font-weight:800;color:var(--teal-d)}
+.timer.low{color:var(--red)}
+.pill{display:inline-block;background:var(--teal-l);color:var(--teal-d);border-radius:999px;padding:2px 10px;font-size:.85rem;font-weight:700}
+.q{border-top:1px solid var(--line);padding-top:12px;margin-top:14px}
+.q .m{float:right;margin-left:10px}
+table.reg{border-collapse:collapse;margin:8px 0}
+table.reg th,table.reg td{border:1px solid #9fb4b9;padding:6px 14px;text-align:left}
+table.reg th{background:var(--teal-l)}
+.sheet-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#eef3f4;border:1px solid var(--line);border-radius:10px 10px 0 0;padding:8px}
+.sheet-tools select,.sheet-tools input{width:auto;padding:6px 8px;font-size:.9rem}
+.sheet-wrap{overflow:auto;border:1px solid #9fb4b9;border-top:0;border-radius:0 0 10px 10px;background:#fff}
+table.grid{border-collapse:collapse;width:100%;min-width:640px}
+table.grid th{background:#e9eff1;border:1px solid #c3d0d4;font-weight:600;font-size:.85rem;padding:4px;color:#44565c}
+table.grid td{border:1px solid #d3dde0;padding:0}
+table.grid td input{width:100%;border:0;border-radius:0;padding:7px 8px;font-size:.95rem;background:transparent}
+table.grid td input:focus{outline:2px solid var(--teal);outline-offset:-2px;background:#f2fbfc}
+table.grid td.dup input{background:#ffe3a3}
+table.grid tr.hidden{display:none}
+table.grid th.rn{width:38px}
+table.grid th.sel{background:#cfe9ec}
+.task{display:flex;gap:8px;align-items:flex-start;margin:6px 0}
+.chip{font-size:.75rem;font-weight:700;border-radius:999px;padding:1px 8px;white-space:nowrap}
+.chip.ok{background:#d1fadf;color:var(--green)}
+.chip.no{background:#eef1f2;color:var(--mut)}
+.modal{position:fixed;inset:0;background:rgba(10,30,34,.55);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+.modal .box{background:#fff;border-radius:14px;padding:22px;max-width:440px;width:100%}
+.res-item{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0;background:#fff}
+.res-item .hd{display:flex;justify-content:space-between;gap:10px;font-weight:700}
+.ans{background:#f6f9fa;border-left:4px solid #9fb4b9;padding:8px 10px;white-space:pre-wrap;margin:6px 0;font-size:.95rem}
+.memo{background:#eefaf0;border-left:4px solid #6cc080;padding:8px 10px;white-space:pre-wrap;margin:6px 0;font-size:.95rem}
+.just{background:#eef4ff;border-left:4px solid #7aa2f7;padding:8px 10px;margin:6px 0;font-size:.95rem}
+.sug{background:#fff8e6;border-left:4px solid #e3b341;padding:8px 10px;margin:6px 0;font-size:.95rem}
+.lbl{font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);font-weight:700}
+.list-btn{display:flex;justify-content:space-between;gap:10px;width:100%;text-align:left;background:#fff;color:var(--ink);border:1px solid var(--line);margin:6px 0}
+.score{font-size:2rem;font-weight:800;color:var(--teal-d)}
+@media print{.top,.bar,button,.noprint{display:none!important}body{background:#fff}.card{border:0;padding:0}}
+</style>
+</head>
+<body>
+<div class="top"><div class="in">
+  <img src="school-crest.png" alt="Carissa Primary School crest" onerror="this.style.display='none'">
+  <h1>Carissa Primary School<small>Practical Assessment: Administrative Clerk (Asset Control)</small></h1>
+</div></div>
+
+<!-- ============ WELCOME ============ -->
+<div id="welcome" class="wrap hide">
+  <div class="card">
+    <h2>Welcome to your practical assessment</h2>
+    <p>Before you begin, please enter your full name and surname exactly as they appear on your application.</p>
+    <div class="row">
+      <div><label for="fn">Name</label><input id="fn" type="text" maxlength="80" autocomplete="given-name"></div>
+      <div><label for="sn">Surname</label><input id="sn" type="text" maxlength="80" autocomplete="family-name"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>How the test works</h2>
+    <p>The test has <strong>three exercises</strong> and counts <strong>40 marks</strong>. You have <strong>60 minutes</strong> in total: about 5 minutes to read this page, then <strong>55 minutes</strong> of timed work.</p>
+    <table class="times">
+      <tr><th>Exercise</th><th>What you will do</th><th>Marks</th><th>Time</th></tr>
+      <tr><td>1</td><td>Asset register verification: find the discrepancies and explain what you would do</td><td>15</td><td>15 min</td></tr>
+      <tr><td>2</td><td>Spreadsheet: capture, sort and filter an asset list, check for duplicates and write a summary</td><td>15</td><td>25 min</td></tr>
+      <tr><td>3</td><td>Scenario: a physical asset verification that goes wrong</td><td>10</td><td>15 min</td></tr>
+    </table>
+    <ul>
+      <li>Each exercise has its own countdown. When the time runs out the test moves on to the next exercise by itself, so use your time well.</li>
+      <li>You can finish an exercise early, but you cannot go back to it afterwards.</li>
+      <li>The spreadsheet is built into the page, so you do not need Microsoft Excel. It lets you type in cells, sort, filter and highlight duplicates.</li>
+      <li>Your answers are saved on this device as you type. If the page reloads, your clock keeps running and your answers come back.</li>
+      <li>When you finish, or when the last timer ends, your test is submitted automatically.</li>
+      <li>Work on your own and answer in your own words. Short, clear and practical answers score best.</li>
+    </ul>
+    <div class="note">The countdown for Exercise 1 starts the moment you press <strong>Start test</strong>.</div>
+    <p id="werr" class="err hide"></p>
+    <p style="margin-top:16px"><button id="startBtn">Start test</button></p>
+  </div>
+</div>
+
+<!-- ============ TEST ============ -->
+<div id="test" class="hide">
+  <div class="bar"><div class="in">
+    <div><span class="pill" id="secPill"></span> <span id="candLbl" style="color:var(--mut);font-size:.9rem"></span></div>
+    <div style="text-align:right"><div class="timer" id="secTimer">00:00</div><div style="font-size:.8rem;color:var(--mut)">Time left in this exercise &middot; <span id="totTimer"></span> overall</div></div>
+  </div></div>
+  <div class="wrap">
+    <div id="secBody"></div>
+    <div class="card row" style="align-items:center">
+      <div style="flex:3 1 260px;color:var(--mut);font-size:.95rem" id="finHint"></div>
+      <div style="flex:1 1 180px;text-align:right"><button id="nextBtn"></button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ DONE ============ -->
+<div id="done" class="wrap hide">
+  <div class="card">
+    <h2 id="doneH">Thank you</h2>
+    <p id="doneP"></p>
+    <p id="doneErr" class="err hide"></p>
+    <p id="retryRow" class="hide"><button id="retryBtn">Try to submit again</button></p>
+  </div>
+</div>
+
+<!-- ============ ADMIN ============ -->
+<div id="admin" class="wrap hide">
+  <div class="card" id="adminLogin">
+    <h2>Assessment results</h2>
+    <p>Enter the results PIN to see submitted assessments and their marking.</p>
+    <label for="apin">Results PIN</label>
+    <input id="apin" type="password" inputmode="numeric" autocomplete="off" maxlength="20" style="max-width:260px">
+    <p><button id="apinBtn" style="margin-top:10px">View results</button></p>
+    <p id="aerr" class="err hide"></p>
+  </div>
+  <div id="adminList" class="hide"></div>
+  <div id="adminDetail" class="hide"></div>
+</div>
+
+<div id="modalHost"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- configuration ---------- */
+var SB_URL = "https://vousucfboetqtppjywlg.supabase.co";
+var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZvdXN1Y2Zib2V0cXRwcGp5d2xnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNjE1NTIsImV4cCI6MjA5MzkzNzU1Mn0.bdwEPpWrazC1KDVG58MnbBy6Lr4YhO8gUyEuK1VykU4";
+var STORE = "csa_state_v1", DONEKEY = "csa_done_v1";
+var SECTIONS = [
+  {id:"ex1", title:"Exercise 1 of 3: Asset register verification", mins:15, marks:15},
+  {id:"ex2", title:"Exercise 2 of 3: Spreadsheet", mins:25, marks:15},
+  {id:"ex3", title:"Exercise 3 of 3: Scenario", mins:15, marks:10}
+];
+/* Question prompts and mark allocation. Model answers are NOT in this public page. */
+var Q = {
+ ex1q1:{sec:"ex1",max:3,text:"Identify the discrepancies in the register above."},
+ ex1q2:{sec:"ex1",max:3,text:"What would you do about the missing desktop computer?"},
+ ex1q3:{sec:"ex1",max:3,text:"What would you do about the projector with the missing tag?"},
+ ex1q4:{sec:"ex1",max:3,text:"Why is reconciliation important?"},
+ ex1q5:{sec:"ex1",max:3,text:"Prepare a short report outlining your findings."},
+ ex2t1:{sec:"ex2",max:4,text:"Task 1: Capture all five assets correctly (headings and data)."},
+ ex2t2:{sec:"ex2",max:2,text:"Task 2: Sort the assets according to asset number."},
+ ex2t3:{sec:"ex2",max:3,text:"Task 3: Filter the assets that are in poor condition."},
+ ex2t4:{sec:"ex2",max:2,text:"Task 4: Identify duplicate asset numbers."},
+ ex2t5:{sec:"ex2",max:4,text:"Task 5: Prepare a short summary of assets requiring attention."},
+ ex3q1:{sec:"ex3",max:3,text:"How would you handle each of these situations?"},
+ ex3q2:{sec:"ex3",max:2,text:"Which documents would you request?"},
+ ex3q3:{sec:"ex3",max:1,text:"Who would you report these findings to?"},
+ ex3q4:{sec:"ex3",max:2,text:"What measures would you recommend to prevent similar problems?"},
+ ex3q5:{sec:"ex3",max:2,text:"Write a short email to your supervisor reporting what you found and what you need from them."}
+};
+var QORDER = Object.keys(Q);
+var EXPECT = [
+ ["Asset number","Description","Serial number","Location","Condition"],
+ ["001","Laptop","SN1001","Finance","Good"],
+ ["002","Printer","SN1002","HR","Fair"],
+ ["003","Desktop","SN1003","Supply Chain","Poor"],
+ ["004","Laptop","SN1004","HR","Good"],
+ ["005","Projector","SN1005","Finance","Poor"]
+];
+var COLS = ["A","B","C","D","E"], NROWS = 12;
+
+/* ---------- helpers ---------- */
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function pad(n){return (n<10?"0":"")+n}
+function fmt(ms){ms=Math.max(0,ms);var s=Math.ceil(ms/1000);return pad(Math.floor(s/60))+":"+pad(s%60)}
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+function lsDel(k){try{localStorage.removeItem(k)}catch(e){}}
+function show(id){["welcome","test","done","admin"].forEach(function(x){$(x).classList.toggle("hide",x!==id)})}
+function norm(s){return String(s||"").toLowerCase().replace(/\s+/g," ").trim()}
+function r05(x){return Math.round(x*2)/2}
+
+/* ---------- state ---------- */
+var S = null, tickTimer = null, saveT = null;
+function blankGrid(){var g=[];for(var r=0;r<NROWS;r++){g.push(["","","","",""])}return g}
+function newState(fn,sn){
+  return {name:fn,surname:sn,startedAt:Date.now(),sec:0,secEnds:[Date.now()+SECTIONS[0].mins*60000,null,null],
+          answers:{},grid:blankGrid(),actions:[],filter:null,dupCol:null,selCol:0,submitted:false};
+}
+function persist(){lsSet(STORE,JSON.stringify(S))}
+function persistSoon(){clearTimeout(saveT);saveT=setTimeout(persist,300)}
+
+/* ---------- welcome ---------- */
+function initWelcome(){
+  show("welcome");
+  $("startBtn").onclick=function(){
+    var fn=$("fn").value.trim(), sn=$("sn").value.trim(), e=$("werr");
+    if(!fn||!sn){e.textContent="Please enter both your name and your surname.";e.classList.remove("hide");return}
+    e.classList.add("hide");
+    S=newState(fn,sn);persist();startTest();
+  };
+}
+
+/* ---------- test ---------- */
+function startTest(){
+  show("test");
+  $("candLbl").textContent=S.name+" "+S.surname;
+  renderSection();
+  clearInterval(tickTimer);tickTimer=setInterval(tick,500);tick();
+}
+function tick(){
+  if(!S||S.submitted)return;
+  var now=Date.now(), end=S.secEnds[S.sec];
+  var left=end-now;
+  $("secTimer").textContent=fmt(left);
+  $("secTimer").classList.toggle("low",left<=120000);
+  var total=0;for(var i=S.sec;i<SECTIONS.length;i++){total+= (i===S.sec?Math.max(0,left):SECTIONS[i].mins*60000)}
+  $("totTimer").textContent=fmt(total);
+  if(left<=0){advance(true)}
+}
+function collect(){
+  document.querySelectorAll("[data-q]").forEach(function(el){S.answers[el.getAttribute("data-q")]=el.value});
+}
+function advance(auto){
+  collect();
+  if(S.sec>=SECTIONS.length-1){submitTest(!!auto);return}
+  S.sec++;S.secEnds[S.sec]=Date.now()+SECTIONS[S.sec].mins*60000;persist();renderSection();
+  if(auto)window.scrollTo(0,0);
+}
+function renderSection(){
+  var sec=SECTIONS[S.sec];
+  $("secPill").textContent=sec.title;
+  var h="";
+  if(sec.id==="ex1")h=ex1Html();else if(sec.id==="ex2")h=ex2Html();else h=ex3Html();
+  $("secBody").innerHTML=h;
+  var last=S.sec===SECTIONS.length-1;
+  $("nextBtn").textContent=last?"Finish and submit test":"Finish this exercise";
+  $("finHint").textContent=last?"When you submit, your test is sent to the panel. You cannot change it afterwards.":"You cannot return to this exercise once you move on.";
+  $("nextBtn").onclick=function(){
+    modal(last?"Submit your test?":"Move to the next exercise?",
+      last?"Your answers will be sent to the panel and you will not be able to change them.":"You will not be able to come back to this exercise.",
+      "Yes, continue","Stay here",function(){advance(false)});
+  };
+  window.scrollTo(0,0);
+  bindAnswerInputs();
+  if(sec.id==="ex2"){renderGrid();updateTaskChips()}
+}
+function qBlock(id,extra){
+  var q=Q[id];
+  return '<div class="q"><span class="pill m">'+q.max+' marks</span><label for="a_'+id+'" style="margin-top:0">'+esc(q.text)+'</label>'+(extra||"")+
+   '<textarea id="a_'+id+'" data-q="'+id+'" placeholder="Type your answer here"></textarea></div>';
+}
+function bindAnswerInputs(){
+  document.querySelectorAll("[data-q]").forEach(function(el){
+    var k=el.getAttribute("data-q");
+    if(S.answers[k]!=null)el.value=S.answers[k];
+    el.addEventListener("input",function(){S.answers[k]=el.value;persistSoon();if(k==="ex2t3b"||k==="ex2t4"||k==="ex2t5")updateTaskChips()});
+  });
+}
+function ex1Html(){
+  return '<div class="card"><h2>Exercise 1: Asset register verification <span class="pill">15 marks &middot; 15 minutes</span></h2>'+
+  '<p>During a physical verification of assets, you were given the register below. Study it and answer the questions.</p>'+
+  '<table class="reg"><tr><th>Asset</th><th>Asset number</th><th>Physical verification</th></tr>'+
+  '<tr><td>Laptop</td><td>00125</td><td>Found</td></tr><tr><td>Printer</td><td>00126</td><td>Found</td></tr>'+
+  '<tr><td>Desktop computer</td><td>00127</td><td>Not found</td></tr><tr><td>Office chair</td><td>00128</td><td>Found</td></tr>'+
+  '<tr><td>Projector</td><td>00129</td><td>Found, tag missing</td></tr></table>'+
+  qBlock("ex1q1")+qBlock("ex1q2")+qBlock("ex1q3")+qBlock("ex1q4")+
+  qBlock("ex1q5",'<p style="color:var(--mut);font-size:.9rem;margin:2px 0 6px">Write it as you would for your supervisor. Include the details a verification report needs.</p>')+
+  '</div>';
+}
+function ex3Html(){
+  return '<div class="card"><h2>Exercise 3: Scenario <span class="pill">10 marks &middot; 15 minutes</span></h2>'+
+  '<p>During a physical asset verification, you discover:</p><ul>'+
+  '<li>Three laptops are missing.</li><li>Two computers were moved to another office without transfer documentation.</li>'+
+  '<li>One printer is damaged and no longer operational.</li><li>One asset is physically available but does not appear on the asset register.</li></ul>'+
+  qBlock("ex3q1")+qBlock("ex3q2")+qBlock("ex3q3")+qBlock("ex3q4")+qBlock("ex3q5")+'</div>';
+}
+function ex2Html(){
+  var d=EXPECT;
+  var rows="";for(var i=0;i<d.length;i++){rows+="<tr>"+d[i].map(function(c){return (i===0?"<th>":"<td>")+esc(c)+(i===0?"</th>":"</td>")}).join("")+"</tr>"}
+  return '<div class="card"><h2>Exercise 2: Spreadsheet <span class="pill">15 marks &middot; 25 minutes</span></h2>'+
+  '<p>Create a spreadsheet with the information below. Type the headings in row 1 and the five assets underneath, then complete the tasks. Use the toolbar above the sheet to sort, filter and highlight duplicates.</p>'+
+  '<table class="reg">'+rows+'</table>'+
+  '<div class="sheet-tools" id="tools">'+
+   '<span style="font-weight:700;color:var(--teal-d)">Spreadsheet</span>'+
+   '<button class="sec sm" id="bSortA" title="Sort the data rows by the selected column, smallest to largest">Sort A&rarr;Z</button>'+
+   '<button class="sec sm" id="bSortD" title="Sort the data rows by the selected column, largest to smallest">Sort Z&rarr;A</button>'+
+   '<span style="margin-left:6px;font-size:.9rem">Filter column</span><select id="fCol">'+COLS.map(function(c){return '<option>'+c+'</option>'}).join("")+'</select>'+
+   '<span style="font-size:.9rem">shows</span><input type="text" id="fVal" placeholder="e.g. Good" size="10">'+
+   '<button class="sec sm" id="bFilter">Apply filter</button><button class="sec sm" id="bClear">Clear filter</button>'+
+   '<button class="sec sm" id="bDup" title="Highlight repeated values in the selected column">Highlight duplicates</button>'+
+   '<button class="sec sm" id="bAdd">Add row</button>'+
+   '<span style="font-size:.85rem;color:var(--mut)" id="selInfo"></span>'+
+  '</div><div class="sheet-wrap"><table class="grid" id="grid"></table></div>'+
+  '<h3>Tasks</h3>'+
+  '<div class="task"><span class="chip no" id="c1">Not yet</span><div><strong>Task 1</strong> (4 marks): capture the headings and all five assets correctly in the sheet.</div></div>'+
+  '<div class="task"><span class="chip no" id="c2">Not yet</span><div><strong>Task 2</strong> (2 marks): sort the assets by asset number (select a cell in column A, then use Sort A&rarr;Z).</div></div>'+
+  '<div class="task"><span class="chip no" id="c3">Not yet</span><div><strong>Task 3</strong> (3 marks): filter the assets that are in poor condition (use the filter on the Condition column).</div></div>'+
+  '<div class="q"><label for="a_ex2t3b" style="margin-top:0">Task 3: write down the asset numbers that are in poor condition.</label><input type="text" id="a_ex2t3b" data-q="ex2t3b" placeholder="For example: 001, 002"></div>'+
+  '<div class="task" style="margin-top:14px"><span class="chip no" id="c4">Not yet</span><div><strong>Task 4</strong> (2 marks): identify duplicate asset numbers (use Highlight duplicates on column A).</div></div>'+
+  '<div class="q" style="margin-top:4px"><label for="a_ex2t4" style="margin-top:0">Task 4: which asset numbers are duplicated? Write "none" if there are no duplicates.</label><input type="text" id="a_ex2t4" data-q="ex2t4" placeholder="Your answer"></div>'+
+  '<div class="q"><span class="pill m">4 marks</span><label for="a_ex2t5" style="margin-top:0">Task 5: write a short summary of the assets that need attention.</label>'+
+  '<textarea id="a_ex2t5" data-q="ex2t5" placeholder="Type your summary here"></textarea></div></div>';
+}
+
+/* ---------- spreadsheet ---------- */
+function renderGrid(){
+  var g=S.grid,t=$("grid");
+  var h="<tr><th class='rn'></th>"+COLS.map(function(c,i){return "<th class='"+(i===S.selCol?"sel":"")+"'>"+c+"</th>"}).join("")+"</tr>";
+  var dupSet={};
+  if(S.dupCol!=null){
+    var seen={};for(var r=1;r<g.length;r++){var v=norm(g[r][S.dupCol]);if(v){seen[v]=(seen[v]||0)+1}}
+    for(var k in seen){if(seen[k]>1)dupSet[k]=true}
+  }
+  for(var r2=0;r2<g.length;r2++){
+    var hidden=false;
+    if(S.filter&&r2>0&&norm(S.filter.val)!==""){hidden=norm(g[r2][S.filter.col]).indexOf(norm(S.filter.val))===-1}
+    h+="<tr class='"+(hidden?"hidden":"")+"'><th class='rn'>"+(r2+1)+"</th>";
+    for(var c2=0;c2<5;c2++){
+      var isDup=S.dupCol===c2&&r2>0&&dupSet[norm(g[r2][c2])];
+      h+="<td class='"+(isDup?"dup":"")+"'><input type='text' data-r='"+r2+"' data-c='"+c2+"' value='"+esc(g[r2][c2])+"' aria-label='Cell "+COLS[c2]+(r2+1)+"'></td>";
+    }
+    h+="</tr>";
+  }
+  t.innerHTML=h;
+  $("selInfo").textContent="Selected column: "+COLS[S.selCol];
+  if(S.filter){$("fCol").value=COLS[S.filter.col];$("fVal").value=S.filter.val}
+  var inputs=t.querySelectorAll("input");
+  inputs.forEach(function(el){
+    el.addEventListener("input",function(){S.grid[+el.dataset.r][+el.dataset.c]=el.value;persistSoon();updateTaskChips()});
+    el.addEventListener("focus",function(){
+      var c=+el.dataset.c;if(c!==S.selCol){S.selCol=c;
+        t.querySelectorAll("tr:first-child th").forEach(function(th,i){th.classList.toggle("sel",i-1===c)});
+        $("selInfo").textContent="Selected column: "+COLS[c]}
+    });
+  });
+  $("bSortA").onclick=function(){sortBy(1)};
+  $("bSortD").onclick=function(){sortBy(-1)};
+  $("bFilter").onclick=function(){
+    S.filter={col:COLS.indexOf($("fCol").value),val:$("fVal").value};
+    S.actions.push({t:"filter",col:S.filter.col,val:S.filter.val});persist();renderGrid();updateTaskChips()};
+  $("bClear").onclick=function(){S.filter=null;$("fVal").value="";persist();renderGrid()};
+  $("bDup").onclick=function(){S.dupCol=S.selCol;S.actions.push({t:"dup",col:S.selCol});persist();renderGrid();updateTaskChips()};
+  $("bAdd").onclick=function(){S.grid.push(["","","","",""]);persist();renderGrid()};
+}
+function cmp(a,b,dir){
+  var ea=norm(a)==="",eb=norm(b)==="";
+  if(ea&&eb)return 0;if(ea)return 1;if(eb)return -1;
+  var na=parseFloat(a),nb=parseFloat(b);
+  if(!isNaN(na)&&!isNaN(nb)&&/^\s*-?\d/.test(a)&&/^\s*-?\d/.test(b)&&String(na)!==""&&na!==nb)return (na-nb)*dir;
+  return String(a).localeCompare(String(b),undefined,{numeric:true,sensitivity:"base"})*dir;
+}
+function sortBy(dir){
+  var col=S.selCol,head=S.grid[0],body=S.grid.slice(1);
+  body.sort(function(x,y){return cmp(x[col],y[col],dir)});
+  S.grid=[head].concat(body);
+  S.actions.push({t:"sort",col:col,dir:dir>0?"asc":"desc"});
+  persist();renderGrid();updateTaskChips();
+}
+function dataRows(){return S.grid.slice(1).filter(function(r){return r.some(function(c){return norm(c)!==""})})}
+function sameCell(a,b,isNum){
+  a=norm(a);b=norm(b);if(isNum&&/^\d+$/.test(a)&&/^\d+$/.test(b))return parseInt(a,10)===parseInt(b,10);return a===b
+}
+function ex2Check(){
+  var res={units:0,unitsMax:6,rowsOk:0,headerOk:false};
+  var h=S.grid[0],hd=EXPECT[0];
+  var hok=true;for(var i=0;i<5;i++){if(norm(h[i])!==norm(hd[i]))hok=false}
+  res.headerOk=hok;if(hok)res.units++;
+  var rows=dataRows();
+  for(var e=1;e<EXPECT.length;e++){
+    var found=rows.some(function(r){for(var i=0;i<5;i++){if(!sameCell(r[i],EXPECT[e][i],i===0))return false}return true});
+    if(found){res.rowsOk++;res.units++}
+  }
+  res.cap=r05(4*res.units/res.unitsMax);
+  /* sort */
+  var sortA=S.actions.filter(function(a){return a.t==="sort"&&a.col===0});
+  var usedAsc=sortA.some(function(a){return a.dir==="asc"}), usedDesc=sortA.some(function(a){return a.dir==="desc"});
+  var nums=dataRows().map(function(r){return parseInt(r[0],10)}).filter(function(n){return !isNaN(n)});
+  var ordered=nums.length>1&&nums.every(function(n,i){return i===0||nums[i-1]<=n});
+  res.sort= usedAsc&&ordered?2:(usedAsc||(usedDesc)?1:(ordered?1:(S.actions.some(function(a){return a.t==="sort"})?0.5:0)));
+  res.usedSortTool=S.actions.some(function(a){return a.t==="sort"});
+  /* filter */
+  var fl=S.actions.filter(function(a){return a.t==="filter"&&a.col===4&&norm(a.val)==="poor"});
+  var ans=norm(S.answers.ex2t3b);
+  var hasList=/003/.test(ans)&&/005/.test(ans)&&!/00[124]/.test(ans.replace(/003|005/g,""));
+  res.filter=(fl.length?2:(S.actions.some(function(a){return a.t==="filter"})?0.5:0))+(hasList?1:0);
+  res.usedFilterTool=fl.length>0;res.filterList=hasList;
+  /* duplicates */
+  var d=norm(S.answers.ex2t4);
+  var noneOk=/\bnone\b|no duplicate|no dupl|\bnil\b|^0$|not any|there are no/.test(d);
+  var usedDup=S.actions.some(function(a){return a.t==="dup"&&a.col===0});
+  res.dup=(noneOk?1:0)+(usedDup?1:0);res.usedDupTool=usedDup;res.dupAnswerOk=noneOk;
+  return res;
+}
+function updateTaskChips(){
+  if(!$("c1"))return;
+  var r=ex2Check();
+  function chip(id,ok,txt){var c=$(id);c.className="chip "+(ok?"ok":"no");c.textContent=txt}
+  chip("c1",r.units>=6,r.units>=6?"Complete":(r.units+"/6 items"));
+  chip("c2",r.sort>=2,r.usedSortTool?"Sorted":"Not yet");
+  chip("c3",r.usedFilterTool,r.usedFilterTool?"Filter used":"Not yet");
+  chip("c4",r.usedDupTool,r.usedDupTool?"Checked":"Not yet");
+}
+
+/* ---------- provisional keyword marking (panel + Claude confirm the final marks) ---------- */
+function anyOf(t,list){return list.some(function(re){return re.test(t)})}
+function grp(t,groups){return groups.filter(function(g){return anyOf(t,g)}).length}
+function autoMark(){
+  var A=S.answers, m={}, t;
+  function put(id,score,note){m[id]={mark:Math.min(Q[id].max,Math.max(0,r05(score))),max:Q[id].max,note:note}}
+  t=norm(A.ex1q1);
+  put("ex1q1",(/00127|desktop/.test(t)&&/not found|missing|could not|cannot|can't|unable|not locat|not there|absent/.test(t)?1.5:0)+(/00129|projector/.test(t)&&/tag|label/.test(t)?1.5:0),"Looks for both discrepancies (00127 not found, 00129 tag missing)");
+  t=norm(A.ex1q2);
+  put("ex1q2",grp(t,[[/register|record/],[/custodian|responsible|official|user/],[/transfer|moved|relocat/],[/last known|location|search|investigat/],[/report|supervisor|procedure|incident|discrepancy/]])*0.75,"Keyword check of investigation and reporting steps");
+  t=norm(A.ex1q3);
+  put("ex1q3",grp(t,[[/serial/],[/document|invoice|purchase|record/],[/confirm|verify|check|match|compare/],[/replace|new tag|re-?tag|attach|label|tag/]])*0.75,"Keyword check of verification and re-tagging steps");
+  t=norm(A.ex1q4);
+  put("ex1q4",grp(t,[[/physical/,/exist/,/match|correspond|agree|compare/],[/discrepanc|difference|error|missing/],[/audit|financial|report|accura/],[/accountab|safeguard|control|protect/]])*0.75,"Keyword check of reconciliation purpose");
+  t=norm(A.ex1q5);
+  put("ex1q5",grp(t,[[/date/],[/assets? verified|verified|assets/],[/missing|not found|00127|desktop/],[/tag/],[/action/],[/recommend/],[/name|signature|signed|prepared by/]])*0.5,"Keyword check of report components");
+  var x=ex2Check();
+  put("ex2t1",x.cap,x.units+" of 6 items matched (headings + five assets)");
+  put("ex2t2",x.sort,x.usedSortTool?"Sort tool used on the sheet":"Sort tool not used");
+  put("ex2t3",x.filter,(x.usedFilterTool?"Filter on Condition = Poor applied. ":"Filter not applied correctly. ")+(x.filterList?"Poor assets listed correctly.":"Poor assets list incomplete or wrong."));
+  put("ex2t4",x.dup,(x.usedDupTool?"Duplicate check used. ":"Duplicate tool not used. ")+(x.dupAnswerOk?"Correctly reported none.":"Answer not 'none'."));
+  t=norm(A.ex2t5);
+  put("ex2t5",grp(t,[[/\b(5|five)\b|total/],[/\b(2|two)\b|003|005|poor/],[/desktop/,/projector/],[/inspect|repair|maintenance|replace|attention/]]),"Keyword check of summary content");
+  t=norm(A.ex3q1);
+  put("ex3q1",grp(t,[[/laptop/],[/transfer|moved|computers/],[/printer|damaged/],[/not (on|in) the (asset )?register|unrecorded|not recorded|does not appear/]])*0.75,"Keyword check across the four situations");
+  t=norm(A.ex3q2);
+  put("ex3q2",Math.min(2,grp(t,[[/transfer/],[/purchase order|\bpo\b/],[/invoice/],[/delivery/],[/verification sheet|verification/],[/incident/],[/maintenance|repair/]])*0.4),"Keyword check of documents listed");
+  t=norm(A.ex3q3);
+  put("ex3q3",anyOf(t,[/supervisor|manager|asset management|unit|practitioner|principal|head/])?1:0,"Names a suitable person or unit");
+  t=norm(A.ex3q4);
+  put("ex3q4",Math.min(2,grp(t,[[/verification|stock ?take|count/],[/tag/],[/record|register|update/],[/transfer/],[/custodian|assign/],[/monitor|report/]])*0.5),"Keyword check of preventive measures");
+  t=norm(A.ex3q5);
+  put("ex3q5",grp(t,[[/dear|hi |hello|good (morning|day|afternoon)/],[/laptop/,/missing/],[/transfer|printer|damaged|register/],[/please|request|kindly|need|advise|assist|regards|thank/]])*0.5,"Keyword check of email structure and content");
+  var tot=0;for(var k in m)tot+=m[k].mark;
+  return {items:m,total:r05(tot)};
+}
+
+/* ---------- modal ---------- */
+function modal(title,body,okTxt,cancelTxt,onOk){
+  var h=$("modalHost");
+  h.innerHTML='<div class="modal" role="dialog" aria-modal="true"><div class="box"><h2>'+esc(title)+'</h2><p>'+esc(body)+'</p><div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px"><button class="sec" id="mNo">'+esc(cancelTxt)+'</button><button id="mYes">'+esc(okTxt)+'</button></div></div></div>';
+  $("mNo").onclick=function(){h.innerHTML=""};
+  $("mYes").onclick=function(){h.innerHTML="";onOk()};
+  $("mYes").focus();
+}
+
+/* ---------- submit ---------- */
+var payload=null;
+function submitTest(auto){
+  clearInterval(tickTimer);
+  collect();
+  S.submitted=true;persist();
+  var am=autoMark();
+  payload={
+    candidate_name:S.name,candidate_surname:S.surname,
+    started_at:new Date(S.startedAt).toISOString(),
+    time_used_seconds:Math.min(20000,Math.round((Date.now()-S.startedAt)/1000)),
+    auto_submitted:!!auto,
+    answers:{answers:S.answers,grid:S.grid,actions:S.actions,filter:S.filter,sections:SECTIONS.map(function(s){return {id:s.id,mins:s.mins}})},
+    auto_marks:am.items,auto_total:am.total,status:"submitted"
+  };
+  show("done");
+  $("doneH").textContent="Submitting your test...";
+  $("doneP").textContent="Please keep this page open for a moment.";
+  send();
+}
+function send(){
+  $("retryRow").classList.add("hide");$("doneErr").classList.add("hide");
+  fetch(SB_URL+"/rest/v1/carissa_staff_assessments",{
+    method:"POST",
+    headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"Content-Type":"application/json","Prefer":"return=minimal"},
+    body:JSON.stringify(payload)
+  }).then(function(r){
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    lsSet(DONEKEY,"1");lsDel(STORE);
+    thanks();
+  }).catch(function(){
+    $("doneH").textContent="Your test could not be sent yet";
+    $("doneP").textContent="Your answers are safe on this device. Please check your internet connection and try again. Do not close this page.";
+    $("doneErr").textContent="Not submitted yet.";$("doneErr").classList.remove("hide");
+    $("retryRow").classList.remove("hide");$("retryBtn").onclick=send;
+  });
+}
+function thanks(){
+  show("done");
+  var n=S?S.name:"";
+  $("doneH").textContent="Thank you"+(n?", "+n:"")+"!";
+  $("doneP").innerHTML="Your practical assessment for the position of <strong>Administrative Clerk: Asset Control</strong> has been submitted successfully. We appreciate the time and effort you put into it. The interview panel will review your work and be in touch with you. You may now close this page.";
+  $("doneErr").classList.add("hide");$("retryRow").classList.add("hide");
+}
+
+/* ---------- admin results ---------- */
+var ROWS=[], PIN="";
+function initAdmin(){
+  show("admin");
+  $("apinBtn").onclick=loadResults;
+  $("apin").addEventListener("keydown",function(e){if(e.key==="Enter")loadResults()});
+}
+function loadResults(){
+  PIN=$("apin").value.trim();var e=$("aerr");e.classList.add("hide");
+  if(!PIN){e.textContent="Enter the PIN.";e.classList.remove("hide");return}
+  $("apinBtn").disabled=true;
+  fetch(SB_URL+"/rest/v1/rpc/carissa_staff_assessment_results",{
+    method:"POST",headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"Content-Type":"application/json"},
+    body:JSON.stringify({p_pin:PIN})
+  }).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})}).then(function(o){
+    $("apinBtn").disabled=false;
+    if(!o.ok){e.textContent="That PIN was not accepted.";e.classList.remove("hide");return}
+    ROWS=o.j||[];$("adminLogin").classList.add("hide");renderList();
+  }).catch(function(){$("apinBtn").disabled=false;e.textContent="Could not load results. Check your connection.";e.classList.remove("hide")});
+}
+function renderList(){
+  $("adminDetail").classList.add("hide");var L=$("adminList");L.classList.remove("hide");
+  var h='<div class="card"><h2>Submitted assessments ('+ROWS.length+')</h2>';
+  if(!ROWS.length)h+='<p>No assessments have been submitted yet.</p>';
+  ROWS.forEach(function(r,i){
+    var when=new Date(r.submitted_at).toLocaleString("en-ZA");
+    var sc=r.status==="marked"?'<span class="pill" style="background:#d1fadf;color:var(--green)">Marked: '+r.final_total+' / 40</span>':'<span class="pill" style="background:#fff1d6;color:var(--amber)">Awaiting marking &middot; provisional '+(r.auto_total==null?"?":r.auto_total)+' / 40</span>';
+    h+='<button class="list-btn" data-i="'+i+'"><span><strong>'+esc(r.candidate_name+" "+r.candidate_surname)+'</strong><br><span style="color:var(--mut);font-size:.85rem">'+esc(when)+'</span></span><span>'+sc+'</span></button>';
+  });
+  h+='<p><button class="sec sm" id="refreshBtn">Refresh</button></p></div>';
+  L.innerHTML=h;
+  L.querySelectorAll(".list-btn").forEach(function(b){b.onclick=function(){renderDetail(+b.dataset.i)}});
+  $("refreshBtn").onclick=function(){$("adminLogin").classList.remove("hide");$("apin").value=PIN;L.classList.add("hide");loadResults()};
+}
+function renderDetail(i){
+  var r=ROWS[i],rep=r.report||null,ans=(r.answers&&r.answers.answers)||{},am=r.auto_marks||{};
+  var items=(rep&&rep.items)||{};
+  $("adminList").classList.add("hide");var D=$("adminDetail");D.classList.remove("hide");
+  var marked=r.status==="marked";
+  var mins=Math.floor((r.time_used_seconds||0)/60), secs=(r.time_used_seconds||0)%60;
+  var h='<div class="card"><p class="noprint"><button class="sec sm" id="backBtn">&larr; All submissions</button> <button class="sec sm" id="printBtn">Print</button></p>'+
+   '<h2>'+esc(r.candidate_name+" "+r.candidate_surname)+'</h2>'+
+   '<p>Position: '+esc(r.position_title)+'<br>Submitted: '+esc(new Date(r.submitted_at).toLocaleString("en-ZA"))+' &middot; Time used: '+mins+' min '+secs+' s'+(r.auto_submitted?' (submitted automatically when the time ended)':'')+'</p>';
+  if(marked){
+    h+='<div class="score">'+r.final_total+' / 40 <span style="font-size:1rem;color:var(--mut)">('+Math.round(r.final_total/40*100)+'%)</span></div>';
+    if(rep){
+      if(rep.exercise_totals){h+='<p>'+Object.keys(rep.exercise_totals).map(function(k){var s=SECTIONS.filter(function(x){return x.id===k})[0];return esc(s?s.title.replace(/ of 3/,""):k)+': <strong>'+rep.exercise_totals[k]+' / '+(s?s.marks:"")+'</strong>'}).join('<br>')+'</p>'}
+      if(rep.summary)h+='<h3>Overall assessment</h3><p>'+esc(rep.summary)+'</p>';
+      if(rep.recommendation)h+='<div class="just"><div class="lbl">Recommendation to the panel</div>'+esc(rep.recommendation)+'</div>';
+      if(rep.strengths&&rep.strengths.length)h+='<h3>Strengths</h3><ul>'+rep.strengths.map(function(s){return '<li>'+esc(s)+'</li>'}).join("")+'</ul>';
+      if(rep.improvements&&rep.improvements.length)h+='<h3>Areas to develop</h3><ul>'+rep.improvements.map(function(s){return '<li>'+esc(s)+'</li>'}).join("")+'</ul>';
+      if(rep.notes)h+='<div class="note">'+esc(rep.notes)+'</div>';
+    }
+  } else {
+    h+='<div class="note"><strong>Awaiting marking.</strong> Provisional keyword marks are shown ('+(r.auto_total==null?"?":r.auto_total)+' / 40). They are only a first check. The full marking with justification and suggestions will appear here once it has been done.</div>';
+  }
+  h+='</div>';
+  SECTIONS.forEach(function(sec){
+    h+='<div class="card"><h2>'+esc(sec.title.replace(/ of 3/,""))+' <span class="pill">'+sec.marks+' marks</span></h2>';
+    QORDER.filter(function(k){return Q[k].sec===sec.id}).forEach(function(k){
+      var q=Q[k],it=items[k],pm=am[k];
+      var mk=it?it.mark:(pm?pm.mark:null);
+      var a=ans[k];
+      if(k==="ex2t3"){a=(ans.ex2t3b||"")}
+      h+='<div class="res-item"><div class="hd"><span>'+esc(q.text)+'</span><span>'+(mk==null?"?":mk)+' / '+q.max+(it?'':' <span style="font-weight:400;color:var(--mut)">(provisional)</span>')+'</span></div>';
+      if(k==="ex2t1"||k==="ex2t2"){
+        h+='<div class="lbl">Candidate\'s spreadsheet (final state)</div>'+gridHtml(r.answers)
+      } else {
+        h+='<div class="lbl">Candidate\'s answer</div><div class="ans">'+(a&&String(a).trim()?esc(a):'<em>No answer given</em>')+'</div>';
+      }
+      if(it){
+        if(it.model_answer)h+='<div class="lbl">Model answer (memorandum)</div><div class="memo">'+esc(it.model_answer)+'</div>';
+        if(it.justification)h+='<div class="lbl">How it was marked</div><div class="just">'+esc(it.justification)+'</div>';
+        if(it.suggestion)h+='<div class="lbl">Suggestion</div><div class="sug">'+esc(it.suggestion)+'</div>';
+      } else if(pm){h+='<div style="font-size:.85rem;color:var(--mut)">'+esc(pm.note)+'</div>'}
+      h+='</div>';
+    });
+    h+='</div>';
+  });
+  D.innerHTML=h;
+  $("backBtn").onclick=renderList;$("printBtn").onclick=function(){try{window.print()}catch(e){}};
+}
+function gridHtml(a){
+  var g=(a&&a.grid)||[],acts=(a&&a.actions)||[];
+  var rows=g.filter(function(r){return r.some(function(c){return String(c).trim()!==""})});
+  var h='<table class="reg">'+rows.map(function(r,i){return '<tr>'+r.map(function(c){return (i===0?'<th>':'<td>')+esc(c)+(i===0?'</th>':'</td>')}).join("")+'</tr>'}).join("")+'</table>';
+  var an=acts.map(function(x){
+    if(x.t==="sort")return "Sorted column "+COLS[x.col]+" ("+x.dir+")";
+    if(x.t==="filter")return "Filtered column "+COLS[x.col]+' for "'+x.val+'"';
+    if(x.t==="dup")return "Highlighted duplicates in column "+COLS[x.col];
+    return x.t}).join("; ");
+  return h+'<div style="font-size:.85rem;color:var(--mut)">Actions used: '+(an?esc(an):"none")+'</div>';
+}
+
+/* ---------- boot ---------- */
+function boot(){
+  var q=location.search+location.hash;
+  if(/view=results|#results/.test(q)){initAdmin();return}
+  if(lsGet(DONEKEY)==="1"){S=null;show("done");$("doneH").textContent="Thank you";$("doneP").textContent="Your assessment has already been submitted from this device. The panel will be in touch.";return}
+  var saved=lsGet(STORE);
+  if(saved){
+    try{S=JSON.parse(saved)}catch(e){S=null}
+    if(S&&S.name&&!S.submitted){
+      while(S.sec<SECTIONS.length&&S.secEnds[S.sec]&&Date.now()>S.secEnds[S.sec]){
+        if(S.sec>=SECTIONS.length-1){startTest();return}
+        S.sec++;S.secEnds[S.sec]=S.secEnds[S.sec-1]+SECTIONS[S.sec].mins*60000;
+      }
+      startTest();return;
+    }
+    if(S&&S.submitted){ /* closed before it could be sent: rebuild the payload and retry */
+      show("done");submitTest(true);return;
+    }
+  }
+  initWelcome();
+}
+boot();
+})();
+</script>
+</body>
+</html>
