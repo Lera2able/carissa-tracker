@@ -91,6 +91,10 @@ const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZi
 
 let teachers = [];
 
+// Accounts that must NOT appear on this public PIN list (e.g. leadership/admin logins
+// whose password also grants admin access). Add emails here to keep them private.
+const PRIVATE_EMAILS = new Set(["vmaphakela1@gmail.com"]);
+
 function esc(s){ return (s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 
 function render(filter){
@@ -174,6 +178,7 @@ async function load(){
     teachers.forEach(t=>{
       const email = (t.email||"").toLowerCase().trim();
       if(!email) return;
+      if(PRIVATE_EMAILS.has(email)) return;
       if(!map[email]){
         map[email] = {
           first_name: t.first_name || "",
