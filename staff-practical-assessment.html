@@ -250,7 +250,8 @@ function newState(fn,sn){
   return {name:fn,surname:sn,startedAt:Date.now(),sec:0,secEnds:[Date.now()+SECTIONS[0].mins*60000,null,null],
           answers:{},grid:blankGrid(),fmt:{},filters:{},filterOn:false,actions:[],dupCol:null,submitted:false};
 }
-function persist(){lsSet(STORE,JSON.stringify(S))}
+var SENT=false;
+function persist(){if(SENT)return;lsSet(STORE,JSON.stringify(S))}
 function persistSoon(){clearTimeout(saveT);saveT=setTimeout(persist,300)}
 
 /* ---------- welcome ---------- */
@@ -905,8 +906,11 @@ function send(){
     return r.json();
   }).then(function(j){
     if(!j||!j.ok)throw new Error("rejected");
+    var code=S&&S.code;
+    SENT=true;clearTimeout(saveT);
     lsDel(STORE);
     thanks();
+    aiMark(code);
   }).catch(function(){
     $("doneH").textContent="Your test could not be sent yet";
     $("doneP").textContent="Your answers are safe on this device. Please check your internet connection and try again. Do not close this page.";
@@ -922,6 +926,14 @@ function thanks(){
   $("doneErr").classList.add("hide");$("retryRow").classList.add("hide");
 }
 
+/* ---------- AI marking (runs in the background after submission) ---------- */
+function aiMark(code){
+  if(!code)return Promise.resolve(null);
+  return fetch(SB_URL+"/functions/v1/mark-staff-assessment",{method:"POST",
+    headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"Content-Type":"application/json"},
+    body:JSON.stringify({code:code})}).then(function(r){return r.json()}).catch(function(){return null});
+}
+
 /* ---------- admin results ---------- */
 var ROWS=[], PIN="", CODES=[];
 function rpc(name,body){return fetch(SB_URL+"/rest/v1/rpc/"+name,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})})}
@@ -935,7 +947,7 @@ function initAdmin(){
   $("apin").addEventListener("keydown",function(e){if(e.key==="Enter")loadResults()});
 }
 function loadResults(){
-  PIN=$("apin").value.trim();var e=$("aerr");e.classList.add("hide");
+  PIN=$("apin").value.trim()||PIN;var e=$("aerr");e.classList.add("hide");
   if(!PIN){e.textContent="Enter the PIN.";e.classList.remove("hide");return}
   $("apinBtn").disabled=true;
   fetch(SB_URL+"/rest/v1/rpc/carissa_staff_assessment_results",{
@@ -982,7 +994,7 @@ function renderDetail(i){
   $("adminList").classList.add("hide");var D=$("adminDetail");D.classList.remove("hide");
   var marked=r.status==="marked";
   var mins=Math.floor((r.time_used_seconds||0)/60), secs=(r.time_used_seconds||0)%60;
-  var h='<div class="card"><p class="noprint"><button class="sec sm" id="backBtn">&larr; All submissions</button> <button class="sec sm" id="printBtn">Print</button> <button class="sec sm" id="delBtn" style="color:var(--red);border-color:var(--red)">Delete this paper</button></p>'+
+  var h='<div class="card"><p class="noprint"><button class="sec sm" id="backBtn">&larr; All submissions</button> <button class="sec sm" id="printBtn">Print</button> <button class="sec sm" id="aiBtn" style="display:'+(marked||!r.access_code?'none':'inline-block')+'">Mark with AI</button> <button class="sec sm" id="delBtn" style="color:var(--red);border-color:var(--red)">Delete this paper</button></p>'+
    '<h2>'+esc(r.candidate_name+" "+r.candidate_surname)+'</h2>'+
    '<p>Position: '+esc(r.position_title)+'<br>Submitted: '+esc(new Date(r.submitted_at).toLocaleString("en-ZA"))+' &middot; Time used: '+mins+' min '+secs+' s'+(r.auto_submitted?' (submitted automatically when the time ended)':'')+'</p>';
   var tt=marked?+r.final_total:+(r.auto_total||0),bd=band(tt);
@@ -1026,6 +1038,13 @@ function renderDetail(i){
   });
   D.innerHTML=h;
   $("backBtn").onclick=renderList;
+  $("aiBtn").onclick=function(){
+    var b=$("aiBtn");b.disabled=true;b.textContent="Marking...";
+    aiMark(r.access_code).then(function(j){
+      if(j&&j.ok){loadResults()}
+      else{b.disabled=false;b.textContent="Mark with AI";modal("AI marking",j&&j.reason==="no_key"?"AI marking is not switched on yet: the API key has not been added.":"The AI marking did not complete. The instant result is still shown. Please try again.","OK","Close",function(){})}
+    });
+  };
   $("delBtn").onclick=function(){modal("Delete this paper?","This permanently removes "+r.candidate_name+" "+r.candidate_surname+"'s submission. This cannot be undone.","Yes, delete","Cancel",function(){
     rpc("carissa_staff_assessment_delete",{p_pin:PIN,p_id:r.id}).then(function(o){if(o.ok){ROWS=ROWS.filter(function(x){return x.id!==r.id});renderList()}})})};$("printBtn").onclick=function(){try{window.print()}catch(e){}};
 }
