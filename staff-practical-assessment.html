@@ -106,6 +106,16 @@ table.ss tr.hidden{display:none}
 .fpanel input[type=checkbox]{width:auto}
 body.embed .top{display:none}
 .clip{position:absolute;left:-9999px;top:0;width:1px;height:1px;opacity:0;border:0;padding:0}
+#printAll{display:none}
+table.pa{width:100%;border-collapse:collapse;font-size:12px}
+table.pa th,table.pa td{border:1px solid #999;padding:5px 6px;text-align:left}
+table.pa th{background:#e9eff1}
+@media print{
+  body.printing-all>*:not(#printAll){display:none!important}
+  body.printing-all #printAll{display:block!important;padding:0}
+  body.printing-all{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  @page{size:A4 landscape;margin:12mm}
+}
 @media print{.top,.bar,button,.noprint{display:none!important}body{background:#fff}.card{border:0;padding:0}}
 </style>
 </head>
@@ -947,6 +957,51 @@ function aiMark(code){
     body:JSON.stringify({code:code})}).then(function(r){return r.json()}).catch(function(){return null});
 }
 
+
+/* ---------- print / download all results ---------- */
+function exTotals(r){
+  var t={ex1:0,ex2:0,ex3:0};
+  if(r.status==="marked"&&r.report&&r.report.exercise_totals){var e=r.report.exercise_totals;return {ex1:+e.ex1||0,ex2:+e.ex2||0,ex3:+e.ex3||0}}
+  var am=r.auto_marks||{};for(var k in am){var p=k.slice(0,3);if(t[p]!==undefined)t[p]+=Number(am[k].mark)||0}
+  return t;
+}
+function summaryRows(){
+  return ROWS.map(function(r){
+    var tot=r.status==="marked"?+r.final_total:+(r.auto_total||0),ex=exTotals(r),bd=band(tot);
+    return {name:(r.candidate_name+" "+r.candidate_surname).trim(),code:r.access_code||"",ex1:ex.ex1,ex2:ex.ex2,ex3:ex.ex3,total:tot,pct:Math.round(tot/40*100),band:bd,
+      how:(r.status==="marked"&&r.report&&r.report.ai)?"AI marked":(r.status==="marked"?"Marked by panel":"Instant"),
+      mins:r.time_used_seconds==null?"":Math.round(r.time_used_seconds/60),when:new Date(r.submitted_at).toLocaleString("en-ZA")};
+  }).sort(function(a,b){return b.total-a.total||a.name.localeCompare(b.name)});
+}
+function schoolName(){var h=document.querySelector(".top h1");return h&&h.firstChild?h.firstChild.textContent.trim():"Practical assessment"}
+function printAll(){
+  var S2=summaryRows(),n={green:0,amber:0,fail:0};S2.forEach(function(x){n[x.band.k]++});
+  var box=$("printAll");if(!box){box=document.createElement("div");box.id="printAll";document.body.appendChild(box)}
+  var who=(typeof ADMIN!=="undefined"&&ADMIN)?" by "+esc(ADMIN):"";
+  var h='<h1 style="margin:0 0 2px;font-size:20px">'+esc(schoolName())+'</h1><div style="font-size:14px;margin-bottom:2px"><strong>Practical Assessment: Administrative Clerk (Asset Control)</strong></div>'+
+   '<div style="font-size:12px;color:#444;margin-bottom:10px">Summary of all candidates. Printed '+esc(new Date().toLocaleString("en-ZA"))+who+'. Ranked from highest to lowest score. Total out of 40.</div>'+
+   '<div style="font-size:12px;margin-bottom:8px"><strong>Candidates:</strong> '+S2.length+' &nbsp; <span style="color:#067647"><strong>Green:</strong> '+n.green+'</span> &nbsp; <span style="color:#b54708"><strong>Amber:</strong> '+n.amber+'</span> &nbsp; <span style="color:#b42318"><strong>Fail:</strong> '+n.fail+'</span></div>'+
+   '<table class="pa"><thead><tr><th>#</th><th>Candidate</th><th>Code</th><th>Ex 1<br>/15</th><th>Ex 2<br>/15</th><th>Ex 3<br>/10</th><th>Total<br>/40</th><th>%</th><th>Result</th><th>Marking</th><th>Time<br>(min)</th></tr></thead><tbody>';
+  S2.forEach(function(x,i){
+    h+='<tr><td>'+(i+1)+'</td><td><strong>'+esc(x.name)+'</strong></td><td>'+esc(x.code)+'</td><td>'+x.ex1+'</td><td>'+x.ex2+'</td><td>'+x.ex3+'</td><td><strong>'+x.total+'</strong></td><td>'+x.pct+'%</td><td style="background:'+x.band.bg+';color:'+x.band.fg+';font-weight:700;text-align:center">'+x.band.label+'</td><td>'+esc(x.how)+'</td><td>'+x.mins+'</td></tr>';
+  });
+  if(!S2.length)h+='<tr><td colspan="11">No assessments have been submitted yet.</td></tr>';
+  h+='</tbody></table><div style="font-size:11px;color:#444;margin-top:10px"><strong>Result key:</strong> Fail = below 50%. Amber = 50% to 65% (borderline, panel to consider). Green = above 65% (passed the practical).</div>';
+  box.innerHTML=h;
+  document.body.classList.add("printing-all");
+  var done=function(){document.body.classList.remove("printing-all");window.removeEventListener("afterprint",done)};
+  window.addEventListener("afterprint",done);
+  setTimeout(function(){window.print()},50);
+}
+function downloadCsv(){
+  var q=function(v){v=String(v==null?"":v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  var lines=[["Rank","Candidate","Code","Exercise 1 (/15)","Exercise 2 (/15)","Exercise 3 (/10)","Total (/40)","Percent","Result","Marking","Time used (min)","Submitted"].map(q).join(",")];
+  summaryRows().forEach(function(x,i){lines.push([i+1,x.name,x.code,x.ex1,x.ex2,x.ex3,x.total,x.pct+"%",x.band.label,x.how,x.mins,x.when].map(q).join(","))});
+  var blob=new Blob(["﻿"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"});
+  var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="assessment-results-"+new Date().toISOString().slice(0,10)+".csv";
+  document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},500);
+}
+
 /* ---------- admin results ---------- */
 var ROWS=[], PIN="", CODES=[];
 function rpc(name,body){return fetch(SB_URL+"/rest/v1/rpc/"+name,{method:"POST",headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})})}
@@ -983,7 +1038,7 @@ function renderList(){
     var sc='<span class="pill" style="background:'+bd.bg+';color:'+bd.fg+'">'+bd.label+' &middot; '+tt+' / 40 ('+Math.round(tt/40*100)+'%)</span>';
     h+='<button class="list-btn" data-i="'+i+'"><span><strong>'+esc(r.candidate_name+" "+r.candidate_surname)+'</strong><br><span style="color:var(--mut);font-size:.85rem">'+esc(when)+'</span></span><span>'+sc+'</span></button>';
   });
-  h+='<p><button class="sec sm" id="refreshBtn">Refresh</button></p></div>';
+  h+='<p><button class="sec sm" id="refreshBtn">Refresh</button> <button class="sm" id="printAllBtn">Print / save all results as PDF</button> <button class="sec sm" id="csvBtn">Download all results (CSV)</button></p></div>';
   h+='<div class="card"><h2>Candidate access codes</h2><p style="color:var(--mut);font-size:.9rem">Give each candidate one code. A code works once: after that candidate submits, it is locked. Candidates type the code on the first page of the assessment.</p>';
   h+='<table class="times"><tr><th>Code</th><th>Status</th><th>Candidate</th><th></th></tr>';
   CODES.forEach(function(c){
@@ -997,6 +1052,7 @@ function renderList(){
     modal("Reset "+code+"?","The code can then be used again from the start. Any paper submitted with this code is permanently deleted. This cannot be undone.","Yes, reset","Cancel",function(){rpc("carissa_staff_assessment_codes_reset",{p_pin:PIN,p_code:code}).then(function(){loadResults()})});
   }});
   $("addCodeBtn").onclick=function(){codeCall("carissa_staff_assessment_codes_add",{p_pin:PIN,p_count:1})};
+  $("printAllBtn").onclick=printAll;$("csvBtn").onclick=downloadCsv;
   $("addCode5Btn").onclick=function(){codeCall("carissa_staff_assessment_codes_add",{p_pin:PIN,p_count:5})};
   L.querySelectorAll(".list-btn").forEach(function(b){b.onclick=function(){renderDetail(+b.dataset.i)}});
   $("refreshBtn").onclick=function(){$("adminLogin").classList.remove("hide");$("apin").value=PIN;L.classList.add("hide");loadResults()};
