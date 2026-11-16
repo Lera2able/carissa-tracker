@@ -1626,6 +1626,221 @@ async function handleEmailSend(request, env, corsOrigin) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Parent notifications (discipline entries -> parent email / WhatsApp)
+// Guardian contacts live in carissa_learner_guardians, which the browser can
+// never read. Only a logged-in teacher session can reach these endpoints.
+// ---------------------------------------------------------------------------
+const PARENT_EMAIL_FROM = "admin@carissaprimary.co.za";
+
+function parentText(value, max = 500) {
+  return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+function parentTitleCase(value) {
+  return parentText(value)
+    .replace(/[+#]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase()
+    .replace(/(^|[\s'-])\p{L}/gu, (m) => m.toUpperCase());
+}
+
+function escapeParentHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function maskParentEmail(email) {
+  const [user, domain] = String(email || "").split("@");
+  if (!user || !domain) return "";
+  return `${user.slice(0, 2)}${"*".repeat(Math.max(1, user.length - 2))}@${domain}`;
+}
+
+function parentWhatsappDigits(value) {
+  const d = String(value || "").replace(/\D/g, "");
+  if (d.startsWith("27") && d.length === 11) return d;
+  if (d.startsWith("0") && d.length === 10) return `27${d.slice(1)}`;
+  return "";
+}
+
+function normaliseParentEntry(body) {
+  if (!body || typeof body !== "object") return null;
+  const type = body.type === "demerit" ? "demerit" : body.type === "merit" ? "merit" : "";
+  const entry = {
+    class_name: parentText(body.class_name, 80),
+    surname: parentText(body.surname, 120),
+    firstname: parentText(body.firstname, 120),
+    type,
+    behaviour: parentText(body.behaviour, 120),
+    behaviour_more: parentText(body.behaviour_more, 500),
+    comment: parentText(body.comment, 800),
+  };
+  if (!entry.class_name || !entry.surname || !entry.firstname || !entry.type) return null;
+  return entry;
+}
+
+function parentTeacherName(session) {
+  const name = `${session?.first_name || ""} ${session?.surname || ""}`.trim();
+  return name || session?.email || "Teacher";
+}
+
+function buildParentMessage(entry, teacherName) {
+  const cleanFirst = parentText(entry.firstname).replace(/[+#]/g, " ").replace(/\s+/g, " ").trim();
+  // First names are already stored in normal case (keep initials like "T.J" intact);
+  // only fix names that arrive in all capitals.
+  const first = cleanFirst === cleanFirst.toUpperCase() ? parentTitleCase(cleanFirst) : cleanFirst;
+  const child = `${first} ${parentTitleCase(entry.surname)}`.trim();
+  const date = new Date().toLocaleDateString("en-ZA", {
+    timeZone: "Africa/Johannesburg",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const details = [entry.behaviour_more, entry.comment]
+    .filter((v, i, arr) => v && arr.indexOf(v) === i)
+    .join(". ");
+  const lines = [];
+  lines.push("Dear Parent/Guardian,");
+  lines.push("");
+  if (entry.type === "demerit") {
+    lines.push(`A demerit was recorded for ${child} (${entry.class_name}) at Carissa Primary School on ${date}.`);
+    lines.push("");
+    if (entry.behaviour) lines.push(`Behaviour: ${entry.behaviour}`);
+    if (details) lines.push(`Details: ${details}`);
+    lines.push(`Recorded by: ${teacherName}`);
+    lines.push("");
+    lines.push("Please follow up with the teacher.");
+  } else {
+    lines.push(`A merit was recorded for ${child} (${entry.class_name}) at Carissa Primary School on ${date}.`);
+    lines.push("");
+    if (details) lines.push(`Reason: ${details}`);
+    lines.push(`Given by: ${teacherName}`);
+    lines.push("");
+    lines.push(`Well done, ${first}!`);
+  }
+  lines.push("");
+  lines.push("Carissa Primary School");
+  return {
+    child,
+    subject: `Carissa Primary School: ${entry.type} recorded for ${child}`,
+    text: lines.join("\n"),
+  };
+}
+
+async function findParentGuardian(env, entry) {
+  const rows = await supabaseGet(env, "carissa_learner_guardians", {
+    class_name: `eq.${entry.class_name}`,
+    surname: `eq.${entry.surname}`,
+    firstname: `eq.${entry.firstname}`,
+    limit: "1",
+  });
+  return Array.isArray(rows) && rows.length ? rows[0] : null;
+}
+
+async function logParentNotification(env, { guardian, entry, channel, status, error, session, summary }) {
+  try {
+    await supabasePost(env, "carissa_parent_notifications", {
+      guardian_id: guardian?.id || null,
+      class_name: entry.class_name,
+      surname: entry.surname,
+      firstname: entry.firstname,
+      entry_type: entry.type,
+      entry_summary: summary ? String(summary).slice(0, 500) : null,
+      channel,
+      status,
+      error: error ? String(error).slice(0, 500) : null,
+      sent_by_email: session?.email || null,
+    }, "return=minimal");
+  } catch (_e) {
+    // logging must never block the notification itself
+  }
+}
+
+async function handleGuardianPrepare(request, env, corsOrigin) {
+  const session = await getTeacherSession(request, env);
+  if (!session) return jsonResponse({ error: "Please log in again to notify parents." }, 401, corsOrigin);
+  const entry = normaliseParentEntry(await readJsonBody(request));
+  if (!entry) return jsonResponse({ error: "Missing learner or entry details." }, 400, corsOrigin);
+
+  const message = buildParentMessage(entry, parentTeacherName(session));
+  const guardian = await findParentGuardian(env, entry);
+  if (!guardian || !guardian.consent) {
+    return jsonResponse({ found: false, message: message.text }, 200, corsOrigin);
+  }
+  const waDigits = parentWhatsappDigits(guardian.whatsapp);
+  const email = emailAddressOf(guardian.email);
+  return jsonResponse({
+    found: true,
+    guardian_name: guardian.guardian_name || "",
+    relationship: guardian.relationship || "",
+    wants_email: !!guardian.wants_email,
+    wants_whatsapp: !!guardian.wants_whatsapp,
+    has_email: isValidEmailAddress(email),
+    email_masked: isValidEmailAddress(email) ? maskParentEmail(email) : "",
+    whatsapp_link: waDigits
+      ? `https://web.whatsapp.com/send?phone=${waDigits}&text=${encodeURIComponent(message.text)}`
+      : null,
+    message: message.text,
+  }, 200, corsOrigin);
+}
+
+async function handleGuardianSend(request, env, corsOrigin) {
+  const session = await getTeacherSession(request, env);
+  if (!session) return jsonResponse({ error: "Please log in again to notify parents." }, 401, corsOrigin);
+  const body = await readJsonBody(request);
+  const entry = normaliseParentEntry(body);
+  const channel = body?.channel === "whatsapp" ? "whatsapp" : body?.channel === "email" ? "email" : "";
+  if (!entry || !channel) return jsonResponse({ error: "Missing learner, entry or channel." }, 400, corsOrigin);
+
+  const guardian = await findParentGuardian(env, entry);
+  if (!guardian || !guardian.consent) {
+    return jsonResponse({ error: "No parent contact on file for this learner." }, 404, corsOrigin);
+  }
+  const message = buildParentMessage(entry, parentTeacherName(session));
+  const summary = entry.type === "demerit"
+    ? `${entry.behaviour || "Demerit"}${entry.comment ? `: ${entry.comment}` : ""}`
+    : entry.comment;
+
+  if (channel === "whatsapp") {
+    // The teacher opens WhatsApp Web themselves; we only keep a record of it.
+    await logParentNotification(env, { guardian, entry, channel, status: "link_opened", session, summary });
+    return jsonResponse({ ok: true }, 200, corsOrigin);
+  }
+
+  const to = emailAddressOf(guardian.email);
+  if (!isValidEmailAddress(to)) {
+    return jsonResponse({ error: "This parent did not give a valid email address." }, 400, corsOrigin);
+  }
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1f2937;max-width:560px">${
+    escapeParentHtml(message.text).replace(/\n/g, "<br>")
+  }</div>`;
+  try {
+    await env.EMAIL.send({
+      to,
+      from: PARENT_EMAIL_FROM,
+      replyTo: PARENT_EMAIL_FROM,
+      subject: message.subject,
+      text: message.text,
+      html,
+    });
+    await logParentNotification(env, { guardian, entry, channel, status: "sent", session, summary });
+    return jsonResponse({ ok: true, to_masked: maskParentEmail(to) }, 200, corsOrigin);
+  } catch (error) {
+    await logParentNotification(env, {
+      guardian, entry, channel, status: "failed", error: error?.message, session, summary,
+    });
+    return jsonResponse(
+      { ok: false, error: error?.message || "Email sending failed." },
+      emailErrorStatus(error?.code),
+      corsOrigin,
+    );
+  }
+}
+
 async function handleLearnWorldPurgeRemovedGames(request, env, corsOrigin) {
   const auth = await requireAdminTeacher(request, env, corsOrigin);
   if (!auth.ok) return auth.res;
@@ -2655,6 +2870,16 @@ export default {
       if (!r) return jsonResponse({ error: "Not found" }, 404, corsOrigin);
       if (request.method !== r[0]) return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
       try { return await r[1](request, env, corsOrigin); } catch (error) { return jsonResponse({ error: error?.message || "Request failed" }, 500, corsOrigin); }
+    }
+    if (url.pathname === "/api/guardians/prepare" || url.pathname === "/api/guardians/send") {
+      if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return url.pathname === "/api/guardians/prepare"
+          ? await handleGuardianPrepare(request, env, corsOrigin)
+          : await handleGuardianSend(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Parent notification failed" }, 500, corsOrigin);
+      }
     }
     if (url.pathname === "/api/auth/learner/login") {
       if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
