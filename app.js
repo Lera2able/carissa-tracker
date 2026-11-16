@@ -8930,8 +8930,6 @@ ${sectionsHtml}
     ), tab === "resources" && /* @__PURE__ */ React.createElement(ResourcesLibrary, { resources: resources.filter((r) => !isMockExamUrl(r == null ? void 0 : r.url)), onAudit: (type, r) => logTeacherAudit(`${type}:${String((r == null ? void 0 : r.title) || "").slice(0, 40)}`, selClass) })) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px", background: "white", padding: "8px", borderRadius: "12px", boxShadow: "0 4px 14px rgba(0,0,0,0.06)" } }, [
       ["dashboard", `\u{1F3E0} Dashboard`],
       ["assessments", `\u{1F4DD} Assessments`],
-      ...teacherAuth ? [["sasams_marks", "\u{1F9EE} SASAMS Marks"]] : [],
-      ...teacherAuth ? [["sasams_reports", "\u{1F4D8} Learner Reports"]] : [],
       ...teacherAuth ? [["learner_history", "\u{1F464} Learner History"]] : [],
       ...teacherAuth ? [["classlist", `\u{1F465} Classlist (${(CLASS_DATA[selClass] || []).length})`]] : [],
       ...teacherAuth ? [["discipline", "\u2696\uFE0F Discipline"]] : [],
