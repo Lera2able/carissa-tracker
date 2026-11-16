@@ -1594,7 +1594,7 @@ async function handleEmailSend(request, env, corsOrigin) {
   }
 
   const fromNameRaw = typeof body.fromName === "string" ? body.fromName.trim() : "";
-  const from = fromNameRaw ? `${fromNameRaw} <${fromAddress}>` : fromAddress;
+  const from = fromNameRaw ? { email: fromAddress, name: fromNameRaw } : fromAddress;
 
   const subject = String(body.subject || "").trim();
   if (!subject) {
@@ -1627,20 +1627,20 @@ async function handleEmailSend(request, env, corsOrigin) {
     for (const att of body.attachments) {
       if (!att || typeof att !== "object") continue;
       const filename = String(att.filename || "").trim();
-      const contentType = String(att.contentType || "application/octet-stream").trim();
+      const type = String(att.contentType || att.type || "application/octet-stream").trim();
       const content = typeof att.content === "string" ? att.content : "";
       if (!filename || !content) continue;
       if (content.length > MAX_EMAIL_ATTACHMENT_BYTES_BASE64) {
         return jsonResponse({ error: `Attachment "${filename}" exceeds the maximum size of ${MAX_EMAIL_ATTACHMENT_BYTES_BASE64} base64 characters.` }, 400, corsOrigin);
       }
-      sanitized.push({ filename, contentType, content });
+      sanitized.push({ filename, type, content, disposition: "attachment" });
     }
     if (sanitized.length) message.attachments = sanitized;
   }
 
   try {
     const result = await env.EMAIL.send(message);
-    return jsonResponse({ success: true, messageId: result?.messageId || null, to, from }, 200, corsOrigin);
+    return jsonResponse({ success: true, messageId: result?.messageId || null, to, from: fromAddress }, 200, corsOrigin);
   } catch (error) {
     return jsonResponse(
       { success: false, error: error?.message || "Email sending failed.", code: error?.code || null },
