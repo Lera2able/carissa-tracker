@@ -1741,7 +1741,7 @@ async function findParentGuardian(env, entry) {
   return Array.isArray(rows) && rows.length ? rows[0] : null;
 }
 
-async function logParentNotification(env, { guardian, entry, channel, status, error, session, summary }) {
+async function logParentNotification(env, { guardian, entry, channel, status, error, session, summary, message }) {
   try {
     await supabasePost(env, "carissa_parent_notifications", {
       guardian_id: guardian?.id || null,
@@ -1750,6 +1750,7 @@ async function logParentNotification(env, { guardian, entry, channel, status, er
       firstname: entry.firstname,
       entry_type: entry.type,
       entry_summary: summary ? String(summary).slice(0, 500) : null,
+      message: message ? String(message).slice(0, 2000) : null,
       channel,
       status,
       error: error ? String(error).slice(0, 500) : null,
@@ -1758,6 +1759,88 @@ async function logParentNotification(env, { guardian, entry, channel, status, er
   } catch (_e) {
     // logging must never block the notification itself
   }
+}
+
+// Only the person(s) listed in carissa_config key "parent_whatsapp_senders"
+// (a JSON array of emails) can send from the school WhatsApp. Everyone else queues.
+async function getParentWhatsappSenders(env) {
+  try {
+    const cfg = await supabaseGet(env, "carissa_config", { key: "eq.parent_whatsapp_senders", select: "*", limit: "1" });
+    const row = Array.isArray(cfg) ? cfg[0] : null;
+    const parsed = safeJsonParse(String(row?.value || "[]"), []);
+    return Array.isArray(parsed) ? parsed.map((e) => String(e || "").trim().toLowerCase()).filter(Boolean) : [];
+  } catch (_e) {
+    return [];
+  }
+}
+
+async function isParentAdminSession(env, session) {
+  const allowed = await getParentWhatsappSenders(env);
+  return allowed.includes(String(session?.email || "").trim().toLowerCase());
+}
+
+async function requireParentWhatsappSender(request, env, corsOrigin) {
+  const session = await getTeacherSession(request, env);
+  if (!session) return { ok: false, res: jsonResponse({ error: "Teacher session required." }, 401, corsOrigin) };
+  if (!(await isParentAdminSession(env, session))) {
+    return { ok: false, res: jsonResponse({ error: "Only the WhatsApp sender can see the queue." }, 403, corsOrigin) };
+  }
+  return { ok: true, session };
+}
+
+async function handleGuardianQueue(request, env, corsOrigin) {
+  const auth = await requireParentWhatsappSender(request, env, corsOrigin);
+  if (!auth.ok) return auth.res;
+  const items = await supabaseGet(env, "carissa_parent_notifications", {
+    channel: "eq.whatsapp",
+    status: "eq.queued",
+    order: "created_at.asc",
+    limit: "200",
+  });
+  const list = Array.isArray(items) ? items : [];
+  const ids = [...new Set(list.map((i) => i.guardian_id).filter(Boolean))];
+  const guardians = {};
+  if (ids.length) {
+    const rows = await supabaseGet(env, "carissa_learner_guardians", { id: `in.(${ids.join(",")})` });
+    (Array.isArray(rows) ? rows : []).forEach((g) => { guardians[g.id] = g; });
+  }
+  return jsonResponse({
+    items: list.map((i) => {
+      const g = guardians[i.guardian_id];
+      const digits = parentWhatsappDigits(g?.whatsapp);
+      return {
+        id: i.id,
+        created_at: i.created_at,
+        class_name: i.class_name,
+        surname: i.surname,
+        firstname: i.firstname,
+        entry_type: i.entry_type,
+        entry_summary: i.entry_summary,
+        queued_by: i.sent_by_email,
+        guardian_name: g?.guardian_name || "",
+        message: i.message || "",
+        whatsapp_link: digits && i.message
+          ? `https://web.whatsapp.com/send?phone=${digits}&text=${encodeURIComponent(i.message)}`
+          : null,
+      };
+    }),
+  }, 200, corsOrigin);
+}
+
+async function handleGuardianQueueUpdate(request, env, corsOrigin) {
+  const auth = await requireParentWhatsappSender(request, env, corsOrigin);
+  if (!auth.ok) return auth.res;
+  const body = await readJsonBody(request);
+  const id = parentText(body?.id, 80);
+  const status = body?.status === "sent" ? "sent" : body?.status === "dismissed" ? "dismissed" : "";
+  if (!id || !/^[0-9a-f-]{36}$/i.test(id) || !status) {
+    return jsonResponse({ error: "Missing id or status." }, 400, corsOrigin);
+  }
+  await supabasePatch(env, "carissa_parent_notifications", { id: `eq.${id}`, status: "eq.queued" }, {
+    status,
+    updated_at: new Date().toISOString(),
+  });
+  return jsonResponse({ ok: true }, 200, corsOrigin);
 }
 
 async function handleGuardianPrepare(request, env, corsOrigin) {
@@ -1773,6 +1856,9 @@ async function handleGuardianPrepare(request, env, corsOrigin) {
   }
   const waDigits = parentWhatsappDigits(guardian.whatsapp);
   const email = emailAddressOf(guardian.email);
+  // Only the admin has the school WhatsApp linked, so teachers queue the message
+  // and never see the parent's number.
+  const isAdmin = await isParentAdminSession(env, session);
   return jsonResponse({
     found: true,
     guardian_name: guardian.guardian_name || "",
@@ -1781,7 +1867,9 @@ async function handleGuardianPrepare(request, env, corsOrigin) {
     wants_whatsapp: !!guardian.wants_whatsapp,
     has_email: isValidEmailAddress(email),
     email_masked: isValidEmailAddress(email) ? maskParentEmail(email) : "",
-    whatsapp_link: waDigits
+    has_whatsapp: !!waDigits,
+    whatsapp_mode: isAdmin ? "direct" : "queue",
+    whatsapp_link: isAdmin && waDigits
       ? `https://web.whatsapp.com/send?phone=${waDigits}&text=${encodeURIComponent(message.text)}`
       : null,
     message: message.text,
@@ -1806,9 +1894,16 @@ async function handleGuardianSend(request, env, corsOrigin) {
     : entry.comment;
 
   if (channel === "whatsapp") {
-    // The teacher opens WhatsApp Web themselves; we only keep a record of it.
-    await logParentNotification(env, { guardian, entry, channel, status: "link_opened", session, summary });
-    return jsonResponse({ ok: true }, 200, corsOrigin);
+    if (!parentWhatsappDigits(guardian.whatsapp)) {
+      return jsonResponse({ error: "This parent did not give a valid WhatsApp number." }, 400, corsOrigin);
+    }
+    if (await isParentAdminSession(env, session)) {
+      // Admin opens WhatsApp Web themselves; we only keep a record of it.
+      await logParentNotification(env, { guardian, entry, channel, status: "link_opened", session, summary, message: message.text });
+      return jsonResponse({ ok: true, queued: false }, 200, corsOrigin);
+    }
+    await logParentNotification(env, { guardian, entry, channel, status: "queued", session, summary, message: message.text });
+    return jsonResponse({ ok: true, queued: true }, 200, corsOrigin);
   }
 
   const to = emailAddressOf(guardian.email);
@@ -2871,12 +2966,13 @@ export default {
       if (request.method !== r[0]) return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
       try { return await r[1](request, env, corsOrigin); } catch (error) { return jsonResponse({ error: error?.message || "Request failed" }, 500, corsOrigin); }
     }
-    if (url.pathname === "/api/guardians/prepare" || url.pathname === "/api/guardians/send") {
+    if (["/api/guardians/prepare", "/api/guardians/send", "/api/guardians/queue", "/api/guardians/queue/update"].includes(url.pathname)) {
       if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
       try {
-        return url.pathname === "/api/guardians/prepare"
-          ? await handleGuardianPrepare(request, env, corsOrigin)
-          : await handleGuardianSend(request, env, corsOrigin);
+        if (url.pathname === "/api/guardians/prepare") return await handleGuardianPrepare(request, env, corsOrigin);
+        if (url.pathname === "/api/guardians/queue") return await handleGuardianQueue(request, env, corsOrigin);
+        if (url.pathname === "/api/guardians/queue/update") return await handleGuardianQueueUpdate(request, env, corsOrigin);
+        return await handleGuardianSend(request, env, corsOrigin);
       } catch (error) {
         return jsonResponse({ error: error?.message || "Parent notification failed" }, 500, corsOrigin);
       }
