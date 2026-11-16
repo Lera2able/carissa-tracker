@@ -23,6 +23,8 @@ const DEFAULT_SUPABASE_URL = "https://vousucfboetqtppjywlg.supabase.co";
 const EMAIL_SENDER_DOMAIN = "carissaprimary.co.za";
 const DEFAULT_EMAIL_FROM = `noreply@${EMAIL_SENDER_DOMAIN}`;
 const MAX_EMAIL_RECIPIENTS = 50;
+const MAX_EMAIL_ATTACHMENTS = 10;
+const MAX_EMAIL_ATTACHMENT_BYTES_BASE64 = 4 * 1024 * 1024; // ~4 MB per attachment (base64 chars)
 const COOKIE_NAMES = {
   teacher: "carissa_tracker_teacher_session",
   learner: "carissa_tracker_learner_session",
@@ -1586,10 +1588,13 @@ async function handleEmailSend(request, env, corsOrigin) {
     return jsonResponse({ error: `Invalid recipient address: ${invalidRecipient}` }, 400, corsOrigin);
   }
 
-  const from = emailAddressOf(body.from) || DEFAULT_EMAIL_FROM;
-  if (!isValidEmailAddress(from) || !from.endsWith(`@${EMAIL_SENDER_DOMAIN}`)) {
+  const fromAddress = emailAddressOf(body.from) || DEFAULT_EMAIL_FROM;
+  if (!isValidEmailAddress(fromAddress) || !fromAddress.endsWith(`@${EMAIL_SENDER_DOMAIN}`)) {
     return jsonResponse({ error: `'from' must be an address on ${EMAIL_SENDER_DOMAIN}.` }, 400, corsOrigin);
   }
+
+  const fromNameRaw = typeof body.fromName === "string" ? body.fromName.trim() : "";
+  const from = fromNameRaw ? `${fromNameRaw} <${fromAddress}>` : fromAddress;
 
   const subject = String(body.subject || "").trim();
   if (!subject) {
@@ -1612,6 +1617,25 @@ async function handleEmailSend(request, env, corsOrigin) {
       return jsonResponse({ error: `Invalid replyTo address: ${replyTo}` }, 400, corsOrigin);
     }
     message.replyTo = replyTo;
+  }
+
+  if (Array.isArray(body.attachments) && body.attachments.length) {
+    if (body.attachments.length > MAX_EMAIL_ATTACHMENTS) {
+      return jsonResponse({ error: `A maximum of ${MAX_EMAIL_ATTACHMENTS} attachments is allowed.` }, 400, corsOrigin);
+    }
+    const sanitized = [];
+    for (const att of body.attachments) {
+      if (!att || typeof att !== "object") continue;
+      const filename = String(att.filename || "").trim();
+      const contentType = String(att.contentType || "application/octet-stream").trim();
+      const content = typeof att.content === "string" ? att.content : "";
+      if (!filename || !content) continue;
+      if (content.length > MAX_EMAIL_ATTACHMENT_BYTES_BASE64) {
+        return jsonResponse({ error: `Attachment "${filename}" exceeds the maximum size of ${MAX_EMAIL_ATTACHMENT_BYTES_BASE64} base64 characters.` }, 400, corsOrigin);
+      }
+      sanitized.push({ filename, contentType, content });
+    }
+    if (sanitized.length) message.attachments = sanitized;
   }
 
   try {
