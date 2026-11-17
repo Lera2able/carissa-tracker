@@ -3232,8 +3232,8 @@ window.CLASS_DATA = {
     },
     {
       "number": 10,
-      "surname": "MASHIGO",
-      "firstname": "Reabetswe"
+      "surname": "HLONGWANE",
+      "firstname": "Kearabilwe Mapula"
     },
     {
       "number": 11,
@@ -3279,6 +3279,11 @@ window.CLASS_DATA = {
       "number": 19,
       "surname": "MASHIGO",
       "firstname": "Precious Owethu Noluthando"
+    },
+    {
+      "number": 20,
+      "surname": "MASHIGO",
+      "firstname": "Reabetswe"
     },
     
     {
