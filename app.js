@@ -5117,6 +5117,7 @@ footer{text-align:center;margin-top:10px;font-size:9px;color:#888;border-top:1px
     ["reading", "\u{1F4D6} Reading Results"],
     ["discipline", "\u2696\uFE0F Discipline"],
     ["learners", "\u{1F465} Learners"],
+    ["parents_contacts", "\u{1F4C7} Parents contacts"],
     ["moderation", "\u{1F5C2} Moderation"],
     ["registrations", "\u{1F9D1}\u200D\u{1F3EB} Registrations"],
     ["teacher_audit", "\u{1F9FE} Teacher Audit"],
@@ -7642,6 +7643,221 @@ ${sectionsHtml}
     const sendBtn = React.createElement("button", { onClick: send, disabled: busy, style: { ...btn, width: "100%", opacity: busy ? 0.7 : 1 } }, busy ? "Sending..." : "Send Email");
     return React.createElement("div", { style: card }, React.createElement("h3", { style: ctitle }, "\u{1F4E7} Send Email"), statusEl, topGrid, toField, subjectField, messageField, fileInput, attachBtn, attList, sendBtn);
   }
+  function ParentsContactsTab() {
+    const [rows, setRows] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [search, setSearch] = useState("");
+    const [classFilter, setClassFilter] = useState("all");
+    const [sortKey, setSortKey] = useState("class_name");
+    const [sortDir, setSortDir] = useState("asc");
+    useEffect(() => {
+      (async () => {
+        try {
+          const d = await apiRequest("/guardians/list");
+          setRows(Array.isArray(d && d.rows) ? d.rows : []);
+        } catch (e) {
+          setError(e.message || "Could not load parent contacts.");
+        }
+        setLoading(false);
+      })();
+    }, []);
+    const classRank = (c) => {
+      const m = String(c || "").match(/^Grade\s+(R|\d+)/i);
+      if (!m) return 999;
+      return m[1].toUpperCase() === "R" ? 0 : Number(m[1]);
+    };
+    const classes = useMemo(
+      () => [...new Set(rows.map((r) => r.class_name).filter(Boolean))].sort((a, b) => classRank(a) - classRank(b) || a.localeCompare(b)),
+      [rows]
+    );
+    const filtered = useMemo(() => {
+      const q = search.trim().toLowerCase();
+      return rows.filter((r) => {
+        if (classFilter !== "all" && r.class_name !== classFilter) return false;
+        if (!q) return true;
+        return [r.surname, r.firstname, r.guardian_name, r.relationship, r.whatsapp, r.alt_phone, r.email, r.guardian2_name, r.guardian2_phone, r.class_name]
+          .join(" ")
+          .toLowerCase()
+          .includes(q);
+      });
+    }, [rows, search, classFilter]);
+    const sorted = useMemo(() => {
+      const val = (r) => {
+        if (sortKey === "class_name") return classRank(r.class_name) * 1000 + (Number(r.learner_no) || 0);
+        if (sortKey === "learner_no") return Number(r.learner_no) || 0;
+        if (sortKey === "learner") return `${r.surname || ""} ${r.firstname || ""}`.toLowerCase();
+        if (sortKey === "channel") return `${r.wants_whatsapp ? 1 : 0}${r.wants_email ? 1 : 0}`;
+        return String(r[sortKey] == null ? "" : r[sortKey]).toLowerCase();
+      };
+      const arr = filtered.slice().sort((a, b) => {
+        const va = val(a);
+        const vb = val(b);
+        const c = va < vb ? -1 : va > vb ? 1 : 0;
+        return sortDir === "asc" ? c : -c;
+      });
+      return arr;
+    }, [filtered, sortKey, sortDir]);
+    const toggleSort = (key) => {
+      if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      else {
+        setSortKey(key);
+        setSortDir("asc");
+      }
+    };
+    const channelText = (r) => {
+      const parts = [];
+      if (r.wants_whatsapp) parts.push("WhatsApp");
+      if (r.wants_email) parts.push("Email");
+      return parts.length ? parts.join(" + ") : "\u2014";
+    };
+    const exportCsv = () => {
+      if (!sorted.length) return;
+      const cols = [
+        ["class_name", "Class"],
+        ["learner_no", "No"],
+        ["surname", "Surname"],
+        ["firstname", "First name"],
+        ["guardian_name", "Parent/guardian"],
+        ["relationship", "Relationship"],
+        ["whatsapp", "WhatsApp"],
+        ["alt_phone", "Alt phone"],
+        ["email", "Email"],
+        ["guardian2_name", "2nd guardian"],
+        ["guardian2_relationship", "2nd relationship"],
+        ["guardian2_phone", "2nd phone"],
+        ["wants_whatsapp", "WhatsApp OK"],
+        ["wants_email", "Email OK"],
+        ["consent", "Consent"]
+      ];
+      const esc = (v) => {
+        const s = v == null ? "" : String(v);
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const lines = [cols.map((c) => esc(c[1])).join(",")];
+      sorted.forEach((r) => lines.push(cols.map((c) => esc(r[c[0]])).join(",")));
+      const blob = new Blob([lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "carissa-parent-contacts.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+    const thStyle = { textAlign: "left", padding: "10px 12px", background: "#f1f5f9", color: "#334155", fontWeight: 800, fontSize: "12px", borderBottom: "2px solid #e2e8f0", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" };
+    const tdStyle = (nowrap) => ({ padding: "9px 12px", borderBottom: "1px solid #eef2f7", verticalAlign: "top", whiteSpace: nowrap ? "nowrap" : "normal" });
+    const cell = (v, nowrap) =>
+      React.createElement(
+        "td",
+        { style: tdStyle(nowrap) },
+        v === null || v === undefined || v === "" ? React.createElement("span", { style: { color: "#cbd5e1" } }, "\u2014") : v
+      );
+    const headers = [
+      ["class_name", "Class"],
+      ["learner_no", "No"],
+      ["learner", "Child"],
+      ["guardian_name", "Parent / guardian"],
+      ["relationship", "Relation"],
+      ["whatsapp", "WhatsApp"],
+      ["alt_phone", "Alt phone"],
+      ["email", "Email"],
+      ["guardian2_name", "2nd guardian"],
+      ["guardian2_phone", "2nd phone"],
+      ["channel", "Prefers"]
+    ];
+    return React.createElement(
+      "div",
+      null,
+      React.createElement(
+        "div",
+        { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "10px", flexWrap: "wrap", margin: "0 0 12px" } },
+        React.createElement(
+          "div",
+          null,
+          React.createElement("div", { style: { fontSize: "18px", fontWeight: 900, color: "#111827" } }, "\u{1F4C7} Parents contacts"),
+          React.createElement(
+            "div",
+            { style: { fontSize: "13px", color: "#6b7280" } },
+            loading ? "Loading\u2026" : `${sorted.length} of ${rows.length} contact${rows.length === 1 ? "" : "s"} shown`
+          )
+        ),
+        React.createElement(
+          "div",
+          { style: { display: "flex", gap: "8px", flexWrap: "wrap" } },
+          React.createElement("input", {
+            value: search,
+            onChange: (e) => setSearch(e.target.value),
+            placeholder: "Search child, parent, phone, email\u2026",
+            style: { ...inp, minWidth: "240px" }
+          }),
+          React.createElement(
+            "select",
+            { value: classFilter, onChange: (e) => setClassFilter(e.target.value), style: { ...inp, minWidth: "150px" } },
+            React.createElement("option", { value: "all" }, "All classes"),
+            classes.map((c) => React.createElement("option", { key: c, value: c }, c))
+          ),
+          React.createElement(
+            "button",
+            { onClick: exportCsv, disabled: !sorted.length, style: { ...sbtn, background: "#16a34a", opacity: sorted.length ? 1 : 0.6 } },
+            "\u2B07 Export CSV"
+          )
+        )
+      ),
+      error && React.createElement("div", { style: { ...card, border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", marginBottom: "12px" } }, error),
+      loading
+        ? React.createElement("div", { style: { ...card, textAlign: "center", color: "#667eea" } }, "Loading parent contacts\u2026")
+        : React.createElement(
+            "div",
+            { style: { ...card, padding: 0, overflow: "hidden" } },
+            React.createElement(
+              "div",
+              { style: { overflowX: "auto" } },
+              React.createElement(
+                "table",
+                { style: { width: "100%", borderCollapse: "collapse", fontSize: "13px" } },
+                React.createElement(
+                  "thead",
+                  null,
+                  React.createElement(
+                    "tr",
+                    null,
+                    headers.map(([k, l]) =>
+                      React.createElement(
+                        "th",
+                        { key: k, onClick: () => toggleSort(k), style: thStyle, title: "Click to sort" },
+                        l,
+                        sortKey === k ? (sortDir === "asc" ? " \u25B2" : " \u25BC") : ""
+                      )
+                    )
+                  )
+                ),
+                React.createElement(
+                  "tbody",
+                  null,
+                  sorted.map((r, i) =>
+                    React.createElement(
+                      "tr",
+                      { key: i, style: { background: i % 2 ? "#f8fafc" : "#fff" } },
+                      cell(r.class_name),
+                      cell(r.learner_no),
+                      cell(`${r.surname || ""}, ${r.firstname || ""}`.replace(/,\s*$/, ""), true),
+                      cell(r.guardian_name),
+                      cell(r.relationship),
+                      cell(r.whatsapp, true),
+                      cell(r.alt_phone, true),
+                      cell(r.email),
+                      cell(r.guardian2_name),
+                      cell(r.guardian2_phone, true),
+                      cell(channelText(r))
+                    )
+                  )
+                )
+              )
+            ),
+            !sorted.length && React.createElement("div", { style: { padding: "20px", textAlign: "center", color: "#94a3b8" } }, "No contacts match your search.")
+          )
+    );
+  }
   function AdminDashboard({ onBack, adminUser }) {
     var _a, _b;
     const [subTab, setSubTab] = useState("overview");
@@ -7738,7 +7954,7 @@ ${sectionsHtml}
         exportClassSummary,
         onProjectTest: (phase) => setProjectMode({ phase })
       }
-    ), subTab === "sasams_submits" && /* @__PURE__ */ React.createElement(SasamsAdminSubmissionsTab, { adminUser }), subTab === "staff_assessments" && /* @__PURE__ */ React.createElement(StaffAssessmentsTab, null), subTab === "reading" && /* @__PURE__ */ React.createElement(ReadingResultsTab, { reading }), subTab === "discipline" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(WhatsappQueuePanel, null), /* @__PURE__ */ React.createElement(DisciplineAdminTab, { adminUser })), subTab === "learners" && /* @__PURE__ */ React.createElement(LearnersAdminTab, { overrides, setOverrides, setAssessments }), subTab === "moderation" && /* @__PURE__ */ React.createElement(ModerationToolsTab, { adminAccess: true }), subTab === "registrations" && /* @__PURE__ */ React.createElement(TeacherRegistrationsTab, null), subTab === "teacher_audit" && /* @__PURE__ */ React.createElement(TeacherAuditTab, { events: auditEvents, setEvents: setAuditEvents }), subTab === "assistant" && /* @__PURE__ */ React.createElement(TraeAssistantTab, null), subTab === "email" && /* @__PURE__ */ React.createElement(EmailAdminTab, null), subTab === "chats" && /* @__PURE__ */ React.createElement(ChatsAdminTab, { chats, setChats }), subTab === "audit" && /* @__PURE__ */ React.createElement(AuditAdminTab, null), projectMode && /* @__PURE__ */ React.createElement(
+    ), subTab === "sasams_submits" && /* @__PURE__ */ React.createElement(SasamsAdminSubmissionsTab, { adminUser }), subTab === "staff_assessments" && /* @__PURE__ */ React.createElement(StaffAssessmentsTab, null), subTab === "reading" && /* @__PURE__ */ React.createElement(ReadingResultsTab, { reading }), subTab === "discipline" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(WhatsappQueuePanel, null), /* @__PURE__ */ React.createElement(DisciplineAdminTab, { adminUser })), subTab === "learners" && /* @__PURE__ */ React.createElement(LearnersAdminTab, { overrides, setOverrides, setAssessments }), subTab === "parents_contacts" && /* @__PURE__ */ React.createElement(ParentsContactsTab, null), subTab === "moderation" && /* @__PURE__ */ React.createElement(ModerationToolsTab, { adminAccess: true }), subTab === "registrations" && /* @__PURE__ */ React.createElement(TeacherRegistrationsTab, null), subTab === "teacher_audit" && /* @__PURE__ */ React.createElement(TeacherAuditTab, { events: auditEvents, setEvents: setAuditEvents }), subTab === "assistant" && /* @__PURE__ */ React.createElement(TraeAssistantTab, null), subTab === "email" && /* @__PURE__ */ React.createElement(EmailAdminTab, null), subTab === "chats" && /* @__PURE__ */ React.createElement(ChatsAdminTab, { chats, setChats }), subTab === "audit" && /* @__PURE__ */ React.createElement(AuditAdminTab, null), projectMode && /* @__PURE__ */ React.createElement(
       ProjectTestView,
       {
         initialPhase: projectMode.phase,

@@ -1867,6 +1867,18 @@ async function handleGuardianQueueUpdate(request, env, corsOrigin) {
   return jsonResponse({ ok: true }, 200, corsOrigin);
 }
 
+async function handleGuardianList(request, env, corsOrigin) {
+  const auth = await requireAdminTeacher(request, env, corsOrigin);
+  if (!auth.ok) return auth.res;
+  const rows = await supabaseGet(env, "carissa_learner_guardians", {
+    select: "class_name,learner_no,surname,firstname,guardian_name,relationship,whatsapp,alt_phone,email,wants_whatsapp,wants_email,guardian2_name,guardian2_relationship,guardian2_phone,consent,is_test,submitted_at,updated_at",
+    order: "class_name.asc,surname.asc,firstname.asc",
+    limit: "5000",
+  });
+  const list = Array.isArray(rows) ? rows : [];
+  return jsonResponse({ count: list.length, rows: list }, 200, corsOrigin);
+}
+
 async function handleGuardianPrepare(request, env, corsOrigin) {
   const session = await getTeacherSession(request, env);
   if (!session) return jsonResponse({ error: "Please log in again to notify parents." }, 401, corsOrigin);
@@ -2989,6 +3001,14 @@ export default {
       if (!r) return jsonResponse({ error: "Not found" }, 404, corsOrigin);
       if (request.method !== r[0]) return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
       try { return await r[1](request, env, corsOrigin); } catch (error) { return jsonResponse({ error: error?.message || "Request failed" }, 500, corsOrigin); }
+    }
+    if (url.pathname === "/api/guardians/list") {
+      if (request.method !== "GET") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handleGuardianList(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Could not load parent contacts" }, 500, corsOrigin);
+      }
     }
     if (["/api/guardians/prepare", "/api/guardians/send", "/api/guardians/queue", "/api/guardians/queue/update"].includes(url.pathname)) {
       if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
