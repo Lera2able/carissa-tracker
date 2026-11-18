@@ -194,6 +194,11 @@ window.CLASS_DATA = {
       "number": 39,
       "surname": "TSHABALALA",
       "firstname": "Siyabonga"
+    },
+    {
+      "number": 40,
+      "surname": "MOTAUNG",
+      "firstname": "Libby"
     }
   ],
   "Grade R Starfish": [
