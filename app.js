@@ -7655,6 +7655,7 @@ ${sectionsHtml}
     const [classFilter, setClassFilter] = useState("all");
     const [sortKey, setSortKey] = useState("class_name");
     const [sortDir, setSortDir] = useState("asc");
+    const [openGroups, setOpenGroups] = useState({});
     useEffect(() => {
       (async () => {
         try {
@@ -7702,6 +7703,19 @@ ${sectionsHtml}
       });
       return arr;
     }, [filtered, sortKey, sortDir]);
+    const grouped = useMemo(() => {
+      const map = new Map();
+      for (const r of sorted) {
+        const k = r.class_name || "Unknown";
+        if (!map.has(k)) map.set(k, []);
+        map.get(k).push(r);
+      }
+      return [...map.entries()]
+        .map(([cls, list]) => ({ cls, list }))
+        .sort((a, b) => classRank(a.cls) - classRank(b.cls) || a.cls.localeCompare(b.cls));
+    }, [sorted]);
+    const isGroupOpen = (cls) => (search.trim() ? true : !!openGroups[cls]);
+    const toggleGroup = (cls) => setOpenGroups((m) => ({ ...m, [cls]: !m[cls] }));
     const toggleSort = (key) => {
       if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
       else {
@@ -7757,7 +7771,6 @@ ${sectionsHtml}
         v === null || v === undefined || v === "" ? React.createElement("span", { style: { color: "#cbd5e1" } }, "\u2014") : v
       );
     const headers = [
-      ["class_name", "Class"],
       ["learner_no", "No"],
       ["learner", "Child"],
       ["guardian_name", "Parent / guardian"],
@@ -7835,25 +7848,39 @@ ${sectionsHtml}
                     )
                   )
                 ),
-                React.createElement(
-                  "tbody",
-                  null,
-                  sorted.map((r, i) =>
+                grouped.map((g) =>
+                  React.createElement(
+                    "tbody",
+                    { key: g.cls },
                     React.createElement(
                       "tr",
-                      { key: i, style: { background: i % 2 ? "#f8fafc" : "#fff" } },
-                      cell(r.class_name),
-                      cell(r.learner_no),
-                      cell(`${r.surname || ""}, ${r.firstname || ""}`.replace(/,\s*$/, ""), true),
-                      cell(r.guardian_name),
-                      cell(r.relationship),
-                      cell(r.whatsapp, true),
-                      cell(r.alt_phone, true),
-                      cell(r.email),
-                      cell(r.guardian2_name),
-                      cell(r.guardian2_phone, true),
-                      cell(channelText(r))
-                    )
+                      { onClick: () => toggleGroup(g.cls), style: { cursor: "pointer", background: "#eef2ff", borderTop: "2px solid #e0e7ff" } },
+                      React.createElement(
+                        "td",
+                        { colSpan: headers.length, style: { padding: "10px 12px", fontWeight: 900, color: "#3730a3", fontSize: "13px" } },
+                        isGroupOpen(g.cls) ? "\u25BC " : "\u25B6 ",
+                        g.cls,
+                        React.createElement("span", { style: { marginLeft: "8px", fontWeight: 700, fontSize: "12px", color: "#4f46e5", background: "#e0e7ff", borderRadius: "999px", padding: "2px 9px" } }, g.list.length)
+                      )
+                    ),
+                    isGroupOpen(g.cls)
+                      ? g.list.map((r, i) =>
+                          React.createElement(
+                            "tr",
+                            { key: `${g.cls}-${i}`, style: { background: i % 2 ? "#f8fafc" : "#fff" } },
+                            cell(r.learner_no),
+                            cell(`${r.surname || ""}, ${r.firstname || ""}`.replace(/,\s*$/, ""), true),
+                            cell(r.guardian_name),
+                            cell(r.relationship),
+                            cell(r.whatsapp, true),
+                            cell(r.alt_phone, true),
+                            cell(r.email),
+                            cell(r.guardian2_name),
+                            cell(r.guardian2_phone, true),
+                            cell(channelText(r))
+                          )
+                        )
+                      : null
                   )
                 )
               )
