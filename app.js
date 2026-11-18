@@ -7570,6 +7570,7 @@ ${sectionsHtml}
     const [fromName, setFromName] = useState("Carissa Primary");
     const [replyTo, setReplyTo] = useState("Leratom2012@gmail.com");
     const [to, setTo] = useState("");
+    const [cc, setCc] = useState("");
     const [subject, setSubject] = useState("");
     const [message, setMessage] = useState("");
     const [status, setStatus] = useState(null);
@@ -7614,6 +7615,7 @@ ${sectionsHtml}
             fromName: fromName.trim(),
             replyTo: replyTo.trim(),
             to: to.split(",").map((e) => e.trim()).filter(Boolean),
+            cc: cc.split(",").map((e) => e.trim()).filter(Boolean),
             subject: subject.trim(),
             html: message.trim(),
             attachments: attachments.map((a) => ({ filename: a.name, contentType: a.type, content: a.content }))
@@ -7621,6 +7623,7 @@ ${sectionsHtml}
         });
         setStatus({ type: "success", text: "Email sent successfully!" });
         setTo("");
+        setCc("");
         setSubject("");
         setMessage("");
         setAttachments([]);
@@ -7635,13 +7638,14 @@ ${sectionsHtml}
     const replyToField = React.createElement("div", null, React.createElement("label", { style: lbl }, "Reply-To (your Gmail)"), React.createElement("input", { style: inp, value: replyTo, onChange: (e) => setReplyTo(e.target.value), placeholder: "your-email@gmail.com" }));
     const topGrid = React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "15px", marginBottom: "15px" } }, fromField, fromNameField, replyToField);
     const toField = React.createElement("div", { style: { marginBottom: "15px" } }, React.createElement("label", { style: lbl }, "To (separate with commas for multiple)"), React.createElement("input", { style: inp, value: to, onChange: (e) => setTo(e.target.value), placeholder: "recipient@example.com" }));
+    const ccField = React.createElement("div", { style: { marginBottom: "15px" } }, React.createElement("label", { style: lbl }, "CC (separate with commas for multiple)"), React.createElement("input", { style: inp, value: cc, onChange: (e) => setCc(e.target.value), placeholder: "cc@example.com" }));
     const subjectField = React.createElement("div", { style: { marginBottom: "15px" } }, React.createElement("label", { style: lbl }, "Subject"), React.createElement("input", { style: inp, value: subject, onChange: (e) => setSubject(e.target.value), placeholder: "Welcome to Carissa Primary" }));
     const messageField = React.createElement("div", { style: { marginBottom: "15px" } }, React.createElement("label", { style: lbl }, "Message"), React.createElement("textarea", { style: { ...inp, height: "200px", resize: "vertical" }, value: message, onChange: (e) => setMessage(e.target.value), placeholder: "Type your message here..." }));
     const fileInput = React.createElement("input", { ref: fileInputRef, type: "file", multiple: true, style: { display: "none" }, onChange: onPickFiles });
     const attachBtn = React.createElement("button", { type: "button", onClick: () => fileInputRef.current && fileInputRef.current.click(), disabled: busy, style: { ...sbtn, background: "#0f766e", opacity: busy ? 0.6 : 1, marginBottom: "10px" } }, "\u{1F4CE} Attach files");
     const attList = attachments.length > 0 ? React.createElement("div", { style: { marginBottom: "15px", display: "flex", flexDirection: "column", gap: "6px" } }, attachments.map((a, i) => React.createElement("div", { key: `att-${i}`, style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "8px 12px", background: "#f1f5f9", borderRadius: "8px", fontSize: "13px" } }, React.createElement("span", null, "\u{1F4CE} ", a.name, " (", Math.round((a.size || 0) / 1024), " KB)"), React.createElement("button", { type: "button", onClick: () => removeAttachment(i), style: { border: "none", background: "transparent", color: "#b91c1c", cursor: "pointer", fontWeight: 700, fontSize: "13px" } }, "Remove")))) : null;
     const sendBtn = React.createElement("button", { onClick: send, disabled: busy, style: { ...btn, width: "100%", opacity: busy ? 0.7 : 1 } }, busy ? "Sending..." : "Send Email");
-    return React.createElement("div", { style: card }, React.createElement("h3", { style: ctitle }, "\u{1F4E7} Send Email"), statusEl, topGrid, toField, subjectField, messageField, fileInput, attachBtn, attList, sendBtn);
+    return React.createElement("div", { style: card }, React.createElement("h3", { style: ctitle }, "\u{1F4E7} Send Email"), statusEl, topGrid, toField, ccField, subjectField, messageField, fileInput, attachBtn, attList, sendBtn);
   }
   function ParentsContactsTab() {
     const [rows, setRows] = useState([]);

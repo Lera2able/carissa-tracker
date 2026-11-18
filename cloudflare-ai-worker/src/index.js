@@ -1588,6 +1588,16 @@ async function handleEmailSend(request, env, corsOrigin) {
     return jsonResponse({ error: `Invalid recipient address: ${invalidRecipient}` }, 400, corsOrigin);
   }
 
+  const rawCc = Array.isArray(body.cc) ? body.cc : [body.cc];
+  const cc = rawCc.map(emailAddressOf).filter(Boolean);
+  if (cc.length > MAX_EMAIL_RECIPIENTS) {
+    return jsonResponse({ error: `A maximum of ${MAX_EMAIL_RECIPIENTS} CC recipients is allowed.` }, 400, corsOrigin);
+  }
+  const invalidCc = cc.find((address) => !isValidEmailAddress(address));
+  if (invalidCc) {
+    return jsonResponse({ error: `Invalid CC address: ${invalidCc}` }, 400, corsOrigin);
+  }
+
   const fromAddress = emailAddressOf(body.from) || DEFAULT_EMAIL_FROM;
   if (!isValidEmailAddress(fromAddress) || !fromAddress.endsWith(`@${EMAIL_SENDER_DOMAIN}`)) {
     return jsonResponse({ error: `'from' must be an address on ${EMAIL_SENDER_DOMAIN}.` }, 400, corsOrigin);
@@ -1608,6 +1618,7 @@ async function handleEmailSend(request, env, corsOrigin) {
   }
 
   const message = { to, from, subject };
+  if (cc.length) message.cc = cc;
   if (html) message.html = html;
   if (text) message.text = text;
 
