@@ -11414,6 +11414,12 @@ ${sectionsHtml}
     const [waOpened, setWaOpened] = useState(false);
     const [waQueued, setWaQueued] = useState(false);
     const [err, setErr] = useState("");
+    const [customMessage, setCustomMessage] = useState("");
+    useEffect(() => {
+      if (info && typeof info.message === "string" && info.message && !customMessage) {
+        setCustomMessage(info.message);
+      }
+    }, [info.message]);
     useEffect(() => {
       let alive = true;
       apiRequest("/guardians/prepare", { method: "POST", body: ctx }).then((d) => {
@@ -11429,7 +11435,7 @@ ${sectionsHtml}
       setBusy(true);
       setErr("");
       try {
-        const r = await apiRequest("/guardians/send", { method: "POST", body: { ...ctx, channel: "email" } });
+        const r = await apiRequest("/guardians/send", { method: "POST", body: { ...ctx, channel: "email", message: customMessage } });
         setEmailDone(r && r.to_masked ? r.to_masked : "parent");
       } catch (e) {
         setErr(e.message);
@@ -11441,7 +11447,7 @@ ${sectionsHtml}
       setBusy(true);
       setErr("");
       try {
-        await apiRequest("/guardians/send", { method: "POST", body: { ...ctx, channel: "whatsapp" } });
+        await apiRequest("/guardians/send", { method: "POST", body: { ...ctx, channel: "whatsapp", message: customMessage } });
         setWaQueued(true);
       } catch (e) {
         setErr(e.message);
@@ -11451,12 +11457,23 @@ ${sectionsHtml}
     };
     const logWhatsapp = () => {
       setWaOpened(true);
-      apiRequest("/guardians/send", { method: "POST", body: { ...ctx, channel: "whatsapp" } }).catch(() => {
+      apiRequest("/guardians/send", { method: "POST", body: { ...ctx, channel: "whatsapp", message: customMessage } }).catch(() => {
       });
     };
     const learnerName = `${ctx.firstname} ${ctx.surname}`.replace(/[+#]/g, "").trim();
     const btnBase = { border: "none", borderRadius: "10px", padding: "10px 14px", fontWeight: 700, fontSize: "13px", cursor: "pointer", color: "white", textDecoration: "none", display: "inline-block" };
-    return /* @__PURE__ */ React.createElement("div", { style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", zIndex: 60 } }, /* @__PURE__ */ React.createElement("div", { style: { width: "min(560px, 96vw)", maxHeight: "90vh", overflowY: "auto", background: "white", borderRadius: "14px", padding: "18px", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" } }, /* @__PURE__ */ React.createElement("h3", { style: { margin: "0 0 4px", color: "#1f2937" } }, "\u{1F4E8} Notify parent"), /* @__PURE__ */ React.createElement("p", { style: { margin: "0 0 12px", fontSize: "13px", color: "#6b7280" } }, "Record saved for ", learnerName, " (", ctx.class_name, ")."), info.loading && /* @__PURE__ */ React.createElement("p", { style: { color: "#6b7280" } }, "Looking up parent contact..."), info.error && /* @__PURE__ */ React.createElement("p", { style: { color: "#b91c1c" } }, info.error), !info.loading && !info.error && info.found === false && /* @__PURE__ */ React.createElement("p", { style: { color: "#92400e", background: "#fef3c7", padding: "10px", borderRadius: "8px", fontSize: "13px" } }, "No parent contact is on file for this learner yet, so no notification can be sent."), !info.loading && info.found && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { style: { margin: "0 0 8px", fontSize: "13px", color: "#374151" } }, "Parent/guardian: ", /* @__PURE__ */ React.createElement("b", null, info.guardian_name || "—"), info.relationship ? ` (${String(info.relationship).trim()})` : ""), /* @__PURE__ */ React.createElement("pre", { style: { whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: "13px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "12px", margin: "0 0 12px", color: "#1f2937" } }, info.message), err && /* @__PURE__ */ React.createElement("p", { style: { color: "#b91c1c", fontSize: "13px" } }, err), emailDone && /* @__PURE__ */ React.createElement("p", { style: { color: "#15803d", fontSize: "13px", fontWeight: 700 } }, "✓ Email sent to ", emailDone), waOpened && /* @__PURE__ */ React.createElement("p", { style: { color: "#15803d", fontSize: "13px", fontWeight: 700 } }, "✓ WhatsApp opened. Remember to press send in WhatsApp Web."), waQueued && /* @__PURE__ */ React.createElement("p", { style: { color: "#15803d", fontSize: "13px", fontWeight: 700 } }, "✓ Done. The WhatsApp message will be sent by the admin from the school number."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap" } }, info.has_email && /* @__PURE__ */ React.createElement("button", { type: "button", onClick: sendEmail, disabled: busy || !!emailDone, style: { ...btnBase, background: "#2563eb", opacity: busy || emailDone ? 0.6 : 1 } }, busy ? "Sending..." : emailDone ? "Email sent" : `\u{1F4E7} Email parent (${info.email_masked})`), info.has_whatsapp && info.whatsapp_mode === "queue" && /* @__PURE__ */ React.createElement("button", { type: "button", onClick: queueWhatsapp, disabled: busy || waQueued, style: { ...btnBase, background: "#16a34a", opacity: busy || waQueued ? 0.6 : 1 } }, waQueued ? "WhatsApp queued" : "💬 Send WhatsApp (admin sends)"), info.whatsapp_link && /* @__PURE__ */ React.createElement("a", { href: info.whatsapp_link, target: "_blank", rel: "noopener noreferrer", onClick: logWhatsapp, style: { ...btnBase, background: "#16a34a" } }, "\u{1F4AC} Open WhatsApp Web"), !info.has_email && /* @__PURE__ */ React.createElement("span", { style: { fontSize: "12px", color: "#6b7280", alignSelf: "center" } }, "No email address on file for this parent."))), /* @__PURE__ */ React.createElement("div", { style: { marginTop: "14px", textAlign: "right" } }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onClose, style: { ...btnBase, background: "#6b7280" } }, info.found ? "Done" : "Close"))));
+    const whatsappLink = (() => {
+      if (!info.whatsapp_link) return "";
+      try {
+        const u = new URL(info.whatsapp_link);
+        const phone = u.searchParams.get("phone");
+        if (!phone) return info.whatsapp_link;
+        return `https://web.whatsapp.com/send?phone=${encodeURIComponent(phone)}&text=${encodeURIComponent(customMessage || info.message || "")}`;
+      } catch (_e) {
+        return info.whatsapp_link;
+      }
+    })();
+    return /* @__PURE__ */ React.createElement("div", { style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", zIndex: 60 } }, /* @__PURE__ */ React.createElement("div", { style: { width: "min(560px, 96vw)", maxHeight: "90vh", overflowY: "auto", background: "white", borderRadius: "14px", padding: "18px", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" } }, /* @__PURE__ */ React.createElement("h3", { style: { margin: "0 0 4px", color: "#1f2937" } }, "\u{1F4E8} Notify parent"), /* @__PURE__ */ React.createElement("p", { style: { margin: "0 0 12px", fontSize: "13px", color: "#6b7280" } }, "Record saved for ", learnerName, " (", ctx.class_name, ")."), info.loading && /* @__PURE__ */ React.createElement("p", { style: { color: "#6b7280" } }, "Looking up parent contact..."), info.error && /* @__PURE__ */ React.createElement("p", { style: { color: "#b91c1c" } }, info.error), !info.loading && !info.error && info.found === false && /* @__PURE__ */ React.createElement("p", { style: { color: "#92400e", background: "#fef3c7", padding: "10px", borderRadius: "8px", fontSize: "13px" } }, "No parent contact is on file for this learner yet, so no notification can be sent."), !info.loading && info.found && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("p", { style: { margin: "0 0 8px", fontSize: "13px", color: "#374151" } }, "Parent/guardian: ", /* @__PURE__ */ React.createElement("b", null, info.guardian_name || "—"), info.relationship ? ` (${String(info.relationship).trim()})` : ""), /* @__PURE__ */ React.createElement("textarea", { value: customMessage, onChange: (e) => setCustomMessage(e.target.value), style: { width: "100%", boxSizing: "border-box", minHeight: "180px", resize: "vertical", fontFamily: "inherit", fontSize: "13px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: "10px", padding: "12px", margin: "0 0 12px", color: "#1f2937", lineHeight: "1.5" } }), err && /* @__PURE__ */ React.createElement("p", { style: { color: "#b91c1c", fontSize: "13px" } }, err), emailDone && /* @__PURE__ */ React.createElement("p", { style: { color: "#15803d", fontSize: "13px", fontWeight: 700 } }, "✓ Email sent to ", emailDone), waOpened && /* @__PURE__ */ React.createElement("p", { style: { color: "#15803d", fontSize: "13px", fontWeight: 700 } }, "✓ WhatsApp opened. Remember to press send in WhatsApp Web."), waQueued && /* @__PURE__ */ React.createElement("p", { style: { color: "#15803d", fontSize: "13px", fontWeight: 700 } }, "✓ Done. The WhatsApp message will be sent by the admin from the school number."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap" } }, info.has_email && /* @__PURE__ */ React.createElement("button", { type: "button", onClick: sendEmail, disabled: busy || !!emailDone, style: { ...btnBase, background: "#2563eb", opacity: busy || emailDone ? 0.6 : 1 } }, busy ? "Sending..." : emailDone ? "Email sent" : `\u{1F4E7} Email parent (${info.email_masked})`), info.has_whatsapp && info.whatsapp_mode === "queue" && /* @__PURE__ */ React.createElement("button", { type: "button", onClick: queueWhatsapp, disabled: busy || waQueued, style: { ...btnBase, background: "#16a34a", opacity: busy || waQueued ? 0.6 : 1 } }, waQueued ? "WhatsApp queued" : "💬 Send WhatsApp (admin sends)"), info.whatsapp_link && /* @__PURE__ */ React.createElement("a", { href: whatsappLink, target: "_blank", rel: "noopener noreferrer", onClick: logWhatsapp, style: { ...btnBase, background: "#16a34a" } }, "\u{1F4AC} Open WhatsApp Web"), !info.has_email && /* @__PURE__ */ React.createElement("span", { style: { fontSize: "12px", color: "#6b7280", alignSelf: "center" } }, "No email address on file for this parent."))), /* @__PURE__ */ React.createElement("div", { style: { marginTop: "14px", textAlign: "right" } }, /* @__PURE__ */ React.createElement("button", { type: "button", onClick: onClose, style: { ...btnBase, background: "#6b7280" } }, info.found ? "Done" : "Close"))));
   }
   function TeacherDisciplineTab({ teacherAuth, defaultClass, showMsg, onAudit }) {
     const teacherName = `${(teacherAuth == null ? void 0 : teacherAuth.first_name) || ""} ${(teacherAuth == null ? void 0 : teacherAuth.surname) || ""}`.trim() || "Teacher";

@@ -1936,6 +1936,12 @@ async function handleGuardianSend(request, env, corsOrigin) {
     return jsonResponse({ error: "No parent contact on file for this learner." }, 404, corsOrigin);
   }
   const message = buildParentMessage(entry, parentTeacherName(session));
+  // Allow the caller to override the auto-generated message (editable in the UI).
+  // Keep the original subject; only the body text can be customised.
+  let text = message.text;
+  if (typeof body?.message === "string" && body.message.trim()) {
+    text = body.message.slice(0, 5000);
+  }
   const summary = entry.type === "demerit"
     ? `${entry.behaviour || "Demerit"}${entry.comment ? `: ${entry.comment}` : ""}`
     : entry.comment;
@@ -1946,10 +1952,10 @@ async function handleGuardianSend(request, env, corsOrigin) {
     }
     if (await isParentAdminSession(env, session)) {
       // Admin opens WhatsApp Web themselves; we only keep a record of it.
-      await logParentNotification(env, { guardian, entry, channel, status: "link_opened", session, summary, message: message.text });
+      await logParentNotification(env, { guardian, entry, channel, status: "link_opened", session, summary, message: text });
       return jsonResponse({ ok: true, queued: false }, 200, corsOrigin);
     }
-    await logParentNotification(env, { guardian, entry, channel, status: "queued", session, summary, message: message.text });
+    await logParentNotification(env, { guardian, entry, channel, status: "queued", session, summary, message: text });
     return jsonResponse({ ok: true, queued: true }, 200, corsOrigin);
   }
 
@@ -1958,7 +1964,7 @@ async function handleGuardianSend(request, env, corsOrigin) {
     return jsonResponse({ error: "This parent did not give a valid email address." }, 400, corsOrigin);
   }
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1f2937;max-width:560px">${
-    escapeParentHtml(message.text).replace(/\n/g, "<br>")
+    escapeParentHtml(text).replace(/\n/g, "<br>")
   }</div>`;
   try {
     await env.EMAIL.send({
@@ -1966,7 +1972,7 @@ async function handleGuardianSend(request, env, corsOrigin) {
       from: PARENT_EMAIL_FROM,
       replyTo: PARENT_EMAIL_FROM,
       subject: message.subject,
-      text: message.text,
+      text,
       html,
     });
     await logParentNotification(env, { guardian, entry, channel, status: "sent", session, summary });
