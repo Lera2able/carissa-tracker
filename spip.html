@@ -94,6 +94,10 @@
   section.card .sub{margin:0 0 18px;font-size:13.5px;color:var(--ink-faint);}
   .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;}
   .grid .wide{grid-column:1/-1;}
+  .signature-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:18px;}
+  .signature-cell{min-width:0;padding:16px;border:2px solid var(--line);border-radius:12px;background:#f8fafc;}
+  .signature-cell .lbl{font-size:14px;}
+  @media (max-width:640px){.signature-grid{grid-template-columns:1fr;}}
   label.lbl{display:block;margin-bottom:7px;color:#333;font-weight:600;font-size:13.5px;}
   .hint{font-weight:400;color:var(--ink-faint);font-size:12px;}
   input.inp,textarea.inp,select.inp{
@@ -113,12 +117,16 @@
   table.sheet td input:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.12);}
   table.sheet td select{width:100%;padding:8px 6px;border:1.5px solid var(--input-line);border-radius:6px;font-size:14px;font-family:inherit;outline:none;background:#fff;color:var(--ink);}
   table.sheet td select:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.12);}
-  table.sheet td textarea{width:100%;padding:8px 6px;border:1.5px solid var(--input-line);border-radius:6px;font-size:14px;font-family:inherit;outline:none;background:#fff;color:var(--ink);line-height:1.4;resize:vertical;}
-  table.sheet td textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.12);}
   table.sheet td input:disabled{background:#f1f5f9;color:#94a3b8;}
   .table-scroll{overflow-x:auto;border-radius:10px;}
   .table-scroll table{min-width:640px;}
-  .table-scroll table.grid10{min-width:1320px;}
+  .table-scroll table.grid10{min-width:1460px;}
+  .question-prompts-scroll{overflow-x:auto;margin-bottom:14px;padding-bottom:8px;}
+  .question-prompts{display:grid;grid-template-columns:repeat(10,320px);gap:12px;width:max-content;}
+  .question-prompt{width:320px;padding:12px;border:1px solid var(--line);border-radius:10px;background:#f8fafc;}
+  .question-prompt label{display:block;margin:0 0 8px;font-size:13px;font-weight:700;color:var(--ink-soft);}
+  .question-prompt textarea{display:block;width:100%;min-height:200px;padding:10px;border:1.5px solid var(--input-line);border-radius:7px;font:inherit;font-size:14px;line-height:1.45;resize:vertical;color:var(--ink);background:#fff;}
+  .question-prompt textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.12);}
   .term-row td:first-child{font-weight:700;color:var(--ink-soft);background:#f8fafc;white-space:nowrap;}
   .plan-block{
     border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px;background:#fbfcff;
@@ -226,9 +234,15 @@
         </tbody>
       </table>
     </div>
-    <div class="grid" style="margin-top:16px;">
-      <div><label class="lbl" for="educator_signature">Educator signature <span class="hint">(type name)</span></label><input class="inp" id="educator_signature" data-field="educator_signature" placeholder="Type full name"/></div>
-      <div><label class="lbl" for="principal_signature">Principal signature <span class="hint">(type name)</span></label><input class="inp" id="principal_signature" data-field="principal_signature" placeholder="Type full name"/></div>
+    <div class="signature-grid" aria-label="Separate educator and principal signature fields">
+      <div class="signature-cell">
+        <label class="lbl" for="educator_signature">Educator name and signature</label>
+        <input class="inp" id="educator_signature" data-field="educator_signature" placeholder="Type educator's full name"/>
+      </div>
+      <div class="signature-cell">
+        <label class="lbl" for="principal_signature">Principal name and signature</label>
+        <input class="inp" id="principal_signature" data-field="principal_signature" placeholder="Type principal's full name"/>
+      </div>
     </div>
   </section>
 
@@ -257,8 +271,11 @@
   <!-- 4 · LEARNER GRID -->
   <section class="card" id="sec-grid">
     <h2><span class="num">4</span> Learner question grid</h2>
-    <p class="sub">Type the topic per question, then pick up to 15 learners from your class (chosen in step 1) and give a mark per question (Q1–Q10). Leave unused rows empty — they stay blank on the document.</p>
+    <p class="sub">Write the question learners struggled with in the large boxes at the top. Each box starts tall enough for several sentences, grows as you type, and can be resized by dragging its bottom edge. Then pick up to 15 learners from your class and enter their marks for Q1–Q10.</p>
     <span class="auto-note">Learners come from the class you selected in step 1.</span>
+    <div class="question-prompts-scroll" aria-label="Questions learners struggled with">
+      <div class="question-prompts" id="questionPrompts"></div>
+    </div>
     <div class="table-scroll">
       <table class="sheet grid10" id="learnerTable">
         <thead></thead>
@@ -319,7 +336,19 @@
     itemBody.appendChild(tr);
   }
 
-  /* ---------- build learner grid (topic row + 15 learner pickers x Q1..Q10) ---------- */
+  /* ---------- build question prompts separately from the learner marks grid ---------- */
+  var questionPrompts = document.getElementById("questionPrompts");
+  for (var t = 1; t <= 10; t++){
+    var promptField = "grid_topic_q" + t;
+    var prompt = document.createElement("div");
+    prompt.className = "question-prompt";
+    prompt.innerHTML =
+      '<label for="' + promptField + '">Question learners struggled with · Q' + t + '</label>' +
+      '<textarea class="topic-entry" id="' + promptField + '" data-field="' + promptField + '" aria-label="Question learners struggled with for Q' + t + '" rows="7" placeholder="Write the question here..."></textarea>';
+    questionPrompts.appendChild(prompt);
+  }
+
+  /* ---------- build learner marks grid (15 learner pickers x Q1..Q10) ---------- */
   var learnerTable = document.getElementById("learnerTable");
   var thead = learnerTable.querySelector("thead");
   var headRow = '<tr><th style="width:44px;">#</th><th style="min-width:230px;">Learner</th><th style="width:84px;">G</th>';
@@ -327,18 +356,13 @@
   headRow += '</tr>';
   thead.innerHTML = headRow;
   var lbody = learnerTable.querySelector("tbody");
-  var topicRow = document.createElement("tr");
-  var topicHtml = '<td colspan="3" style="font-weight:700;color:#475569;background:#f8fafc;">Topic per question</td>';
-  for (var t = 1; t <= 10; t++){ topicHtml += '<td><input data-field="grid_topic_q' + t + '" aria-label="Topic for question ' + t + '"/></td>'; }
-  topicRow.innerHTML = topicHtml;
-  lbody.appendChild(topicRow);
   for (var n = 1; n <= 15; n++){
     var lr = document.createElement("tr");
     var cells = '<td style="font-weight:700;color:#475569;background:#f8fafc;text-align:center;">' + n + '</td>' +
       '<td><select class="learner-pick" data-field="learner' + n + '_pick" aria-label="Learner ' + n + '"><option value="">-- Select learner --</option></select></td>' +
       '<td><select data-field="learner' + n + '_g" aria-label="Learner ' + n + ' gender"><option value="">\u2013</option><option value="M">M</option><option value="F">F</option></select></td>';
     for (var m = 1; m <= 10; m++){
-      cells += '<td><textarea data-field="learner' + n + '_q' + m + '" aria-label="Learner ' + n + ' question ' + m + '" rows="2" style="min-height:54px;"></textarea></td>';
+      cells += '<td><input data-field="learner' + n + '_q' + m + '" inputmode="decimal" aria-label="Learner ' + n + ' question ' + m + ' mark"/></td>';
     }
     lr.innerHTML = cells;
     lbody.appendChild(lr);
