@@ -730,79 +730,44 @@
     });
     return lines.length ? lines : [""];
   }
-  async function addQuestionContinuation(pdfDoc, topics){
-    if (!topics.length) return;
-    var PDFLib = window.PDFLib;
-    var regular = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
-    var bold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
-    var pageWidth = 841.92, pageHeight = 595.32;
-    var margin = 48, bodySize = 12, lineHeight = 16;
-    var page, y;
-    function newPage(){
-      page = pdfDoc.addPage([pageWidth, pageHeight]);
-      page.drawText("Learner Questions - Continuation", {
-        x: margin, y: pageHeight - margin, size: 18, font: bold
-      });
-      page.drawText("Full question text for the SPIP learner grid", {
-        x: margin, y: pageHeight - margin - 24, size: 10, font: regular
-      });
-      y = pageHeight - margin - 58;
+  /* Pick the largest font size that fits the whole question inside its grid box. */
+  function gridTopicFontSize(text, font, pdfField){
+    var clean = String(text || "").trim();
+    if (!clean) return 7;
+    var boxW = 46, boxH = 33;
+    try{
+      var rect = pdfField.acroField.getWidgets()[0].getRectangle();
+      boxW = rect.width; boxH = rect.height;
+    }catch(e){}
+    var maxW = Math.max(18, boxW - 4);
+    var maxH = Math.max(14, boxH - 4);
+    for (var size = 10; size > 2.9; size -= 0.25){
+      var lines = wrapPdfText(clean, font, size, maxW);
+      if (lines.length * font.heightAtSize(size) * 1.2 <= maxH) return size;
     }
-    newPage();
-    topics.forEach(function(item){
-      if (y < margin + 40) newPage();
-      page.drawText("Q" + item.question, { x: margin, y: y - 14, size: 12, font: bold });
-      y -= 22;
-      var lines = wrapPdfText(item.text, regular, bodySize, pageWidth - margin * 2);
-      while (lines.length){
-        var availableLines = Math.floor((y - margin - 12) / lineHeight);
-        if (availableLines < 1){
-          newPage();
-          page.drawText("Q" + item.question + " (continued)", {
-            x: margin, y: y - 14, size: 12, font: bold
-          });
-          y -= 22;
-          availableLines = Math.max(1, Math.floor((y - margin - 12) / lineHeight));
-        }
-        var chunk = lines.splice(0, availableLines);
-        page.drawText(chunk.join("\n"), {
-          x: margin, y: y - bodySize, size: bodySize, lineHeight: lineHeight, font: regular
-        });
-        y -= chunk.length * lineHeight + (lines.length ? 8 : 16);
-      }
-    });
+    return 3;
   }
 
-  function fillPdfBytes(){
+  async function fillPdfBytes(){
     if (!window.PDFLib || !window.PDFLib.PDFDocument) throw new Error("PDF support is still loading. Please try again in a moment.");
-    return fetch(TEMPLATE_PATH, { cache: "no-store" }).then(function(res){
-      if (!res.ok) throw new Error("The SPIP PDF template could not be loaded.");
-      return res.arrayBuffer();
-    }).then(function(buf){
-      return window.PDFLib.PDFDocument.load(buf);
-    }).then(function(pdfDoc){
+    var res = await fetch(TEMPLATE_PATH, { cache: "no-store" });
+    if (!res.ok) throw new Error("The SPIP PDF template could not be loaded.");
+    var buf = await res.arrayBuffer();
+    var pdfDoc = await window.PDFLib.PDFDocument.load(buf);
       var pdfForm = pdfDoc.getForm();
       var values = collectValues();
-      var continuedTopics = [];
-      for (var q = 1; q <= 10; q++){
-        var topicField = "grid_topic_q" + q;
-        var topicText = String(values[topicField] || "").trim();
-        if (topicText.length > 30){
-          continuedTopics.push({ question: q, text: topicText });
-          values[topicField] = "See Q" + q + " appendix";
-        }
-      }
+      var helv = await pdfDoc.embedFont(window.PDFLib.StandardFonts.Helvetica);
       allFieldNames().forEach(function(fieldName){
         try{
           var pdfField = pdfForm.getTextField(fieldName);
-          if (/^grid_topic_q\d+$/.test(fieldName)) pdfField.setFontSize(7);
-          pdfField.setText(String(values[fieldName] == null ? "" : values[fieldName]));
+          var text = String(values[fieldName] == null ? "" : values[fieldName]);
+          if (/^grid_topic_q\d+$/.test(fieldName)) pdfField.setFontSize(gridTopicFontSize(text, helv, pdfField));
+          pdfField.setText(text);
         }catch(e){}
       });
       try{ pdfForm.updateFieldAppearances(); }catch(e){}
       try{ pdfForm.flatten(); }catch(e){}
-      return addQuestionContinuation(pdfDoc, continuedTopics).then(function(){ return pdfDoc.save(); });
-    });
+      return pdfDoc.save();
   }
 
   downloadBtn.addEventListener("click", function(){

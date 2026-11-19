@@ -6143,6 +6143,14 @@ ${trimmedReviewNote}` : noteHeader;
     const classOptions = selClass ? [selClass] : ASSESS_CLASS_NAMES;
     const [pickClass, setPickClass] = useState(selClass || ASSESS_CLASS_NAMES[0] || "");
     const [pickLearner, setPickLearner] = useState("");
+    const [historyView, setHistoryView] = useState("history");
+    const [typingClassFilter, setTypingClassFilter] = useState("all");
+    const [typingSearch, setTypingSearch] = useState("");
+    const sessionClasses = Array.isArray(TEACHER_SESSION?.class_names) ? TEACHER_SESSION.class_names : [];
+    const typingClasses = (sessionClasses.length ? sessionClasses : (selClass ? [selClass] : []))
+      .filter((className) => CLASS_DATA[className])
+      .slice()
+      .sort((a, b) => String(a).localeCompare(String(b)));
     useEffect(() => {
       setPickClass(selClass || ASSESS_CLASS_NAMES[0] || "");
     }, [selClass]);
@@ -6274,7 +6282,107 @@ ${trimmedReviewNote}` : noteHeader;
     const assessmentPanel = React.createElement("div", { style: { ...card, padding: "18px 20px" } }, React.createElement("h4", { style: { margin: "0 0 12px", color: "#334155", fontSize: "15px" } }, "\u{1F4DD} Assessments \u2014 all terms"), assessmentRows.length === 0 ? empty("No assessment marks recorded for this learner yet.") : buildTable(["Term", "Mark", "Percentage", "Date"], assessmentBody));
     const activityPanel = React.createElement("div", { style: { ...card, padding: "18px 20px" } }, React.createElement("h4", { style: { margin: "0 0 12px", color: "#334155", fontSize: "15px" } }, "\u{1F3AE} Activities \u2014 all terms"), activityRows.length === 0 ? empty("No activities assigned to this learner yet.") : buildTable(["Activity", "Type", "Status", "Score", "Date"], activityBody));
     const body = selected ? React.createElement(React.Fragment, null, summaryGrid, readingPanel, assessmentPanel, activityPanel) : React.createElement("div", { style: card }, React.createElement("p", { style: { color: "#999", textAlign: "center", padding: "24px" } }, "Select a learner above to view their full history."));
-    return React.createElement("div", null, headerCard, body);
+    const typingStatsByName = new Map();
+    const typingLearners = typingClasses.flatMap((className) => (CLASS_DATA[className] || []).map((learner) => {
+      const row = {
+        className,
+        surname: String(learner.surname || ""),
+        firstname: String(learner.firstname || ""),
+        attempts: 0,
+        wpmValues: [],
+        accuracyValues: [],
+        latestAt: null
+      };
+      const variants = [
+        [learner.surname, learner.firstname],
+        [learner._origSurname || learner.surname, learner._origFirstname || learner.firstname]
+      ];
+      variants.forEach(([surname, firstname]) => {
+        typingStatsByName.set(`${className}|${normalizeReadingName(surname)}|${normalizeReadingName(firstname)}`, row);
+      });
+      return row;
+    }));
+    (assignments || []).forEach((assignment) => {
+      if (!typingClasses.includes(assignment.class_name) || resTypeOf(assignment.resource_id) !== "typing") return;
+      const row = typingStatsByName.get(`${assignment.class_name}|${normalizeReadingName(assignment.surname)}|${normalizeReadingName(assignment.firstname)}`);
+      const result = resultByAssignment.get(String(assignment.id));
+      if (!row || !result) return;
+      const resultStatus = String(result.result_status || "").trim().toLowerCase();
+      if (resultStatus && resultStatus !== "completed") return;
+      const notes = String(result.learner_notes || "");
+      const wpmMatch = notes.match(/(?:avg\s*)?wpm\s*[:=]\s*(\d+(?:\.\d+)?)/i);
+      const accuracyMatch = notes.match(/(?:avg\s*)?accuracy\s*[:=]\s*(\d+(?:\.\d+)?)/i);
+      const wpm = wpmMatch ? Number(wpmMatch[1]) : null;
+      if (!Number.isFinite(wpm) || wpm < 0) return;
+      const rawScore = result.score == null || result.score === "" ? NaN : Number(result.score);
+      const maxScore = result.max_score == null || result.max_score === "" ? 100 : Number(result.max_score);
+      const accuracy = accuracyMatch
+        ? Number(accuracyMatch[1])
+        : Number.isFinite(rawScore) && Number.isFinite(maxScore) && maxScore > 0
+          ? rawScore / maxScore * 100
+          : null;
+      row.wpmValues.push(wpm);
+      if (Number.isFinite(accuracy) && accuracy >= 0 && accuracy <= 100) row.accuracyValues.push(accuracy);
+      row.attempts += 1;
+      const submittedAt = result.submitted_at || result.updated_at || assignment.updated_at || assignment.created_at || null;
+      if (submittedAt && (!row.latestAt || new Date(submittedAt) > new Date(row.latestAt))) row.latestAt = submittedAt;
+    });
+    const typingRows = typingLearners
+      .filter((row) => typingClassFilter === "all" || row.className === typingClassFilter)
+      .filter((row) => !typingSearch.trim() || `${row.className} ${row.surname} ${row.firstname}`.toLowerCase().includes(typingSearch.trim().toLowerCase()))
+      .map((row) => ({
+        ...row,
+        avgWpm: row.wpmValues.length ? Math.round(row.wpmValues.reduce((sum, value) => sum + value, 0) / row.wpmValues.length * 10) / 10 : null,
+        avgAccuracy: row.accuracyValues.length ? Math.round(row.accuracyValues.reduce((sum, value) => sum + value, 0) / row.accuracyValues.length * 10) / 10 : null
+      }))
+      .sort((a, b) => String(a.className).localeCompare(String(b.className)) || String(a.surname).localeCompare(String(b.surname)) || String(a.firstname).localeCompare(String(b.firstname)));
+    const learnersWithScores = typingLearners.filter((row) => row.attempts > 0);
+    const learnerWpmAverages = learnersWithScores.map((row) => row.wpmValues.length ? row.wpmValues.reduce((sum, value) => sum + value, 0) / row.wpmValues.length : null).filter(Number.isFinite);
+    const learnerAccuracyAverages = learnersWithScores.map((row) => row.accuracyValues.length ? row.accuracyValues.reduce((sum, value) => sum + value, 0) / row.accuracyValues.length : null).filter(Number.isFinite);
+    const overallAvgWpm = learnerWpmAverages.length ? Math.round(learnerWpmAverages.reduce((sum, value) => sum + value, 0) / learnerWpmAverages.length * 10) / 10 : null;
+    const overallAvgAccuracy = learnerAccuracyAverages.length ? Math.round(learnerAccuracyAverages.reduce((sum, value) => sum + value, 0) / learnerAccuracyAverages.length * 10) / 10 : null;
+    const typingScoreRows = typingRows.map((row) => React.createElement("tr", { key: `${row.className}|${row.surname}|${row.firstname}`, style: { borderBottom: "1px solid #f1f5f9" } },
+      React.createElement("td", { style: td }, row.className),
+      React.createElement("td", { style: { ...td, fontWeight: 700 } }, `${row.surname}, ${row.firstname}`),
+      React.createElement("td", { style: td }, row.attempts),
+      React.createElement("td", { style: td }, row.avgWpm == null ? "\u2014" : `${row.avgWpm} WPM`),
+      React.createElement("td", { style: td }, row.avgAccuracy == null ? "\u2014" : `${row.avgAccuracy}%`),
+      React.createElement("td", { style: td }, dateLabel(row.latestAt))));
+    const typingClassSelect = React.createElement("select", { value: typingClassFilter, onChange: (e) => setTypingClassFilter(e.target.value), style: { ...inp, width: "auto", minWidth: "190px" } },
+      React.createElement("option", { value: "all" }, "All classes"),
+      typingClasses.map((className) => React.createElement("option", { key: className, value: className }, className)));
+    const typingPanel = React.createElement("div", { style: card },
+      React.createElement("h3", { style: ctitle }, "\u2328 Typing Scores \u2014 All Classes"),
+      React.createElement("p", { style: { color: "#666", fontSize: "13px", marginBottom: "14px" } }, "Average WPM and typing accuracy across completed typing activities for every learner in the classes on your educator profile. Learners without a completed score remain listed."),
+      React.createElement("div", { style: { display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "end", marginBottom: "14px" } },
+        React.createElement("div", null, React.createElement("label", { style: labelStyle }, "Class"), typingClassSelect),
+        React.createElement("div", { style: { flex: "1 1 220px" } }, React.createElement("label", { style: labelStyle }, "Search learner or class"), React.createElement("input", { value: typingSearch, onChange: (e) => setTypingSearch(e.target.value), placeholder: "Type a name or class...", style: inp }))),
+      React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: "10px", marginBottom: "14px" } },
+        sumCard("Learners with scores", `${learnersWithScores.length} / ${typingLearners.length}`, "learners across your classes"),
+        sumCard("Average WPM", overallAvgWpm == null ? "\u2014" : `${overallAvgWpm} WPM`, "average of each learner's attempts", "#0f766e"),
+        sumCard("Average accuracy", overallAvgAccuracy == null ? "\u2014" : `${overallAvgAccuracy}%`, "average of each learner's attempts", "#7c3aed"),
+        sumCard("Completed attempts", typingLearners.reduce((sum, row) => sum + row.attempts, 0), "typing activities with a saved score", "#b45309")),
+      typingClasses.length === 0
+        ? empty("No classes are linked to this educator profile.")
+        : typingRows.length === 0
+          ? empty("No learners match this class or search.")
+          : buildTable(["Class", "Learner", "Attempts", "Average WPM", "Average accuracy", "Latest score"], typingScoreRows));
+    const historyTabs = React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "12px" } },
+      [["history", "\u{1F464} Learner History"], ["typing", "\u2328 Typing Scores"]].map(([key, label]) => React.createElement("button", {
+        key,
+        type: "button",
+        onClick: () => setHistoryView(key),
+        style: {
+          padding: "9px 14px",
+          borderRadius: "999px",
+          border: historyView === key ? "none" : "1px solid #dbe2f0",
+          background: historyView === key ? "linear-gradient(135deg,#667eea,#764ba2)" : "#fff",
+          color: historyView === key ? "#fff" : "#475569",
+          fontWeight: 700,
+          cursor: "pointer"
+        }
+      }, label)));
+    return React.createElement("div", null, historyTabs, historyView === "typing" ? typingPanel : React.createElement(React.Fragment, null, headerCard, body));
   }
   function ReadingAssessmentTab({ reading, setReading, initialClass, lockClass, initialTerm }) {
     const [selClass, setSelClass] = useState(initialClass || "");
@@ -8965,11 +9073,18 @@ ${sectionsHtml}
       var _a;
       if (showLoader) setLoading(true);
       try {
-        const lresPromise = teacherAuth ? apiRequest(`/learner-results/teacher${selClass ? `?class_name=${encodeURIComponent(selClass)}` : ""}`).catch((e) => {
+        const lresPromise = teacherAuth ? apiRequest("/learner-results/teacher").catch((e) => {
           showMsg(`Could not load learner marks: ${(e == null ? void 0 : e.message) || "Unknown error"}. Please log out and log in again.`);
           return { results: [] };
         }) : Promise.resolve({ results: [] });
-        const asnQuery = selClass ? `class_name=eq.${encodeURIComponent(selClass)}&order=created_at.desc&limit=20000` : "order=created_at.desc&limit=20000";
+        const allowedClasses = Array.isArray(teacherAuth?.class_names) ? [...new Set(teacherAuth.class_names.filter(Boolean))] : [];
+        const asnQuery = allowedClasses.length > 1
+          ? `class_name=in.(${allowedClasses.map((className) => encodeURIComponent(`"${String(className).replace(/"/g, '\\"')}"`)).join(",")})&order=created_at.desc&limit=20000`
+          : allowedClasses.length === 1
+            ? `class_name=eq.${encodeURIComponent(allowedClasses[0])}&order=created_at.desc&limit=20000`
+            : selClass
+              ? `class_name=eq.${encodeURIComponent(selClass)}&order=created_at.desc&limit=20000`
+              : "order=created_at.desc&limit=20000";
         const [a, asn, lresResp, r, rdg, ints, adminCfg] = await Promise.all([
           db.get("carissa_elearning_assessments", "order=created_at.desc"),
           db.get("carissa_resource_assignments", asnQuery),
