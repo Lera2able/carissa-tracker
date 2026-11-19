@@ -27,6 +27,7 @@ const ALLOWED_EXTS = new Set([
   ".txt",
   ".json",
   ".xml",
+  ".pdf",
 ]);
 
 async function ensureCleanDir(dir) {

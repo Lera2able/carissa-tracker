@@ -17,6 +17,7 @@ on:
       - '*.ico'
       - '*.txt'
       - '*.json'
+      - '*.pdf'
       - '.github/scripts/prepare-pages-dist.mjs'
       - '.github/workflows/deploy-site.yml'
 
