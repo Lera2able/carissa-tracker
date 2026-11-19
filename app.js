@@ -5119,6 +5119,7 @@ footer{text-align:center;margin-top:10px;font-size:9px;color:#888;border-top:1px
     ["learners", "\u{1F465} Learners"],
     ["parents_contacts", "\u{1F4C7} Parents contacts"],
     ["moderation", "\u{1F5C2} Moderation"],
+    ["spip", "\u{1F4CB} SPIP"],
     ["registrations", "\u{1F9D1}\u200D\u{1F3EB} Registrations"],
     ["teacher_audit", "\u{1F9FE} Teacher Audit"],
     ["email", "\u{1F4E7} Email"],
@@ -6113,6 +6114,297 @@ ${trimmedReviewNote}` : noteHeader;
         placeholder: "Type your moderation notes here"
       }
     )))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "18px" } }, /* @__PURE__ */ React.createElement("button", { onClick: downloadFilledPdf, disabled: busy, style: { ...sbtn, background: "#10b981", opacity: busy ? 0.65 : 1 } }, busy ? "Preparing PDF..." : "Download filled PDF"), /* @__PURE__ */ React.createElement("a", { href: MODERATION_TEMPLATE_PATH, target: "_blank", rel: "noreferrer", style: { ...sbtn, background: "#667eea", textDecoration: "none" } }, "Open blank template"), /* @__PURE__ */ React.createElement("button", { onClick: resetDraft, style: { ...sbtn, background: "#f59e0b" } }, "Clear draft")), status && /* @__PURE__ */ React.createElement("div", { style: { marginTop: "12px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "11px 12px", fontSize: "13px", color: "#334155" } }, status));
+  }
+  const SPIP_TEMPLATE_PATH = "monitoring-tools/carissa_spip_fillable.pdf";
+  const SPIP_LEARNER_ROWS = 15;
+  const SPIP_ITEM_QS = 12;
+  const SPIP_GRID_QS = 10;
+  const spipGradeOf = (className) => String(className || "").replace(/^Grade\s+/i, "").trim().split(/[.\s]/)[0] || "";
+  const spipClean = (s) => String(s || "").replace(/\+/g, " ").replace(/\s+/g, " ").trim();
+  const spipTitleCase = (s) => spipClean(s).toLowerCase().replace(/(^|[\s\-'])([a-z])/g, (m, a, b) => a + b.toUpperCase());
+  const spipNum = (v) => {
+    const n = parseFloat(String(v == null ? "" : v).replace(",", "."));
+    return Number.isNaN(n) ? null : n;
+  };
+  const spipIsoToDmy = (v) => {
+    const m = String(v || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : String(v || "");
+  };
+  function spipBlankLearners() {
+    return Array.from({ length: SPIP_LEARNER_ROWS }, () => ({ pick: "", g: "", q: Array(SPIP_GRID_QS).fill("") }));
+  }
+  function spipDefaults({ teacherAuth, adminAccess, gradeOptions }) {
+    const educator = !adminAccess && teacherAuth ? `${teacherAuth.first_name || ""} ${teacherAuth.surname || ""}`.trim() : "";
+    return {
+      subject: "",
+      grade: gradeOptions.length === 1 ? gradeOptions[0] : "",
+      educator,
+      principal: "Ms V Sibande",
+      previous: "",
+      current_target: "",
+      average: "",
+      terms: { "1st": ["", "", ""], "2nd": ["", "", ""], "3rd": ["", "", ""], overall: ["", "", ""] },
+      items: Array.from({ length: SPIP_ITEM_QS }, () => ({ topic: "", out: "", total: "", avg: "" })),
+      comments: "",
+      gridTopics: Array(SPIP_GRID_QS).fill(""),
+      learners: spipBlankLearners(),
+      plans: Array.from({ length: 3 }, () => ({ challenges: "", action: "", responsibility: "", achievement_indicator: "", time_frame: "" })),
+      ip_term: "",
+      interventions: Array.from({ length: 5 }, () => ({ topic: "", date: "", time: "", evidence: "", performance_indicator: "", percentage: "", hod_signature: "" })),
+      educator_signature: "",
+      principal_signature: ""
+    };
+  }
+  function SpipToolTab({ teacherAuth = null, adminAccess = false, selClass = "", teacherClasses = [] }) {
+    const e = React.createElement;
+    const allGrades = useMemo(() => {
+      const set = [];
+      CLASS_NAMES.forEach((n) => {
+        const g = spipGradeOf(n);
+        if (g && !set.includes(g)) set.push(g);
+      });
+      return set;
+    }, []);
+    const gradeOptions = useMemo(() => {
+      if (adminAccess || !teacherClasses || teacherClasses.length === 0 || teacherClasses.length >= 10) return allGrades;
+      const mine = allGrades.filter((g) => teacherClasses.some((c) => spipGradeOf(c) === g));
+      return mine.length ? mine : allGrades;
+    }, [adminAccess, teacherClasses, allGrades]);
+    const defaults = useMemo(() => {
+      const d = spipDefaults({ teacherAuth, adminAccess, gradeOptions });
+      const own = spipGradeOf(selClass);
+      if (!d.grade && own && gradeOptions.includes(own)) d.grade = own;
+      return d;
+    }, [teacherAuth, adminAccess, gradeOptions, selClass]);
+    const draftKey = useMemo(() => {
+      const identity = adminAccess ? "admin" : normalizeReadingName((teacherAuth && teacherAuth.email) || (teacherAuth && teacherAuth.first_name) || "teacher");
+      return `carissa_spip_draft_${identity}`;
+    }, [teacherAuth, adminAccess]);
+    const [form, setForm] = useState(defaults);
+    const [status, setStatus] = useState({ text: "", kind: "" });
+    const [busy, setBusy] = useState(false);
+    const [savedAt, setSavedAt] = useState("");
+    useEffect(() => {
+      try {
+        const saved = localStorage.getItem(draftKey);
+        setForm(saved ? { ...defaults, ...JSON.parse(saved) } : defaults);
+      } catch (err) {
+        setForm(defaults);
+      }
+    }, [draftKey, defaults]);
+    useEffect(() => {
+      try {
+        localStorage.setItem(draftKey, JSON.stringify(form));
+        setSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+      } catch (err) {
+      }
+    }, [draftKey, form]);
+    const learnerPool = useMemo(() => {
+      if (!form.grade) return [];
+      const rows = [];
+      CLASS_NAMES.filter((n) => spipGradeOf(n) === form.grade).forEach((cn) => {
+        (CLASS_DATA[cn] || []).forEach((l) => {
+          rows.push({ id: `${cn}||${l.number}`, cls: cn.replace(/^Grade\s+/i, ""), surname: spipTitleCase(l.surname), firstname: spipClean(l.firstname) });
+        });
+      });
+      rows.sort((a, b) => a.surname.localeCompare(b.surname) || a.firstname.localeCompare(b.firstname));
+      return rows;
+    }, [form.grade]);
+    const poolById = useMemo(() => {
+      const m = {};
+      learnerPool.forEach((l) => { m[l.id] = l; });
+      return m;
+    }, [learnerPool]);
+    const set = (key, value) => setForm((p) => ({ ...p, [key]: value }));
+    const setIn = (key, idx, patch) => setForm((p) => ({ ...p, [key]: p[key].map((r, i) => i === idx ? { ...r, ...patch } : r) }));
+    const setTerm = (k, i, v) => setForm((p) => ({ ...p, terms: { ...p.terms, [k]: p.terms[k].map((x, j) => j === i ? v : x) } }));
+    const setGridTopic = (i, v) => setForm((p) => ({ ...p, gridTopics: p.gridTopics.map((x, j) => j === i ? v : x) }));
+    const setMark = (row, qi, v) => setForm((p) => ({ ...p, learners: p.learners.map((r, i) => i === row ? { ...r, q: r.q.map((x, j) => j === qi ? v : x) } : r) }));
+    const changeGrade = (g) => setForm((p) => ({ ...p, grade: g, learners: p.learners.map((r) => ({ ...r, pick: "", g: "" })) }));
+    const autoAvg = (it) => {
+      const out = spipNum(it.out), tot = spipNum(it.total);
+      return out && out > 0 && tot != null ? String(Math.round(tot / out * 1e3) / 10) : "";
+    };
+    const itemAvg = (it) => it.avg !== "" ? it.avg : autoAvg(it);
+    const resetDraft = () => {
+      if (!window.confirm("Clear the saved draft and empty every field?")) return;
+      setForm(defaults);
+      try { localStorage.removeItem(draftKey); } catch (err) {}
+      setStatus({ text: "Draft cleared.", kind: "ok" });
+    };
+    const missing = [];
+    if (!form.subject.trim()) missing.push("subject");
+    if (!form.grade) missing.push("grade");
+    if (!form.educator.trim()) missing.push("educator name");
+    const buildValues = () => {
+      const v = {};
+      const gradeLabel = form.grade;
+      v.subject = form.subject; v.grade = gradeLabel; v.educator = form.educator; v.principal = form.principal;
+      v.previous = form.previous; v.current_target = form.current_target; v.average = form.average;
+      v.educator_signature = form.educator_signature; v.principal_signature = form.principal_signature;
+      ["1st", "2nd", "3rd", "overall"].forEach((k) => {
+        const key = k === "overall" ? "overall" : `${k}_term`;
+        v[`${key}_pass`] = form.terms[k][0]; v[`${key}_fail`] = form.terms[k][1]; v[`${key}_avg`] = form.terms[k][2];
+      });
+      v.ia_subject = form.subject; v.ia_grade = gradeLabel; v.ia_educator = form.educator;
+      v.sip_subject = form.subject; v.sip_grade = gradeLabel; v.sip_educator = form.educator;
+      v.ip_subject = form.subject; v.ip_grade = gradeLabel; v.ip_educator = form.educator; v.ip_term = form.ip_term;
+      v.grid_grade = gradeLabel; v.comments = form.comments;
+      form.items.forEach((it, i) => {
+        const q = i + 1;
+        v[`topic_q${q}`] = it.topic; v[`mark_out_q${q}`] = it.out; v[`total_mark_q${q}`] = it.total; v[`avg_pct_q${q}`] = itemAvg(it);
+      });
+      form.gridTopics.forEach((t, i) => { v[`grid_topic_q${i + 1}`] = t; });
+      form.learners.forEach((r, i) => {
+        const n = i + 1, l = poolById[r.pick];
+        v[`learner${n}_surname`] = l ? l.surname : ""; v[`learner${n}_name`] = l ? l.firstname : ""; v[`learner${n}_g`] = l ? r.g : "";
+        r.q.forEach((m, j) => { v[`learner${n}_q${j + 1}`] = l ? m : ""; });
+      });
+      form.plans.forEach((p, i) => {
+        Object.keys(p).forEach((k) => { v[`plan${i + 1}_${k}`] = p[k]; });
+      });
+      form.interventions.forEach((p, i) => {
+        Object.keys(p).forEach((k) => { v[`ip${i + 1}_${k}`] = k === "date" ? spipIsoToDmy(p[k]) : p[k]; });
+      });
+      return v;
+    };
+    const makePdf = async () => {
+      if (!(window.PDFLib && window.PDFLib.PDFDocument)) throw new Error("PDF support is still loading. Please try again in a moment.");
+      const res = await fetch(SPIP_TEMPLATE_PATH, { cache: "no-store" });
+      if (!res.ok) throw new Error("The SPIP PDF template could not be loaded.");
+      const pdfDoc = await window.PDFLib.PDFDocument.load(await res.arrayBuffer());
+      const pdfForm = pdfDoc.getForm();
+      const values = buildValues();
+      pdfForm.getFields().forEach((f) => {
+        try { pdfForm.getTextField(f.getName()).setText(String(values[f.getName()] == null ? "" : values[f.getName()])); } catch (err) {}
+      });
+      try { pdfForm.updateFieldAppearances(); } catch (err) {}
+      try { pdfForm.flatten(); } catch (err) {}
+      return await pdfDoc.save();
+    };
+    const spipFileName = () => {
+      const safe = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      return `carissa-spip${safe(form.subject) ? "-" + safe(form.subject) : ""}${form.grade ? "-grade-" + safe(form.grade) : ""}-${new Date().toISOString().slice(0, 10)}.pdf`;
+    };
+    const run = async (mode) => {
+      if (missing.length) {
+        setStatus({ text: `Please fill in the ${missing.join(", ")} first.`, kind: "err" });
+        return;
+      }
+      const win = mode === "print" ? window.open("", "_blank") : null;
+      setBusy(true);
+      setStatus({ text: "", kind: "" });
+      try {
+        const bytes = await makePdf();
+        const blob = new Blob([bytes], { type: "application/pdf" });
+        if (mode === "print" && win) {
+          win.location.href = URL.createObjectURL(blob);
+          setStatus({ text: "SPIP opened in a new tab. Use the print button there.", kind: "ok" });
+        } else {
+          downloadBlob(blob, spipFileName());
+          setStatus({ text: mode === "print" ? "Pop-ups are blocked, so the SPIP was downloaded instead. Open it to print." : "Filled SPIP downloaded.", kind: "ok" });
+        }
+      } catch (err) {
+        if (win) win.close();
+        setStatus({ text: (err && err.message) || "Could not create the SPIP PDF.", kind: "err" });
+      }
+      setBusy(false);
+    };
+    const cell = { width: "100%", padding: "8px 9px", border: "1.5px solid #d5dbe7", borderRadius: "6px", fontSize: "14px", outline: "none", fontFamily: "inherit", background: "#fff" };
+    const th = { border: "1px solid #e2e8f0", padding: "6px", background: "#f8fafc", color: "#475569", fontSize: "12.5px", textAlign: "left", fontWeight: 700 };
+    const td = { border: "1px solid #e2e8f0", padding: "5px" };
+    const sec = (num, title, sub, body) => e("div", { style: { border: "1px solid #e2e8f0", borderRadius: "14px", padding: "18px", marginBottom: "16px", background: "#fff" } },
+      e("div", { style: { display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" } },
+        e("span", { style: { width: "28px", height: "28px", borderRadius: "8px", background: "#eef2ff", border: "1px solid #c7d2fe", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: 800, color: "#4338ca" } }, num),
+        e("div", { style: { fontWeight: 800, fontSize: "16px", color: "#4338ca" } }, title)),
+      e("div", { style: { fontSize: "13px", color: "#64748b", marginBottom: "14px" } }, sub), body);
+    const lab = (t, hint) => e("label", { style: { ...lbl, fontSize: "13.5px", marginBottom: "6px" } }, t, hint ? e("span", { style: { fontWeight: 400, color: "#64748b", fontSize: "12px" } }, " ", hint) : null);
+    const grid = (min) => ({ display: "grid", gridTemplateColumns: `repeat(auto-fit,minmax(${min}px,1fr))`, gap: "12px" });
+    const txt = (key, label, ph, opts = {}) => e("div", { key, style: opts.wide ? { gridColumn: "1/-1" } : null }, lab(label, opts.hint), opts.area
+      ? e("textarea", { style: { ...inp, minHeight: "84px", resize: "vertical", fontFamily: "inherit" }, value: form[key], placeholder: ph, onChange: (ev) => set(key, ev.target.value) })
+      : e("input", { style: inp, value: form[key], placeholder: ph, inputMode: opts.num ? "decimal" : undefined, onChange: (ev) => set(key, ev.target.value) }));
+    const body = [];
+    body.push(e("div", { key: "h", style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "14px", flexWrap: "wrap", marginBottom: "14px" } },
+      e("div", null,
+        e("h3", { style: { ...ctitle, marginBottom: "6px" } }, "\u{1F4CB} SPIP — Subject Performance Improvement Plan"),
+        e("p", { style: { color: "#666", fontSize: "14px", lineHeight: 1.6, maxWidth: "780px" } }, "Fill in the sections below. When you are done, choose Download or Print and your information is placed neatly on the official Carissa SPIP template.")),
+      e("div", { style: { background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: "12px", padding: "10px 12px", minWidth: "210px" } },
+        e("div", { style: { fontSize: "12px", color: "#4338ca", fontWeight: 800, marginBottom: "4px" } }, "Signed in as"),
+        e("div", { style: { fontSize: "14px", fontWeight: 700, color: "#312e81" } }, adminAccess ? "Superuser admin" : `${teacherAuth && teacherAuth.first_name || ""} ${teacherAuth && teacherAuth.surname || ""}`.trim()),
+        e("div", { style: { fontSize: "12px", color: "#6366f1", marginTop: "4px" } }, savedAt ? `Draft saved · ${savedAt}` : "Draft saves automatically"))));
+    body.push(e("div", { key: "s1" }, sec("1", "Plan details", "These details repeat automatically on every page of the template.",
+      e("div", { style: grid(200) },
+        txt("subject", "Subject", "Example: Mathematics"),
+        e("div", { key: "grade" }, lab("Grade"),
+          e("select", { style: inp, value: form.grade, onChange: (ev) => changeGrade(ev.target.value) },
+            e("option", { value: "" }, "-- Select grade --"),
+            gradeOptions.map((g) => e("option", { key: g, value: g }, g === "R" ? "Grade R" : `Grade ${g}`)))),
+        txt("educator", "Educator", "Educator name"),
+        txt("principal", "Principal", "Principal name"),
+        txt("previous", "Previous average (%)", "Example: 54", { num: true }),
+        txt("current_target", "Current target (%)", "Example: 65", { num: true }),
+        txt("average", "Average (%)", "Example: 58", { num: true })))));
+    body.push(e("div", { key: "s2" }, sec("2", "Quarterly performance review", "Pass, fail and average per term, plus the overall figures.",
+      e("div", null,
+        e("div", { style: { overflowX: "auto" } }, e("table", { style: { width: "100%", borderCollapse: "collapse", minWidth: "520px" } },
+          e("thead", null, e("tr", null, ["Term", "Pass %", "Fail %", "Average"].map((h) => e("th", { key: h, style: th }, h)))),
+          e("tbody", null, [["1st", "1st Term"], ["2nd", "2nd Term"], ["3rd", "3rd Term"], ["overall", "Overall"]].map(([k, name]) => e("tr", { key: k },
+            e("td", { style: { ...td, fontWeight: 700, background: "#f8fafc", color: "#475569", whiteSpace: "nowrap" } }, name),
+            [0, 1, 2].map((i) => e("td", { key: i, style: td }, e("input", { style: cell, inputMode: "decimal", value: form.terms[k][i], "aria-label": `${name} ${["pass", "fail", "average"][i]}`, onChange: (ev) => setTerm(k, i, ev.target.value) })))))))),
+        e("div", { style: { ...grid(220), marginTop: "14px" } },
+          txt("educator_signature", "Educator signature", "Leave empty to sign by hand", { hint: "(optional, type name)" }),
+          txt("principal_signature", "Principal signature", "Leave empty to sign by hand", { hint: "(optional, type name)" }))))));
+    body.push(e("div", { key: "s3" }, sec("3", "Item analysis", "One row per question. The average % is worked out from “mark out of” and “total mark obtained”, and you can type over it.",
+      e("div", null,
+        e("div", { style: { overflowX: "auto" } }, e("table", { style: { width: "100%", borderCollapse: "collapse", minWidth: "640px" } },
+          e("thead", null, e("tr", null, [["Q", 50], ["Topic", null], ["Mark out of", 110], ["Total mark obtained", 130], ["Average %", 110]].map(([h, w]) => e("th", { key: h, style: { ...th, width: w || undefined } }, h)))),
+          e("tbody", null, form.items.map((it, i) => e("tr", { key: i },
+            e("td", { style: { ...td, fontWeight: 700, background: "#f8fafc", color: "#475569", textAlign: "center" } }, `Q${i + 1}`),
+            e("td", { style: td }, e("input", { style: cell, value: it.topic, "aria-label": `Topic question ${i + 1}`, onChange: (ev) => setIn("items", i, { topic: ev.target.value }) })),
+            e("td", { style: td }, e("input", { style: cell, inputMode: "decimal", value: it.out, "aria-label": `Mark out of question ${i + 1}`, onChange: (ev) => setIn("items", i, { out: ev.target.value }) })),
+            e("td", { style: td }, e("input", { style: cell, inputMode: "decimal", value: it.total, "aria-label": `Total mark question ${i + 1}`, onChange: (ev) => setIn("items", i, { total: ev.target.value }) })),
+            e("td", { style: td }, e("input", { style: cell, inputMode: "decimal", value: itemAvg(it), "aria-label": `Average percent question ${i + 1}`, onChange: (ev) => setIn("items", i, { avg: ev.target.value }) }))))))),
+        e("div", { style: { marginTop: "14px" } }, txt("comments", "Comments", "Comments on the item analysis", { area: true, wide: true }))))));
+    body.push(e("div", { key: "s4" }, sec("4", "Learner question grid", form.grade ? `Pick up to ${SPIP_LEARNER_ROWS} learners from Grade ${form.grade === "R" ? "R" : form.grade}, then type their mark for each question. Leave unused rows empty.` : "Choose the grade in step 1 first, then the learner names appear here to pick from.",
+      e("div", null,
+        e("div", { style: { overflowX: "auto" } }, e("table", { style: { width: "100%", borderCollapse: "collapse", minWidth: "1060px" } },
+          e("thead", null,
+            e("tr", null, e("th", { style: { ...th, width: "36px" } }, "#"), e("th", { style: { ...th, minWidth: "250px" } }, "Learner"), e("th", { style: { ...th, width: "66px" } }, "G"), Array.from({ length: SPIP_GRID_QS }, (_, i) => e("th", { key: i, style: { ...th, width: "66px" } }, `Q${i + 1}`))),
+            e("tr", null, e("td", { colSpan: 3, style: { ...td, fontWeight: 700, background: "#f8fafc", color: "#475569" } }, "Topic per question"),
+              form.gridTopics.map((t, i) => e("td", { key: i, style: td }, e("input", { style: cell, value: t, "aria-label": `Topic for question ${i + 1}`, onChange: (ev) => setGridTopic(i, ev.target.value) }))))),
+          e("tbody", null, form.learners.map((r, i) => {
+            const taken = form.learners.map((x, j) => j !== i ? x.pick : "").filter(Boolean);
+            return e("tr", { key: i },
+              e("td", { style: { ...td, fontWeight: 700, background: "#f8fafc", color: "#475569", textAlign: "center" } }, i + 1),
+              e("td", { style: td }, e("select", { style: cell, value: r.pick, disabled: !form.grade, "aria-label": `Learner ${i + 1}`, onChange: (ev) => setIn("learners", i, { pick: ev.target.value, g: ev.target.value ? r.g : "" }) },
+                e("option", { value: "" }, form.grade ? "-- Select learner --" : "Select a grade first"),
+                learnerPool.filter((l) => !taken.includes(l.id)).map((l) => e("option", { key: l.id, value: l.id }, `${l.surname}, ${l.firstname} (${l.cls})`)))),
+              e("td", { style: td }, e("select", { style: cell, value: r.g, disabled: !r.pick, "aria-label": `Learner ${i + 1} gender`, onChange: (ev) => setIn("learners", i, { g: ev.target.value }) }, e("option", { value: "" }, "–"), e("option", { value: "M" }, "M"), e("option", { value: "F" }, "F"))),
+              r.q.map((m, j) => e("td", { key: j, style: td }, e("input", { style: cell, inputMode: "decimal", value: m, disabled: !r.pick, "aria-label": `Learner ${i + 1} question ${j + 1}`, onChange: (ev) => setMark(i, j, ev.target.value) }))));
+          }))))))));
+    body.push(e("div", { key: "s5" }, sec("5", "Subject improvement plan", "Up to three challenges, with the action, who is responsible, the achievement indicator and the time frame.",
+      form.plans.map((p, i) => e("div", { key: i, style: { border: "1px solid #e2e8f0", borderRadius: "12px", padding: "14px", marginBottom: "12px", background: "#fbfcff" } },
+        e("div", { style: { fontWeight: 700, color: "#475569", fontSize: "14px", marginBottom: "10px" } }, `Item ${i + 1}`),
+        e("div", { style: grid(200) },
+          [["challenges", "Challenges", true], ["action", "Action", true], ["responsibility", "Responsibility", false], ["achievement_indicator", "Achievement indicator", false], ["time_frame", "Time frame", false]].map(([k, l, area]) => e("div", { key: k, style: area ? { gridColumn: "1/-1" } : null },
+            lab(l), area
+              ? e("textarea", { style: { ...inp, minHeight: "64px", resize: "vertical", fontFamily: "inherit" }, value: p[k], onChange: (ev) => setIn("plans", i, { [k]: ev.target.value }) })
+              : e("input", { style: inp, value: p[k], onChange: (ev) => setIn("plans", i, { [k]: ev.target.value }) })))))))));
+    body.push(e("div", { key: "s6" }, sec("6", "Intervention plan", "Up to five intervention entries. The HOD signature is optional: leave it empty to sign by hand after printing.",
+      e("div", null,
+        e("div", { style: { ...grid(200), marginBottom: "14px" } }, e("div", null, lab("Term"), e("select", { style: inp, value: form.ip_term, onChange: (ev) => set("ip_term", ev.target.value) }, e("option", { value: "" }, "Select term"), ["Term 1", "Term 2", "Term 3", "Term 4"].map((t) => e("option", { key: t }, t))))),
+        form.interventions.map((p, i) => e("div", { key: i, style: { border: "1px solid #e2e8f0", borderRadius: "12px", padding: "14px", marginBottom: "12px", background: "#fbfcff" } },
+          e("div", { style: { fontWeight: 700, color: "#475569", fontSize: "14px", marginBottom: "10px" } }, `Intervention ${i + 1}`),
+          e("div", { style: grid(200) },
+            [["topic", "Topic", "text"], ["date", "Date", "date"], ["time", "Time", "time"], ["evidence", "Evidence", "text"], ["performance_indicator", "Performance indicator", "text"], ["percentage", "Percentage %", "text"], ["hod_signature", "Signature of HOD", "text"]].map(([k, l, t]) => e("div", { key: k },
+              lab(l), e("input", { style: inp, type: t, inputMode: k === "percentage" ? "decimal" : undefined, value: p[k], onChange: (ev) => setIn("interventions", i, { [k]: ev.target.value }) }))))))))));
+    body.push(e("div", { key: "bar", style: { display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center", marginTop: "6px" } },
+      e("button", { onClick: () => run("download"), disabled: busy, style: { ...sbtn, background: "#10b981", opacity: busy ? 0.65 : 1, padding: "12px 22px" } }, busy ? "Preparing PDF..." : "⬇ Download SPIP (PDF)"),
+      e("button", { onClick: () => run("print"), disabled: busy, style: { ...sbtn, background: "#4f46e5", opacity: busy ? 0.65 : 1, padding: "12px 22px" } }, "\u{1F5A8} Print SPIP"),
+      e("button", { onClick: resetDraft, style: { ...sbtn, background: "#f59e0b" } }, "Clear draft"),
+      missing.length ? e("span", { style: { fontSize: "13px", color: "#9a3412" } }, `Still needed: ${missing.join(", ")}`) : null));
+    if (status.text) body.push(e("div", { key: "st", style: { marginTop: "12px", background: status.kind === "err" ? "#fef2f2" : "#ecfdf5", border: `1px solid ${status.kind === "err" ? "#fecaca" : "#a7f3d0"}`, color: status.kind === "err" ? "#b91c1c" : "#047857", borderRadius: "10px", padding: "11px 12px", fontSize: "13px", fontWeight: 600 } }, status.text));
+    return e("div", { style: card }, body);
   }
   function ReadingStatisticsView({ reading, selClass }) {
     const terms = ["Term 2", "Term 3", "Term 4"];
@@ -8088,7 +8380,7 @@ ${sectionsHtml}
         exportClassSummary,
         onProjectTest: (phase) => setProjectMode({ phase })
       }
-    ), subTab === "sasams_submits" && /* @__PURE__ */ React.createElement(SasamsAdminSubmissionsTab, { adminUser }), subTab === "staff_assessments" && /* @__PURE__ */ React.createElement(StaffAssessmentsTab, null), subTab === "reading" && /* @__PURE__ */ React.createElement(ReadingResultsTab, { reading }), subTab === "discipline" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(WhatsappQueuePanel, null), /* @__PURE__ */ React.createElement(DisciplineAdminTab, { adminUser })), subTab === "learners" && /* @__PURE__ */ React.createElement(LearnersAdminTab, { overrides, setOverrides, setAssessments }), subTab === "parents_contacts" && /* @__PURE__ */ React.createElement(ParentsContactsTab, null), subTab === "moderation" && /* @__PURE__ */ React.createElement(ModerationToolsTab, { adminAccess: true }), subTab === "registrations" && /* @__PURE__ */ React.createElement(TeacherRegistrationsTab, null), subTab === "teacher_audit" && /* @__PURE__ */ React.createElement(TeacherAuditTab, { events: auditEvents, setEvents: setAuditEvents }), subTab === "assistant" && /* @__PURE__ */ React.createElement(TraeAssistantTab, null), subTab === "email" && /* @__PURE__ */ React.createElement(EmailAdminTab, null), subTab === "chats" && /* @__PURE__ */ React.createElement(ChatsAdminTab, { chats, setChats }), subTab === "audit" && /* @__PURE__ */ React.createElement(AuditAdminTab, null), projectMode && /* @__PURE__ */ React.createElement(
+    ), subTab === "sasams_submits" && /* @__PURE__ */ React.createElement(SasamsAdminSubmissionsTab, { adminUser }), subTab === "staff_assessments" && /* @__PURE__ */ React.createElement(StaffAssessmentsTab, null), subTab === "reading" && /* @__PURE__ */ React.createElement(ReadingResultsTab, { reading }), subTab === "discipline" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(WhatsappQueuePanel, null), /* @__PURE__ */ React.createElement(DisciplineAdminTab, { adminUser })), subTab === "learners" && /* @__PURE__ */ React.createElement(LearnersAdminTab, { overrides, setOverrides, setAssessments }), subTab === "parents_contacts" && /* @__PURE__ */ React.createElement(ParentsContactsTab, null), subTab === "moderation" && /* @__PURE__ */ React.createElement(ModerationToolsTab, { adminAccess: true }), subTab === "spip" && /* @__PURE__ */ React.createElement(SpipToolTab, { adminAccess: true }), subTab === "registrations" && /* @__PURE__ */ React.createElement(TeacherRegistrationsTab, null), subTab === "teacher_audit" && /* @__PURE__ */ React.createElement(TeacherAuditTab, { events: auditEvents, setEvents: setAuditEvents }), subTab === "assistant" && /* @__PURE__ */ React.createElement(TraeAssistantTab, null), subTab === "email" && /* @__PURE__ */ React.createElement(EmailAdminTab, null), subTab === "chats" && /* @__PURE__ */ React.createElement(ChatsAdminTab, { chats, setChats }), subTab === "audit" && /* @__PURE__ */ React.createElement(AuditAdminTab, null), projectMode && /* @__PURE__ */ React.createElement(
       ProjectTestView,
       {
         initialPhase: projectMode.phase,
@@ -9353,6 +9645,7 @@ ${sectionsHtml}
       ...teacherAuth ? [["classlist", `\u{1F465} Classlist (${(CLASS_DATA[selClass] || []).length})`]] : [],
       ...teacherAuth ? [["discipline", "\u2696\uFE0F Discipline"]] : [],
       ...moderationAccess ? [["moderation", "\u{1F5C2} Moderation Tools"]] : [],
+      ...teacherAuth || adminAccess ? [["spip", "\u{1F4CB} SPIP"]] : [],
       ...teacherAuth ? [["reading", "\u{1F4D6} 1-Minute Reading"]] : [],
       ...teacherAuth ? [["tools", "\u{1F9F0} Tools"]] : [],
       ["learnworld_games", `\u{1F3AE} LearnWorld (${resources.filter(isLearnWorldGameResource).length})`],
@@ -9391,7 +9684,7 @@ ${sectionsHtml}
         learners: CLASS_DATA[selClass] || [],
         onAudit: (evt) => logTeacherAudit(evt, selClass)
       }
-    ), tab === "moderation" && moderationAccess && /* @__PURE__ */ React.createElement(ModerationToolsTab, { teacherAuth, adminAccess, selClass }), tab === "assessments" && teacherAuth && /* @__PURE__ */ React.createElement(MockExamPasswordTab, { selClass, teacherAuth, showMsg }), tab === "assessments" && teacherAuth && /* @__PURE__ */ React.createElement(MockExamPanel, { resources, selClass, teacherAuth, assignments, setAssignments, learnerResults, resetMark, showMsg }), tab === "assessments" && /* @__PURE__ */ React.createElement("div", { style: card }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "12px" } }, /* @__PURE__ */ React.createElement("h3", { style: { ...ctitle, marginBottom: 0 } }, selClass, " \u2014 Assessments"), assessmentTermView && classAssessments.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#10b981", fontSize: "13px" }, onClick: () => exportClassSummary2(selClass, classAssessments[0].phase, classAssessments) }, "\u{1F4CA} Class Summary"), /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#7c3aed", fontSize: "13px" }, onClick: () => exportGradeBulkReport(selClass, classAssessments[0].phase, classAssessments) }, "\u{1F4C4} Grade Report (", classAssessments.length, " learners)"))), /* @__PURE__ */ React.createElement("p", { style: { color: "#666", fontSize: "13px", marginBottom: "12px" } }, "Open the folder you want to view. Assessment marks stay inside the selected term folder."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "12px" } }, ["Term 2", "Term 3"].map((t) => /* @__PURE__ */ React.createElement("button", { key: t, onClick: () => {
+    ), tab === "moderation" && moderationAccess && /* @__PURE__ */ React.createElement(ModerationToolsTab, { teacherAuth, adminAccess, selClass }), tab === "spip" && (teacherAuth || adminAccess) && /* @__PURE__ */ React.createElement(SpipToolTab, { teacherAuth, adminAccess, selClass, teacherClasses }), tab === "assessments" && teacherAuth && /* @__PURE__ */ React.createElement(MockExamPasswordTab, { selClass, teacherAuth, showMsg }), tab === "assessments" && teacherAuth && /* @__PURE__ */ React.createElement(MockExamPanel, { resources, selClass, teacherAuth, assignments, setAssignments, learnerResults, resetMark, showMsg }), tab === "assessments" && /* @__PURE__ */ React.createElement("div", { style: card }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "12px" } }, /* @__PURE__ */ React.createElement("h3", { style: { ...ctitle, marginBottom: 0 } }, selClass, " \u2014 Assessments"), assessmentTermView && classAssessments.length > 0 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#10b981", fontSize: "13px" }, onClick: () => exportClassSummary2(selClass, classAssessments[0].phase, classAssessments) }, "\u{1F4CA} Class Summary"), /* @__PURE__ */ React.createElement("button", { style: { ...sbtn, background: "#7c3aed", fontSize: "13px" }, onClick: () => exportGradeBulkReport(selClass, classAssessments[0].phase, classAssessments) }, "\u{1F4C4} Grade Report (", classAssessments.length, " learners)"))), /* @__PURE__ */ React.createElement("p", { style: { color: "#666", fontSize: "13px", marginBottom: "12px" } }, "Open the folder you want to view. Assessment marks stay inside the selected term folder."), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "12px" } }, ["Term 2", "Term 3"].map((t) => /* @__PURE__ */ React.createElement("button", { key: t, onClick: () => {
       const next = assessmentTermView === t ? "" : t;
       setAssessmentTermView(next);
       if (next) logTeacherAudit(`open_assessments:${next}`, selClass);
