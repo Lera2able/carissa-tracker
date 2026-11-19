@@ -1528,6 +1528,53 @@ async function requireAdminTeacher(request, env, corsOrigin) {
   return { ok: true, session };
 }
 
+async function requireTeacher(request, env, corsOrigin) {
+  const session = await getTeacherSession(request, env);
+  if (!session) return { ok: false, res: jsonResponse({ error: "Teacher session required." }, 401, corsOrigin) };
+  return { ok: true, session };
+}
+
+async function handleSpipDraftGet(request, env, corsOrigin) {
+  const auth = await requireTeacher(request, env, corsOrigin);
+  if (!auth.ok) return auth.res;
+  const email = String(auth.session.email || "").trim().toLowerCase();
+  if (!email) return jsonResponse({ draft: null }, 200, corsOrigin);
+  const rows = await supabaseGet(env, "carissa_spip_drafts", {
+    select: "*",
+    teacher_email: `eq.${email}`,
+    limit: "1",
+  });
+  const draft = Array.isArray(rows) && rows.length ? rows[0] : null;
+  return jsonResponse({ draft }, 200, corsOrigin);
+}
+
+async function handleSpipDraftSave(request, env, corsOrigin) {
+  const auth = await requireTeacher(request, env, corsOrigin);
+  if (!auth.ok) return auth.res;
+  const body = await readJsonBody(request);
+  const email = String(auth.session.email || "").trim().toLowerCase();
+  if (!email) return jsonResponse({ error: "Teacher email missing." }, 400, corsOrigin);
+  const name = [auth.session.first_name, auth.session.surname]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean)
+    .join(" ");
+  const row = {
+    teacher_email: email,
+    teacher_name: name || null,
+    class_name: String(body?.className || "").trim() || null,
+    subject: String(body?.subject || "").trim() || null,
+    data: (body && typeof body.data === "object" && body.data) || {},
+    updated_at: new Date().toISOString(),
+  };
+  const saved = await supabasePost(
+    env,
+    "carissa_spip_drafts?on_conflict=teacher_email",
+    row,
+    "resolution=merge-duplicates,return=representation"
+  );
+  return jsonResponse({ ok: true, draft: Array.isArray(saved) ? saved[0] : saved }, 200, corsOrigin);
+}
+
 function emailAddressOf(value) {
   if (typeof value === "string") return value.trim().toLowerCase();
   if (value && typeof value === "object" && typeof value.email === "string") {
@@ -3117,6 +3164,15 @@ export default {
     if (url.pathname === "/api/auth/teacher/logout") {
       if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
       return handleTeacherLogout(request, env, corsOrigin);
+    }
+    if (url.pathname === "/api/spip/draft") {
+      try {
+        if (request.method === "GET") return await handleSpipDraftGet(request, env, corsOrigin);
+        if (request.method === "POST") return await handleSpipDraftSave(request, env, corsOrigin);
+        return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "SPIP draft request failed" }, 500, corsOrigin);
+      }
     }
     if (url.pathname.startsWith("/api/onti/")) {
       const routes = { "/api/onti/login": ["POST", handleOntiLogin], "/api/onti/status": ["GET", handleOntiStatus], "/api/onti/data": ["GET", handleOntiData], "/api/onti/save": ["POST", handleOntiSave], "/api/onti/logout": ["POST", handleOntiLogout], "/api/onti/attempt": ["POST", handleOntiAttempt], "/api/onti/event": ["POST", handleOntiEvent], "/api/onti/moderate": ["POST", handleOntiModerate] };

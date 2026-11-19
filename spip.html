@@ -6,6 +6,7 @@
 <title>SPIP Tool — Carissa Primary School</title>
 <meta name="description" content="Capture the Subject Performance Improvement Plan (SPIP) data and download it as a filled official PDF template."/>
 <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="./class-data.js?v=20261119a"></script>
 <style>
   :root{
     --bg:#f0f2ff;
@@ -109,6 +110,9 @@
   table.sheet th{background:#f8fafc;color:var(--ink-soft);font-size:12.5px;text-align:left;font-weight:700;}
   table.sheet td input{width:100%;padding:9px 10px;border:1.5px solid var(--input-line);border-radius:6px;font-size:14px;font-family:inherit;outline:none;background:#fff;}
   table.sheet td input:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.12);}
+  table.sheet td select{width:100%;padding:9px 10px;border:1.5px solid var(--input-line);border-radius:6px;font-size:14px;font-family:inherit;outline:none;background:#fff;color:var(--ink);}
+  table.sheet td select:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.12);}
+  table.sheet td input:disabled{background:#f1f5f9;color:#94a3b8;}
   .table-scroll{overflow-x:auto;border-radius:10px;}
   .table-scroll table{min-width:640px;}
   .table-scroll table.grid10{min-width:920px;}
@@ -169,7 +173,7 @@
   <div class="intro">
     <div class="cell">
       <b>How it works</b>
-      <span>Fill in the sections below. Your entries are stored as a draft on this device while you work. When you are done, choose “Download filled SPIP” — the official template downloads as a filled PDF.</span>
+      <span>Fill in the sections below. Signed-in teachers: your entries are saved to your profile on the school server, so the list stays on your profile and comes back next time you open the tool. When you are done, download the filled official PDF or print it.</span>
     </div>
     <div class="cell">
       <b>What it covers</b>
@@ -191,6 +195,7 @@
     <h2><span class="num">1</span> Plan details</h2>
     <p class="sub">These details repeat automatically on the item analysis, improvement plan and intervention plan pages of the document.</p>
     <div class="grid">
+      <div><label class="lbl" for="classSelect">Class <span class="hint">(your class)</span></label><select class="inp" id="classSelect"></select></div>
       <div><label class="lbl" for="subject">Subject</label><input class="inp" id="subject" data-field="subject" placeholder="Example: Mathematics"/></div>
       <div><label class="lbl" for="grade">Grade</label><input class="inp" id="grade" data-field="grade" placeholder="Example: 5"/></div>
       <div><label class="lbl" for="educator">Educator</label><input class="inp" id="educator" data-field="educator" placeholder="Educator name"/></div>
@@ -249,8 +254,8 @@
   <!-- 4 · LEARNER GRID -->
   <section class="card" id="sec-grid">
     <h2><span class="num">4</span> Learner question grid</h2>
-    <p class="sub">Topic per question, then up to 15 learners with a mark per question (Q1–Q10). Leave unused rows empty — they stay blank on the document.</p>
-    <span class="auto-note">Grade copies over from Plan details.</span>
+    <p class="sub">Type the topic per question, then pick up to 15 learners from your class (chosen in step 1) and give a mark per question (Q1–Q10). Leave unused rows empty — they stay blank on the document.</p>
+    <span class="auto-note">Learners come from the class you selected in step 1.</span>
     <div class="table-scroll">
       <table class="sheet grid10" id="learnerTable">
         <thead></thead>
@@ -289,6 +294,7 @@
 <div class="bar">
   <div class="bar-inner">
     <button class="btn primary" id="downloadBtn" type="button">Download filled SPIP (PDF)</button>
+    <button class="btn ghost" id="printBtn" type="button">Print SPIP</button>
     <button class="btn ghost" id="clearBtn" type="button">Clear draft</button>
     <span class="status" id="status" role="status" aria-live="polite"></span>
   </div>
@@ -310,27 +316,26 @@
     itemBody.appendChild(tr);
   }
 
-  /* ---------- build learner grid (topics + 15 learners x Q1..Q10) ---------- */
+  /* ---------- build learner grid (topic row + 15 learner pickers x Q1..Q10) ---------- */
   var learnerTable = document.getElementById("learnerTable");
   var thead = learnerTable.querySelector("thead");
-  var headRow = '<tr><th style="width:44px;">#</th><th style="min-width:130px;">Surname</th><th style="min-width:110px;">Name</th><th style="width:52px;">G</th>';
+  var headRow = '<tr><th style="width:44px;">#</th><th style="min-width:230px;">Learner</th><th style="width:60px;">G</th>';
   for (var g = 1; g <= 10; g++){ headRow += '<th style="width:64px;">Q' + g + '</th>'; }
   headRow += '</tr>';
   thead.innerHTML = headRow;
   var lbody = learnerTable.querySelector("tbody");
   var topicRow = document.createElement("tr");
-  var topicHtml = '<td colspan="4" style="font-weight:700;color:#475569;background:#f8fafc;">Topic per question</td>';
+  var topicHtml = '<td colspan="3" style="font-weight:700;color:#475569;background:#f8fafc;">Topic per question</td>';
   for (var t = 1; t <= 10; t++){ topicHtml += '<td><input data-field="grid_topic_q' + t + '" aria-label="Topic for question ' + t + '"/></td>'; }
   topicRow.innerHTML = topicHtml;
   lbody.appendChild(topicRow);
   for (var n = 1; n <= 15; n++){
     var lr = document.createElement("tr");
     var cells = '<td style="font-weight:700;color:#475569;background:#f8fafc;text-align:center;">' + n + '</td>' +
-      '<td><input data-field="learner' + n + '_surname" aria-label="Learner ' + n + ' surname"/></td>' +
-      '<td><input data-field="learner' + n + '_name" aria-label="Learner ' + n + ' name"/></td>' +
-      '<td><input data-field="learner' + n + '_g" maxlength="2" aria-label="Learner ' + n + ' gender"/></td>';
+      '<td><select class="learner-pick" data-field="learner' + n + '_pick" aria-label="Learner ' + n + '"><option value="">-- Select learner --</option></select></td>' +
+      '<td><select data-field="learner' + n + '_g" aria-label="Learner ' + n + ' gender"><option value="">\u2013</option><option value="M">M</option><option value="F">F</option></select></td>';
     for (var m = 1; m <= 10; m++){
-      cells += '<td><input data-field="learner' + n + '_q' + m + '" inputmode="decimal" aria-label="Learner ' + n + ' question ' + m + '"/></td>';
+      cells += '<td><input data-field="learner' + n + '_q' + m + '" inputmode="decimal" disabled aria-label="Learner ' + n + ' question ' + m + '"/></td>';
     }
     lr.innerHTML = cells;
     lbody.appendChild(lr);
@@ -385,45 +390,188 @@
 <script>
 (function(){
   "use strict";
+  var API = "/api";
   var TEMPLATE_PATH = "monitoring-tools/carissa_spip_fillable.pdf";
   var DRAFT_KEY = "carissa-spip-draft-v1";
+  var CLASS_DATA = window.CLASS_DATA || {};
   var statusEl = document.getElementById("status");
   var draftChip = document.getElementById("draftChip");
   var downloadBtn = document.getElementById("downloadBtn");
+  var printBtn = document.getElementById("printBtn");
+  var clearBtn = document.getElementById("clearBtn");
+  var classSelect = document.getElementById("classSelect");
   var manualAvg = {};
+  var saveTimer = null;
+  var teacherEmail = "";
 
   function inputs(){ return Array.prototype.slice.call(document.querySelectorAll("[data-field]")); }
-
-  /* ---------- restore draft ---------- */
-  try{
-    var saved = JSON.parse(localStorage.getItem(DRAFT_KEY) || "{}");
-    if (saved.values){
-      inputs().forEach(function(el){
-        var k = el.getAttribute("data-field");
-        if (saved.values[k] != null) el.value = saved.values[k];
-      });
-      manualAvg = saved.manualAvg || {};
-      if (saved.savedAt){
-        var d = new Date(saved.savedAt);
-        draftChip.textContent = "Draft restored · " + d.toLocaleDateString() + " " + d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
-      }
+  function byField(name){ return document.querySelector('[data-field="' + name + '"]'); }
+  function esc(s){
+    return String(s == null ? "" : s).replace(/[&<>"]/g, function(c){
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+  function allClassNames(){ return Object.keys(CLASS_DATA); }
+  function normClass(s){ return String(s == null ? "" : s).toLowerCase().replace(/^grade\s*/, "").replace(/[^a-z0-9]/g, ""); }
+  var CLASS_KEYS = {};
+  Object.keys(CLASS_DATA).forEach(function(k){ CLASS_KEYS[normClass(k)] = k; });
+  function resolveClassKey(name){
+    if (CLASS_DATA[name]) return name;
+    return CLASS_KEYS[normClass(name)] || name;
+  }
+  function learnerList(className){ return (CLASS_DATA[className] || []).slice(); }
+  function findLearner(className, number){
+    var list = CLASS_DATA[className] || [];
+    for (var i = 0; i < list.length; i++){ if (String(list[i].number) === String(number)) return list[i]; }
+    return null;
+  }
+  function currentClass(){ return classSelect.value || ""; }
+  function gradeFromClass(c){
+    var rest = String(c || "").replace(/^Grade\s+/i, "").trim();
+    return rest.split(/[.\s]/)[0] || "";
+  }
+  function setClassValue(v){
+    var key = resolveClassKey(v);
+    for (var i = 0; i < classSelect.options.length; i++){
+      if (classSelect.options[i].value === key){ classSelect.selectedIndex = i; return true; }
     }
-  }catch(e){}
+    return false;
+  }
+  function populateClassSelect(names, selected){
+    var seen = {}, opts = [];
+    names.forEach(function(n){
+      var key = resolveClassKey(n);
+      if (seen[key]) return;
+      seen[key] = true;
+      opts.push({ key: key, label: n });
+    });
+    var html = "";
+    opts.forEach(function(o){ html += '<option value="' + esc(o.key) + '">' + esc(o.label) + '</option>'; });
+    classSelect.innerHTML = html || '<option value="">No classes</option>';
+    if (selected){ if (!setClassValue(selected)) classSelect.selectedIndex = 0; } else classSelect.selectedIndex = 0;
+  }
+  function syncRowState(){
+    Array.prototype.forEach.call(document.querySelectorAll(".learner-pick"), function(sel){
+      var mm = sel.getAttribute("data-field").match(/learner(\d+)_pick/);
+      if (!mm) return;
+      var has = !!sel.value;
+      for (var m = 1; m <= 10; m++){
+        var qi = byField("learner" + mm[1] + "_q" + m);
+        if (qi) qi.disabled = !has;
+      }
+    });
+  }
+  function populateLearnerPickers(){
+    var list = learnerList(currentClass()).sort(function(a, b){
+      return String(a.surname).localeCompare(String(b.surname)) || String(a.firstname).localeCompare(String(b.firstname));
+    });
+    var label = currentClass() ? "-- Select learner --" : "Select a class first";
+    Array.prototype.forEach.call(document.querySelectorAll(".learner-pick"), function(sel){
+      var cur = sel.value;
+      var html = '<option value="">' + label + '</option>';
+      list.forEach(function(l){
+        html += '<option value="' + esc(l.number) + '">' + esc(l.surname) + ', ' + esc(l.firstname) + '</option>';
+      });
+      sel.innerHTML = html;
+      sel.value = cur;
+      if (sel.value !== cur) sel.value = "";
+    });
+    syncRowState();
+  }
 
-  /* ---------- autosave ---------- */
-  var saveTimer = null;
-  function saveDraft(){
+  /* ---------- draft save / restore (server-side, tied to the teacher) ---------- */
+  function collectDraft(){
     var values = {};
     inputs().forEach(function(el){ values[el.getAttribute("data-field")] = el.value; });
-    try{
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ values: values, manualAvg: manualAvg, savedAt: new Date().toISOString() }));
-      var d = new Date();
-      draftChip.textContent = "Draft saved · " + d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
-    }catch(e){}
+    return {
+      className: currentClass(),
+      subject: (byField("subject") && byField("subject").value) || "",
+      data: values,
+      manualAvg: manualAvg,
+      savedAt: new Date().toISOString()
+    };
+  }
+  function markSaved(text){
+    var d = new Date();
+    draftChip.textContent = text + " · " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+  function saveDraft(){
+    var draft = collectDraft();
+    if (teacherEmail){
+      fetch(API + "/spip/draft", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ className: draft.className, subject: draft.subject, data: draft.data })
+      }).then(function(r){
+        if (!r.ok) throw new Error("save failed");
+        markSaved("Saved to your profile");
+      }).catch(function(){ markSaved("Saved on this device"); });
+    } else {
+      try{ localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); }catch(e){}
+      markSaved("Saved on this device");
+    }
   }
   function queueSave(){
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(saveDraft, 350);
+    saveTimer = setTimeout(saveDraft, 700);
+  }
+  function applyDraft(saved){
+    if (!saved) return;
+    if (saved.className) setClassValue(saved.className);
+    populateLearnerPickers();
+    if (saved.data){
+      inputs().forEach(function(el){
+        var k = el.getAttribute("data-field");
+        if (saved.data[k] != null) el.value = saved.data[k];
+      });
+    }
+    manualAvg = saved.manualAvg || {};
+    setGradeFromClass();
+    syncRowState();
+    if (saved.savedAt){
+      var d = new Date(saved.savedAt);
+      draftChip.textContent = "Restored · " + d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+  }
+  function setGradeFromClass(){
+    var gi = byField("grade");
+    if (gi && !gi.value) gi.value = gradeFromClass(currentClass());
+  }
+  function loadDraft(){
+    if (!teacherEmail){
+      var local = null;
+      try{ local = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"); }catch(e){}
+      if (local) applyDraft(local); else { populateLearnerPickers(); setGradeFromClass(); }
+      return;
+    }
+    fetch(API + "/spip/draft", { credentials: "include" })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; })
+      .then(function(j){
+        var draft = j && j.draft ? { className: j.draft.class_name, data: j.draft.data, savedAt: j.draft.updated_at } : null;
+        if (draft) applyDraft(draft); else { populateLearnerPickers(); setGradeFromClass(); }
+      });
+  }
+  function initSession(){
+    fetch(API + "/auth/teacher/session", { credentials: "include" })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; })
+      .then(function(j){
+        var session = j && j.session ? j.session : null;
+        var names = [], preferred = "";
+        if (session){
+          names = (session.class_names && session.class_names.length ? session.class_names : [session.class_name]).filter(Boolean);
+          preferred = session.active_class_name || names[0] || "";
+          teacherEmail = String(session.email || "").trim().toLowerCase();
+          var edu = [session.first_name, session.surname].map(function(s){ return String(s || "").trim(); }).filter(Boolean).join(" ");
+          var eduEl = byField("educator");
+          if (edu && eduEl && !eduEl.value) eduEl.value = edu;
+        }
+        if (!names.length) names = allClassNames();
+        populateClassSelect(names, preferred);
+        loadDraft();
+      });
   }
 
   /* ---------- auto-calc average % per question ---------- */
@@ -458,6 +606,20 @@
     if (ev.target && ev.target.getAttribute && ev.target.getAttribute("data-field")) queueSave();
   });
 
+  /* ---------- class + learner picker wiring ---------- */
+  classSelect.addEventListener("change", function(){
+    var gi = byField("grade");
+    if (gi) gi.value = gradeFromClass(currentClass());
+    populateLearnerPickers();
+    queueSave();
+  });
+  Array.prototype.forEach.call(document.querySelectorAll(".learner-pick"), function(sel){
+    sel.addEventListener("change", function(){
+      syncRowState();
+      queueSave();
+    });
+  });
+
   /* ---------- collect + fill + download ---------- */
   function isoToDmy(v){
     var m = String(v || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -476,6 +638,14 @@
     values.sip_subject = values.subject; values.sip_grade = values.grade; values.sip_educator = values.educator;
     values.ip_subject = values.subject; values.ip_grade = values.grade; values.ip_educator = values.educator;
     values.grid_grade = values.grade;
+    // resolve the learner picker (a class list number) into the template's surname/first-name fields
+    var cls = currentClass();
+    for (var ln = 1; ln <= 15; ln++){
+      var pick = values["learner" + ln + "_pick"];
+      var learner = pick ? findLearner(cls, pick) : null;
+      values["learner" + ln + "_surname"] = learner ? String(learner.surname || "") : "";
+      values["learner" + ln + "_name"] = learner ? String(learner.firstname || "") : "";
+    }
     return values;
   }
   function allFieldNames(){
@@ -517,14 +687,14 @@
     statusEl.className = "status" + (kind ? " " + kind : "");
   }
 
-  downloadBtn.addEventListener("click", function(){
-    setStatus("", "");
-    downloadBtn.disabled = true;
-    var go = async function(){
-      if (!window.PDFLib || !window.PDFLib.PDFDocument) throw new Error("PDF support is still loading. Please try again in a moment.");
-      var res = await fetch(TEMPLATE_PATH, { cache: "no-store" });
+  function fillPdfBytes(){
+    if (!window.PDFLib || !window.PDFLib.PDFDocument) throw new Error("PDF support is still loading. Please try again in a moment.");
+    return fetch(TEMPLATE_PATH, { cache: "no-store" }).then(function(res){
       if (!res.ok) throw new Error("The SPIP PDF template could not be loaded.");
-      var pdfDoc = await window.PDFLib.PDFDocument.load(await res.arrayBuffer());
+      return res.arrayBuffer();
+    }).then(function(buf){
+      return window.PDFLib.PDFDocument.load(buf);
+    }).then(function(pdfDoc){
       var pdfForm = pdfDoc.getForm();
       var values = collectValues();
       allFieldNames().forEach(function(fieldName){
@@ -534,29 +704,67 @@
       });
       try{ pdfForm.updateFieldAppearances(); }catch(e){}
       try{ pdfForm.flatten(); }catch(e){}
-      var bytes = await pdfDoc.save();
+      return pdfDoc.save();
+    });
+  }
+
+  downloadBtn.addEventListener("click", function(){
+    setStatus("", "");
+    downloadBtn.disabled = true;
+    fillPdfBytes().then(function(bytes){
+      var values = collectValues();
       var name = "carissa-spip" +
         (safePart(values.subject) ? "-" + safePart(values.subject) : "") +
         (safePart(values.grade) ? "-grade-" + safePart(values.grade) : "") +
         "-" + new Date().toISOString().slice(0,10) + ".pdf";
       downloadBlob(new Blob([bytes], { type: "application/pdf" }), name);
       setStatus("Filled SPIP downloaded.", "ok");
-    };
-    go().catch(function(err){
+    }).catch(function(err){
       setStatus((err && err.message) || "Could not create the SPIP PDF.", "err");
     }).finally(function(){
       downloadBtn.disabled = false;
     });
   });
 
-  document.getElementById("clearBtn").addEventListener("click", function(){
+  printBtn.addEventListener("click", function(){
+    setStatus("", "");
+    printBtn.disabled = true;
+    fillPdfBytes().then(function(bytes){
+      var url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+      var frame = document.createElement("iframe");
+      frame.setAttribute("aria-hidden", "true");
+      frame.style.position = "fixed";
+      frame.style.right = "0"; frame.style.bottom = "0";
+      frame.style.width = "0"; frame.style.height = "0"; frame.style.border = "0";
+      frame.src = url;
+      frame.onload = function(){
+        setTimeout(function(){
+          try{ frame.contentWindow.focus(); frame.contentWindow.print(); }catch(e){}
+        }, 350);
+      };
+      document.body.appendChild(frame);
+      setStatus("Opening the print dialog…", "ok");
+      setTimeout(function(){ URL.revokeObjectURL(url); frame.remove(); }, 60000);
+    }).catch(function(err){
+      setStatus((err && err.message) || "Could not prepare the SPIP for printing.", "err");
+    }).finally(function(){
+      printBtn.disabled = false;
+    });
+  });
+
+  clearBtn.addEventListener("click", function(){
     if (!window.confirm("Clear the saved draft and empty every field?")) return;
     try{ localStorage.removeItem(DRAFT_KEY); }catch(e){}
     manualAvg = {};
     inputs().forEach(function(el){ el.value = ""; });
+    Array.prototype.forEach.call(document.querySelectorAll(".learner-pick"), function(sel){ sel.value = ""; });
+    syncRowState();
     draftChip.textContent = "Draft saves automatically";
     setStatus("Draft cleared.", "ok");
+    if (teacherEmail) queueSave();
   });
+
+  initSession();
 })();
 </script>
 </body>
