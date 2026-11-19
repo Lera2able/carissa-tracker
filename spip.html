@@ -117,16 +117,12 @@
   table.sheet td input:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.12);}
   table.sheet td select{width:100%;padding:8px 6px;border:1.5px solid var(--input-line);border-radius:6px;font-size:14px;font-family:inherit;outline:none;background:#fff;color:var(--ink);}
   table.sheet td select:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.12);}
+  table.sheet td textarea.topic-entry{display:block;width:100%;min-height:112px;padding:7px;border:1.5px solid var(--input-line);border-radius:6px;font:inherit;font-size:12px;line-height:1.35;resize:vertical;background:#fff;color:var(--ink);}
+  table.sheet td textarea.topic-entry:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.12);}
   table.sheet td input:disabled{background:#f1f5f9;color:#94a3b8;}
   .table-scroll{overflow-x:auto;border-radius:10px;}
   .table-scroll table{min-width:640px;}
-  .table-scroll table.grid10{min-width:1460px;}
-  .question-prompts-scroll{overflow-x:auto;margin-bottom:14px;padding-bottom:8px;}
-  .question-prompts{display:grid;grid-template-columns:repeat(10,320px);gap:12px;width:max-content;}
-  .question-prompt{width:320px;padding:12px;border:1px solid var(--line);border-radius:10px;background:#f8fafc;}
-  .question-prompt label{display:block;margin:0 0 8px;font-size:13px;font-weight:700;color:var(--ink-soft);}
-  .question-prompt textarea{display:block;width:100%;min-height:200px;padding:10px;border:1.5px solid var(--input-line);border-radius:7px;font:inherit;font-size:14px;line-height:1.45;resize:vertical;color:var(--ink);background:#fff;}
-  .question-prompt textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.12);}
+  .table-scroll table.grid10{min-width:1320px;}
   .term-row td:first-child{font-weight:700;color:var(--ink-soft);background:#f8fafc;white-space:nowrap;}
   .plan-block{
     border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px;background:#fbfcff;
@@ -271,11 +267,8 @@
   <!-- 4 · LEARNER GRID -->
   <section class="card" id="sec-grid">
     <h2><span class="num">4</span> Learner question grid</h2>
-    <p class="sub">Write the question learners struggled with in the large boxes at the top. Each box starts tall enough for several sentences, grows as you type, and can be resized by dragging its bottom edge. Then pick up to 15 learners from your class and enter their marks for Q1–Q10.</p>
+    <p class="sub">Write the question learners struggled with in the top row. The boxes are taller, grow as you type, and can be resized. Then pick up to 15 learners from your class and enter their marks for Q1–Q10.</p>
     <span class="auto-note">Learners come from the class you selected in step 1.</span>
-    <div class="question-prompts-scroll" aria-label="Questions learners struggled with">
-      <div class="question-prompts" id="questionPrompts"></div>
-    </div>
     <div class="table-scroll">
       <table class="sheet grid10" id="learnerTable">
         <thead></thead>
@@ -336,19 +329,7 @@
     itemBody.appendChild(tr);
   }
 
-  /* ---------- build question prompts separately from the learner marks grid ---------- */
-  var questionPrompts = document.getElementById("questionPrompts");
-  for (var t = 1; t <= 10; t++){
-    var promptField = "grid_topic_q" + t;
-    var prompt = document.createElement("div");
-    prompt.className = "question-prompt";
-    prompt.innerHTML =
-      '<label for="' + promptField + '">Question learners struggled with · Q' + t + '</label>' +
-      '<textarea class="topic-entry" id="' + promptField + '" data-field="' + promptField + '" aria-label="Question learners struggled with for Q' + t + '" rows="7" placeholder="Write the question here..."></textarea>';
-    questionPrompts.appendChild(prompt);
-  }
-
-  /* ---------- build learner marks grid (15 learner pickers x Q1..Q10) ---------- */
+  /* ---------- build learner grid, with question prompts above the marks rows ---------- */
   var learnerTable = document.getElementById("learnerTable");
   var thead = learnerTable.querySelector("thead");
   var headRow = '<tr><th style="width:44px;">#</th><th style="min-width:230px;">Learner</th><th style="width:84px;">G</th>';
@@ -356,6 +337,13 @@
   headRow += '</tr>';
   thead.innerHTML = headRow;
   var lbody = learnerTable.querySelector("tbody");
+  var topicRow = document.createElement("tr");
+  var topicHtml = '<td colspan="3" style="font-weight:700;color:#475569;background:#f8fafc;">Question learners struggled with</td>';
+  for (var t = 1; t <= 10; t++){
+    topicHtml += '<td><textarea class="topic-entry" data-field="grid_topic_q' + t + '" aria-label="Question learners struggled with for Q' + t + '" rows="5" placeholder="Write question"></textarea></td>';
+  }
+  topicRow.innerHTML = topicHtml;
+  lbody.appendChild(topicRow);
   for (var n = 1; n <= 15; n++){
     var lr = document.createElement("tr");
     var cells = '<td style="font-weight:700;color:#475569;background:#f8fafc;text-align:center;">' + n + '</td>' +
@@ -717,6 +705,68 @@
     statusEl.className = "status" + (kind ? " " + kind : "");
   }
 
+  function wrapPdfText(text, font, size, maxWidth){
+    var lines = [];
+    String(text || "").split(/\r?\n/).forEach(function(paragraph){
+      var words = paragraph.split(/\s+/).filter(Boolean);
+      var line = "";
+      words.forEach(function(word){
+        var next = line ? line + " " + word : word;
+        if (line && font.widthOfTextAtSize(next, size) > maxWidth){
+          lines.push(line);
+          line = word;
+        } else {
+          line = next;
+        }
+      });
+      if (line) lines.push(line);
+      if (!words.length) lines.push("");
+    });
+    return lines.length ? lines : [""];
+  }
+  async function addQuestionContinuation(pdfDoc, topics){
+    if (!topics.length) return;
+    var PDFLib = window.PDFLib;
+    var regular = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+    var bold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+    var pageWidth = 841.92, pageHeight = 595.32;
+    var margin = 48, bodySize = 12, lineHeight = 16;
+    var page, y;
+    function newPage(){
+      page = pdfDoc.addPage([pageWidth, pageHeight]);
+      page.drawText("Learner Questions - Continuation", {
+        x: margin, y: pageHeight - margin, size: 18, font: bold
+      });
+      page.drawText("Full question text for the SPIP learner grid", {
+        x: margin, y: pageHeight - margin - 24, size: 10, font: regular
+      });
+      y = pageHeight - margin - 58;
+    }
+    newPage();
+    topics.forEach(function(item){
+      if (y < margin + 40) newPage();
+      page.drawText("Q" + item.question, { x: margin, y: y - 14, size: 12, font: bold });
+      y -= 22;
+      var lines = wrapPdfText(item.text, regular, bodySize, pageWidth - margin * 2);
+      while (lines.length){
+        var availableLines = Math.floor((y - margin - 12) / lineHeight);
+        if (availableLines < 1){
+          newPage();
+          page.drawText("Q" + item.question + " (continued)", {
+            x: margin, y: y - 14, size: 12, font: bold
+          });
+          y -= 22;
+          availableLines = Math.max(1, Math.floor((y - margin - 12) / lineHeight));
+        }
+        var chunk = lines.splice(0, availableLines);
+        page.drawText(chunk.join("\n"), {
+          x: margin, y: y - bodySize, size: bodySize, lineHeight: lineHeight, font: regular
+        });
+        y -= chunk.length * lineHeight + (lines.length ? 8 : 16);
+      }
+    });
+  }
+
   function fillPdfBytes(){
     if (!window.PDFLib || !window.PDFLib.PDFDocument) throw new Error("PDF support is still loading. Please try again in a moment.");
     return fetch(TEMPLATE_PATH, { cache: "no-store" }).then(function(res){
@@ -727,14 +777,25 @@
     }).then(function(pdfDoc){
       var pdfForm = pdfDoc.getForm();
       var values = collectValues();
+      var continuedTopics = [];
+      for (var q = 1; q <= 10; q++){
+        var topicField = "grid_topic_q" + q;
+        var topicText = String(values[topicField] || "").trim();
+        if (topicText.length > 30){
+          continuedTopics.push({ question: q, text: topicText });
+          values[topicField] = "See Q" + q + " appendix";
+        }
+      }
       allFieldNames().forEach(function(fieldName){
         try{
-          pdfForm.getTextField(fieldName).setText(String(values[fieldName] == null ? "" : values[fieldName]));
+          var pdfField = pdfForm.getTextField(fieldName);
+          if (/^grid_topic_q\d+$/.test(fieldName)) pdfField.setFontSize(7);
+          pdfField.setText(String(values[fieldName] == null ? "" : values[fieldName]));
         }catch(e){}
       });
       try{ pdfForm.updateFieldAppearances(); }catch(e){}
       try{ pdfForm.flatten(); }catch(e){}
-      return pdfDoc.save();
+      return addQuestionContinuation(pdfDoc, continuedTopics).then(function(){ return pdfDoc.save(); });
     });
   }
 
