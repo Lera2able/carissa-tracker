@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SPIP Tool — Carissa Primary School</title>
+<meta name="description" content="Capture the Subject Performance Improvement Plan (SPIP) data and download it as a filled official PDF template."/>
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<style>
+  :root{
+    --bg:#f0f2ff;
+    --card:#ffffff;
+    --ink:#1f2937;
+    --ink-soft:#475569;
+    --ink-faint:#64748b;
+    --brand:#4f46e5;
+    --brand-dark:#4338ca;
+    --brand-soft:#eef2ff;
+    --brand-border:#c7d2fe;
+    --line:#e2e8f0;
+    --input-line:#d5dbe7;
+    --ok:#047857;
+    --ok-bg:#ecfdf5;
+    --err:#b91c1c;
+    --err-bg:#fef2f2;
+    --radius:15px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto;}
+    *{transition:none !important; animation:none !important;}
+  }
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    min-height:100dvh;
+    font-size:16px;
+    line-height:1.6;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:24px 16px 120px;}
+  header.top{
+    display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+    background:var(--card);border-radius:var(--radius);
+    box-shadow:0 10px 30px rgba(15,23,42,.10);
+    padding:20px 24px;margin-bottom:18px;
+  }
+  header.top img{width:58px;height:58px;object-fit:contain;flex:none;}
+  header.top .titles{flex:1;min-width:220px;}
+  header.top h1{margin:0;font-size:22px;color:var(--brand-dark);letter-spacing:-.01em;}
+  header.top p{margin:2px 0 0;font-size:13.5px;color:var(--ink-faint);}
+  .draft-chip{
+    font-size:12.5px;font-weight:700;color:var(--brand-dark);
+    background:var(--brand-soft);border:1px solid var(--brand-border);
+    border-radius:999px;padding:8px 14px;white-space:nowrap;
+  }
+  .intro{
+    background:var(--card);border-radius:var(--radius);
+    box-shadow:0 10px 30px rgba(15,23,42,.08);
+    padding:18px 24px;margin-bottom:18px;
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;
+  }
+  .intro .cell{border:1px solid var(--line);border-radius:12px;padding:14px;background:#f8fafc;}
+  .intro .cell b{display:block;font-size:14px;margin-bottom:4px;color:var(--ink);}
+  .intro .cell span{font-size:13px;color:var(--ink-faint);line-height:1.55;display:block;}
+  nav.sections{
+    display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px;
+  }
+  nav.sections a{
+    font-size:12.5px;font-weight:700;color:var(--brand-dark);text-decoration:none;
+    background:var(--card);border:1px solid var(--brand-border);
+    border-radius:999px;padding:8px 13px;transition:background .15s ease,color .15s ease;
+  }
+  nav.sections a:hover{background:var(--brand-soft);}
+  nav.sections a:focus-visible{outline:3px solid var(--brand-border);outline-offset:2px;}
+  section.card{
+    background:var(--card);border-radius:var(--radius);
+    box-shadow:0 10px 30px rgba(15,23,42,.08);
+    padding:26px 24px;margin-bottom:18px;scroll-margin-top:16px;
+  }
+  section.card h2{
+    margin:0 0 4px;font-size:18px;color:var(--brand-dark);
+    display:flex;align-items:center;gap:10px;
+  }
+  section.card h2 .num{
+    flex:none;width:28px;height:28px;border-radius:8px;
+    background:var(--brand-soft);border:1px solid var(--brand-border);
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:13px;color:var(--brand-dark);
+  }
+  section.card .sub{margin:0 0 18px;font-size:13.5px;color:var(--ink-faint);}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;}
+  .grid .wide{grid-column:1/-1;}
+  label.lbl{display:block;margin-bottom:7px;color:#333;font-weight:600;font-size:13.5px;}
+  .hint{font-weight:400;color:var(--ink-faint);font-size:12px;}
+  input.inp,textarea.inp,select.inp{
+    width:100%;padding:12px;border:2px solid var(--input-line);border-radius:8px;
+    font-size:15px;outline:none;font-family:inherit;color:var(--ink);background:#fff;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  input.inp:focus,textarea.inp:focus,select.inp:focus{
+    border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.15);
+  }
+  textarea.inp{resize:vertical;min-height:84px;line-height:1.5;}
+  table.sheet{width:100%;border-collapse:collapse;font-size:14px;}
+  table.sheet th,table.sheet td{border:1px solid var(--line);padding:6px;}
+  table.sheet th{background:#f8fafc;color:var(--ink-soft);font-size:12.5px;text-align:left;font-weight:700;}
+  table.sheet td input{width:100%;padding:9px 10px;border:1.5px solid var(--input-line);border-radius:6px;font-size:14px;font-family:inherit;outline:none;background:#fff;}
+  table.sheet td input:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.12);}
+  .table-scroll{overflow-x:auto;border-radius:10px;}
+  .table-scroll table{min-width:640px;}
+  .table-scroll table.grid10{min-width:920px;}
+  .term-row td:first-child{font-weight:700;color:var(--ink-soft);background:#f8fafc;white-space:nowrap;}
+  .plan-block{
+    border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px;background:#fbfcff;
+  }
+  .plan-block h3{margin:0 0 12px;font-size:14px;color:var(--ink-soft);}
+  .auto-note{
+    display:inline-block;font-size:12px;font-weight:600;color:var(--ok);
+    background:var(--ok-bg);border:1px solid #a7f3d0;border-radius:8px;padding:6px 10px;margin-bottom:14px;
+  }
+  .bar{
+    position:fixed;left:0;right:0;bottom:0;z-index:40;
+    background:rgba(255,255,255,.96);backdrop-filter:blur(6px);
+    border-top:1px solid var(--line);
+    padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+  }
+  .bar-inner{max-width:1080px;margin:0 auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .btn{
+    border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:15px;
+    border-radius:10px;padding:13px 22px;min-height:48px;
+    transition:background .15s ease, transform .1s ease, box-shadow .15s ease;
+  }
+  .btn:active{transform:scale(.98);}
+  .btn:focus-visible{outline:3px solid var(--brand-border);outline-offset:2px;}
+  .btn.primary{background:var(--brand);color:#fff;box-shadow:0 6px 16px rgba(79,70,229,.28);}
+  .btn.primary:hover{background:var(--brand-dark);}
+  .btn.primary:disabled{background:#a5b4fc;cursor:not-allowed;box-shadow:none;}
+  .btn.ghost{background:#fff;color:var(--brand-dark);border:2px solid var(--brand-border);}
+  .btn.ghost:hover{background:var(--brand-soft);}
+  .status{font-size:13.5px;font-weight:600;color:var(--ink-soft);margin-left:auto;}
+  .status.ok{color:var(--ok);}
+  .status.err{color:var(--err);}
+  footer.foot{text-align:center;font-size:12.5px;color:var(--ink-faint);margin-top:8px;}
+  @media (max-width:640px){
+    .wrap{padding:14px 10px 120px;}
+    section.card{padding:20px 14px;}
+    header.top{padding:16px;}
+    header.top h1{font-size:19px;}
+    .status{margin-left:0;width:100%;}
+    .bar-inner .btn{flex:1;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <img src="./school-crest.png" alt="Carissa Primary School crest"/>
+    <div class="titles">
+      <h1>SPIP — Subject Performance Improvement Plan</h1>
+      <p>Carissa Primary School · Capture the SPIP information below, then download it on the official template.</p>
+    </div>
+    <span class="draft-chip" id="draftChip">Draft saves automatically</span>
+  </header>
+
+  <div class="intro">
+    <div class="cell">
+      <b>How it works</b>
+      <span>Fill in the sections below. Your entries are stored as a draft on this device while you work. When you are done, choose “Download filled SPIP” — the official template downloads as a filled PDF.</span>
+    </div>
+    <div class="cell">
+      <b>What it covers</b>
+      <span>Plan targets, quarterly performance review, item analysis, learner question grid, subject improvement plan and the intervention plan — all six pages of the official SPIP document.</span>
+    </div>
+  </div>
+
+  <nav class="sections" aria-label="Form sections">
+    <a href="#sec-plan">1 · Plan details</a>
+    <a href="#sec-quarterly">2 · Quarterly review</a>
+    <a href="#sec-item">3 · Item analysis</a>
+    <a href="#sec-grid">4 · Learner grid</a>
+    <a href="#sec-improve">5 · Improvement plan</a>
+    <a href="#sec-intervention">6 · Intervention plan</a>
+  </nav>
+
+  <!-- 1 · PLAN DETAILS -->
+  <section class="card" id="sec-plan">
+    <h2><span class="num">1</span> Plan details</h2>
+    <p class="sub">These details repeat automatically on the item analysis, improvement plan and intervention plan pages of the document.</p>
+    <div class="grid">
+      <div><label class="lbl" for="subject">Subject</label><input class="inp" id="subject" data-field="subject" placeholder="Example: Mathematics"/></div>
+      <div><label class="lbl" for="grade">Grade</label><input class="inp" id="grade" data-field="grade" placeholder="Example: 5"/></div>
+      <div><label class="lbl" for="educator">Educator</label><input class="inp" id="educator" data-field="educator" placeholder="Educator name"/></div>
+      <div><label class="lbl" for="principal">Principal</label><input class="inp" id="principal" data-field="principal" placeholder="Principal name"/></div>
+      <div><label class="lbl" for="previous">Previous average (%)</label><input class="inp" id="previous" data-field="previous" inputmode="decimal" placeholder="Example: 54"/></div>
+      <div><label class="lbl" for="current_target">Current target (%)</label><input class="inp" id="current_target" data-field="current_target" inputmode="decimal" placeholder="Example: 65"/></div>
+      <div><label class="lbl" for="average">Average (%)</label><input class="inp" id="average" data-field="average" inputmode="decimal" placeholder="Example: 58"/></div>
+    </div>
+  </section>
+
+  <!-- 2 · QUARTERLY PERFORMANCE REVIEW -->
+  <section class="card" id="sec-quarterly">
+    <h2><span class="num">2</span> Quarterly performance review</h2>
+    <p class="sub">Pass, fail and average percentages per term, plus the overall figures. Sign the document by typing the educator and principal names.</p>
+    <div class="table-scroll">
+      <table class="sheet" id="termTable">
+        <thead>
+          <tr><th style="width:130px;">Term</th><th>Pass %</th><th>Fail %</th><th>Average</th></tr>
+        </thead>
+        <tbody>
+          <tr class="term-row"><td>1st Term</td><td><input data-field="1st_term_pass" inputmode="decimal" aria-label="1st term pass percent"/></td><td><input data-field="1st_term_fail" inputmode="decimal" aria-label="1st term fail percent"/></td><td><input data-field="1st_term_avg" inputmode="decimal" aria-label="1st term average"/></td></tr>
+          <tr class="term-row"><td>2nd Term</td><td><input data-field="2nd_term_pass" inputmode="decimal" aria-label="2nd term pass percent"/></td><td><input data-field="2nd_term_fail" inputmode="decimal" aria-label="2nd term fail percent"/></td><td><input data-field="2nd_term_avg" inputmode="decimal" aria-label="2nd term average"/></td></tr>
+          <tr class="term-row"><td>3rd Term</td><td><input data-field="3rd_term_pass" inputmode="decimal" aria-label="3rd term pass percent"/></td><td><input data-field="3rd_term_fail" inputmode="decimal" aria-label="3rd term fail percent"/></td><td><input data-field="3rd_term_avg" inputmode="decimal" aria-label="3rd term average"/></td></tr>
+          <tr class="term-row"><td>Overall</td><td><input data-field="overall_pass" inputmode="decimal" aria-label="Overall pass percent"/></td><td><input data-field="overall_fail" inputmode="decimal" aria-label="Overall fail percent"/></td><td><input data-field="overall_avg" inputmode="decimal" aria-label="Overall average"/></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="grid" style="margin-top:16px;">
+      <div><label class="lbl" for="educator_signature">Educator signature <span class="hint">(type name)</span></label><input class="inp" id="educator_signature" data-field="educator_signature" placeholder="Type full name"/></div>
+      <div><label class="lbl" for="principal_signature">Principal signature <span class="hint">(type name)</span></label><input class="inp" id="principal_signature" data-field="principal_signature" placeholder="Type full name"/></div>
+    </div>
+  </section>
+
+  <!-- 3 · ITEM ANALYSIS -->
+  <section class="card" id="sec-item">
+    <h2><span class="num">3</span> Item analysis</h2>
+    <p class="sub">One row per question. The average percentage is worked out for you from “mark out of” and “total mark obtained” — you can still type over it.</p>
+    <span class="auto-note">Grade, subject and educator copy over from Plan details.</span>
+    <div class="table-scroll">
+      <table class="sheet" id="itemTable">
+        <thead>
+          <tr>
+            <th style="width:52px;">Q</th><th>Topic</th>
+            <th style="width:110px;">Mark out of</th><th style="width:130px;">Total mark obtained</th><th style="width:130px;">Average %</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div style="margin-top:16px;">
+      <label class="lbl" for="comments">Comments</label>
+      <textarea class="inp" id="comments" data-field="comments" rows="4" placeholder="Comments on the item analysis"></textarea>
+    </div>
+  </section>
+
+  <!-- 4 · LEARNER GRID -->
+  <section class="card" id="sec-grid">
+    <h2><span class="num">4</span> Learner question grid</h2>
+    <p class="sub">Topic per question, then up to 15 learners with a mark per question (Q1–Q10). Leave unused rows empty — they stay blank on the document.</p>
+    <span class="auto-note">Grade copies over from Plan details.</span>
+    <div class="table-scroll">
+      <table class="sheet grid10" id="learnerTable">
+        <thead></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 5 · SUBJECT IMPROVEMENT PLAN -->
+  <section class="card" id="sec-improve">
+    <h2><span class="num">5</span> Subject improvement plan</h2>
+    <p class="sub">Up to three challenges with the action, responsibility, achievement indicator and time frame for each.</p>
+    <span class="auto-note">Subject, grade and educator copy over from Plan details.</span>
+    <div id="planBlocks"></div>
+  </section>
+
+  <!-- 6 · INTERVENTION PLAN -->
+  <section class="card" id="sec-intervention">
+    <h2><span class="num">6</span> Intervention plan</h2>
+    <p class="sub">Up to five intervention entries. Type the HOD’s name as the signature for each entry.</p>
+    <div class="grid" style="margin-bottom:16px;">
+      <div><label class="lbl" for="ip_term">Term</label>
+        <select class="inp" id="ip_term" data-field="ip_term">
+          <option value="">Select term</option>
+          <option>Term 1</option><option>Term 2</option><option>Term 3</option><option>Term 4</option>
+        </select>
+      </div>
+    </div>
+    <span class="auto-note">Subject, grade and educator copy over from Plan details.</span>
+    <div id="interventionBlocks"></div>
+  </section>
+
+  <footer class="foot">Carissa Primary School · 23 Hofmeyer Street, Witbank · SPIP capture tool</footer>
+</div>
+
+<div class="bar">
+  <div class="bar-inner">
+    <button class="btn primary" id="downloadBtn" type="button">Download filled SPIP (PDF)</button>
+    <button class="btn ghost" id="clearBtn" type="button">Clear draft</button>
+    <span class="status" id="status" role="status" aria-live="polite"></span>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  /* ---------- build item analysis rows (Q1..Q12) ---------- */
+  var itemBody = document.querySelector("#itemTable tbody");
+  for (var q = 1; q <= 12; q++){
+    var tr = document.createElement("tr");
+    tr.innerHTML =
+      '<td style="font-weight:700;color:#475569;background:#f8fafc;text-align:center;">Q' + q + '</td>' +
+      '<td><input data-field="topic_q' + q + '" aria-label="Topic question ' + q + '"/></td>' +
+      '<td><input data-field="mark_out_q' + q + '" inputmode="decimal" aria-label="Mark out of question ' + q + '"/></td>' +
+      '<td><input data-field="total_mark_q' + q + '" inputmode="decimal" aria-label="Total mark obtained question ' + q + '"/></td>' +
+      '<td><input data-field="avg_pct_q' + q + '" inputmode="decimal" aria-label="Average percentage question ' + q + '"/></td>';
+    itemBody.appendChild(tr);
+  }
+
+  /* ---------- build learner grid (topics + 15 learners x Q1..Q10) ---------- */
+  var learnerTable = document.getElementById("learnerTable");
+  var thead = learnerTable.querySelector("thead");
+  var headRow = '<tr><th style="width:44px;">#</th><th style="min-width:130px;">Surname</th><th style="min-width:110px;">Name</th><th style="width:52px;">G</th>';
+  for (var g = 1; g <= 10; g++){ headRow += '<th style="width:64px;">Q' + g + '</th>'; }
+  headRow += '</tr>';
+  thead.innerHTML = headRow;
+  var lbody = learnerTable.querySelector("tbody");
+  var topicRow = document.createElement("tr");
+  var topicHtml = '<td colspan="4" style="font-weight:700;color:#475569;background:#f8fafc;">Topic per question</td>';
+  for (var t = 1; t <= 10; t++){ topicHtml += '<td><input data-field="grid_topic_q' + t + '" aria-label="Topic for question ' + t + '"/></td>'; }
+  topicRow.innerHTML = topicHtml;
+  lbody.appendChild(topicRow);
+  for (var n = 1; n <= 15; n++){
+    var lr = document.createElement("tr");
+    var cells = '<td style="font-weight:700;color:#475569;background:#f8fafc;text-align:center;">' + n + '</td>' +
+      '<td><input data-field="learner' + n + '_surname" aria-label="Learner ' + n + ' surname"/></td>' +
+      '<td><input data-field="learner' + n + '_name" aria-label="Learner ' + n + ' name"/></td>' +
+      '<td><input data-field="learner' + n + '_g" maxlength="2" aria-label="Learner ' + n + ' gender"/></td>';
+    for (var m = 1; m <= 10; m++){
+      cells += '<td><input data-field="learner' + n + '_q' + m + '" inputmode="decimal" aria-label="Learner ' + n + ' question ' + m + '"/></td>';
+    }
+    lr.innerHTML = cells;
+    lbody.appendChild(lr);
+  }
+
+  /* ---------- build improvement plan blocks (1..3) ---------- */
+  var planWrap = document.getElementById("planBlocks");
+  var planFields = [
+    ["challenges", "Challenges", "textarea"],
+    ["action", "Action", "textarea"],
+    ["responsibility", "Responsibility", "input"],
+    ["achievement_indicator", "Achievement indicator", "input"],
+    ["time_frame", "Time frame", "input"]
+  ];
+  for (var p = 1; p <= 3; p++){
+    var pb = document.createElement("div");
+    pb.className = "plan-block";
+    var html = '<h3>Item ' + p + '</h3><div class="grid">';
+    planFields.forEach(function(f){
+      var name = "plan" + p + "_" + f[0];
+      html += '<div class="' + (f[2] === "textarea" ? "wide" : "") + '"><label class="lbl" for="' + name + '">' + f[1] + '</label>';
+      html += f[2] === "textarea"
+        ? '<textarea class="inp" id="' + name + '" data-field="' + name + '" rows="2"></textarea>'
+        : '<input class="inp" id="' + name + '" data-field="' + name + '"/>';
+      html += '</div>';
+    });
+    html += '</div>';
+    pb.innerHTML = html;
+    planWrap.appendChild(pb);
+  }
+
+  /* ---------- build intervention blocks (1..5) ---------- */
+  var ipWrap = document.getElementById("interventionBlocks");
+  for (var i = 1; i <= 5; i++){
+    var ib = document.createElement("div");
+    ib.className = "plan-block";
+    ib.innerHTML =
+      '<h3>Intervention ' + i + '</h3><div class="grid">' +
+      '<div><label class="lbl" for="ip' + i + '_topic">Topic</label><input class="inp" id="ip' + i + '_topic" data-field="ip' + i + '_topic"/></div>' +
+      '<div><label class="lbl" for="ip' + i + '_date">Date</label><input class="inp" id="ip' + i + '_date" data-field="ip' + i + '_date" data-date="1" type="date"/></div>' +
+      '<div><label class="lbl" for="ip' + i + '_time">Time</label><input class="inp" id="ip' + i + '_time" data-field="ip' + i + '_time" type="time"/></div>' +
+      '<div><label class="lbl" for="ip' + i + '_evidence">Evidence</label><input class="inp" id="ip' + i + '_evidence" data-field="ip' + i + '_evidence"/></div>' +
+      '<div><label class="lbl" for="ip' + i + '_performance_indicator">Performance indicator</label><input class="inp" id="ip' + i + '_performance_indicator" data-field="ip' + i + '_performance_indicator"/></div>' +
+      '<div><label class="lbl" for="ip' + i + '_percentage">Percentage %</label><input class="inp" id="ip' + i + '_percentage" data-field="ip' + i + '_percentage" inputmode="decimal"/></div>' +
+      '<div><label class="lbl" for="ip' + i + '_hod_signature">Signature of HOD <span class="hint">(type name)</span></label><input class="inp" id="ip' + i + '_hod_signature" data-field="ip' + i + '_hod_signature"/></div>' +
+      '</div>';
+    ipWrap.appendChild(ib);
+  }
+})();
+</script>
+
+<script>
+(function(){
+  "use strict";
+  var TEMPLATE_PATH = "monitoring-tools/carissa_spip_fillable.pdf";
+  var DRAFT_KEY = "carissa-spip-draft-v1";
+  var statusEl = document.getElementById("status");
+  var draftChip = document.getElementById("draftChip");
+  var downloadBtn = document.getElementById("downloadBtn");
+  var manualAvg = {};
+
+  function inputs(){ return Array.prototype.slice.call(document.querySelectorAll("[data-field]")); }
+
+  /* ---------- restore draft ---------- */
+  try{
+    var saved = JSON.parse(localStorage.getItem(DRAFT_KEY) || "{}");
+    if (saved.values){
+      inputs().forEach(function(el){
+        var k = el.getAttribute("data-field");
+        if (saved.values[k] != null) el.value = saved.values[k];
+      });
+      manualAvg = saved.manualAvg || {};
+      if (saved.savedAt){
+        var d = new Date(saved.savedAt);
+        draftChip.textContent = "Draft restored · " + d.toLocaleDateString() + " " + d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+      }
+    }
+  }catch(e){}
+
+  /* ---------- autosave ---------- */
+  var saveTimer = null;
+  function saveDraft(){
+    var values = {};
+    inputs().forEach(function(el){ values[el.getAttribute("data-field")] = el.value; });
+    try{
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ values: values, manualAvg: manualAvg, savedAt: new Date().toISOString() }));
+      var d = new Date();
+      draftChip.textContent = "Draft saved · " + d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+    }catch(e){}
+  }
+  function queueSave(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveDraft, 350);
+  }
+
+  /* ---------- auto-calc average % per question ---------- */
+  function num(v){
+    var n = parseFloat(String(v).replace(",", "."));
+    return isNaN(n) ? null : n;
+  }
+  function recalcAvg(q){
+    if (manualAvg["avg_pct_q" + q]) return;
+    var outEl = document.querySelector('[data-field="mark_out_q' + q + '"]');
+    var totEl = document.querySelector('[data-field="total_mark_q' + q + '"]');
+    var avgEl = document.querySelector('[data-field="avg_pct_q' + q + '"]');
+    var out = num(outEl.value), tot = num(totEl.value);
+    if (out && out > 0 && tot != null){
+      var pct = Math.round((tot / out) * 1000) / 10;
+      avgEl.value = String(pct);
+    }
+  }
+
+  document.addEventListener("input", function(ev){
+    var el = ev.target;
+    if (!el || !el.getAttribute || !el.getAttribute("data-field")) return;
+    var field = el.getAttribute("data-field");
+    var m = field.match(/^(mark_out|total_mark)_q(\d+)$/);
+    if (m) recalcAvg(m[2]);
+    if (/^avg_pct_q\d+$/.test(field)){
+      if (el.value.trim() === "") delete manualAvg[field]; else manualAvg[field] = true;
+    }
+    queueSave();
+  });
+  document.addEventListener("change", function(ev){
+    if (ev.target && ev.target.getAttribute && ev.target.getAttribute("data-field")) queueSave();
+  });
+
+  /* ---------- collect + fill + download ---------- */
+  function isoToDmy(v){
+    var m = String(v || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return m ? m[3] + "/" + m[2] + "/" + m[1] : v;
+  }
+  function collectValues(){
+    var values = {};
+    inputs().forEach(function(el){
+      var k = el.getAttribute("data-field");
+      var v = el.value;
+      if (el.getAttribute("data-date")) v = isoToDmy(v);
+      values[k] = v;
+    });
+    // repeat plan details onto the later pages of the document
+    values.ia_subject = values.subject; values.ia_grade = values.grade; values.ia_educator = values.educator;
+    values.sip_subject = values.subject; values.sip_grade = values.grade; values.sip_educator = values.educator;
+    values.ip_subject = values.subject; values.ip_grade = values.grade; values.ip_educator = values.educator;
+    values.grid_grade = values.grade;
+    return values;
+  }
+  function allFieldNames(){
+    var names = ["subject","grade","previous","current_target","average","educator","educator_signature",
+      "principal","principal_signature","ia_grade","ia_subject","ia_educator","comments","grid_grade",
+      "sip_subject","sip_grade","sip_educator","ip_term","ip_subject","ip_grade","ip_educator"];
+    ["1st","2nd","3rd"].forEach(function(t){
+      names.push(t + "_term_pass", t + "_term_fail", t + "_term_avg");
+    });
+    names.push("overall_pass", "overall_fail", "overall_avg");
+    var q;
+    for (q = 1; q <= 12; q++){ names.push("topic_q" + q, "mark_out_q" + q, "total_mark_q" + q, "avg_pct_q" + q); }
+    for (q = 1; q <= 10; q++){ names.push("grid_topic_q" + q); }
+    var n, m;
+    for (n = 1; n <= 15; n++){
+      names.push("learner" + n + "_surname", "learner" + n + "_name", "learner" + n + "_g");
+      for (m = 1; m <= 10; m++){ names.push("learner" + n + "_q" + m); }
+    }
+    for (n = 1; n <= 3; n++){
+      names.push("plan" + n + "_challenges", "plan" + n + "_action", "plan" + n + "_responsibility",
+        "plan" + n + "_achievement_indicator", "plan" + n + "_time_frame");
+    }
+    for (n = 1; n <= 5; n++){
+      names.push("ip" + n + "_topic", "ip" + n + "_date", "ip" + n + "_time", "ip" + n + "_evidence",
+        "ip" + n + "_performance_indicator", "ip" + n + "_percentage", "ip" + n + "_hod_signature");
+    }
+    return names;
+  }
+  function downloadBlob(blob, fileName){
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = fileName;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1500);
+  }
+  function safePart(s){ return String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""); }
+  function setStatus(msg, kind){
+    statusEl.textContent = msg || "";
+    statusEl.className = "status" + (kind ? " " + kind : "");
+  }
+
+  downloadBtn.addEventListener("click", function(){
+    setStatus("", "");
+    downloadBtn.disabled = true;
+    var go = async function(){
+      if (!window.PDFLib || !window.PDFLib.PDFDocument) throw new Error("PDF support is still loading. Please try again in a moment.");
+      var res = await fetch(TEMPLATE_PATH, { cache: "no-store" });
+      if (!res.ok) throw new Error("The SPIP PDF template could not be loaded.");
+      var pdfDoc = await window.PDFLib.PDFDocument.load(await res.arrayBuffer());
+      var pdfForm = pdfDoc.getForm();
+      var values = collectValues();
+      allFieldNames().forEach(function(fieldName){
+        try{
+          pdfForm.getTextField(fieldName).setText(String(values[fieldName] == null ? "" : values[fieldName]));
+        }catch(e){}
+      });
+      try{ pdfForm.updateFieldAppearances(); }catch(e){}
+      try{ pdfForm.flatten(); }catch(e){}
+      var bytes = await pdfDoc.save();
+      var name = "carissa-spip" +
+        (safePart(values.subject) ? "-" + safePart(values.subject) : "") +
+        (safePart(values.grade) ? "-grade-" + safePart(values.grade) : "") +
+        "-" + new Date().toISOString().slice(0,10) + ".pdf";
+      downloadBlob(new Blob([bytes], { type: "application/pdf" }), name);
+      setStatus("Filled SPIP downloaded.", "ok");
+    };
+    go().catch(function(err){
+      setStatus((err && err.message) || "Could not create the SPIP PDF.", "err");
+    }).finally(function(){
+      downloadBtn.disabled = false;
+    });
+  });
+
+  document.getElementById("clearBtn").addEventListener("click", function(){
+    if (!window.confirm("Clear the saved draft and empty every field?")) return;
+    try{ localStorage.removeItem(DRAFT_KEY); }catch(e){}
+    manualAvg = {};
+    inputs().forEach(function(el){ el.value = ""; });
+    draftChip.textContent = "Draft saves automatically";
+    setStatus("Draft cleared.", "ok");
+  });
+})();
+</script>
+</body>
+</html>
