@@ -94,9 +94,12 @@
   section.card .sub{margin:0 0 18px;font-size:13.5px;color:var(--ink-faint);}
   .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;}
   .grid .wide{grid-column:1/-1;}
-  .signature-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:18px;}
-  .signature-cell{min-width:0;padding:16px;border:2px solid var(--line);border-radius:12px;background:#f8fafc;}
-  .signature-cell .lbl{font-size:14px;}
+  .signature-heading{margin:20px 0 0;font-size:16px;color:var(--ink-soft);}
+  .signature-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:10px;}
+  .signature-cell{min-width:0;padding:16px;border:1px solid var(--line);border-radius:12px;background:#f8fafc;}
+  .signature-role{display:block;margin-bottom:9px;font-size:14px;font-weight:700;color:var(--ink);}
+  .signature-note{display:block;margin:-3px 0 8px;font-size:12px;color:var(--ink-faint);font-style:italic;}
+  .signature-box{height:76px;border:2px solid #111;background:#fff;border-radius:5px;}
   @media (max-width:640px){.signature-grid{grid-template-columns:1fr;}}
   label.lbl{display:block;margin-bottom:7px;color:#333;font-weight:600;font-size:13.5px;}
   .hint{font-weight:400;color:var(--ink-faint);font-size:12px;}
@@ -216,7 +219,7 @@
   <!-- 2 · QUARTERLY PERFORMANCE REVIEW -->
   <section class="card" id="sec-quarterly">
     <h2><span class="num">2</span> Quarterly performance review</h2>
-    <p class="sub">Pass, fail and average percentages per term, plus the overall figures. Sign the document by typing the educator and principal names.</p>
+    <p class="sub">Pass, fail and average percentages per term, plus the overall figures. The educator and principal sign the printed copy by hand.</p>
     <div class="table-scroll">
       <table class="sheet" id="termTable">
         <thead>
@@ -230,14 +233,17 @@
         </tbody>
       </table>
     </div>
-    <div class="signature-grid" aria-label="Separate educator and principal signature fields">
+    <h3 class="signature-heading">Signatures</h3>
+    <div class="signature-grid" aria-label="Blank educator and principal signature boxes">
       <div class="signature-cell">
-        <label class="lbl" for="educator_signature">Educator name and signature</label>
-        <input class="inp" id="educator_signature" data-field="educator_signature" placeholder="Type educator's full name"/>
+        <span class="signature-role">Educator Signature</span>
+        <span class="signature-note">Will sign after printing</span>
+        <div class="signature-box" role="img" aria-label="Blank educator signature box for signing on the printed copy"></div>
       </div>
       <div class="signature-cell">
-        <label class="lbl" for="principal_signature">Principal name and signature</label>
-        <input class="inp" id="principal_signature" data-field="principal_signature" placeholder="Type principal's full name"/>
+        <span class="signature-role">Principal Signature</span>
+        <span class="signature-note">Will sign after printing</span>
+        <div class="signature-box" role="img" aria-label="Blank principal signature box for signing on the printed copy"></div>
       </div>
     </div>
   </section>
