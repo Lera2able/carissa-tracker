@@ -113,10 +113,12 @@
   table.sheet td input:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.12);}
   table.sheet td select{width:100%;padding:8px 6px;border:1.5px solid var(--input-line);border-radius:6px;font-size:14px;font-family:inherit;outline:none;background:#fff;color:var(--ink);}
   table.sheet td select:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.12);}
+  table.sheet td textarea{width:100%;padding:8px 6px;border:1.5px solid var(--input-line);border-radius:6px;font-size:14px;font-family:inherit;outline:none;background:#fff;color:var(--ink);line-height:1.4;resize:vertical;}
+  table.sheet td textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.12);}
   table.sheet td input:disabled{background:#f1f5f9;color:#94a3b8;}
   .table-scroll{overflow-x:auto;border-radius:10px;}
   .table-scroll table{min-width:640px;}
-  .table-scroll table.grid10{min-width:1080px;}
+  .table-scroll table.grid10{min-width:1320px;}
   .term-row td:first-child{font-weight:700;color:var(--ink-soft);background:#f8fafc;white-space:nowrap;}
   .plan-block{
     border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px;background:#fbfcff;
@@ -321,7 +323,7 @@
   var learnerTable = document.getElementById("learnerTable");
   var thead = learnerTable.querySelector("thead");
   var headRow = '<tr><th style="width:44px;">#</th><th style="min-width:230px;">Learner</th><th style="width:84px;">G</th>';
-  for (var g = 1; g <= 10; g++){ headRow += '<th style="width:72px;">Q' + g + '</th>'; }
+  for (var g = 1; g <= 10; g++){ headRow += '<th style="width:110px;">Q' + g + '</th>'; }
   headRow += '</tr>';
   thead.innerHTML = headRow;
   var lbody = learnerTable.querySelector("tbody");
@@ -336,7 +338,7 @@
       '<td><select class="learner-pick" data-field="learner' + n + '_pick" aria-label="Learner ' + n + '"><option value="">-- Select learner --</option></select></td>' +
       '<td><select data-field="learner' + n + '_g" aria-label="Learner ' + n + ' gender"><option value="">\u2013</option><option value="M">M</option><option value="F">F</option></select></td>';
     for (var m = 1; m <= 10; m++){
-      cells += '<td><input data-field="learner' + n + '_q' + m + '" inputmode="decimal" aria-label="Learner ' + n + ' question ' + m + '"/></td>';
+      cells += '<td><textarea data-field="learner' + n + '_q' + m + '" aria-label="Learner ' + n + ' question ' + m + '" rows="2" style="min-height:54px;"></textarea></td>';
     }
     lr.innerHTML = cells;
     lbody.appendChild(lr);
@@ -591,7 +593,7 @@
     el.style.height = el.scrollHeight + "px";
   }
   function autogrowAll(){
-    Array.prototype.forEach.call(document.querySelectorAll("textarea.inp"), autogrow);
+    Array.prototype.forEach.call(document.querySelectorAll("textarea"), autogrow);
   }
 
   document.addEventListener("input", function(ev){
