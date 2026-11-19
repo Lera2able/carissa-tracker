@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "pdf-lib": "^1.17.1"
+    "pdf-lib": "^1.17.1",
+    "postal-mime": "^4.2.1"
   }
 }
-

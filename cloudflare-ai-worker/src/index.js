@@ -18,6 +18,7 @@
  */
 
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import PostalMime from "postal-mime";
 
 const DEFAULT_SUPABASE_URL = "https://vousucfboetqtppjywlg.supabase.co";
 const EMAIL_SENDER_DOMAIN = "carissaprimary.co.za";
@@ -2973,6 +2974,111 @@ async function handleGeneralAssistant(env, message, attachments) {
   return { answer: answer || "No response was returned." };
 }
 
+// ---------------------------------------------------------------------------
+// Incoming email inbox (replies@carissaprimary.co.za -> this Worker)
+// ---------------------------------------------------------------------------
+const INBOX_FORWARD_TO = "leratom2012@gmail.com";
+
+async function handleIncomingEmail(message, env) {
+  let raw;
+  try {
+    raw = await new Response(message.raw).arrayBuffer();
+  } catch (e) {
+    // Could not read the raw message; just forward so mail is not lost.
+    try { await message.forward(INBOX_FORWARD_TO); } catch {}
+    return;
+  }
+
+  let parsed = null;
+  try {
+    parsed = await new PostalMime().parse(raw);
+  } catch (e) {
+    // Fall back to message-level metadata if parsing fails.
+    parsed = null;
+  }
+
+  const fromAddr = parsed?.from?.address || message.from || "";
+  const fromName = parsed?.from?.name || "";
+  const toAddr = parsed?.to?.[0]?.address || message.to || "";
+  const subject = parsed?.subject || message.headers.get("Subject") || "(no subject)";
+  const bodyText = parsed?.text || "";
+  const bodyHtml = parsed?.html || "";
+
+  const headerObj = {};
+  try {
+    for (const [key, value] of message.headers.entries()) {
+      if (!headerObj[key]) headerObj[key] = value;
+      else if (Array.isArray(headerObj[key])) headerObj[key].push(value);
+      else headerObj[key] = [headerObj[key], value];
+    }
+  } catch {}
+
+  try {
+    await supabasePost(env, "carissa_email_inbox", {
+      to_addr: toAddr,
+      from_addr: fromAddr,
+      from_name: fromName,
+      subject,
+      body_text: bodyText,
+      body_html: bodyHtml,
+      headers: headerObj,
+      is_read: false,
+    }, "return=minimal");
+  } catch (e) {
+    // Log to console for debugging; still forward the email below.
+    console.error("Failed to store inbox email:", e?.message || e);
+  }
+
+  // Always forward a copy to the admin mailbox so replies are never lost.
+  try {
+    await message.forward(INBOX_FORWARD_TO);
+  } catch (e) {
+    console.error("Failed to forward inbox email:", e?.message || e);
+  }
+}
+
+async function handleEmailInboxList(request, env, corsOrigin) {
+  const auth = await requireAdminTeacher(request, env, corsOrigin);
+  if (!auth.ok) return auth.res;
+  const rows = await supabaseGet(env, "carissa_email_inbox", {
+    select: "id,to_addr,from_addr,from_name,subject,is_read,created_at",
+    order: "created_at.desc",
+    limit: "200",
+  });
+  const unread = Array.isArray(rows) ? rows.filter((r) => !r.is_read).length : 0;
+  return jsonResponse({ rows: rows || [], unread }, 200, corsOrigin);
+}
+
+async function handleEmailInboxGet(request, env, corsOrigin, id) {
+  const auth = await requireAdminTeacher(request, env, corsOrigin);
+  if (!auth.ok) return auth.res;
+  const rows = await supabaseGet(env, "carissa_email_inbox", {
+    id: `eq.${id}`,
+    select: "*",
+    limit: "1",
+  });
+  const row = Array.isArray(rows) && rows.length ? rows[0] : null;
+  if (!row) return jsonResponse({ error: "Email not found." }, 404, corsOrigin);
+  if (!row.is_read) {
+    try {
+      await supabasePatch(env, "carissa_email_inbox", { id: `eq.${id}` }, { is_read: true });
+      row.is_read = true;
+    } catch {}
+  }
+  return jsonResponse({ row }, 200, corsOrigin);
+}
+
+async function handleEmailInboxMarkRead(request, env, corsOrigin, id) {
+  const auth = await requireAdminTeacher(request, env, corsOrigin);
+  if (!auth.ok) return auth.res;
+  try {
+    await supabasePatch(env, "carissa_email_inbox", { id: `eq.${id}` }, { is_read: true });
+  } catch (e) {
+    return jsonResponse({ error: e?.message || "Could not mark as read." }, 500, corsOrigin);
+  }
+  return jsonResponse({ success: true }, 200, corsOrigin);
+}
+
 export default {
   async fetch(request, env) {
     const allowedOrigin = env.ALLOWED_ORIGIN || "https://tracker.carissaprimary.co.za";
@@ -3202,6 +3308,32 @@ export default {
         return jsonResponse({ error: error?.message || "Email send failed" }, 500, corsOrigin);
       }
     }
+    if (url.pathname === "/api/email/inbox") {
+      if (request.method !== "GET") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handleEmailInboxList(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Could not load inbox" }, 500, corsOrigin);
+      }
+    }
+    const inboxMatch = url.pathname.match(/^\/api\/email\/inbox\/([^/]+)\/read$/);
+    if (inboxMatch) {
+      if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handleEmailInboxMarkRead(request, env, corsOrigin, inboxMatch[1]);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Could not mark as read" }, 500, corsOrigin);
+      }
+    }
+    const inboxItemMatch = url.pathname.match(/^\/api\/email\/inbox\/([^/]+)$/);
+    if (inboxItemMatch) {
+      if (request.method !== "GET") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handleEmailInboxGet(request, env, corsOrigin, inboxItemMatch[1]);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Could not load email" }, 500, corsOrigin);
+      }
+    }
     if (url.pathname !== "/api/ai") {
       return new Response("Not found", {
         status: 404,
@@ -3255,5 +3387,8 @@ export default {
         corsOrigin
       );
     }
+  },
+  async email(message, env, ctx) {
+    await handleIncomingEmail(message, env);
   },
 };

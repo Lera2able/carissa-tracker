@@ -7622,9 +7622,10 @@ ${sectionsHtml}
     ), /* @__PURE__ */ React.createElement("input", { ref: fileRef, type: "file", multiple: true, style: { display: "none" }, onChange: (e) => setFiles(Array.from(e.target.files || [])) }), /* @__PURE__ */ React.createElement("button", { onClick: () => fileRef.current && fileRef.current.click(), disabled: busy, style: { ...sbtn, background: "#6366f1", opacity: busy ? 0.6 : 1 } }, "Upload files"), /* @__PURE__ */ React.createElement("button", { onClick: send, disabled: busy || !text.trim() && files.length === 0, style: { ...sbtn, background: "#10b981", opacity: busy || !text.trim() && files.length === 0 ? 0.6 : 1 } }, busy ? files.length ? "Uploading..." : "Sending..." : "Send")), files.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { marginTop: "8px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: "12px", color: "#64748b" } }, files.length, " file(s) selected"), /* @__PURE__ */ React.createElement("button", { onClick: clearFiles, disabled: busy, style: { border: "none", background: "transparent", color: "#4f46e5", cursor: "pointer", fontSize: "12px", fontWeight: 700, padding: 0 } }, "Clear files")));
   }
   function EmailAdminTab() {
+    const [emailView, setEmailView] = useState("compose");
     const [from, setFrom] = useState("admin@carissaprimary.co.za");
     const [fromName, setFromName] = useState("Carissa Primary");
-    const [replyTo, setReplyTo] = useState("Leratom2012@gmail.com");
+    const [replyTo, setReplyTo] = useState("replies@carissaprimary.co.za");
     const [to, setTo] = useState("");
     const [cc, setCc] = useState("");
     const [subject, setSubject] = useState("");
@@ -7632,6 +7633,11 @@ ${sectionsHtml}
     const [status, setStatus] = useState(null);
     const [busy, setBusy] = useState(false);
     const [attachments, setAttachments] = useState([]);
+    const [inbox, setInbox] = useState([]);
+    const [inboxUnread, setInboxUnread] = useState(0);
+    const [inboxLoading, setInboxLoading] = useState(false);
+    const [selectedEmail, setSelectedEmail] = useState(null);
+    const [emailLoading, setEmailLoading] = useState(false);
     const fileInputRef = React.useRef(null);
     const readFileAsBase64 = (file) => new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -7688,10 +7694,44 @@ ${sectionsHtml}
       }
       setBusy(false);
     };
+    const loadInbox = async () => {
+      setInboxLoading(true);
+      try {
+        const d = await apiRequest("/email/inbox");
+        setInbox(Array.isArray(d && d.rows) ? d.rows : []);
+        setInboxUnread(d && typeof d.unread === "number" ? d.unread : 0);
+      } catch (e) {
+        setInbox([]);
+      }
+      setInboxLoading(false);
+    };
+    const openEmail = async (id) => {
+      setEmailLoading(true);
+      setSelectedEmail(null);
+      try {
+        const d = await apiRequest(`/email/inbox/${id}`);
+        setSelectedEmail(d && d.row ? d.row : null);
+        setInbox((prev) => prev.map((r) => r.id === id ? { ...r, is_read: true } : r));
+        setInboxUnread((n) => Math.max(0, n - 1));
+      } catch (e) {
+        setSelectedEmail(null);
+      }
+      setEmailLoading(false);
+    };
+    const replyToEmail = (row) => {
+      setTo(row.from_addr || "");
+      const subj = row.subject || "";
+      setSubject(subj.toLowerCase().startsWith("re:") ? subj : `Re: ${subj}`);
+      setMessage("");
+      setEmailView("compose");
+    };
+    useEffect(() => {
+      if (emailView === "inbox") loadInbox();
+    }, [emailView]);
     const statusEl = status ? React.createElement("div", { style: status.type === "success" ? succ : { ...succ, background: "#f8d7da", color: "#721c24", borderColor: "#f5c6cb" } }, status.text) : null;
     const fromField = React.createElement("div", null, React.createElement("label", { style: lbl }, "From address (must end in @carissaprimary.co.za)"), React.createElement("input", { style: inp, value: from, onChange: (e) => setFrom(e.target.value), placeholder: "admin@carissaprimary.co.za" }));
     const fromNameField = React.createElement("div", null, React.createElement("label", { style: lbl }, "Sender name (shown to recipients)"), React.createElement("input", { style: inp, value: fromName, onChange: (e) => setFromName(e.target.value), placeholder: "Carissa Primary" }));
-    const replyToField = React.createElement("div", null, React.createElement("label", { style: lbl }, "Reply-To (your Gmail)"), React.createElement("input", { style: inp, value: replyTo, onChange: (e) => setReplyTo(e.target.value), placeholder: "your-email@gmail.com" }));
+    const replyToField = React.createElement("div", null, React.createElement("label", { style: lbl }, "Reply-To (replies go here)"), React.createElement("input", { style: inp, value: replyTo, onChange: (e) => setReplyTo(e.target.value), placeholder: "replies@carissaprimary.co.za" }));
     const topGrid = React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "15px", marginBottom: "15px" } }, fromField, fromNameField, replyToField);
     const toField = React.createElement("div", { style: { marginBottom: "15px" } }, React.createElement("label", { style: lbl }, "To (separate with commas for multiple)"), React.createElement("input", { style: inp, value: to, onChange: (e) => setTo(e.target.value), placeholder: "recipient@example.com" }));
     const ccField = React.createElement("div", { style: { marginBottom: "15px" } }, React.createElement("label", { style: lbl }, "CC (separate with commas for multiple)"), React.createElement("input", { style: inp, value: cc, onChange: (e) => setCc(e.target.value), placeholder: "cc@example.com" }));
@@ -7701,7 +7741,13 @@ ${sectionsHtml}
     const attachBtn = React.createElement("button", { type: "button", onClick: () => fileInputRef.current && fileInputRef.current.click(), disabled: busy, style: { ...sbtn, background: "#0f766e", opacity: busy ? 0.6 : 1, marginBottom: "10px" } }, "\u{1F4CE} Attach files");
     const attList = attachments.length > 0 ? React.createElement("div", { style: { marginBottom: "15px", display: "flex", flexDirection: "column", gap: "6px" } }, attachments.map((a, i) => React.createElement("div", { key: `att-${i}`, style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "8px 12px", background: "#f1f5f9", borderRadius: "8px", fontSize: "13px" } }, React.createElement("span", null, "\u{1F4CE} ", a.name, " (", Math.round((a.size || 0) / 1024), " KB)"), React.createElement("button", { type: "button", onClick: () => removeAttachment(i), style: { border: "none", background: "transparent", color: "#b91c1c", cursor: "pointer", fontWeight: 700, fontSize: "13px" } }, "Remove")))) : null;
     const sendBtn = React.createElement("button", { onClick: send, disabled: busy, style: { ...btn, width: "100%", opacity: busy ? 0.7 : 1 } }, busy ? "Sending..." : "Send Email");
-    return React.createElement("div", { style: card }, React.createElement("h3", { style: ctitle }, "\u{1F4E7} Send Email"), statusEl, topGrid, toField, ccField, subjectField, messageField, fileInput, attachBtn, attList, sendBtn);
+    const tabBtn = (key, label, badge) => React.createElement("button", { type: "button", onClick: () => setEmailView(key), style: { ...sbtn, background: emailView === key ? "#1e40af" : "#e2e8f0", color: emailView === key ? "#fff" : "#334155", fontWeight: 700, padding: "8px 16px", border: "none", borderRadius: "8px", cursor: "pointer" } }, label, badge ? React.createElement("span", { style: { marginLeft: "8px", background: emailView === key ? "#ef4444" : "#ef4444", color: "#fff", borderRadius: "9999px", padding: "0 8px", fontSize: "12px" } }, badge) : null);
+    const fmtDate = (iso) => { try { const d = new Date(iso); return d.toLocaleString(); } catch { return iso; } };
+    const inboxList = inboxLoading ? React.createElement("div", { style: { padding: "20px", textAlign: "center", color: "#64748b" } }, "Loading inbox...") : inbox.length === 0 ? React.createElement("div", { style: { padding: "20px", textAlign: "center", color: "#64748b" } }, "No emails yet. Replies to replies@carissaprimary.co.za will appear here.") : React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "6px", marginBottom: "15px" } }, inbox.map((r) => React.createElement("button", { key: r.id, type: "button", onClick: () => openEmail(r.id), style: { textAlign: "left", padding: "10px 14px", borderRadius: "8px", border: selectedEmail && selectedEmail.id === r.id ? "2px solid #1e40af" : "1px solid #e2e8f0", background: selectedEmail && selectedEmail.id === r.id ? "#eff6ff" : r.is_read ? "#fff" : "#f0fdf4", cursor: "pointer" } }, React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px" } }, React.createElement("span", { style: { fontWeight: r.is_read ? 400 : 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, !r.is_read && React.createElement("span", { style: { color: "#16a34a", marginRight: "6px" } }, "\u25CF"), r.from_name || r.from_addr), React.createElement("span", { style: { fontSize: "12px", color: "#64748b", whiteSpace: "nowrap" } }, fmtDate(r.created_at))), React.createElement("div", { style: { fontSize: "13px", color: "#475569", marginTop: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, r.subject || "(no subject)"))));
+    const detailView = selectedEmail ? React.createElement("div", { style: { border: "1px solid #e2e8f0", borderRadius: "8px", padding: "16px", background: "#fff" } }, React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", marginBottom: "10px" } }, React.createElement("div", null, React.createElement("div", { style: { fontWeight: 700, fontSize: "16px", color: "#0f172a" } }, selectedEmail.subject || "(no subject)"), React.createElement("div", { style: { fontSize: "13px", color: "#475569", marginTop: "4px" } }, "From: ", selectedEmail.from_name ? `${selectedEmail.from_name} <${selectedEmail.from_addr}>` : selectedEmail.from_addr), React.createElement("div", { style: { fontSize: "13px", color: "#64748b" } }, "To: ", selectedEmail.to_addr), React.createElement("div", { style: { fontSize: "12px", color: "#94a3b8" } }, fmtDate(selectedEmail.created_at))), React.createElement("button", { onClick: () => replyToEmail(selectedEmail), style: { ...sbtn, background: "#1e40af", color: "#fff", fontWeight: 700, whiteSpace: "nowrap" } }, "\u21A9 Reply")), React.createElement("hr", { style: { border: "none", borderTop: "1px solid #e2e8f0", margin: "12px 0" } }), selectedEmail.body_html ? React.createElement("div", { dangerouslySetInnerHTML: { __html: selectedEmail.body_html }, style: { fontSize: "14px", lineHeight: 1.6, color: "#0f172a" } }) : React.createElement("pre", { style: { whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: "14px", lineHeight: 1.6, color: "#0f172a", margin: 0 } }, selectedEmail.body_text || "(no content)")) : emailLoading ? React.createElement("div", { style: { padding: "20px", textAlign: "center", color: "#64748b" } }, "Loading message...") : React.createElement("div", { style: { padding: "20px", textAlign: "center", color: "#94a3b8" } }, "Select a message to read.");
+    const inboxView = React.createElement(React.Fragment, null, React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" } }, React.createElement("h3", { style: ctitle, margin: 0 }, "\u{1F4EC} Inbox"), React.createElement("button", { onClick: loadInbox, style: { ...sbtn, background: "#64748b", color: "#fff", fontSize: "13px" } }, "\u21BB Refresh")), inboxList, detailView);
+    const composeView = React.createElement(React.Fragment, null, React.createElement("h3", { style: ctitle }, "\u{1F4E7} Send Email"), statusEl, topGrid, toField, ccField, subjectField, messageField, fileInput, attachBtn, attList, sendBtn);
+    return React.createElement("div", { style: card }, React.createElement("div", { style: { display: "flex", gap: "10px", marginBottom: "16px" } }, tabBtn("compose", "Compose"), tabBtn("inbox", "Inbox", inboxUnread > 0 ? String(inboxUnread) : null)), emailView === "inbox" ? inboxView : composeView);
   }
   function ParentsContactsTab() {
     const [rows, setRows] = useState([]);
