@@ -7679,7 +7679,8 @@ ${sectionsHtml}
             to: to.split(",").map((e) => e.trim()).filter(Boolean),
             cc: cc.split(",").map((e) => e.trim()).filter(Boolean),
             subject: subject.trim(),
-            html: message.trim(),
+            text: message.trim(),
+            html: message.trim().replace(/\n/g, "<br>"),
             attachments: attachments.map((a) => ({ filename: a.name, contentType: a.type, content: a.content }))
           }
         });
