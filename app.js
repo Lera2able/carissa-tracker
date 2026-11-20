@@ -6094,6 +6094,20 @@ ${trimmedReviewNote}` : noteHeader;
           } catch (e) {
           }
         });
+        // Remove the lavender field-background fill from every field so the
+        // downloaded PDF shows answers on a clean white background.
+        try {
+          pdfForm.getFields().forEach((f) => {
+            try {
+              f.acroField.getWidgets().forEach((w) => {
+                const ac = w.getAppearanceCharacteristics();
+                if (ac) ac.setBackgroundColor([1, 1, 1]);
+              });
+            } catch (e) {
+            }
+          });
+        } catch (e) {
+        }
         try {
           pdfForm.updateFieldAppearances();
         } catch (e) {
