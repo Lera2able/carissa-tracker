@@ -27,7 +27,7 @@
     left.appendChild(blurb);
 
     var link = document.createElement("a");
-    link.href = "spip.html?v=20261120noappendix";
+    link.href = "spip.html?v=20261120fittext";
     link.target = "_blank";
     link.rel = "noreferrer";
     link.textContent = "Open SPIP";

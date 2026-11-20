@@ -730,22 +730,48 @@
     });
     return lines.length ? lines : [""];
   }
-  /* Pick the largest font size that fits the whole question inside its grid box. */
+  /* Pick the largest font size that fits the WHOLE question inside its grid box.
+     pdf-lib's built-in auto-fit only checks height, so a long single word (no
+     spaces) would overflow the width and get clipped. We check BOTH word-width
+     and wrapped-line-height, using pdf-lib's own greedy word-packing. */
   function gridTopicFontSize(text, font, pdfField){
     var clean = String(text || "").trim();
-    if (!clean) return 7;
+    if (!clean) return 10;
     var boxW = 46, boxH = 33;
     try{
       var rect = pdfField.acroField.getWidgets()[0].getRectangle();
       boxW = rect.width; boxH = rect.height;
     }catch(e){}
-    var maxW = Math.max(18, boxW - 4);
-    var maxH = Math.max(14, boxH - 4);
-    for (var size = 10; size > 2.9; size -= 0.25){
-      var lines = wrapPdfText(clean, font, size, maxW);
-      if (lines.length * font.heightAtSize(size) * 1.2 <= maxH) return size;
+    var maxW = Math.max(10, boxW - 2);
+    var maxH = Math.max(10, boxH - 2);
+    var rawLines = clean.split(/\n/);
+    for (var size = 14; size > 1.4; size -= 0.5){
+      var ok = true;
+      var linesUsed = 0;
+      for (var li = 0; li < rawLines.length; li++){
+        var words = rawLines[li].split(" ");
+        var space = maxW;
+        linesUsed += 1;
+        for (var wi = 0; wi < words.length; wi++){
+          var isLast = wi === words.length - 1;
+          var w = isLast ? words[wi] : words[wi] + " ";
+          var ww = font.widthOfTextAtSize(w, size);
+          if (font.widthOfTextAtSize(words[wi], size) > maxW){ ok = false; break; }
+          space -= ww;
+          if (space <= 0){
+            linesUsed += 1;
+            space = maxW - ww;
+          }
+        }
+        if (!ok) break;
+      }
+      if (!ok) continue;
+      var lineH = font.heightAtSize(size) * 1.2;
+      // 15% height safety margin: pdf-lib's actual line-wrapping can differ
+      // slightly from our greedy count, so leave room for an extra line.
+      if (linesUsed * lineH * 1.15 <= maxH) return size;
     }
-    return 3;
+    return 1.5;
   }
 
   async function fillPdfBytes(){
@@ -761,7 +787,7 @@
         try{
           var pdfField = pdfForm.getTextField(fieldName);
           var text = String(values[fieldName] == null ? "" : values[fieldName]);
-          if (/^grid_topic_q\d+$/.test(fieldName)) pdfField.setFontSize(gridTopicFontSize(text, helv, pdfField));
+          if (fieldName.indexOf("grid_topic_q") === 0) pdfField.setFontSize(gridTopicFontSize(text, helv, pdfField));
           pdfField.setText(text);
         }catch(e){}
       });
