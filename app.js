@@ -6245,7 +6245,7 @@ ${trimmedReviewNote}` : noteHeader;
     const latestReadingAge = latestReading ? readingAgeLabelForRecord(latestReading.rec) : null;
     const latestStatus = latestReading ? readingStatusFor(pickClass, latestReadingAge) : null;
     const targetYears = classTargetReadingAgeYears(pickClass);
-    const assessmentAvgs = assessmentRows.map((x) => Number(x.rec.grand_total)).filter((v) => Number.isFinite(v));
+    const assessmentAvgs = assessmentRows.map((x) => x.rec ? Number(x.rec.grand_total) : NaN).filter((v) => Number.isFinite(v));
     const assessmentAvg = assessmentAvgs.length ? Math.round(assessmentAvgs.reduce((s2, v) => s2 + v, 0) / assessmentAvgs.length * 10) / 10 : null;
     const readingPoints = READING_TERMS.map((term, i) => {
       const rec = readingForTerm(term);
