@@ -6095,13 +6095,20 @@ ${trimmedReviewNote}` : noteHeader;
           }
         });
         // Remove the lavender field-background fill from every field so the
-        // downloaded PDF shows answers on a clean white background.
+        // downloaded PDF shows answers on a clean white background and the
+        // template's grid lines, tables and borders remain fully visible.
         try {
+          const PDFName = window.PDFLib.PDFName;
           pdfForm.getFields().forEach((f) => {
             try {
               f.acroField.getWidgets().forEach((w) => {
                 const ac = w.getAppearanceCharacteristics();
-                if (ac) ac.setBackgroundColor([1, 1, 1]);
+                if (ac) {
+                  // Delete the /BG (background) entry entirely so the field
+                  // has no fill rectangle that could obscure the template's
+                  // grid lines, tables and borders when printed.
+                  ac.dict.delete(PDFName.of("BG"));
+                }
               });
             } catch (e) {
             }
