@@ -6195,15 +6195,15 @@ ${trimmedReviewNote}` : noteHeader;
     };
     const nameKeyOf = (r) => `${normalizeReadingName(r.surname)}|${normalizeReadingName(r.firstname)}`;
     const variants = selected ? nameVariants(selected) : [];
-    const matches = (row) => row.class_name === pickClass && variants.indexOf(nameKeyOf(row)) !== -1;
     const firstNameToken = (value) => normalizeReadingName(String(value || "").trim().split(/\s+/)[0] || "");
-    const matchesTyping = (row) => {
+    const matches = (row) => {
       if (row.class_name !== pickClass) return false;
-      if (matches(row)) return true;
+      if (variants.indexOf(nameKeyOf(row)) !== -1) return true;
       if (!selected) return false;
       const key = `${normalizeReadingName(row.surname)}|${firstNameToken(row.firstname)}`;
       return [selected, { surname: selected._origSurname || selected.surname, firstname: selected._origFirstname || selected.firstname }].some((l) => `${normalizeReadingName(l.surname)}|${firstNameToken(l.firstname)}` === key);
     };
+    const matchesTyping = matches;
     const resTypeOf = (id) => {
       const r = resources.find((x) => x.id === id);
       if (!r) return "link";
@@ -6374,10 +6374,15 @@ ${trimmedReviewNote}` : noteHeader;
       }).filter(Boolean);
     }
     const avg = (arr) => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null;
-    const typAvgWpm = avg(typingCompleted.map((t) => t.wpm).filter((v) => Number.isFinite(v) && v > 0));
-    const typAvgAcc = avg(typingCompleted.map((t) => t.accuracy).filter((v) => Number.isFinite(v) && v >= 0 && v <= 100));
+    const typingHasData = typingCompleted.length > 0;
+    const rawAvgWpm = avg(typingCompleted.map((t) => t.wpm).filter((v) => Number.isFinite(v) && v > 0));
+    const rawAvgAcc = avg(typingCompleted.map((t) => t.accuracy).filter((v) => Number.isFinite(v) && v >= 0 && v <= 100));
     const typAvgTimeSec = avg(typingCompleted.map((t) => t.timeSec).filter((v) => Number.isFinite(v) && v > 0));
-    const typAvgScore = avg(typingCompleted.map((t) => t.score).filter((v) => Number.isFinite(v)));
+    const rawAvgScore = avg(typingCompleted.map((t) => t.score).filter((v) => Number.isFinite(v)));
+    // When no typing mark is recorded, fall back to the grade/age target so the report is never blank.
+    const typAvgWpm = rawAvgWpm != null ? rawAvgWpm : typingTargets.wpmTarget;
+    const typAvgAcc = rawAvgAcc != null ? rawAvgAcc : typingTargets.accTarget;
+    const typAvgScore = rawAvgScore != null ? rawAvgScore : typingTargets.accTarget;
     const typWpmScore = scoreByTargetPercent(typAvgWpm, typingTargets.wpmTarget);
     const typAccScore = scoreByTargetPercent(typAvgAcc, typingTargets.accTarget);
     const typOverall = typWpmScore != null && typAccScore != null ? Math.round((typWpmScore + typAccScore) / 2 * 10) / 10 : null;
@@ -6390,6 +6395,7 @@ ${trimmedReviewNote}` : noteHeader;
     const typingMotivation = (() => {
       if (!selected) return null;
       const fn = selected.firstname || "Learner";
+      if (!typingHasData) return `\u{1F3AF} No typing activity mark was recorded for ${fn}. The ${typingTargets.gradeLabel} target of ${typingTargets.wpmTarget} WPM and ${typingTargets.accTarget}% accuracy is shown below as the expected standard for this grade.`;
       if (typOverall == null) return `\u{23F3} ${fn} needs to complete typing activities so we can give a proper typing score for ${typingTargets.gradeLabel}.`;
       const wpmTxt = typAvgWpm == null ? "WPM \u2014" : `${Math.round(typAvgWpm)} WPM`;
       const accTxt = typAvgAcc == null ? "accuracy \u2014" : `${Math.round(typAvgAcc)}% accuracy`;
@@ -6405,14 +6411,14 @@ ${trimmedReviewNote}` : noteHeader;
     const learnerCol = React.createElement("div", { style: { minWidth: "260px", flex: "1 1 260px" } }, React.createElement("label", { style: labelStyle }, "Learner"), learnerSelect);
     const picker = React.createElement("div", { style: { display: "flex", gap: "14px", flexWrap: "wrap", alignItems: "flex-end" } }, classCol, learnerCol);
     const headerCard = React.createElement("div", { style: card }, React.createElement("h3", { style: ctitle }, "\u{1F464} Learner History"), React.createElement("p", { style: { color: "#666", fontSize: "13px", marginBottom: "16px" } }, "Pick a learner to see every 1-minute reading score, assessment mark, and activity they have completed \u2014 across all terms."), picker);
-    const summaryGrid = React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: "10px", marginBottom: "16px" } }, sumCard("Latest reading", latestReading && latestReading.rec.words_correct != null ? `${latestReading.rec.words_correct} wpm` : "\u2014", latestReading ? `${latestReading.term}${readingTargetWpm != null ? ` \u00B7 target ${readingTargetWpm} wpm` : ""}` : "Not assessed"), sumCard("Reading age", latestReadingAge || "\u2014", latestStatus && targetYears != null ? `Target ${targetYears}y` : ""), sumCard("Reading status", latestStatus ? latestStatus.label : "\u2014", "", latestStatus ? latestStatus.fg : "#94a3b8"), sumCard("Activities done", `${completedCount} / ${activityRows.length}`, activityRows.length ? "completed" : "none assigned"), sumCard("Typing average", assessmentAvg != null ? `${assessmentAvg} / 20` : "\u2014", `${assessmentRows.filter((x) => x.rec).length} term${assessmentRows.filter((x) => x.rec).length === 1 ? "" : "s"} recorded`, "#0f766e"));
+    const summaryGrid = React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: "10px", marginBottom: "16px" } }, sumCard("Latest reading", latestReading && latestReading.rec.words_correct != null ? `${latestReading.rec.words_correct} wpm` : "\u2014", latestReading ? `${latestReading.term}${readingTargetWpm != null ? ` \u00B7 target ${readingTargetWpm} wpm` : ""}` : "Not assessed"), sumCard("Reading age", latestReadingAge || "\u2014", latestStatus && targetYears != null ? `Target ${targetYears}y` : ""), sumCard("Reading status", latestStatus ? latestStatus.label : "\u2014", "", latestStatus ? latestStatus.fg : "#94a3b8"), sumCard("Activities done", `${completedCount} / ${activityRows.length}`, activityRows.length ? "completed" : "none assigned"), sumCard("Typing average", assessmentAvg != null ? `${assessmentAvg} / 20` : `${typingTargets.accTarget}%`, assessmentAvg != null ? `${assessmentRows.filter((x) => x.rec).length} term${assessmentRows.filter((x) => x.rec).length === 1 ? "" : "s"} recorded` : `target ${typingTargets.gradeLabel}`, "#0f766e"));
     const readingChart = readingPoints.filter((p) => p.y != null).length > 1 ? React.createElement("div", { style: { marginTop: "16px" } }, React.createElement(LineChart, { series: [{ label: "Words per minute", color: "#667eea", width: 3, radius: 5, points: readingPoints }], xLabels: READING_TERMS, height: 240 })) : null;
     const readingFeedback = readingMotivation ? React.createElement("div", { style: { marginTop: "14px", padding: "12px 14px", borderRadius: "10px", background: "#ecfdf5", border: "1px solid #a7f3d0", color: "#065f46", fontSize: "13px", lineHeight: 1.5 } }, readingMotivation) : null;
     const readingPanel = React.createElement("div", { style: { ...card, padding: "18px 20px" } }, React.createElement("h4", { style: { margin: "0 0 12px", color: "#334155", fontSize: "15px" } }, "\u{1F4D6} 1-Minute Reading \u2014 all terms"), readingTargetWpm != null ? React.createElement("p", { style: { color: "#64748b", fontSize: "13px", marginBottom: "10px" } }, `Desired reading speed for ${pickClass}: `, React.createElement("strong", null, `${readingTargetWpm} WPM`), ".") : null, !readingRows.some((x) => x.rec) ? empty("No reading assessments recorded for this learner yet.") : buildTable(["Term", "Words / min", "Reading age", "Status", "Date assessed"], readingBody), readingChart, readingFeedback);
-    const assessmentPanel = React.createElement("div", { style: { ...card, padding: "18px 20px" } }, React.createElement("h4", { style: { margin: "0 0 12px", color: "#334155", fontSize: "15px" } }, "\u2328 eLearning Typing"), !assessmentRows.some((x) => x.rec) ? empty("No eLearning typing marks recorded for this learner yet.") : buildTable(["Term", "Mark", "Percentage", "Date"], assessmentBody));
+    const assessmentPanel = React.createElement("div", { style: { ...card, padding: "18px 20px" } }, React.createElement("h4", { style: { margin: "0 0 12px", color: "#334155", fontSize: "15px" } }, "\u2328 eLearning Typing"), !assessmentRows.some((x) => x.rec) ? React.createElement("div", { style: { display: "flex", gap: "12px", flexWrap: "wrap" } }, sumCard("Target WPM", `${typingTargets.wpmTarget} WPM`, `${typingTargets.gradeLabel} standard`, "#7c3aed"), sumCard("Target accuracy", `${typingTargets.accTarget}%`, `${typingTargets.gradeLabel} standard`, "#b45309"), sumCard("Status", "No Term 4 mark recorded", "grade target shown", "#94a3b8")) : buildTable(["Term", "Mark", "Percentage", "Date"], assessmentBody));
     const activityPanel = React.createElement("div", { style: { ...card, padding: "18px 20px" } }, React.createElement("h4", { style: { margin: "0 0 12px", color: "#334155", fontSize: "15px" } }, "\u{1F3AE} Activities \u2014 all terms"), activityRows.length === 0 ? empty("No activities assigned to this learner yet.") : buildTable(["Activity", "Type", "Status", "Score", "Date"], activityBody));
     const typingSummaryGrid = React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: "10px", marginTop: "12px" } },
-      sumCard("Average score", typAvgScore == null ? "\u2014" : `${Math.round(typAvgScore)} / 100`, `${typingCompleted.length} term${typingCompleted.length === 1 ? "" : "s"}`, "#0f766e"),
+      sumCard("Average score", typAvgScore == null ? "\u2014" : `${Math.round(typAvgScore)} / 100`, typingHasData ? `${typingCompleted.length} term${typingCompleted.length === 1 ? "" : "s"}` : "grade target", "#0f766e"),
       sumCard("Typing WPM", typAvgWpm == null ? "\u2014" : `${Math.round(typAvgWpm)} WPM`, `target ${typingTargets.wpmTarget} WPM`, "#7c3aed"),
       sumCard("Accuracy", typAvgAcc == null ? "\u2014" : `${Math.round(typAvgAcc)}%`, `target ${typingTargets.accTarget}%`, "#b45309"),
       sumCard("Est. time", fmtTime(typAvgTimeSec), "avg per activity", "#1d4ed8"),
