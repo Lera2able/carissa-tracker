@@ -6195,6 +6195,14 @@ ${trimmedReviewNote}` : noteHeader;
     const nameKeyOf = (r) => `${normalizeReadingName(r.surname)}|${normalizeReadingName(r.firstname)}`;
     const variants = selected ? nameVariants(selected) : [];
     const matches = (row) => row.class_name === pickClass && variants.indexOf(nameKeyOf(row)) !== -1;
+    const firstNameToken = (value) => normalizeReadingName(String(value || "").trim().split(/\s+/)[0] || "");
+    const matchesTyping = (row) => {
+      if (row.class_name !== pickClass) return false;
+      if (matches(row)) return true;
+      if (!selected) return false;
+      const key = `${normalizeReadingName(row.surname)}|${firstNameToken(row.firstname)}`;
+      return [selected, { surname: selected._origSurname || selected.surname, firstname: selected._origFirstname || selected.firstname }].some((l) => `${normalizeReadingName(l.surname)}|${firstNameToken(l.firstname)}` === key);
+    };
     const resTypeOf = (id) => {
       const r = resources.find((x) => x.id === id);
       if (!r) return "link";
@@ -6330,7 +6338,7 @@ ${trimmedReviewNote}` : noteHeader;
       if (pct < 70) return 4;
       return 5;
     };
-    const typingCompleted = !selected ? [] : (assignments || []).filter((a) => a.class_name === pickClass && matches(a) && resTypeOf(a.resource_id) === "typing").map((a) => {
+    const typingCompleted = !selected ? [] : (assignments || []).filter((a) => matchesTyping(a) && resTypeOf(a.resource_id) === "typing").map((a) => {
       const result = resultByAssignment.get(String(a.id)) || null;
       const notes = result && result.learner_notes ? String(result.learner_notes) : "";
       return {
@@ -6395,7 +6403,7 @@ ${trimmedReviewNote}` : noteHeader;
       const url = String(r && r.url || "").toLowerCase();
       return title.indexOf("typing speed quest") !== -1 || url.indexOf("typing-speed-quest") !== -1;
     };
-    const tsqAttempts = !selected ? [] : (assignments || []).filter((a) => a.class_name === pickClass && matches(a) && isTypingSpeedQuestResource(a.resource_id)).map((a) => {
+    const tsqAttempts = !selected ? [] : (assignments || []).filter((a) => matchesTyping(a) && isTypingSpeedQuestResource(a.resource_id)).map((a) => {
       const result = resultByAssignment.get(String(a.id)) || null;
       if (!result) return null;
       const notes = result.learner_notes ? String(result.learner_notes) : "";
@@ -6447,9 +6455,14 @@ ${trimmedReviewNote}` : noteHeader;
       });
       return row;
     }));
+    typingLearners.forEach((row) => {
+      const key = `${row.className}|${normalizeReadingName(row.surname)}|${firstNameToken(row.firstname)}`;
+      if (!typingStatsByName.has(key)) typingStatsByName.set(key, row);
+    });
     (assignments || []).forEach((assignment) => {
       if (!typingClasses.includes(assignment.class_name) || resTypeOf(assignment.resource_id) !== "typing") return;
-      const row = typingStatsByName.get(`${assignment.class_name}|${normalizeReadingName(assignment.surname)}|${normalizeReadingName(assignment.firstname)}`);
+      const surnameKey = normalizeReadingName(assignment.surname);
+      const row = typingStatsByName.get(`${assignment.class_name}|${surnameKey}|${normalizeReadingName(assignment.firstname)}`) || typingStatsByName.get(`${assignment.class_name}|${surnameKey}|${firstNameToken(assignment.firstname)}`);
       const result = resultByAssignment.get(String(assignment.id));
       if (!row || !result) return;
       const resultStatus = String(result.result_status || "").trim().toLowerCase();
