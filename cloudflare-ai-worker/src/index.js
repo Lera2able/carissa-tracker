@@ -727,13 +727,16 @@ async function handleTeacherResults(request, env, corsOrigin) {
   if (!session) return jsonResponse({ error: "Teacher session required." }, 401, corsOrigin);
   const url = new URL(request.url);
   const requestedClass = String(url.searchParams.get("class_name") || "").trim();
-  if (requestedClass && !session.class_names.includes(requestedClass)) {
+  const adminEmails = await getAdminAllowedEmails(env);
+  const isAdmin = !!(session.email && adminEmails.includes(String(session.email).trim().toLowerCase()));
+  // Admins may inspect any class; regular teachers are restricted to their linked classes.
+  if (requestedClass && !isAdmin && !session.class_names.includes(requestedClass)) {
     return jsonResponse({ error: "You do not have access to that class." }, 403, corsOrigin);
   }
   const rows = await fetchAllLearnerResults(env);
-  const allowed = rows.filter((row) =>
-    session.class_names.includes(String(row.class_name || "").trim())
-  );
+  const allowed = isAdmin
+    ? rows
+    : rows.filter((row) => session.class_names.includes(String(row.class_name || "").trim()));
   const filtered = requestedClass
     ? allowed.filter((row) => String(row.class_name || "").trim() === requestedClass)
     : allowed;

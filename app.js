@@ -9231,7 +9231,11 @@ ${sectionsHtml}
       var _a;
       if (showLoader) setLoading(true);
       try {
-        const lresPromise = teacherAuth ? apiRequest("/learner-results/teacher").catch((e) => {
+        // Admins select a class from a dropdown; their teacher-session class_names may not
+        // include it, so request results for the selected class explicitly. The cookie
+        // authenticates the request even when teacherAuth state is not populated.
+        const resultsClassParam = adminAccess && selClass ? `?class_name=${encodeURIComponent(selClass)}` : "";
+        const lresPromise = (teacherAuth || adminAccess) ? apiRequest(`/learner-results/teacher${resultsClassParam}`).catch((e) => {
           showMsg(`Could not load learner marks: ${(e == null ? void 0 : e.message) || "Unknown error"}. Please log out and log in again.`);
           return { results: [] };
         }) : Promise.resolve({ results: [] });
