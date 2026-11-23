@@ -6162,6 +6162,7 @@ ${trimmedReviewNote}` : noteHeader;
     const [historyView, setHistoryView] = useState("history");
     const [typingClassFilter, setTypingClassFilter] = useState("all");
     const [typingSearch, setTypingSearch] = useState("");
+    const [printOnly, setPrintOnly] = useState(null);
     const sessionClasses = Array.isArray(TEACHER_SESSION?.class_names) ? TEACHER_SESSION.class_names : [];
     const typingClasses = (sessionClasses.length ? sessionClasses : (selClass ? [selClass] : []))
       .filter((className) => CLASS_DATA[className])
@@ -6525,8 +6526,139 @@ ${trimmedReviewNote}` : noteHeader;
         : typingRows.length === 0
           ? empty("No learners match this class or search.")
           : buildTable(["Class", "Learner", "Attempts", "Average WPM", "Average accuracy", "Latest score"], typingScoreRows));
+    // ---------- Term 4 Report ----------
+    const reportRoster = (CLASS_DATA[pickClass] || []).slice().sort((a, b) => String(a.surname || "").localeCompare(String(b.surname || "")) || String(a.firstname || "").localeCompare(String(b.firstname || "")));
+    const reportTypingStats = new Map();
+    reportRoster.forEach((learner) => {
+      const row = { wpmValues: [], accValues: [], attempts: 0, latestAt: null };
+      const sur = normalizeReadingName(learner.surname);
+      const keys = [
+        `${sur}|${normalizeReadingName(learner.firstname)}`,
+        `${sur}|${firstNameToken(learner.firstname)}`
+      ];
+      if (learner._origSurname) {
+        const osur = normalizeReadingName(learner._origSurname);
+        keys.push(`${osur}|${firstNameToken(learner._origFirstname || learner.firstname)}`);
+      }
+      keys.forEach((k) => { if (!reportTypingStats.has(k)) reportTypingStats.set(k, row); });
+    });
+    (assignments || []).forEach((assignment) => {
+      if (assignment.class_name !== pickClass || resTypeOf(assignment.resource_id) !== "typing") return;
+      const sur = normalizeReadingName(assignment.surname);
+      const row = reportTypingStats.get(`${sur}|${normalizeReadingName(assignment.firstname)}`) || reportTypingStats.get(`${sur}|${firstNameToken(assignment.firstname)}`);
+      const result = resultByAssignment.get(String(assignment.id));
+      if (!row || !result) return;
+      const rs = String(result.result_status || "").trim().toLowerCase();
+      if (rs && rs !== "completed") return;
+      const notes = String(result.learner_notes || "");
+      const wpmMatch = notes.match(/(?:avg\s*)?wpm\s*[:=]\s*(\d+(?:\.\d+)?)/i);
+      const accMatch = notes.match(/(?:avg\s*)?accuracy\s*[:=]\s*(\d+(?:\.\d+)?)/i);
+      const wpm = wpmMatch ? Number(wpmMatch[1]) : null;
+      if (!Number.isFinite(wpm) || wpm < 0) return;
+      const rawScore = result.score == null || result.score === "" ? NaN : Number(result.score);
+      const maxScore = result.max_score == null || result.max_score === "" ? 100 : Number(result.max_score);
+      const acc = accMatch ? Number(accMatch[1]) : Number.isFinite(rawScore) && Number.isFinite(maxScore) && maxScore > 0 ? rawScore / maxScore * 100 : null;
+      row.wpmValues.push(wpm);
+      if (Number.isFinite(acc) && acc >= 0 && acc <= 100) row.accValues.push(acc);
+      row.attempts += 1;
+      const at = result.submitted_at || result.updated_at || assignment.updated_at || assignment.created_at;
+      if (at && (!row.latestAt || new Date(at) > new Date(row.latestAt))) row.latestAt = at;
+    });
+    // Fallback: extract WPM/ACC from assessment comments (used for Grade 1 where typing-quest results may be missing)
+    const reportAssessTyping = new Map();
+    (assessments || []).forEach((rec) => {
+      if (String(rec.class_name || "") !== pickClass) return;
+      const comments = String(rec.comments || "");
+      const wpmMatch = comments.match(/WPM\s*[:=]\s*(\d+(?:\.\d+)?)/i);
+      const accMatch = comments.match(/(?:ACC|Accuracy)\s*[:=]\s*(\d+(?:\.\d+)?)/i);
+      if (!wpmMatch && !accMatch) return;
+      const sur = normalizeReadingName(rec.surname);
+      const keys = [`${sur}|${normalizeReadingName(rec.firstname)}`, `${sur}|${firstNameToken(rec.firstname)}`];
+      const wpm = wpmMatch ? Number(wpmMatch[1]) : null;
+      const acc = accMatch ? Number(accMatch[1]) : null;
+      const at = rec.date_assessed || rec.updated_at || rec.created_at;
+      const existing = reportAssessTyping.get(keys[0]) || reportAssessTyping.get(keys[1]);
+      if (!existing || (at && new Date(at) > new Date(existing.at))) {
+        const val = { wpm, acc, at, term: rec.term };
+        keys.forEach((k) => reportAssessTyping.set(k, val));
+      }
+    });
+    // Latest reading record per learner
+    const reportReading = new Map();
+    (reading || []).forEach((rec) => {
+      if (String(rec.class_name || "") !== pickClass) return;
+      const sur = normalizeReadingName(rec.surname);
+      const keys = [`${sur}|${normalizeReadingName(rec.firstname)}`, `${sur}|${firstNameToken(rec.firstname)}`];
+      const at = rec.date_assessed || rec.created_at;
+      const existing = reportReading.get(keys[0]) || reportReading.get(keys[1]);
+      if (!existing || (at && new Date(at) > new Date(existing.at))) {
+        const val = { rec, at };
+        keys.forEach((k) => reportReading.set(k, val));
+      }
+    });
+    const reportMean = (vals) => vals.length ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length * 10) / 10 : null;
+    const reportReadingTargetWpm = classTargetReadingWpm(pickClass);
+    const reportReadingTargetYears = classTargetReadingAgeYears(pickClass);
+    const reportTypingTarget = typingTargets;
+    const reportCardStyle = { background: "#fff", border: "1px solid #e2e8f0", borderRadius: "14px", padding: "20px 22px", marginBottom: "16px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" };
+    const reportSectionTitle = { fontSize: "13px", fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "8px" };
+    const reportStat = (label, value, sub, color) => React.createElement("div", { style: { background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "10px 12px", flex: "1 1 140px" } },
+      React.createElement("div", { style: { fontSize: "11px", color: "#64748b", marginBottom: "3px" } }, label),
+      React.createElement("div", { style: { fontSize: "20px", fontWeight: 700, color: color || "#334155" } }, value),
+      sub ? React.createElement("div", { style: { fontSize: "11px", color: "#94a3b8", marginTop: "3px" } }, sub) : null);
+    const reportRows = reportRoster.map((learner) => {
+      const key = `${learner.surname}|${learner.firstname}`;
+      const sur = normalizeReadingName(learner.surname);
+      const typingRow = reportTypingStats.get(`${sur}|${normalizeReadingName(learner.firstname)}`) || reportTypingStats.get(`${sur}|${firstNameToken(learner.firstname)}`);
+      let rWpm = typingRow && typingRow.wpmValues.length ? reportMean(typingRow.wpmValues) : null;
+      let rAcc = typingRow && typingRow.accValues.length ? reportMean(typingRow.accValues) : null;
+      let typingSource = "activity";
+      if (rWpm == null && rAcc == null) {
+        const assess = reportAssessTyping.get(`${sur}|${normalizeReadingName(learner.firstname)}`) || reportAssessTyping.get(`${sur}|${firstNameToken(learner.firstname)}`);
+        if (assess) {
+          rWpm = assess.wpm;
+          rAcc = assess.acc;
+          typingSource = "assessment";
+        }
+      }
+      const readRec = (reportReading.get(`${sur}|${normalizeReadingName(learner.firstname)}`) || reportReading.get(`${sur}|${firstNameToken(learner.firstname)}`) || {}).rec || null;
+      const readWpm = readRec && readRec.words_correct != null ? Number(readRec.words_correct) : null;
+      const readAge = readRec ? readingAgeLabelForRecord(readRec) : null;
+      const readStatus = readAge ? readingStatusFor(pickClass, readAge) : null;
+      const wpmOk = rWpm != null && rWpm >= reportTypingTarget.wpmTarget;
+      const accOk = rAcc != null && rAcc >= reportTypingTarget.accTarget;
+      const readOk = readWpm != null && reportReadingTargetWpm != null && readWpm >= reportReadingTargetWpm;
+      return React.createElement("div", { key: `report-${key}`, className: "learner-report-card", style: reportCardStyle },
+        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "10px", marginBottom: "14px" } },
+          React.createElement("div", null,
+            React.createElement("div", { style: { fontSize: "20px", fontWeight: 800, color: "#1e293b" } }, `${learner.surname}, ${learner.firstname}`),
+            React.createElement("div", { style: { fontSize: "13px", color: "#64748b" } }, `${pickClass} \u{2022} Term 4 Report`)),
+          React.createElement("button", { type: "button", className: "no-print", onClick: () => { setPrintOnly(key); setTimeout(() => { window.print(); setTimeout(() => setPrintOnly(null), 500); }, 100); }, style: { padding: "6px 14px", borderRadius: "8px", border: "1px solid #c7d2fe", background: "#eef2ff", color: "#3730a3", fontWeight: 700, cursor: "pointer", fontSize: "13px" } }, "\u{1F5A8}\uFE0F Print")),
+        React.createElement("div", { style: { fontSize: "12px", color: "#94a3b8", marginBottom: "12px" } }, `Targets for ${reportTypingTarget.gradeLabel}: Reading ${reportReadingTargetWpm != null ? `${reportReadingTargetWpm} WPM` : "\u2014"} \u{2022} Typing ${reportTypingTarget.wpmTarget} WPM / ${reportTypingTarget.accTarget}% accuracy`),
+        React.createElement("div", { style: reportSectionTitle }, "1-Minute Reading"),
+        React.createElement("div", { style: { display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "14px" } },
+          reportStat("Reading speed", readWpm == null ? "\u2014" : `${readWpm} WPM`, reportReadingTargetWpm != null ? `target ${reportReadingTargetWpm} WPM` : "", readOk ? "#15803d" : "#b45309"),
+          reportStat("Reading age", readAge || "\u2014", reportReadingTargetYears != null ? `target ${reportReadingTargetYears}y` : "", "#7c3aed"),
+          reportStat("Reading status", readStatus ? readStatus.label : "\u2014", "", readStatus ? readStatus.fg : "#94a3b8")),
+        React.createElement("div", { style: reportSectionTitle }, "Typing"),
+        React.createElement("div", { style: { display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "6px" } },
+          reportStat("Average WPM", rWpm == null ? "\u2014" : `${rWpm} WPM`, `target ${reportTypingTarget.wpmTarget} WPM`, wpmOk ? "#15803d" : "#b45309"),
+          reportStat("Average accuracy", rAcc == null ? "\u2014" : `${rAcc}%`, `target ${reportTypingTarget.accTarget}%`, accOk ? "#15803d" : "#b45309"),
+          reportStat("Source", rWpm == null && rAcc == null ? "No data" : typingSource === "activity" ? "Typing Speed Quest" : "Typing assessment", "", "#0f766e")));
+    });
+    const reportPrintStyle = React.createElement("style", null,
+      `@media print { body * { visibility: hidden; } #learner-report-print-area, #learner-report-print-area * { visibility: visible; } #learner-report-print-area { position: absolute; left: 0; top: 0; width: 100%; } .learner-report-card { page-break-after: always; box-shadow: none !important; border: 1px solid #cbd5e1 !important; } .learner-report-card:last-child { page-break-after: auto; } .no-print { display: none !important; } }`);
+    const reportToolbar = React.createElement("div", { className: "no-print", style: { display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "14px" } },
+      React.createElement("button", { type: "button", onClick: () => { setPrintOnly(null); setTimeout(() => window.print(), 100); }, style: { padding: "9px 18px", borderRadius: "10px", border: "none", background: "linear-gradient(135deg,#667eea,#764ba2)", color: "#fff", fontWeight: 800, cursor: "pointer", fontSize: "14px" } }, "\u{1F5A8}\uFE0F Print All Reports"),
+      React.createElement("div", { style: { alignSelf: "center", color: "#64748b", fontSize: "13px" } }, `${reportRows.length} learner${reportRows.length === 1 ? "" : "s"} in ${pickClass}`));
+    const reportPanel = React.createElement("div", null,
+      reportPrintStyle,
+      reportToolbar,
+      React.createElement("div", { id: "learner-report-print-area" }, printOnly
+        ? reportRows.filter((el) => el.key === `report-${printOnly}`)
+        : reportRows));
     const historyTabs = React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "12px" } },
-      [["history", "\u{1F464} Learner History"], ["typing", "\u2328 Typing Scores"]].map(([key, label]) => React.createElement("button", {
+      [["history", "\u{1F464} Learner History"], ["typing", "\u2328 Typing Scores"], ["report", "\u{1F4CB} Term 4 Report"]].map(([key, label]) => React.createElement("button", {
         key,
         type: "button",
         onClick: () => setHistoryView(key),
@@ -6540,7 +6672,7 @@ ${trimmedReviewNote}` : noteHeader;
           cursor: "pointer"
         }
       }, label)));
-    return React.createElement("div", null, historyTabs, historyView === "typing" ? typingPanel : React.createElement(React.Fragment, null, headerCard, body));
+    return React.createElement("div", null, historyTabs, historyView === "typing" ? typingPanel : historyView === "report" ? React.createElement(React.Fragment, null, headerCard, reportPanel) : React.createElement(React.Fragment, null, headerCard, body));
   }
   function ReadingAssessmentTab({ reading, setReading, initialClass, lockClass, initialTerm }) {
     const [selClass, setSelClass] = useState(initialClass || "");
