@@ -5110,6 +5110,7 @@ footer{text-align:center;margin-top:10px;font-size:9px;color:#888;border-top:1px
     ["assignments", "\u{1F4CB} Assignments"],
     ["assessments", "\u{1F4DD} Assessments"],
     ["reading", "\u{1F4D6} Reading Results"],
+    ["term4_reports", "\u{1F4C4} Term 4 Reports"],
     ["discipline", "\u2696\uFE0F Discipline"],
     ["learners", "\u{1F465} Learners"],
     ["parents_contacts", "\u{1F4C7} Parents contacts"],
@@ -6155,7 +6156,7 @@ ${trimmedReviewNote}` : noteHeader;
     const assessedCounts = terms.map((t) => learners.filter((l) => wpmFor(selClass, l.surname, l.firstname, t) != null).length);
     return /* @__PURE__ */ React.createElement("div", { style: card }, /* @__PURE__ */ React.createElement("h3", { style: ctitle }, selClass, " \u2014 Reading Statistics"), /* @__PURE__ */ React.createElement("p", { style: { color: "#666", fontSize: "13px", marginBottom: "16px" } }, "Progress across Term 2, Term 3, and Term 4. Lines show words-per-minute (wpm) for each learner and the class average."), /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "10px", marginBottom: "20px" } }, terms.map((t, i) => /* @__PURE__ */ React.createElement("div", { key: t, style: { background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "12px 14px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: "#64748b", marginBottom: "4px" } }, t, " average"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "22px", fontWeight: 700, color: "#3730a3" } }, classAvgSeries[i] != null ? `${classAvgSeries[i]} wpm` : "\u2014"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "11px", color: "#94a3b8", marginTop: "4px" } }, assessedCounts[i], " / ", learners.length, " assessed")))), /* @__PURE__ */ React.createElement("div", { style: { background: "white", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "16px", marginBottom: "20px" } }, /* @__PURE__ */ React.createElement("h4", { style: { margin: "0 0 12px", color: "#334155", fontSize: "15px" } }, "\u{1F4C8} Class Average Trend"), /* @__PURE__ */ React.createElement(LineChart, { series: [{ label: "Class Average", color: "#667eea", width: 3, radius: 5, points: terms.map((t, i) => ({ x: i, y: classAvgSeries[i] })) }], xLabels: terms })), learnerSeries.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { background: "white", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "16px" } }, /* @__PURE__ */ React.createElement("h4", { style: { margin: "0 0 12px", color: "#334155", fontSize: "15px" } }, "\u{1F465} Individual Learner Trends"), /* @__PURE__ */ React.createElement(LineChart, { series: learnerSeries, xLabels: terms, height: 320 })), learnerSeries.length === 0 && /* @__PURE__ */ React.createElement("p", { style: { color: "#999", textAlign: "center", padding: "20px" } }, "No reading data available yet for this class."));
   }
-  function LearnerHistoryTab({ reading, learnerResults, assignments, assessments, resources, selClass }) {
+  function LearnerHistoryTab({ reading, learnerResults, assignments, assessments, resources, selClass, showTerm4Reports = false }) {
     const classOptions = selClass ? [selClass] : ASSESS_CLASS_NAMES;
     const [pickClass, setPickClass] = useState(selClass || ASSESS_CLASS_NAMES[0] || "");
     const [pickLearner, setPickLearner] = useState("");
@@ -6164,6 +6165,8 @@ ${trimmedReviewNote}` : noteHeader;
     const [typingSearch, setTypingSearch] = useState("");
     const [printOnly, setPrintOnly] = useState(null);
     const [reportGrade, setReportGrade] = useState("1");
+    const [reportExporting, setReportExporting] = useState(false);
+    const [reportExportError, setReportExportError] = useState("");
     const sessionClasses = Array.isArray(TEACHER_SESSION?.class_names) ? TEACHER_SESSION.class_names : [];
     const typingClasses = (sessionClasses.length ? sessionClasses : (selClass ? [selClass] : []))
       .filter((className) => CLASS_DATA[className])
@@ -6553,7 +6556,7 @@ ${trimmedReviewNote}` : noteHeader;
         : typingRows.length === 0
           ? empty("No learners match this class or search.")
           : buildTable(["Class", "Learner", "Attempts", "Average WPM", "Average accuracy", "Latest score"], typingScoreRows));
-    // ---------- Term 4 Report ----------
+    // ---------- Learner History by Grade ----------
     const reportGradeNum = Number(reportGrade) || 1;
     const reportClasses = ASSESS_CLASS_NAMES.filter((c) => { const m = String(c).match(/Grade\s+(\d+)/i); return m && Number(m[1]) === reportGradeNum; });
     const reportRoster = [];
@@ -6650,8 +6653,9 @@ ${trimmedReviewNote}` : noteHeader;
       React.createElement("div", { style: { fontSize: "20px", fontWeight: 700, color: color || "#334155" } }, value),
       sub ? React.createElement("div", { style: { fontSize: "11px", color: "#94a3b8", marginTop: "3px" } }, sub) : null);
     const sigLineStyle = { borderTop: "1.5px solid #334155", marginTop: "4px", width: "100%" };
+    const reportDownloadData = [];
     const reportRows = reportRoster.map((learner) => {
-      const key = `${learner.surname}|${learner.firstname}`;
+      const key = `${learner._class}|${learner.surname}|${learner.firstname}`;
       const sur = normalizeReadingName(learner.surname);
       const typingRow = reportTypingStats.get(`${sur}|${normalizeReadingName(learner.firstname)}`) || reportTypingStats.get(`${sur}|${firstNameToken(learner.firstname)}`);
       let rWpm = typingRow && typingRow.wpmValues.length ? reportMean(typingRow.wpmValues) : null;
@@ -6674,60 +6678,389 @@ ${trimmedReviewNote}` : noteHeader;
       const wpmOk = rWpm != null && rWpm >= reportTypingTarget.wpmTarget;
       const accOk = rAcc != null && rAcc >= reportTypingTarget.accTarget;
       const readOk = readWpm != null && reportReadingTargetWpm != null && readWpm >= reportReadingTargetWpm;
+      const historySurnames = [learner.surname, learner._origSurname].map(normalizeReadingName).filter(Boolean);
+      const historyFirstNames = [learner.firstname, learner._origFirstname].map(firstNameToken).filter(Boolean);
+      const readingHistoryByTerm = new Map();
+      (reading || []).forEach((rec) => {
+        const term = String(rec.term || "").trim();
+        if (rec.class_name !== learner._class || READING_TERMS.indexOf(term) === -1) return;
+        if (historySurnames.indexOf(normalizeReadingName(rec.surname)) === -1 || historyFirstNames.indexOf(firstNameToken(rec.firstname)) === -1) return;
+        if (rec.words_correct == null || !Number.isFinite(Number(rec.words_correct))) return;
+        const current = readingHistoryByTerm.get(term);
+        const recDate = rec.date_assessed || rec.created_at || 0;
+        const currentDate = current && (current.date_assessed || current.created_at || 0);
+        if (!current || new Date(recDate) > new Date(currentDate)) readingHistoryByTerm.set(term, rec);
+      });
+      const readingHistoryRows = READING_TERMS.filter((term) => readingHistoryByTerm.has(term)).map((term) => {
+        const rec = readingHistoryByTerm.get(term);
+        const age = readingAgeLabelForRecord(rec);
+        const status = age ? readingStatusFor(learner._class, age) : null;
+        return React.createElement("tr", { key: `${learner._class}|${key}|${term}` },
+          React.createElement("td", { style: { ...td, fontWeight: 700 } }, term),
+          React.createElement("td", { style: td }, `${rec.words_correct} WPM`),
+          React.createElement("td", { style: td }, age || "\u2014"),
+          React.createElement("td", { style: td }, status ? status.label : "\u2014"),
+          React.createElement("td", { style: td }, dateLabel(rec.date_assessed || rec.created_at)));
+      });
+      const learnerSurnameKeys = [learner.surname, learner._origSurname].map(normalizeReadingName).filter(Boolean);
+      const learnerFirstKeys = [learner.firstname, learner._origFirstname].map(firstNameToken).filter(Boolean);
+      const learnerActivities = (assignments || [])
+        .filter((assignment) =>
+          assignment.class_name === learner._class &&
+          learnerSurnameKeys.indexOf(normalizeReadingName(assignment.surname)) !== -1 &&
+          learnerFirstKeys.indexOf(firstNameToken(assignment.firstname)) !== -1)
+        .map((assignment) => {
+          const result = resultByAssignment.get(String(assignment.id)) || null;
+          const notes = String(result && result.learner_notes || "");
+          const wpmMatch = notes.match(/(?:avg\s*)?wpm\s*[:=]\s*(\d+(?:\.\d+)?)/i);
+          const accuracyMatch = notes.match(/(?:avg\s*)?accuracy\s*[:=]\s*(\d+(?:\.\d+)?)/i);
+          const rawScore = result && result.score != null ? Number(result.score) : NaN;
+          const maxScore = result && result.max_score != null ? Number(result.max_score) : 100;
+          const when = result ? result.submitted_at || result.updated_at : assignment.updated_at || assignment.created_at;
+          return {
+            term: String(assignment.term || (result && result.term) || "").trim() || "\u2014",
+            title: resTitleOf(assignment.resource_id),
+            type: resTypeOf(assignment.resource_id),
+            status: result ? "Completed" : String(assignment.status || "Assigned").replace(/_/g, " "),
+            score: result ? scoreOutOfTenValue(result.score, result.max_score) : null,
+            wpm: wpmMatch ? Number(wpmMatch[1]) : null,
+            accuracy: accuracyMatch ? Number(accuracyMatch[1]) : Number.isFinite(rawScore) && maxScore > 0 ? Math.round(rawScore / maxScore * 100) : null,
+            when
+          };
+        })
+        .sort((a, b) => new Date(a.when || 0) - new Date(b.when || 0));
+      const typingActivityRows = learnerActivities.filter((activity) => activity.type === "typing");
+      const readingComment = readOk
+        ? `Excellent effort, ${learner.firstname}. Keep reading every day to build fluency and confidence.`
+        : `Keep practising, ${learner.firstname}. You are working towards the Grade ${reportGradeNum} reading target, and every practice session helps.`;
+      const typingComment = wpmOk && accOk
+        ? `Well done, ${learner.firstname}. Keep practising to maintain your typing speed and accuracy.`
+        : `Keep going, ${learner.firstname}. You are working towards the Grade ${reportGradeNum} typing target.`;
+      reportDownloadData.push({
+        key,
+        name: `${learner.surname}, ${learner.firstname}`,
+        firstName: learner.firstname,
+        className: learner._class,
+        readingTargetWpm: reportReadingTargetWpm,
+        readingTargetYears: reportReadingTargetYears,
+        typingTargetWpm: reportTypingTarget.wpmTarget,
+        typingTargetAccuracy: reportTypingTarget.accTarget,
+        readingWpm: readWpm,
+        readingAge: readAge || "\u2014",
+        readingStatus: readStatus ? readStatus.label : "\u2014",
+        readingHistory: READING_TERMS.filter((term) => readingHistoryByTerm.has(term)).map((term) => {
+          const rec = readingHistoryByTerm.get(term);
+          return {
+            term,
+            wpm: rec.words_correct,
+            age: readingAgeLabelForRecord(rec) || "\u2014",
+            status: readingAgeLabelForRecord(rec) ? readingStatusFor(learner._class, readingAgeLabelForRecord(rec)).label : "\u2014",
+            date: dateLabel(rec.date_assessed || rec.created_at)
+          };
+        }),
+        typingWpm: rWpm,
+        typingAccuracy: rAcc,
+        typingSource,
+        activities: learnerActivities,
+        typingActivities: typingActivityRows,
+        readingComment,
+        typingComment
+      });
+      const activityHistoryRows = learnerActivities.map((activity, index) => React.createElement("tr", { key: `${key}|activity|${index}` },
+        React.createElement("td", { style: td }, activity.term),
+        React.createElement("td", { style: td }, activity.title),
+        React.createElement("td", { style: td }, activity.status),
+        React.createElement("td", { style: td }, activity.score == null ? "\u2014" : `${activity.score}/10`),
+        React.createElement("td", { style: td }, dateLabel(activity.when))));
+      const typingHistoryRows = typingActivityRows.map((activity, index) => React.createElement("tr", { key: `${key}|typing|${index}` },
+        React.createElement("td", { style: td }, activity.term),
+        React.createElement("td", { style: td }, activity.title),
+        React.createElement("td", { style: td }, activity.wpm == null ? "\u2014" : `${activity.wpm} WPM`),
+        React.createElement("td", { style: td }, activity.accuracy == null ? "\u2014" : `${activity.accuracy}%`),
+        React.createElement("td", { style: td }, dateLabel(activity.when))));
+      const readingHistoryTable = readingHistoryRows.length
+        ? buildTable(["Term", "Words per minute", "Reading age", "Status", "Date assessed"], readingHistoryRows)
+        : empty("No reading marks recorded for this learner yet.");
+      const activityHistoryTable = activityHistoryRows.length
+        ? buildTable(["Term", "Activity", "Status", "Score", "Date"], activityHistoryRows)
+        : empty("No activities recorded for this learner yet.");
+      const typingHistoryTable = typingHistoryRows.length
+        ? buildTable(["Term", "Typing activity", "WPM", "Accuracy", "Date"], typingHistoryRows)
+        : empty("No completed typing activities recorded yet.");
       return React.createElement("div", { key: `report-${key}`, className: "learner-report-card", style: reportCardStyle },
-        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px", marginBottom: "18px", borderBottom: "2px solid #1e3a5f", paddingBottom: "14px" } },
+        React.createElement("div", { style: { textAlign: "center", borderBottom: "2px solid #1e3a5f", paddingBottom: "12px", marginBottom: "14px" } },
           React.createElement("div", null,
             React.createElement("div", { style: { fontSize: "22px", fontWeight: 900, color: "#1e3a5f", letterSpacing: "1px" } }, "CARISSA PRIMARY SCHOOL"),
             React.createElement("div", { style: { fontSize: "12px", color: "#475569", marginTop: "4px", lineHeight: 1.5 } },
               "23 Hofmeyer Street, Witbank 1035", React.createElement("br"),
               "P.O. Box 430, Witbank 1035", React.createElement("br"),
-              "Mpumalanga")),
-          React.createElement("img", { src: "./school_stamp.jpg", alt: "School stamp", style: { height: "90px", width: "auto", objectFit: "contain" } })),
-        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "10px", marginBottom: "12px" } },
-          React.createElement("div", null,
-            React.createElement("div", { style: { fontSize: "20px", fontWeight: 800, color: "#1e293b" } }, `${learner.surname}, ${learner.firstname}`),
-            React.createElement("div", { style: { fontSize: "13px", color: "#64748b" } }, `${learner._class} \u{2022} Term 4 Report`)),
-          React.createElement("button", { type: "button", className: "no-print", onClick: () => { setPrintOnly(key); setTimeout(() => { window.print(); setTimeout(() => setPrintOnly(null), 500); }, 100); }, style: { padding: "6px 14px", borderRadius: "8px", border: "1px solid #c7d2fe", background: "#eef2ff", color: "#3730a3", fontWeight: 700, cursor: "pointer", fontSize: "13px" } }, "\u{1F5A8}\uFE0F Print")),
-        React.createElement("div", { style: { fontSize: "12px", color: "#94a3b8", marginBottom: "12px" } }, `Targets for ${reportTypingTarget.gradeLabel}: Reading ${reportReadingTargetWpm != null ? `${reportReadingTargetWpm} WPM` : "\u2014"} \u{2022} Typing ${reportTypingTarget.wpmTarget} WPM / ${reportTypingTarget.accTarget}% accuracy`),
+              "Mpumalanga"))),
+        React.createElement("div", { style: { textAlign: "center", marginBottom: "12px" } },
+          React.createElement("div", { style: { fontSize: "17px", fontWeight: 900, color: "#1e3a5f", letterSpacing: "0.6px" } }, "LEARNER PROGRESS REPORT"),
+          React.createElement("div", { style: { fontSize: "13px", color: "#475569", marginTop: "3px" } }, "Reading and Computer Skills (ICT) | Term 4 | 2026")),
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(145px,1fr))", gap: "8px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "7px", padding: "10px 12px", marginBottom: "12px" } },
+          React.createElement("div", null, React.createElement("div", { style: { fontSize: "10px", color: "#64748b", textTransform: "uppercase" } }, "Class"), React.createElement("div", { style: { fontSize: "13px", fontWeight: 700, color: "#1e293b" } }, learner._class)),
+          React.createElement("div", null, React.createElement("div", { style: { fontSize: "10px", color: "#64748b", textTransform: "uppercase" } }, "Learner"), React.createElement("div", { style: { fontSize: "13px", fontWeight: 700, color: "#1e293b" } }, `${learner.surname}, ${learner.firstname}`)),
+          React.createElement("div", null, React.createElement("div", { style: { fontSize: "10px", color: "#64748b", textTransform: "uppercase" } }, "Report date"), React.createElement("div", { style: { fontSize: "13px", fontWeight: 700, color: "#1e293b" } }, new Date().toLocaleDateString("en-ZA"))),
+          React.createElement("button", { type: "button", className: "no-print", onClick: () => { setPrintOnly(key); setTimeout(() => { window.print(); setTimeout(() => setPrintOnly(null), 500); }, 100); }, style: { padding: "6px 12px", borderRadius: "7px", border: "1px solid #c7d2fe", background: "#eef2ff", color: "#3730a3", fontWeight: 700, cursor: "pointer", fontSize: "12px", alignSelf: "center" } }, "Print Report")),
+        React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "12px" } },
+          reportStat("Reading", readWpm == null ? "\u2014" : `${readWpm} WPM`, `target ${reportReadingTargetWpm || "\u2014"} WPM`, readOk ? "#15803d" : "#b45309"),
+          reportStat("Reading age / status", `${readAge || "\u2014"}${readStatus ? ` / ${readStatus.label}` : ""}`, `target ${reportReadingTargetYears || "\u2014"} years`, "#7c3aed"),
+          reportStat("Activities completed", `${learnerActivities.filter((activity) => activity.status.toLowerCase() === "completed").length}`, "across all terms", "#0f766e"),
+          reportStat("Typing", `${rWpm} WPM / ${rAcc}%`, `target ${reportTypingTarget.wpmTarget} WPM / ${reportTypingTarget.accTarget}%`, wpmOk && accOk ? "#15803d" : "#b45309")),
         React.createElement("div", { style: reportSectionTitle }, "1-Minute Reading"),
-        React.createElement("div", { style: { display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "14px" } },
-          reportStat("Reading speed", readWpm == null ? "\u2014" : `${readWpm} WPM`, reportReadingTargetWpm != null ? `target ${reportReadingTargetWpm} WPM` : "", readOk ? "#15803d" : "#b45309"),
-          reportStat("Reading age", readAge || "\u2014", reportReadingTargetYears != null ? `target ${reportReadingTargetYears}y` : "", "#7c3aed"),
-          reportStat("Reading status", readStatus ? readStatus.label : "\u2014", "", readStatus ? readStatus.fg : "#94a3b8")),
+        readingHistoryTable,
+        React.createElement("div", { style: { fontSize: "12px", color: "#475569", background: "#f8fafc", borderLeft: "3px solid #60a5fa", padding: "8px 10px", margin: "7px 0 12px" } }, readingComment),
         React.createElement("div", { style: reportSectionTitle }, "eLearning Typing"),
         React.createElement("div", { style: { display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "6px" } },
           reportStat("Average WPM", rWpm == null ? "\u2014" : `${rWpm} WPM`, `target ${reportTypingTarget.wpmTarget} WPM`, wpmOk ? "#15803d" : "#b45309"),
           reportStat("Average accuracy", rAcc == null ? "\u2014" : `${rAcc}%`, `target ${reportTypingTarget.accTarget}%`, accOk ? "#15803d" : "#b45309"),
           reportStat("Source", typingSource === "target" ? "Grade target" : typingSource === "activity" ? "Typing activity" : "Typing assessment", "", "#0f766e")),
-        React.createElement("div", { style: { display: "flex", gap: "40px", justifyContent: "space-between", marginTop: "50px" } },
-          React.createElement("div", { style: { flex: "1 1 0", maxWidth: "300px", textAlign: "center" } },
-            React.createElement("img", { src: "./teacher_signature.jpg", alt: "Computer teacher signature", style: { height: "70px", width: "100%", objectFit: "contain", filter: "contrast(1.5) brightness(0.35)" } }),
-            React.createElement("div", { style: sigLineStyle }),
-            React.createElement("div", { style: { fontSize: "13px", fontWeight: 700, color: "#1e293b", marginTop: "6px" } }, "Ms L Mogajane"),
-            React.createElement("div", { style: { fontSize: "12px", color: "#64748b" } }, "Computer Teacher")),
-          React.createElement("div", { style: { flex: "1 1 0", maxWidth: "300px", textAlign: "center" } },
-            React.createElement("img", { src: "./principal_signature.jpg", alt: "Principal signature", style: { height: "70px", width: "100%", objectFit: "contain" } }),
-            React.createElement("div", { style: sigLineStyle }),
-            React.createElement("div", { style: { fontSize: "13px", fontWeight: 700, color: "#1e293b", marginTop: "6px" } }, "Ms V Sibande"),
-            React.createElement("div", { style: { fontSize: "12px", color: "#64748b" } }, "Principal"))));
+        React.createElement("div", { style: { ...reportSectionTitle, marginTop: "12px" } }, "Activities (all terms)"),
+        activityHistoryTable,
+        React.createElement("div", { style: { ...reportSectionTitle, marginTop: "12px" } }, "Computer Activities: Typing (all terms)"),
+        typingHistoryTable,
+        React.createElement("div", { style: { fontSize: "12px", color: "#475569", background: "#f8fafc", borderLeft: "3px solid #a78bfa", padding: "8px 10px", marginTop: "7px" } }, typingComment),
+        React.createElement("div", { style: { fontSize: "12px", color: "#475569", marginTop: "14px", fontWeight: 700 } }, "Date issued: ", new Date().toLocaleDateString("en-ZA")),
+        React.createElement("div", { style: { display: "flex", gap: "12px", justifyContent: "space-between", alignItems: "flex-end", marginTop: "14px", flexWrap: "wrap", breakInside: "avoid" } },
+          React.createElement("div", { style: { display: "flex", flex: "1 1 390px", gap: "18px", minWidth: "280px" } },
+            React.createElement("div", { style: { flex: "1 1 0", minWidth: 0, textAlign: "center" } },
+              React.createElement("img", { src: "./teacher_signature.png", alt: "Computer teacher signature", style: { height: "54px", width: "100%", objectFit: "contain", filter: "contrast(1.3) brightness(0.72)" } }),
+              React.createElement("div", { style: sigLineStyle }),
+              React.createElement("div", { style: { fontSize: "12px", fontWeight: 700, color: "#1e293b", marginTop: "5px" } }, "Ms L Mogajane"),
+              React.createElement("div", { style: { fontSize: "11px", color: "#64748b" } }, "Computer Teacher")),
+            React.createElement("div", { style: { flex: "1 1 0", minWidth: 0, textAlign: "center" } },
+              React.createElement("img", { src: "./principal_signature.png", alt: "Principal signature", style: { height: "54px", width: "100%", objectFit: "contain" } }),
+              React.createElement("div", { style: sigLineStyle }),
+              React.createElement("div", { style: { fontSize: "12px", fontWeight: 700, color: "#1e293b", marginTop: "5px" } }, "Ms V Sibande"),
+              React.createElement("div", { style: { fontSize: "11px", color: "#64748b" } }, "Principal"))),
+          React.createElement("img", { src: "./school_stamp.png", alt: "Carissa Primary School stamp", className: "school-stamp", style: { width: "160px", height: "100px", flex: "0 0 160px", objectFit: "contain" } })));
     });
+    const downloadAllReports = async () => {
+      if (!reportDownloadData.length) return;
+      setReportExportError("");
+      setReportExporting(true);
+      try {
+        if (!window.PDFLib) throw new Error("PDF export is unavailable. Refresh the page and try again.");
+        const { PDFDocument, StandardFonts, rgb } = window.PDFLib;
+        const pdfDoc = await PDFDocument.create();
+        const regular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        const [teacherBytes, principalBytes, stampBytes] = await Promise.all(
+          ["./teacher_signature.png", "./principal_signature.png", "./school_stamp.png"].map(async (url) => {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Could not load report artwork: ${url}`);
+            return new Uint8Array(await response.arrayBuffer());
+          })
+        );
+        const teacherImage = await pdfDoc.embedPng(teacherBytes);
+        const principalImage = await pdfDoc.embedPng(principalBytes);
+        const stampImage = await pdfDoc.embedPng(stampBytes);
+        const pageWidth = 595.28;
+        const pageHeight = 841.89;
+        const margin = 38;
+        const contentWidth = pageWidth - margin * 2;
+        const ink = rgb(0.12, 0.23, 0.37);
+        const muted = rgb(0.35, 0.4, 0.47);
+        const pale = rgb(0.96, 0.97, 0.98);
+        let page;
+        let cursorY;
+        const addPage = () => {
+          page = pdfDoc.addPage([pageWidth, pageHeight]);
+          cursorY = pageHeight - margin;
+        };
+        const ensureRoom = (height) => {
+          if (cursorY - height < 58) addPage();
+        };
+        const cleanText = (value) => String(value == null ? "" : value)
+          .normalize("NFKD")
+          .replace(/[\u2013\u2014]/g, "-")
+          .replace(/[^\x20-\x7E]/g, "");
+        const fitText = (value, font, size, maxWidth) => {
+          let text = cleanText(value);
+          while (text && font.widthOfTextAtSize(text, size) > maxWidth) text = `${text.slice(0, -2)}...`;
+          return text;
+        };
+        const drawParagraph = (text, options = {}) => {
+          const size = options.size || 9;
+          const font = options.bold ? bold : regular;
+          const color = options.color || muted;
+          const maxWidth = options.width || contentWidth;
+          const lineHeight = options.lineHeight || size + 4;
+          const words = cleanText(text).split(/\s+/);
+          let line = "";
+          words.forEach((word) => {
+            const next = line ? `${line} ${word}` : word;
+            if (line && font.widthOfTextAtSize(next, size) > maxWidth) {
+              ensureRoom(lineHeight);
+              page.drawText(line, { x: options.x || margin, y: cursorY, size, font, color });
+              cursorY -= lineHeight;
+              line = word;
+            } else {
+              line = next;
+            }
+          });
+          if (line) {
+            ensureRoom(lineHeight);
+            page.drawText(line, { x: options.x || margin, y: cursorY, size, font, color });
+            cursorY -= lineHeight;
+          }
+        };
+        const drawSection = (title) => {
+          ensureRoom(27);
+          cursorY -= 5;
+          page.drawText(title.toUpperCase(), { x: margin, y: cursorY, size: 9, font: bold, color: ink });
+          page.drawLine({ start: { x: margin, y: cursorY - 4 }, end: { x: pageWidth - margin, y: cursorY - 4 }, thickness: 0.7, color: rgb(0.82, 0.86, 0.9) });
+          cursorY -= 18;
+        };
+        const drawTable = (headers, rows, widths) => {
+          const drawRow = (cells, header = false, index = 0) => {
+            const rowHeight = 20;
+            ensureRoom(rowHeight);
+            const y = cursorY - rowHeight + 4;
+            page.drawRectangle({
+              x: margin,
+              y: cursorY - 3,
+              width: contentWidth,
+              height: rowHeight,
+              color: header ? ink : index % 2 ? pale : rgb(1, 1, 1)
+            });
+            let x = margin + 5;
+            cells.forEach((cell, cellIndex) => {
+              const font = header ? bold : regular;
+              const size = header ? 7.5 : 7.4;
+              page.drawText(fitText(cell, font, size, widths[cellIndex] - 9), {
+                x,
+                y,
+                size,
+                font,
+                color: header ? rgb(1, 1, 1) : muted
+              });
+              x += widths[cellIndex];
+            });
+            cursorY -= rowHeight;
+          };
+          drawRow(headers, true);
+          (rows.length ? rows : [["-", "No records available", "-", "-", "-"]]).forEach((row, index) => drawRow(row, false, index));
+          cursorY -= 5;
+        };
+        const drawSummary = (items) => {
+          ensureRoom(55);
+          const gap = 7;
+          const cardWidth = (contentWidth - gap * (items.length - 1)) / items.length;
+          items.forEach((item, index) => {
+            const x = margin + index * (cardWidth + gap);
+            page.drawRectangle({ x, y: cursorY - 43, width: cardWidth, height: 43, color: pale, borderColor: rgb(0.87, 0.89, 0.92), borderWidth: 0.6 });
+            page.drawText(fitText(item.label, regular, 7, cardWidth - 10), { x: x + 5, y: cursorY - 13, size: 7, font: regular, color: muted });
+            page.drawText(fitText(item.value, bold, 10, cardWidth - 10), { x: x + 5, y: cursorY - 29, size: 10, font: bold, color: ink });
+          });
+          cursorY -= 52;
+        };
+        reportDownloadData.forEach((report) => {
+          addPage();
+          page.drawText("CARISSA PRIMARY SCHOOL", { x: margin, y: cursorY, size: 17, font: bold, color: ink });
+          cursorY -= 14;
+          page.drawText("23 Hofmeyer Street, Witbank 1035  |  P.O. Box 430, Witbank 1035  |  Mpumalanga", { x: margin, y: cursorY, size: 7.5, font: regular, color: muted });
+          cursorY -= 15;
+          page.drawLine({ start: { x: margin, y: cursorY }, end: { x: pageWidth - margin, y: cursorY }, thickness: 1.4, color: ink });
+          cursorY -= 21;
+          page.drawText("LEARNER PROGRESS REPORT", { x: margin, y: cursorY, size: 12, font: bold, color: ink });
+          cursorY -= 15;
+          page.drawText("Reading and Computer Skills (ICT) | Term 4 | 2026", { x: margin, y: cursorY, size: 9, font: regular, color: muted });
+          cursorY -= 21;
+          page.drawText(`Class: ${cleanText(report.className)}`, { x: margin, y: cursorY, size: 9, font: bold, color: ink });
+          page.drawText(`Learner: ${cleanText(report.name)}`, { x: margin + 150, y: cursorY, size: 9, font: bold, color: ink });
+          page.drawText(`Report date: ${new Date().toLocaleDateString("en-ZA")}`, { x: margin + 365, y: cursorY, size: 8, font: regular, color: muted });
+          cursorY -= 20;
+          drawSummary([
+            { label: "Reading speed", value: report.readingWpm == null ? "-" : `${report.readingWpm} WPM` },
+            { label: "Reading age / status", value: `${report.readingAge} / ${report.readingStatus}` },
+            { label: "Activities completed", value: report.activities.filter((activity) => activity.status.toLowerCase() === "completed").length },
+            { label: "Typing", value: `${report.typingWpm} WPM / ${report.typingAccuracy}%` }
+          ]);
+          drawSection("1-Minute Reading");
+          drawTable(
+            ["Term", "Words per minute", "Reading age", "Status", "Date assessed"],
+            report.readingHistory.map((row) => [row.term, `${row.wpm} WPM`, row.age, row.status, row.date]),
+            [55, 100, 85, 100, contentWidth - 340]
+          );
+          drawParagraph(report.readingComment, { size: 8.5, color: ink });
+          drawSection("eLearning Typing");
+          drawSummary([
+            { label: "Average WPM", value: `${report.typingWpm} WPM` },
+            { label: "Average accuracy", value: `${report.typingAccuracy}%` },
+            { label: "Grade target", value: `${report.typingTargetWpm} WPM / ${report.typingTargetAccuracy}%` }
+          ]);
+          drawSection("Activities (all terms)");
+          drawTable(
+            ["Term", "Activity", "Status", "Score", "Date"],
+            report.activities.map((activity) => [activity.term, activity.title, activity.status, activity.score == null ? "-" : `${activity.score}/10`, dateLabel(activity.when)]),
+            [50, 225, 80, 65, contentWidth - 420]
+          );
+          drawSection("Computer Activities: Typing (all terms)");
+          drawTable(
+            ["Term", "Typing activity", "WPM", "Accuracy", "Date"],
+            report.typingActivities.map((activity) => [activity.term, activity.title, activity.wpm == null ? "-" : `${activity.wpm} WPM`, activity.accuracy == null ? "-" : `${activity.accuracy}%`, dateLabel(activity.when)]),
+            [50, 225, 75, 80, contentWidth - 430]
+          );
+          drawParagraph(report.typingComment, { size: 8.5, color: ink });
+          if (cursorY < 225) addPage();
+          const issuedY = 190;
+          page.drawText(`Date issued: ${new Date().toLocaleDateString("en-ZA")}`, { x: margin, y: issuedY, size: 8.5, font: bold, color: ink });
+          const sigWidth = 135;
+          const teacherSize = teacherImage.scaleToFit(sigWidth, 43);
+          const principalSize = principalImage.scaleToFit(sigWidth, 43);
+          page.drawImage(teacherImage, { x: margin + (sigWidth - teacherSize.width) / 2, y: 132, width: teacherSize.width, height: teacherSize.height });
+          page.drawImage(principalImage, { x: margin + 152 + (sigWidth - principalSize.width) / 2, y: 132, width: principalSize.width, height: principalSize.height });
+          page.drawLine({ start: { x: margin, y: 127 }, end: { x: margin + sigWidth, y: 127 }, thickness: 0.8, color: ink });
+          page.drawLine({ start: { x: margin + 152, y: 127 }, end: { x: margin + 152 + sigWidth, y: 127 }, thickness: 0.8, color: ink });
+          page.drawText("Ms L Mogajane", { x: margin, y: 112, size: 8.5, font: bold, color: ink });
+          page.drawText("Computer Teacher", { x: margin, y: 100, size: 7.5, font: regular, color: muted });
+          page.drawText("Ms V Sibande", { x: margin + 152, y: 112, size: 8.5, font: bold, color: ink });
+          page.drawText("Principal", { x: margin + 152, y: 100, size: 7.5, font: regular, color: muted });
+          const stampSize = stampImage.scaleToFit(158, 108);
+          page.drawImage(stampImage, { x: pageWidth - margin - stampSize.width, y: 76, width: stampSize.width, height: stampSize.height });
+        });
+        const pdfBytes = await pdfDoc.save();
+        const url = URL.createObjectURL(new Blob([pdfBytes], { type: "application/pdf" }));
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `carissa-grade-${reportGrade}-term-4-reports.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (error) {
+        setReportExportError(error && error.message ? error.message : "Could not create the reports PDF.");
+      } finally {
+        setReportExporting(false);
+      }
+    };
     const reportPrintStyle = React.createElement("style", null,
-      `@media print { body * { visibility: hidden; } #learner-report-print-area, #learner-report-print-area * { visibility: visible; } #learner-report-print-area { position: absolute; left: 0; top: 0; width: 100%; } .learner-report-card { page-break-after: always; box-shadow: none !important; border: 1px solid #cbd5e1 !important; } .learner-report-card:last-child { page-break-after: auto; } .no-print { display: none !important; } }`);
-    const reportToolbar = React.createElement("div", { className: "no-print", style: { display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "end", marginBottom: "14px" } },
-      React.createElement("div", null,
-        React.createElement("label", { style: { display: "block", fontSize: "12px", color: "#64748b", marginBottom: "4px", fontWeight: 600 } }, "Grade"),
-        React.createElement("select", { value: reportGrade, onChange: (e) => setReportGrade(e.target.value), style: { padding: "8px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "14px", background: "#fff", cursor: "pointer" } },
-          [1, 2, 3, 4, 5, 6, 7, 8].map((g) => React.createElement("option", { key: g, value: String(g) }, `Grade ${g}`)))),
-      React.createElement("button", { type: "button", onClick: () => { setPrintOnly(null); setTimeout(() => window.print(), 100); }, style: { padding: "9px 18px", borderRadius: "10px", border: "none", background: "linear-gradient(135deg,#667eea,#764ba2)", color: "#fff", fontWeight: 800, cursor: "pointer", fontSize: "14px" } }, "\u{1F5A8}\uFE0F Print All Reports"),
-      React.createElement("div", { style: { alignSelf: "center", color: "#64748b", fontSize: "13px" } }, `${reportRows.length} learner${reportRows.length === 1 ? "" : "s"} in Grade ${reportGrade}`));
+      `@page { size: A4; margin: 10mm; } @media print { body * { visibility: hidden; } #learner-report-print-area, #learner-report-print-area * { visibility: visible; } #learner-report-print-area { position: absolute; left: 0; top: 0; width: 100%; } .learner-report-card { page-break-after: always; break-after: page; box-shadow: none !important; border: 1px solid #cbd5e1 !important; } .learner-report-card:last-child { page-break-after: auto; break-after: auto; } .no-print { display: none !important; } }`);
+    const reportToolbar = React.createElement("div", { className: "no-print", style: { ...card, marginBottom: "14px" } },
+      React.createElement("h3", { style: ctitle }, "\u{1F4C4} Term 4 Reports"),
+      React.createElement("p", { style: { color: "#64748b", fontSize: "13px", margin: "0 0 14px" } }, "Select a grade to view and download reports for all learners in that grade."),
+      React.createElement("div", { style: { display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "end" } },
+        React.createElement("div", null,
+          React.createElement("label", { style: { display: "block", fontSize: "12px", color: "#64748b", marginBottom: "4px", fontWeight: 600 } }, "Grade"),
+          React.createElement("select", { value: reportGrade, onChange: (e) => setReportGrade(e.target.value), style: { padding: "8px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "14px", background: "#fff", cursor: "pointer" } },
+            [1, 2, 3, 4, 5, 6, 7, 8].map((g) => React.createElement("option", { key: g, value: String(g) }, `Grade ${g}`)))),
+        React.createElement("button", { type: "button", onClick: downloadAllReports, disabled: reportExporting || reportDownloadData.length === 0, style: { padding: "9px 18px", borderRadius: "10px", border: "none", background: "#0f766e", color: "#fff", fontWeight: 800, cursor: reportExporting || !reportDownloadData.length ? "not-allowed" : "pointer", opacity: reportExporting || !reportDownloadData.length ? 0.65 : 1, fontSize: "14px" } }, reportExporting ? "Preparing PDF..." : "Download All Reports (PDF)"),
+        React.createElement("button", { type: "button", onClick: () => { setPrintOnly(null); setTimeout(() => window.print(), 100); }, style: { padding: "9px 18px", borderRadius: "10px", border: "1px solid #cbd5e1", background: "#fff", color: "#334155", fontWeight: 800, cursor: "pointer", fontSize: "14px" } }, "Print All Reports"),
+      React.createElement("div", { style: { alignSelf: "center", color: "#64748b", fontSize: "13px" } }, `${reportRows.length} learner${reportRows.length === 1 ? "" : "s"} in Grade ${reportGrade}`)));
+    const reportExportMessage = reportExportError
+      ? React.createElement("div", { role: "alert", style: { color: "#b91c1c", fontSize: "13px", marginTop: "10px" } }, reportExportError)
+      : null;
     const reportPanel = React.createElement("div", null,
       reportPrintStyle,
       reportToolbar,
+      reportExportMessage,
       React.createElement("div", { id: "learner-report-print-area" }, printOnly
         ? reportRows.filter((el) => el.key === `report-${printOnly}`)
         : reportRows));
     const historyTabs = React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "12px" } },
-      [["history", "\u{1F464} Learner History"], ["typing", "\u2328 Typing Scores"], ["report", "\u{1F4CB} Term 4 Report"]].map(([key, label]) => React.createElement("button", {
+      [["history", "\u{1F464} Learner History"], ["typing", "\u2328 Typing Scores"]].map(([key, label]) => React.createElement("button", {
         key,
         type: "button",
         onClick: () => setHistoryView(key),
@@ -6741,7 +7074,9 @@ ${trimmedReviewNote}` : noteHeader;
           cursor: "pointer"
         }
       }, label)));
-    return React.createElement("div", null, historyTabs, historyView === "typing" ? typingPanel : historyView === "report" ? React.createElement(React.Fragment, null, headerCard, reportPanel) : React.createElement(React.Fragment, null, headerCard, body));
+    return showTerm4Reports
+      ? React.createElement("div", null, reportPanel)
+      : React.createElement("div", null, historyTabs, historyView === "typing" ? typingPanel : React.createElement(React.Fragment, null, headerCard, body));
   }
   function ReadingAssessmentTab({ reading, setReading, initialClass, lockClass, initialTerm }) {
     const [selClass, setSelClass] = useState(initialClass || "");
@@ -7598,7 +7933,7 @@ This cannot be undone.`)) return;
     <div class="sig-row">
       <div>
         <div class="sig-line"></div>
-        <div class="sig-label">Principal signature: Ms V.N Sibande</div>
+        <div class="sig-label">Head of Discipline: R. Mashinini</div>
       </div>
       <div>
         <div class="sig-line"></div>
@@ -8540,28 +8875,78 @@ ${sectionsHtml}
       }
     }, [subTab, unseenDiscipline.length, markDisciplineSeen]);
     if (loading) return /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", padding: "80px", color: "#667eea", fontSize: "18px" } }, "Loading dashboard...");
-    return /* @__PURE__ */ React.createElement(React.Fragment, null, onBack && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: "10px" } }, /* @__PURE__ */ React.createElement("button", { onClick: onBack, style: { ...sbtn, background: "#6b7280", fontSize: "13px" } }, "\u2190 Back to Teacher Dashboard")), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px", background: "white", padding: "8px", borderRadius: "12px", boxShadow: "0 4px 14px rgba(0,0,0,0.06)" } }, SUBTABS.map(([k, l]) => {
-      const label = k === "discipline" && unseenDiscipline.length ? `${l} (${unseenDiscipline.length} new)` : l;
-      return /* @__PURE__ */ React.createElement("button", { key: k, onClick: () => setSubTab(k), style: { padding: "10px 16px", borderRadius: "8px", border: "none", cursor: "pointer", fontSize: "14px", fontWeight: 600, flex: "1 1 auto", minWidth: "130px", background: subTab === k ? "linear-gradient(135deg,#667eea,#764ba2)" : "transparent", color: subTab === k ? "white" : "#666" } }, label);
-    })), unseenDiscipline.length > 0 && subTab !== "discipline" && /* @__PURE__ */ React.createElement("div", { style: { ...card, marginBottom: "14px", border: "1px solid #fde68a", background: "#fffbeb" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 900, color: "#92400e", fontSize: "16px", marginBottom: "4px" } }, "\u26A0\uFE0F New discipline entries"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "13px", color: "#78350f", lineHeight: 1.55 } }, unseenDiscipline.length, " new discipline ", unseenDiscipline.length === 1 ? "entry has" : "entries have", " been added by teachers.", ((_b = (_a = unseenDiscipline[0]) == null ? void 0 : _a.discipline) == null ? void 0 : _b.learner) && /* @__PURE__ */ React.createElement(React.Fragment, null, " Latest: ", /* @__PURE__ */ React.createElement("strong", null, unseenDiscipline[0].discipline.learner.firstname, " ", unseenDiscipline[0].discipline.learner.surname), " (", unseenDiscipline[0].discipline.learner.class_name || unseenDiscipline[0].row.class_name || "\u2014", ") at ", new Date(unseenDiscipline[0].ts).toLocaleString("en-ZA"), "."))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setSubTab("discipline"), style: { ...sbtn, background: "#d97706", fontSize: "13px" } }, "Open Discipline"), /* @__PURE__ */ React.createElement("button", { onClick: markDisciplineSeen, style: { ...sbtn, background: "#6b7280", fontSize: "13px" } }, "Mark as seen")))), subTab === "overview" && /* @__PURE__ */ React.createElement(OverviewTab, { interventions, resources, assignments, assessments }), subTab === "interventions" && /* @__PURE__ */ React.createElement(InterventionsAdminTab, { interventions, setInterventions }), subTab === "resources" && /* @__PURE__ */ React.createElement(ResourcesTab, { resources, setResources }), subTab === "assignments" && /* @__PURE__ */ React.createElement(AssignmentsTab, { interventions, resources, assignments, setAssignments }), subTab === "progress" && /* @__PURE__ */ React.createElement(ProgressTab, { assignments, setAssignments, resources }), subTab === "assessments" && /* @__PURE__ */ React.createElement(
-      AssessmentsTab,
-      {
-        assessments,
-        setAssessments,
-        assignments,
-        learnerResults,
-        resources,
-        exportReport: exportAssessmentReport,
-        exportClassSummary,
-        onProjectTest: (phase) => setProjectMode({ phase })
-      }
-    ), subTab === "sasams_submits" && /* @__PURE__ */ React.createElement(SasamsAdminSubmissionsTab, { adminUser }), subTab === "staff_assessments" && /* @__PURE__ */ React.createElement(StaffAssessmentsTab, null), subTab === "reading" && /* @__PURE__ */ React.createElement(ReadingResultsTab, { reading }), subTab === "discipline" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(WhatsappQueuePanel, null), /* @__PURE__ */ React.createElement(DisciplineAdminTab, { adminUser })), subTab === "learners" && /* @__PURE__ */ React.createElement(LearnersAdminTab, { overrides, setOverrides, setAssessments }), subTab === "parents_contacts" && /* @__PURE__ */ React.createElement(ParentsContactsTab, null), subTab === "moderation" && /* @__PURE__ */ React.createElement(ModerationToolsTab, { adminAccess: true }), subTab === "registrations" && /* @__PURE__ */ React.createElement(TeacherRegistrationsTab, null), subTab === "teacher_audit" && /* @__PURE__ */ React.createElement(TeacherAuditTab, { events: auditEvents, setEvents: setAuditEvents }), subTab === "assistant" && /* @__PURE__ */ React.createElement(TraeAssistantTab, null), subTab === "email" && /* @__PURE__ */ React.createElement(EmailAdminTab, null), subTab === "chats" && /* @__PURE__ */ React.createElement(ChatsAdminTab, { chats, setChats }), subTab === "audit" && /* @__PURE__ */ React.createElement(AuditAdminTab, null), projectMode && /* @__PURE__ */ React.createElement(
-      ProjectTestView,
-      {
+    const activeAdminContent = subTab === "overview"
+      ? React.createElement(OverviewTab, { interventions, resources, assignments, assessments })
+      : subTab === "interventions"
+        ? React.createElement(InterventionsAdminTab, { interventions, setInterventions })
+        : subTab === "resources"
+          ? React.createElement(ResourcesTab, { resources, setResources })
+          : subTab === "assignments"
+            ? React.createElement(AssignmentsTab, { interventions, resources, assignments, setAssignments })
+            : subTab === "progress"
+              ? React.createElement(ProgressTab, { assignments, setAssignments, resources })
+              : subTab === "assessments"
+                ? React.createElement(AssessmentsTab, {
+                    assessments,
+                    setAssessments,
+                    assignments,
+                    learnerResults,
+                    resources,
+                    exportReport: exportAssessmentReport,
+                    exportClassSummary,
+                    onProjectTest: (phase) => setProjectMode({ phase })
+                  })
+                : subTab === "term4_reports"
+                  ? React.createElement(LearnerHistoryTab, { reading, learnerResults, assignments, assessments, resources, selClass: "", showTerm4Reports: true })
+                  : subTab === "sasams_submits"
+                    ? React.createElement(SasamsAdminSubmissionsTab, { adminUser })
+                    : subTab === "staff_assessments"
+                      ? React.createElement(StaffAssessmentsTab, null)
+                      : subTab === "reading"
+                        ? React.createElement(ReadingResultsTab, { reading })
+                        : subTab === "discipline"
+                          ? React.createElement(React.Fragment, null, React.createElement(WhatsappQueuePanel, null), React.createElement(DisciplineAdminTab, { adminUser }))
+                          : subTab === "learners"
+                            ? React.createElement(LearnersAdminTab, { overrides, setOverrides, setAssessments })
+                            : subTab === "parents_contacts"
+                              ? React.createElement(ParentsContactsTab, null)
+                              : subTab === "moderation"
+                                ? React.createElement(ModerationToolsTab, { adminAccess: true })
+                                : subTab === "registrations"
+                                  ? React.createElement(TeacherRegistrationsTab, null)
+                                  : subTab === "teacher_audit"
+                                    ? React.createElement(TeacherAuditTab, { events: auditEvents, setEvents: setAuditEvents })
+                                    : subTab === "assistant"
+                                      ? React.createElement(TraeAssistantTab, null)
+                                      : subTab === "email"
+                                        ? React.createElement(EmailAdminTab, null)
+                                        : subTab === "chats"
+                                          ? React.createElement(ChatsAdminTab, { chats, setChats })
+                                          : subTab === "audit"
+                                            ? React.createElement(AuditAdminTab, null)
+                                            : null;
+    return React.createElement(React.Fragment, null,
+      onBack && React.createElement("div", { style: { display: "flex", justifyContent: "flex-end", marginBottom: "10px" } },
+        React.createElement("button", { onClick: onBack, style: { ...sbtn, background: "#6b7280", fontSize: "13px" } }, "\u2190 Back to Teacher Dashboard")),
+      React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px", background: "white", padding: "8px", borderRadius: "12px", boxShadow: "0 4px 14px rgba(0,0,0,0.06)" } },
+        SUBTABS.map(([k, l]) => {
+          const label = k === "discipline" && unseenDiscipline.length ? `${l} (${unseenDiscipline.length} new)` : l;
+          return React.createElement("button", { key: k, onClick: () => setSubTab(k), style: { padding: "10px 16px", borderRadius: "8px", border: "none", cursor: "pointer", fontSize: "14px", fontWeight: 600, flex: "1 1 auto", minWidth: "130px", background: subTab === k ? "linear-gradient(135deg,#667eea,#764ba2)" : "transparent", color: subTab === k ? "white" : "#666" } }, label);
+        })),
+      unseenDiscipline.length > 0 && subTab !== "discipline" && React.createElement("div", { style: { ...card, marginBottom: "14px", border: "1px solid #fde68a", background: "#fffbeb" } },
+        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", flexWrap: "wrap" } },
+          React.createElement("div", null,
+            React.createElement("div", { style: { fontWeight: 900, color: "#92400e", fontSize: "16px", marginBottom: "4px" } }, "\u26A0\uFE0F New discipline entries"),
+            React.createElement("div", { style: { fontSize: "13px", color: "#78350f", lineHeight: 1.55 } },
+              unseenDiscipline.length, " new discipline ", unseenDiscipline.length === 1 ? "entry has" : "entries have", " been added by teachers.")),
+          React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap" } },
+            React.createElement("button", { onClick: () => setSubTab("discipline"), style: { ...sbtn, background: "#d97706", fontSize: "13px" } }, "Open Discipline"),
+            React.createElement("button", { onClick: markDisciplineSeen, style: { ...sbtn, background: "#6b7280", fontSize: "13px" } }, "Mark as seen")))),
+      activeAdminContent,
+      projectMode && React.createElement(ProjectTestView, {
         initialPhase: projectMode.phase,
         onClose: () => setProjectMode(null)
-      }
-    ));
+      }));
   }
   function CoordinatorView({ onEditName, onDelete }) {
     const [data, setData] = useState([]);
