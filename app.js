@@ -6250,7 +6250,7 @@ ${trimmedReviewNote}` : noteHeader;
       };
     }).sort((x, y) => new Date(y.when || 0) - new Date(x.when || 0));
     const readingRows = READING_TERMS.map((term) => ({ term, rec: readingForTerm(term) }));
-    const assessmentRows = ["Term 2", "Term 3", "Term 4"].map((term) => ({ term, rec: assessmentForTerm(term) }));
+    const assessmentRows = ["Term 4"].map((term) => ({ term, rec: assessmentForTerm(term) }));
     const completedCount = activityRows.filter((a) => a.status === "completed").length;
     const latestReading = readingRows.filter((x) => x.rec).slice().sort((a, b) => new Date(b.rec.date_assessed || b.rec.created_at || 0) - new Date(a.rec.date_assessed || a.rec.created_at || 0))[0] || null;
     const latestReadingAge = latestReading ? readingAgeLabelForRecord(latestReading.rec) : null;
@@ -6339,7 +6339,7 @@ ${trimmedReviewNote}` : noteHeader;
       if (pct < 70) return 4;
       return 5;
     };
-    const typingCompleted = !selected ? [] : (assignments || []).filter((a) => matchesTyping(a) && resTypeOf(a.resource_id) === "typing").map((a) => {
+    let typingCompleted = !selected ? [] : (assignments || []).filter((a) => matchesTyping(a) && resTypeOf(a.resource_id) === "typing").map((a) => {
       const result = resultByAssignment.get(String(a.id)) || null;
       const notes = result && result.learner_notes ? String(result.learner_notes) : "";
       return {
@@ -6352,6 +6352,27 @@ ${trimmedReviewNote}` : noteHeader;
         when: result ? (result.submitted_at || result.updated_at) : (a.updated_at || a.created_at)
       };
     }).filter((t) => t.score != null);
+    // Grade 1 fallback: pull typing WPM/accuracy from assessment comments when no eLearning activity results exist
+    const isGrade1Class = (() => { const _m = String(pickClass || "").match(/Grade\s+(\d+)/i); return _m ? Number(_m[1]) === 1 : false; })();
+    if (!typingCompleted.length && isGrade1Class && selected) {
+      typingCompleted = (assessments || []).filter((r) => String(r.class_name || "") === pickClass && matches(r)).map((r) => {
+        const comments = String(r.comments || "");
+        const wpmMatch = comments.match(/WPM\s*[:=]\s*(\d+(?:\.\d+)?)/i);
+        const accMatch = comments.match(/(?:ACC|Accuracy)\s*[:=]\s*(\d+(?:\.\d+)?)/i);
+        if (!wpmMatch && !accMatch) return null;
+        const wpm = wpmMatch ? Number(wpmMatch[1]) : null;
+        const acc = accMatch ? Number(accMatch[1]) : null;
+        return {
+          title: "Typing assessment",
+          wpm: Number.isFinite(wpm) && wpm >= 0 ? wpm : null,
+          accuracy: Number.isFinite(acc) && acc >= 0 && acc <= 100 ? acc : null,
+          timeSec: null,
+          score: acc != null ? acc : (wpm != null ? wpm : null),
+          maxScore: 100,
+          when: r.date_assessed || r.updated_at || r.created_at
+        };
+      }).filter(Boolean);
+    }
     const avg = (arr) => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null;
     const typAvgWpm = avg(typingCompleted.map((t) => t.wpm).filter((v) => Number.isFinite(v) && v > 0));
     const typAvgAcc = avg(typingCompleted.map((t) => t.accuracy).filter((v) => Number.isFinite(v) && v >= 0 && v <= 100));
@@ -6384,11 +6405,11 @@ ${trimmedReviewNote}` : noteHeader;
     const learnerCol = React.createElement("div", { style: { minWidth: "260px", flex: "1 1 260px" } }, React.createElement("label", { style: labelStyle }, "Learner"), learnerSelect);
     const picker = React.createElement("div", { style: { display: "flex", gap: "14px", flexWrap: "wrap", alignItems: "flex-end" } }, classCol, learnerCol);
     const headerCard = React.createElement("div", { style: card }, React.createElement("h3", { style: ctitle }, "\u{1F464} Learner History"), React.createElement("p", { style: { color: "#666", fontSize: "13px", marginBottom: "16px" } }, "Pick a learner to see every 1-minute reading score, assessment mark, and activity they have completed \u2014 across all terms."), picker);
-    const summaryGrid = React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: "10px", marginBottom: "16px" } }, sumCard("Latest reading", latestReading && latestReading.rec.words_correct != null ? `${latestReading.rec.words_correct} wpm` : "\u2014", latestReading ? `${latestReading.term}${readingTargetWpm != null ? ` \u00B7 target ${readingTargetWpm} wpm` : ""}` : "Not assessed"), sumCard("Reading age", latestReadingAge || "\u2014", latestStatus && targetYears != null ? `Target ${targetYears}y` : ""), sumCard("Reading status", latestStatus ? latestStatus.label : "\u2014", "", latestStatus ? latestStatus.fg : "#94a3b8"), sumCard("Activities done", `${completedCount} / ${activityRows.length}`, activityRows.length ? "completed" : "none assigned"), sumCard("Assessment average", assessmentAvg != null ? `${assessmentAvg} / 20` : "\u2014", `${assessmentRows.filter((x) => x.rec).length} term${assessmentRows.filter((x) => x.rec).length === 1 ? "" : "s"} recorded`, "#0f766e"));
+    const summaryGrid = React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: "10px", marginBottom: "16px" } }, sumCard("Latest reading", latestReading && latestReading.rec.words_correct != null ? `${latestReading.rec.words_correct} wpm` : "\u2014", latestReading ? `${latestReading.term}${readingTargetWpm != null ? ` \u00B7 target ${readingTargetWpm} wpm` : ""}` : "Not assessed"), sumCard("Reading age", latestReadingAge || "\u2014", latestStatus && targetYears != null ? `Target ${targetYears}y` : ""), sumCard("Reading status", latestStatus ? latestStatus.label : "\u2014", "", latestStatus ? latestStatus.fg : "#94a3b8"), sumCard("Activities done", `${completedCount} / ${activityRows.length}`, activityRows.length ? "completed" : "none assigned"), sumCard("Typing average", assessmentAvg != null ? `${assessmentAvg} / 20` : "\u2014", `${assessmentRows.filter((x) => x.rec).length} term${assessmentRows.filter((x) => x.rec).length === 1 ? "" : "s"} recorded`, "#0f766e"));
     const readingChart = readingPoints.filter((p) => p.y != null).length > 1 ? React.createElement("div", { style: { marginTop: "16px" } }, React.createElement(LineChart, { series: [{ label: "Words per minute", color: "#667eea", width: 3, radius: 5, points: readingPoints }], xLabels: READING_TERMS, height: 240 })) : null;
     const readingFeedback = readingMotivation ? React.createElement("div", { style: { marginTop: "14px", padding: "12px 14px", borderRadius: "10px", background: "#ecfdf5", border: "1px solid #a7f3d0", color: "#065f46", fontSize: "13px", lineHeight: 1.5 } }, readingMotivation) : null;
     const readingPanel = React.createElement("div", { style: { ...card, padding: "18px 20px" } }, React.createElement("h4", { style: { margin: "0 0 12px", color: "#334155", fontSize: "15px" } }, "\u{1F4D6} 1-Minute Reading \u2014 all terms"), readingTargetWpm != null ? React.createElement("p", { style: { color: "#64748b", fontSize: "13px", marginBottom: "10px" } }, `Desired reading speed for ${pickClass}: `, React.createElement("strong", null, `${readingTargetWpm} WPM`), ".") : null, !readingRows.some((x) => x.rec) ? empty("No reading assessments recorded for this learner yet.") : buildTable(["Term", "Words / min", "Reading age", "Status", "Date assessed"], readingBody), readingChart, readingFeedback);
-    const assessmentPanel = React.createElement("div", { style: { ...card, padding: "18px 20px" } }, React.createElement("h4", { style: { margin: "0 0 12px", color: "#334155", fontSize: "15px" } }, "\u{1F4DD} Assessments \u2014 all terms"), !assessmentRows.some((x) => x.rec) ? empty("No assessment marks recorded for this learner yet.") : buildTable(["Term", "Mark", "Percentage", "Date"], assessmentBody));
+    const assessmentPanel = React.createElement("div", { style: { ...card, padding: "18px 20px" } }, React.createElement("h4", { style: { margin: "0 0 12px", color: "#334155", fontSize: "15px" } }, "\u2328 eLearning Typing"), !assessmentRows.some((x) => x.rec) ? empty("No eLearning typing marks recorded for this learner yet.") : buildTable(["Term", "Mark", "Percentage", "Date"], assessmentBody));
     const activityPanel = React.createElement("div", { style: { ...card, padding: "18px 20px" } }, React.createElement("h4", { style: { margin: "0 0 12px", color: "#334155", fontSize: "15px" } }, "\u{1F3AE} Activities \u2014 all terms"), activityRows.length === 0 ? empty("No activities assigned to this learner yet.") : buildTable(["Activity", "Type", "Status", "Score", "Date"], activityBody));
     const typingSummaryGrid = React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: "10px", marginTop: "12px" } },
       sumCard("Average score", typAvgScore == null ? "\u2014" : `${Math.round(typAvgScore)} / 100`, `${typingCompleted.length} term${typingCompleted.length === 1 ? "" : "s"}`, "#0f766e"),
@@ -6435,7 +6456,7 @@ ${trimmedReviewNote}` : noteHeader;
           ? `Averages across ${tsqAttempts.length} completed attempt${tsqAttempts.length === 1 ? "" : "s"} \u2014 scored against the ${typingTargets.gradeLabel} target of ${typingTargets.wpmTarget} WPM and ${typingTargets.accTarget}% accuracy.`
           : `No Typing Speed Quest attempt has been recorded for this learner yet. The ${typingTargets.gradeLabel} target is ${typingTargets.wpmTarget} WPM and ${typingTargets.accTarget}% accuracy.`),
       tsqAttempts.length === 0 ? empty("No Typing Speed Quest scores recorded for this learner yet.") : tsqGrid);
-    const body = selected ? React.createElement(React.Fragment, null, summaryGrid, readingPanel, assessmentPanel, activityPanel, typingSummaryPanel, typingQuestPanel) : React.createElement("div", { style: card }, React.createElement("p", { style: { color: "#999", textAlign: "center", padding: "24px" } }, "Select a learner above to view their full history."));
+    const body = selected ? React.createElement(React.Fragment, null, summaryGrid, readingPanel, assessmentPanel, ...(isGrade1Class ? [] : [activityPanel]), typingSummaryPanel) : React.createElement("div", { style: card }, React.createElement("p", { style: { color: "#999", textAlign: "center", padding: "24px" } }, "Select a learner above to view their full history."));
     const typingStatsByName = new Map();
     const typingLearners = typingClasses.flatMap((className) => (CLASS_DATA[className] || []).map((learner) => {
       const row = {
