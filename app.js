@@ -6389,7 +6389,44 @@ ${trimmedReviewNote}` : noteHeader;
       sumCard("Grade score", typOverall == null ? "\u2014" : `${typOverall} / 5`, `${typingTargets.gradeLabel} standard`, typOverall != null && typOverall >= 3.5 ? "#15803d" : typOverall != null ? "#b45309" : "#94a3b8"));
     const typingMotivationEl = typingMotivation ? React.createElement("div", { style: { marginTop: "14px", padding: "12px 14px", borderRadius: "10px", background: "#eef2ff", border: "1px solid #c7d2fe", color: "#3730a3", fontSize: "13px", lineHeight: 1.5 } }, typingMotivation) : null;
     const typingSummaryPanel = React.createElement("div", { style: { ...card, padding: "18px 20px" } }, React.createElement("h4", { style: { margin: "0 0 4px", color: "#334155", fontSize: "15px" } }, "\u2328 Computer Activities \u2014 Typing (all terms)"), React.createElement("p", { style: { color: "#64748b", fontSize: "13px", marginBottom: "4px" } }, `Scored against the ${typingTargets.gradeLabel} typing requirement of ${typingTargets.wpmTarget} WPM and ${typingTargets.accTarget}% accuracy.`), typingSummaryGrid, typingMotivationEl);
-    const body = selected ? React.createElement(React.Fragment, null, summaryGrid, readingPanel, assessmentPanel, activityPanel, typingSummaryPanel) : React.createElement("div", { style: card }, React.createElement("p", { style: { color: "#999", textAlign: "center", padding: "24px" } }, "Select a learner above to view their full history."));
+    const isTypingSpeedQuestResource = (rid) => {
+      const r = (resources || []).find((x) => String(x.id) === String(rid));
+      const title = String(r && r.title || "").toLowerCase();
+      const url = String(r && r.url || "").toLowerCase();
+      return title.indexOf("typing speed quest") !== -1 || url.indexOf("typing-speed-quest") !== -1;
+    };
+    const tsqAttempts = !selected ? [] : (assignments || []).filter((a) => a.class_name === pickClass && matches(a) && isTypingSpeedQuestResource(a.resource_id)).map((a) => {
+      const result = resultByAssignment.get(String(a.id)) || null;
+      if (!result) return null;
+      const notes = result.learner_notes ? String(result.learner_notes) : "";
+      const wpm = parseWpmFromNotes2(notes);
+      const accFromNotes = parseAccFromNotes2(notes);
+      const acc = accFromNotes != null ? accFromNotes : result.score != null && Number.isFinite(Number(result.score)) ? Number(result.score) : null;
+      return {
+        wpm: Number.isFinite(wpm) && wpm > 0 ? wpm : null,
+        acc: Number.isFinite(acc) && acc >= 0 && acc <= 100 ? acc : null,
+        when: result.submitted_at || result.updated_at || a.updated_at || a.created_at || null
+      };
+    }).filter(Boolean);
+    const tsqMean = (vals) => vals.length ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length * 10) / 10 : null;
+    const tsqAvgWpm = tsqMean(tsqAttempts.map((t) => t.wpm).filter((v) => Number.isFinite(v)));
+    const tsqAvgAcc = tsqMean(tsqAttempts.map((t) => t.acc).filter((v) => Number.isFinite(v)));
+    const tsqLatest = tsqAttempts.map((t) => t.when).filter(Boolean).sort((a, b) => new Date(b) - new Date(a))[0] || null;
+    const tsqWpmOk = tsqAvgWpm != null && tsqAvgWpm >= typingTargets.wpmTarget;
+    const tsqAccOk = tsqAvgAcc != null && tsqAvgAcc >= typingTargets.accTarget;
+    const tsqGrid = React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: "10px", marginTop: "12px" } },
+      sumCard("Attempts", tsqAttempts.length, "completed rounds", "#1d4ed8"),
+      sumCard("Average WPM", tsqAvgWpm == null ? "\u2014" : `${tsqAvgWpm} WPM`, `target ${typingTargets.wpmTarget} WPM`, tsqWpmOk ? "#15803d" : "#b45309"),
+      sumCard("Average accuracy", tsqAvgAcc == null ? "\u2014" : `${tsqAvgAcc}%`, `target ${typingTargets.accTarget}%`, tsqAccOk ? "#15803d" : "#b45309"),
+      sumCard("Latest attempt", dateLabel(tsqLatest), "", "#475569"));
+    const typingQuestPanel = React.createElement("div", { style: { ...card, padding: "18px 20px" } },
+      React.createElement("h4", { style: { margin: "0 0 4px", color: "#334155", fontSize: "15px" } }, "\u2328 Typing Speed Quest"),
+      React.createElement("p", { style: { color: "#64748b", fontSize: "13px", marginBottom: "4px" } },
+        tsqAttempts.length
+          ? `Averages across ${tsqAttempts.length} completed attempt${tsqAttempts.length === 1 ? "" : "s"} \u2014 scored against the ${typingTargets.gradeLabel} target of ${typingTargets.wpmTarget} WPM and ${typingTargets.accTarget}% accuracy.`
+          : `No Typing Speed Quest attempt has been recorded for this learner yet. The ${typingTargets.gradeLabel} target is ${typingTargets.wpmTarget} WPM and ${typingTargets.accTarget}% accuracy.`),
+      tsqAttempts.length === 0 ? empty("No Typing Speed Quest scores recorded for this learner yet.") : tsqGrid);
+    const body = selected ? React.createElement(React.Fragment, null, summaryGrid, readingPanel, assessmentPanel, activityPanel, typingSummaryPanel, typingQuestPanel) : React.createElement("div", { style: card }, React.createElement("p", { style: { color: "#999", textAlign: "center", padding: "24px" } }, "Select a learner above to view their full history."));
     const typingStatsByName = new Map();
     const typingLearners = typingClasses.flatMap((className) => (CLASS_DATA[className] || []).map((learner) => {
       const row = {
