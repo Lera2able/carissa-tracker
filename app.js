@@ -6705,6 +6705,9 @@ ${trimmedReviewNote}` : noteHeader;
       const readingComment = readOk
         ? `Excellent effort, ${learner.firstname}. Keep reading every day to build fluency and confidence.`
         : `Keep practising, ${learner.firstname}. You are working towards the Grade ${reportGradeNum} reading target, and every practice session helps.`;
+      const typingComment = wpmOk && accOk
+        ? `Well done, ${learner.firstname}. Keep practising to maintain your typing speed and accuracy.`
+        : `Keep going, ${learner.firstname}. You are working towards the Grade ${reportGradeNum} typing target.`;
       reportDownloadData.push({
         key,
         name: `${learner.surname}, ${learner.firstname}`,
@@ -6730,7 +6733,8 @@ ${trimmedReviewNote}` : noteHeader;
         typingWpm: rWpm,
         typingAccuracy: rAcc,
         typingSource,
-        readingComment
+        readingComment,
+        typingComment
       });
       const readingHistoryTable = readingHistoryRows.length
         ? buildTable(["Term", "Words per minute", "Reading age", "Status", "Date assessed"], readingHistoryRows)
@@ -6764,6 +6768,7 @@ ${trimmedReviewNote}` : noteHeader;
           reportStat("Average WPM", rWpm == null ? "\u2014" : `${rWpm} WPM`, `target ${reportTypingTarget.wpmTarget} WPM`, wpmOk ? "#15803d" : "#b45309"),
           reportStat("Average accuracy", rAcc == null ? "\u2014" : `${rAcc}%`, `target ${reportTypingTarget.accTarget}%`, accOk ? "#15803d" : "#b45309"),
           reportStat("Source", typingSource === "target" ? "Grade target" : typingSource === "activity" ? "Typing activity" : "Typing assessment", "", "#0f766e")),
+        React.createElement("div", { style: { fontSize: "12px", color: "#475569", background: "#f8fafc", borderLeft: "3px solid #a78bfa", padding: "8px 10px", marginTop: "7px" } }, typingComment),
         React.createElement("div", { style: { fontSize: "12px", color: "#475569", marginTop: "14px", fontWeight: 700 } }, "Date issued: ", new Date().toLocaleDateString("en-ZA")),
         React.createElement("div", { style: { display: "flex", gap: "12px", justifyContent: "space-between", alignItems: "flex-end", marginTop: "14px", flexWrap: "wrap", breakInside: "avoid" } },
           React.createElement("div", { style: { display: "flex", flex: "1 1 390px", gap: "18px", minWidth: "280px" } },
@@ -6936,6 +6941,7 @@ ${trimmedReviewNote}` : noteHeader;
             { label: "Average accuracy", value: `${report.typingAccuracy}%` },
             { label: "Grade target", value: `${report.typingTargetWpm} WPM / ${report.typingTargetAccuracy}%` }
           ]);
+          drawParagraph(report.typingComment, { size: 8.5, color: ink });
           if (cursorY < 225) addPage();
           const issuedY = 190;
           page.drawText(`Date issued: ${new Date().toLocaleDateString("en-ZA")}`, { x: margin, y: issuedY, size: 8.5, font: bold, color: ink });
