@@ -6702,40 +6702,9 @@ ${trimmedReviewNote}` : noteHeader;
           React.createElement("td", { style: td }, status ? status.label : "\u2014"),
           React.createElement("td", { style: td }, dateLabel(rec.date_assessed || rec.created_at)));
       });
-      const learnerSurnameKeys = [learner.surname, learner._origSurname].map(normalizeReadingName).filter(Boolean);
-      const learnerFirstKeys = [learner.firstname, learner._origFirstname].map(firstNameToken).filter(Boolean);
-      const learnerActivities = (assignments || [])
-        .filter((assignment) =>
-          assignment.class_name === learner._class &&
-          learnerSurnameKeys.indexOf(normalizeReadingName(assignment.surname)) !== -1 &&
-          learnerFirstKeys.indexOf(firstNameToken(assignment.firstname)) !== -1)
-        .map((assignment) => {
-          const result = resultByAssignment.get(String(assignment.id)) || null;
-          const notes = String(result && result.learner_notes || "");
-          const wpmMatch = notes.match(/(?:avg\s*)?wpm\s*[:=]\s*(\d+(?:\.\d+)?)/i);
-          const accuracyMatch = notes.match(/(?:avg\s*)?accuracy\s*[:=]\s*(\d+(?:\.\d+)?)/i);
-          const rawScore = result && result.score != null ? Number(result.score) : NaN;
-          const maxScore = result && result.max_score != null ? Number(result.max_score) : 100;
-          const when = result ? result.submitted_at || result.updated_at : assignment.updated_at || assignment.created_at;
-          return {
-            term: String(assignment.term || (result && result.term) || "").trim() || "\u2014",
-            title: resTitleOf(assignment.resource_id),
-            type: resTypeOf(assignment.resource_id),
-            status: result ? "Completed" : String(assignment.status || "Assigned").replace(/_/g, " "),
-            score: result ? scoreOutOfTenValue(result.score, result.max_score) : null,
-            wpm: wpmMatch ? Number(wpmMatch[1]) : null,
-            accuracy: accuracyMatch ? Number(accuracyMatch[1]) : Number.isFinite(rawScore) && maxScore > 0 ? Math.round(rawScore / maxScore * 100) : null,
-            when
-          };
-        })
-        .sort((a, b) => new Date(a.when || 0) - new Date(b.when || 0));
-      const typingActivityRows = learnerActivities.filter((activity) => activity.type === "typing");
       const readingComment = readOk
         ? `Excellent effort, ${learner.firstname}. Keep reading every day to build fluency and confidence.`
         : `Keep practising, ${learner.firstname}. You are working towards the Grade ${reportGradeNum} reading target, and every practice session helps.`;
-      const typingComment = wpmOk && accOk
-        ? `Well done, ${learner.firstname}. Keep practising to maintain your typing speed and accuracy.`
-        : `Keep going, ${learner.firstname}. You are working towards the Grade ${reportGradeNum} typing target.`;
       reportDownloadData.push({
         key,
         name: `${learner.surname}, ${learner.firstname}`,
@@ -6761,35 +6730,15 @@ ${trimmedReviewNote}` : noteHeader;
         typingWpm: rWpm,
         typingAccuracy: rAcc,
         typingSource,
-        activities: learnerActivities,
-        typingActivities: typingActivityRows,
-        readingComment,
-        typingComment
+        readingComment
       });
-      const activityHistoryRows = learnerActivities.map((activity, index) => React.createElement("tr", { key: `${key}|activity|${index}` },
-        React.createElement("td", { style: td }, activity.term),
-        React.createElement("td", { style: td }, activity.title),
-        React.createElement("td", { style: td }, activity.status),
-        React.createElement("td", { style: td }, activity.score == null ? "\u2014" : `${activity.score}/10`),
-        React.createElement("td", { style: td }, dateLabel(activity.when))));
-      const typingHistoryRows = typingActivityRows.map((activity, index) => React.createElement("tr", { key: `${key}|typing|${index}` },
-        React.createElement("td", { style: td }, activity.term),
-        React.createElement("td", { style: td }, activity.title),
-        React.createElement("td", { style: td }, activity.wpm == null ? "\u2014" : `${activity.wpm} WPM`),
-        React.createElement("td", { style: td }, activity.accuracy == null ? "\u2014" : `${activity.accuracy}%`),
-        React.createElement("td", { style: td }, dateLabel(activity.when))));
       const readingHistoryTable = readingHistoryRows.length
         ? buildTable(["Term", "Words per minute", "Reading age", "Status", "Date assessed"], readingHistoryRows)
         : empty("No reading marks recorded for this learner yet.");
-      const activityHistoryTable = activityHistoryRows.length
-        ? buildTable(["Term", "Activity", "Status", "Score", "Date"], activityHistoryRows)
-        : empty("No activities recorded for this learner yet.");
-      const typingHistoryTable = typingHistoryRows.length
-        ? buildTable(["Term", "Typing activity", "WPM", "Accuracy", "Date"], typingHistoryRows)
-        : empty("No completed typing activities recorded yet.");
       return React.createElement("div", { key: `report-${key}`, className: "learner-report-card", style: reportCardStyle },
-        React.createElement("div", { style: { textAlign: "center", borderBottom: "2px solid #1e3a5f", paddingBottom: "12px", marginBottom: "14px" } },
-          React.createElement("div", null,
+        React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: "18px", borderBottom: "2px solid #1e3a5f", paddingBottom: "12px", marginBottom: "14px" } },
+          React.createElement("img", { src: LOGO, alt: "Carissa Primary School logo", style: { width: "78px", height: "78px", objectFit: "contain", flex: "0 0 auto", borderRadius: "6px" } }),
+          React.createElement("div", { style: { textAlign: "left" } },
             React.createElement("div", { style: { fontSize: "22px", fontWeight: 900, color: "#1e3a5f", letterSpacing: "1px" } }, "CARISSA PRIMARY SCHOOL"),
             React.createElement("div", { style: { fontSize: "12px", color: "#475569", marginTop: "4px", lineHeight: 1.5 } },
               "23 Hofmeyer Street, Witbank 1035", React.createElement("br"),
@@ -6806,7 +6755,6 @@ ${trimmedReviewNote}` : noteHeader;
         React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "12px" } },
           reportStat("Reading", readWpm == null ? "\u2014" : `${readWpm} WPM`, `target ${reportReadingTargetWpm || "\u2014"} WPM`, readOk ? "#15803d" : "#b45309"),
           reportStat("Reading age / status", `${readAge || "\u2014"}${readStatus ? ` / ${readStatus.label}` : ""}`, `target ${reportReadingTargetYears || "\u2014"} years`, "#7c3aed"),
-          reportStat("Activities completed", `${learnerActivities.filter((activity) => activity.status.toLowerCase() === "completed").length}`, "across all terms", "#0f766e"),
           reportStat("Typing", `${rWpm} WPM / ${rAcc}%`, `target ${reportTypingTarget.wpmTarget} WPM / ${reportTypingTarget.accTarget}%`, wpmOk && accOk ? "#15803d" : "#b45309")),
         React.createElement("div", { style: reportSectionTitle }, "1-Minute Reading"),
         readingHistoryTable,
@@ -6816,11 +6764,6 @@ ${trimmedReviewNote}` : noteHeader;
           reportStat("Average WPM", rWpm == null ? "\u2014" : `${rWpm} WPM`, `target ${reportTypingTarget.wpmTarget} WPM`, wpmOk ? "#15803d" : "#b45309"),
           reportStat("Average accuracy", rAcc == null ? "\u2014" : `${rAcc}%`, `target ${reportTypingTarget.accTarget}%`, accOk ? "#15803d" : "#b45309"),
           reportStat("Source", typingSource === "target" ? "Grade target" : typingSource === "activity" ? "Typing activity" : "Typing assessment", "", "#0f766e")),
-        React.createElement("div", { style: { ...reportSectionTitle, marginTop: "12px" } }, "Activities (all terms)"),
-        activityHistoryTable,
-        React.createElement("div", { style: { ...reportSectionTitle, marginTop: "12px" } }, "Computer Activities: Typing (all terms)"),
-        typingHistoryTable,
-        React.createElement("div", { style: { fontSize: "12px", color: "#475569", background: "#f8fafc", borderLeft: "3px solid #a78bfa", padding: "8px 10px", marginTop: "7px" } }, typingComment),
         React.createElement("div", { style: { fontSize: "12px", color: "#475569", marginTop: "14px", fontWeight: 700 } }, "Date issued: ", new Date().toLocaleDateString("en-ZA")),
         React.createElement("div", { style: { display: "flex", gap: "12px", justifyContent: "space-between", alignItems: "flex-end", marginTop: "14px", flexWrap: "wrap", breakInside: "avoid" } },
           React.createElement("div", { style: { display: "flex", flex: "1 1 390px", gap: "18px", minWidth: "280px" } },
@@ -6846,6 +6789,8 @@ ${trimmedReviewNote}` : noteHeader;
         const pdfDoc = await PDFDocument.create();
         const regular = await pdfDoc.embedFont(StandardFonts.Helvetica);
         const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        const logoBytes = Uint8Array.from(atob(LOGO.split(",")[1]), (char) => char.charCodeAt(0));
+        const logoImage = await pdfDoc.embedPng(logoBytes);
         const [teacherBytes, principalBytes, stampBytes] = await Promise.all(
           ["./teacher_signature.png", "./principal_signature.png", "./school_stamp.png"].map(async (url) => {
             const response = await fetch(url);
@@ -6958,12 +6903,13 @@ ${trimmedReviewNote}` : noteHeader;
         };
         reportDownloadData.forEach((report) => {
           addPage();
-          page.drawText("CARISSA PRIMARY SCHOOL", { x: margin, y: cursorY, size: 17, font: bold, color: ink });
-          cursorY -= 14;
-          page.drawText("23 Hofmeyer Street, Witbank 1035  |  P.O. Box 430, Witbank 1035  |  Mpumalanga", { x: margin, y: cursorY, size: 7.5, font: regular, color: muted });
-          cursorY -= 15;
-          page.drawLine({ start: { x: margin, y: cursorY }, end: { x: pageWidth - margin, y: cursorY }, thickness: 1.4, color: ink });
-          cursorY -= 21;
+          const logoSize = logoImage.scaleToFit(66, 66);
+          page.drawImage(logoImage, { x: margin, y: cursorY - 68, width: logoSize.width, height: logoSize.height });
+          page.drawText("CARISSA PRIMARY SCHOOL", { x: margin + 78, y: cursorY - 20, size: 17, font: bold, color: ink });
+          page.drawText("23 Hofmeyer Street, Witbank 1035", { x: margin + 78, y: cursorY - 37, size: 7.5, font: regular, color: muted });
+          page.drawText("P.O. Box 430, Witbank 1035  |  Mpumalanga", { x: margin + 78, y: cursorY - 48, size: 7.5, font: regular, color: muted });
+          page.drawLine({ start: { x: margin, y: cursorY - 68 }, end: { x: pageWidth - margin, y: cursorY - 68 }, thickness: 1.4, color: ink });
+          cursorY -= 89;
           page.drawText("LEARNER PROGRESS REPORT", { x: margin, y: cursorY, size: 12, font: bold, color: ink });
           cursorY -= 15;
           page.drawText("Reading and Computer Skills (ICT) | Term 4 | 2026", { x: margin, y: cursorY, size: 9, font: regular, color: muted });
@@ -6975,7 +6921,6 @@ ${trimmedReviewNote}` : noteHeader;
           drawSummary([
             { label: "Reading speed", value: report.readingWpm == null ? "-" : `${report.readingWpm} WPM` },
             { label: "Reading age / status", value: `${report.readingAge} / ${report.readingStatus}` },
-            { label: "Activities completed", value: report.activities.filter((activity) => activity.status.toLowerCase() === "completed").length },
             { label: "Typing", value: `${report.typingWpm} WPM / ${report.typingAccuracy}%` }
           ]);
           drawSection("1-Minute Reading");
@@ -6991,19 +6936,6 @@ ${trimmedReviewNote}` : noteHeader;
             { label: "Average accuracy", value: `${report.typingAccuracy}%` },
             { label: "Grade target", value: `${report.typingTargetWpm} WPM / ${report.typingTargetAccuracy}%` }
           ]);
-          drawSection("Activities (all terms)");
-          drawTable(
-            ["Term", "Activity", "Status", "Score", "Date"],
-            report.activities.map((activity) => [activity.term, activity.title, activity.status, activity.score == null ? "-" : `${activity.score}/10`, dateLabel(activity.when)]),
-            [50, 225, 80, 65, contentWidth - 420]
-          );
-          drawSection("Computer Activities: Typing (all terms)");
-          drawTable(
-            ["Term", "Typing activity", "WPM", "Accuracy", "Date"],
-            report.typingActivities.map((activity) => [activity.term, activity.title, activity.wpm == null ? "-" : `${activity.wpm} WPM`, activity.accuracy == null ? "-" : `${activity.accuracy}%`, dateLabel(activity.when)]),
-            [50, 225, 75, 80, contentWidth - 430]
-          );
-          drawParagraph(report.typingComment, { size: 8.5, color: ink });
           if (cursorY < 225) addPage();
           const issuedY = 190;
           page.drawText(`Date issued: ${new Date().toLocaleDateString("en-ZA")}`, { x: margin, y: issuedY, size: 8.5, font: bold, color: ink });
