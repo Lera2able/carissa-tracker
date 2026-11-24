@@ -472,6 +472,68 @@ async function supabaseDelete(env, path, params, prefer = "return=representation
   return supabaseRequest(env, "DELETE", path, { params: parsedParams, prefer });
 }
 
+// Uploaded SPIP PDFs are stored in Supabase Storage rather than inside the row's
+// JSON, so large scans (and Chrome "Print to PDF" files) do not bloat the record
+// or the request payload. The record keeps only a lightweight reference.
+const SPIP_BUCKET = "spip-uploads";
+let spipBucketReady = false;
+
+async function ensureSpipBucket(env) {
+  if (spipBucketReady) return;
+  try {
+    await fetch(`${getSupabaseUrl(env)}/storage/v1/bucket`, {
+      method: "POST",
+      headers: {
+        apikey: getServiceRoleKey(env),
+        Authorization: `Bearer ${getServiceRoleKey(env)}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id: SPIP_BUCKET, name: SPIP_BUCKET, public: false }),
+    });
+  } catch (_e) {
+    // ignore — the bucket usually already exists
+  }
+  spipBucketReady = true;
+}
+
+function decodeDataUrl(dataUrl) {
+  const comma = dataUrl.indexOf(",");
+  const meta = comma >= 0 ? dataUrl.slice(0, comma) : "";
+  const base64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
+  const match = /^data:([^;]+);base64$/i.exec(meta);
+  const type = match ? match[1] : "application/octet-stream";
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return { type, bytes };
+}
+
+async function storageUploadSpip(env, objectPath, bytes, contentType) {
+  const resp = await fetch(`${getSupabaseUrl(env)}/storage/v1/object/${SPIP_BUCKET}/${objectPath}`, {
+    method: "POST",
+    headers: {
+      apikey: getServiceRoleKey(env),
+      Authorization: `Bearer ${getServiceRoleKey(env)}`,
+      "Content-Type": contentType || "application/octet-stream",
+      "x-upsert": "true",
+    },
+    body: bytes,
+  });
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => "");
+    throw new Error(`storage upload failed: ${resp.status} ${text}`);
+  }
+}
+
+async function storageDownloadSpip(env, objectPath) {
+  return fetch(`${getSupabaseUrl(env)}/storage/v1/object/${SPIP_BUCKET}/${objectPath}`, {
+    headers: {
+      apikey: getServiceRoleKey(env),
+      Authorization: `Bearer ${getServiceRoleKey(env)}`,
+    },
+  });
+}
+
 async function getTeacherSession(request, env) {
   const cookies = parseCookies(request.headers.get("Cookie") || "");
   return decodeSignedSession(env, cookies[COOKIE_NAMES.teacher]);
@@ -1610,16 +1672,32 @@ async function handleSpipDraftSave(request, env, corsOrigin) {
     updated_at: now,
     fields,
   };
-  // An uploaded file travels as a data URL. When a fresh file is supplied we
-  // store it; otherwise the existing attachment on the record is preserved.
+  // An uploaded file arrives as a data URL. Store it in Supabase Storage and
+  // keep only a reference on the record; if storage is unavailable, fall back to
+  // keeping the base64 inline so the upload still succeeds.
   const att = body && body.attachment;
   if (att && typeof att === "object" && typeof att.data === "string" && att.data) {
-    incoming.attachment = {
-      name: String(att.name || "spip.pdf"),
-      type: String(att.type || "application/pdf"),
-      size: Number(att.size) || 0,
-      data: att.data,
-    };
+    const displayName = String(att.name || "spip.pdf");
+    try {
+      await ensureSpipBucket(env);
+      const decoded = decodeDataUrl(att.data);
+      const safeName = displayName.replace(/[^A-Za-z0-9._-]/g, "_").slice(-80) || "spip.pdf";
+      const objectPath = `${encodeURIComponent(email)}/${recordId}-${Date.now()}-${safeName}`;
+      await storageUploadSpip(env, objectPath, decoded.bytes, decoded.type);
+      incoming.attachment = {
+        name: displayName,
+        type: decoded.type || String(att.type || "application/pdf"),
+        size: decoded.bytes.length,
+        path: objectPath,
+      };
+    } catch (_e) {
+      incoming.attachment = {
+        name: displayName,
+        type: String(att.type || "application/pdf"),
+        size: Number(att.size) || 0,
+        data: att.data,
+      };
+    }
   }
 
   const rows = await supabaseGet(env, "carissa_spip_drafts", {
@@ -1709,25 +1787,37 @@ async function handleSpipDraftAttachmentGet(request, env, corsOrigin) {
   const row = Array.isArray(rows) && rows.length ? rows[0] : null;
   const record = spipRecordsFromRow(row).find((r) => r.id === id);
   const attachment = record && record.attachment;
-  if (!attachment || typeof attachment.data !== "string" || !attachment.data) {
+  if (!attachment) {
     return jsonResponse({ error: "No file is attached to this record." }, 404, corsOrigin);
   }
-  const dataUrl = attachment.data;
-  const comma = dataUrl.indexOf(",");
-  const base64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
-  let bytes;
-  try {
-    const binary = atob(base64);
-    bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-  } catch (_e) {
-    return jsonResponse({ error: "The stored file could not be decoded." }, 500, corsOrigin);
+  let bytes = null;
+  let contentType = attachment.type || "application/pdf";
+  if (typeof attachment.path === "string" && attachment.path) {
+    const stored = await storageDownloadSpip(env, attachment.path);
+    if (!stored.ok) {
+      return jsonResponse({ error: "The stored file could not be found." }, 404, corsOrigin);
+    }
+    bytes = new Uint8Array(await stored.arrayBuffer());
+    contentType = stored.headers.get("content-type") || contentType;
+  } else if (typeof attachment.data === "string" && attachment.data) {
+    const dataUrl = attachment.data;
+    const comma = dataUrl.indexOf(",");
+    const base64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
+    try {
+      const binary = atob(base64);
+      bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    } catch (_e) {
+      return jsonResponse({ error: "The stored file could not be decoded." }, 500, corsOrigin);
+    }
+  } else {
+    return jsonResponse({ error: "No file is attached to this record." }, 404, corsOrigin);
   }
   const filename = String(attachment.name || "spip.pdf").replace(/["\r\n]/g, "");
   return new Response(bytes, {
     status: 200,
     headers: {
-      "content-type": attachment.type || "application/octet-stream",
+      "content-type": contentType || "application/octet-stream",
       "content-disposition": `attachment; filename="${filename}"`,
       "access-control-allow-origin": corsOrigin,
       "access-control-allow-credentials": "true",

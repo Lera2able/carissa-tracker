@@ -493,7 +493,8 @@
   var teacherEmail = "";
   var currentRecordId = null;
   var currentAttachment = null;
-  var MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+  var MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+  var lastSaveError = "";
   var records = [];
   var loadingRecord = false;
 
@@ -691,7 +692,11 @@
           attachment: currentAttachment || null
         })
       }).then(function(r){
-        if (!r.ok) throw new Error("save failed");
+        if (!r.ok){
+          return r.text().then(function(t){
+            throw new Error("HTTP " + r.status + (t ? " · " + t.replace(/\s+/g, " ").slice(0, 160) : ""));
+          });
+        }
         return r.json();
       }).then(function(j){
         if (j && j.record && j.record.id){
@@ -699,10 +704,18 @@
           if (Array.isArray(j.records)) records = j.records;
           renderRecords();
         }
+        // The file is now stored server-side; drop the heavy base64 from memory
+        // so later auto-saves do not re-upload it.
+        if (currentAttachment && currentAttachment.data){
+          currentAttachment = { name: currentAttachment.name, type: currentAttachment.type, size: currentAttachment.size };
+          updateAttachmentUI();
+        }
+        lastSaveError = "";
         markSaved("Saved to your profile");
         return j;
-      }).catch(function(){
-        markSaved("Saved on this device");
+      }).catch(function(err){
+        lastSaveError = (err && err.message) || "unknown error";
+        markSaved("Not saved — " + lastSaveError);
         return null;
       });
     }
@@ -1035,6 +1048,11 @@
   }
   async function handleUpload(file, mode){
     if (!file) return;
+    var isPdf = /pdf/i.test(file.type) || /\.pdf$/i.test(file.name);
+    if (!isPdf && file.type && file.type.indexOf("image/") !== 0){
+      setStatus("Please choose a PDF (or an image) file to upload.", "err");
+      return;
+    }
     if (file.size > MAX_UPLOAD_BYTES){
       setStatus("That file is too large to upload (maximum " + formatBytes(MAX_UPLOAD_BYTES) + ").", "err");
       return;
@@ -1049,12 +1067,14 @@
         updateAttachmentUI();
         saveDraft().then(function(saved){
           if (saved) setStatus("Replaced the attached file with “" + file.name + "”.", "ok");
-          else setStatus("Could not store “" + file.name + "” on your profile (it may be too large).", "err");
+          else setStatus("Could not store “" + file.name + "” on your profile. " + (lastSaveError || ""), "err");
         });
         return;
       }
       var parsed = {};
-      if (/pdf/i.test(file.type) || /\.pdf$/i.test(file.name)){
+      if (isPdf){
+        // Many PDFs (e.g. Chrome's "Print to PDF") have no form fields at all —
+        // that is fine, we simply keep the file and leave the fields blank.
         try{ parsed = await parsePdfFields(await file.arrayBuffer()); }catch(e){ parsed = {}; }
       }
       var parsedGrade = String(parsed.grade || parsed.ia_grade || "").trim();
@@ -1082,7 +1102,7 @@
             (parsedCount ? " and read " + parsedCount + " saved answers from it" : "") +
             ". It is now stored in your records.", "ok");
         } else {
-          setStatus("Could not store “" + file.name + "” on your profile (it may be too large). Please try a smaller file.", "err");
+          setStatus("Could not store “" + file.name + "” on your profile. " + (lastSaveError || "Please try again."), "err");
         }
       });
     }catch(err){
