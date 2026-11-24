@@ -66,7 +66,7 @@
         esc(key) + ' <span style="font-weight:600;color:#6366f1;">(' + list.length + ')</span></div>';
       html += '<div style="display:flex;flex-direction:column;gap:6px;">';
       list.forEach(function (r) {
-        var label = (r.subject || "Untitled") + " \u00b7 " + (r.className || "No class");
+        var label = (r.subject || (r.attachment && r.attachment.name) || "Untitled") + " \u00b7 " + (r.className || "No class");
         var meta = formatDate(r.updated_at) + (r.attachment ? " \u00b7 file attached" : "");
         html += '<a href="spip.html?record=' + encodeURIComponent(r.id) + '#recordCard"' +
           ' style="display:flex;gap:10px;align-items:center;justify-content:space-between;text-decoration:none;' +

@@ -1681,8 +1681,8 @@ async function handleSpipDraftSave(request, env, corsOrigin) {
     try {
       await ensureSpipBucket(env);
       const decoded = decodeDataUrl(att.data);
-      const safeName = displayName.replace(/[^A-Za-z0-9._-]/g, "_").slice(-80) || "spip.pdf";
-      const objectPath = `${encodeURIComponent(email)}/${recordId}-${Date.now()}-${safeName}`;
+      const storageFilename = displayName.replace(/[\/\\\u0000-\u001f\u007f]/g, "_").slice(-180) || "spip.pdf";
+      const objectPath = `${encodeURIComponent(email)}/${recordId}-${Date.now()}-${encodeURIComponent(storageFilename)}`;
       await storageUploadSpip(env, objectPath, decoded.bytes, decoded.type);
       incoming.attachment = {
         name: displayName,

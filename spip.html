@@ -863,7 +863,7 @@
     var opts = '<option value="">— New SPIP (unsaved) —</option>';
     if (records.length){
       opts += records.map(function(r){
-        var label = (r.subject || "Untitled") + " · " + (r.className || "—") + " · " + formatDate(r.updated_at) +
+        var label = (r.subject || (r.attachment && r.attachment.name) || "Untitled") + " · " + (r.className || "—") + " · " + formatDate(r.updated_at) +
           (r.attachment ? " · file attached" : "");
         return '<option value="' + esc(r.id) + '">' + esc(label) + '</option>';
       }).join("");
@@ -910,7 +910,7 @@
       html += '<div style="display:flex;flex-direction:column;gap:6px;">';
       list.forEach(function(r){
         var active = (r.id === currentRecordId);
-        var label = (r.subject || "Untitled") + " · " + (r.className || "No class");
+        var label = (r.subject || (r.attachment && r.attachment.name) || "Untitled") + " · " + (r.className || "No class");
         var meta = formatDate(r.updated_at) + (r.attachment ? " · file attached" : "");
         var editHref = "?record=" + encodeURIComponent(String(r.id || "")) + "#recordCard";
         html += '<a class="btn ghost" href="' + esc(editHref) + '"' +
@@ -973,7 +973,7 @@
     }
     var rec = null;
     for (var di = 0; di < records.length; di++){ if (records[di].id === currentRecordId){ rec = records[di]; break; } }
-    var label = rec ? ((rec.subject || "Untitled") + " · " + (rec.className || "—")) : "this record";
+    var label = rec ? ((rec.subject || (rec.attachment && rec.attachment.name) || "Untitled") + " · " + (rec.className || "—")) : "this record";
     if (!window.confirm('Delete the SPIP record "' + label + '"? This cannot be undone.')) return;
     var removedId = currentRecordId;
     if (teacherEmail){
@@ -1113,7 +1113,7 @@
     if (!recordStatus) return;
     var rec = currentRecord();
     if (rec){
-      recordStatus.textContent = "Editing saved SPIP: " + (rec.subject || "Untitled") + " · " + (rec.className || "—") +
+      recordStatus.textContent = "Editing saved SPIP: " + (rec.subject || (rec.attachment && rec.attachment.name) || "Untitled") + " · " + (rec.className || "—") +
         (rec.attachment ? " · file attached" : "") + ". Changes save automatically.";
     } else if (currentRecordId){
       recordStatus.textContent = "Editing this SPIP. Changes save automatically.";
