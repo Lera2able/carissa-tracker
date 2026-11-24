@@ -384,7 +384,7 @@
   /* ---------- build learner grid, with question prompts above the marks rows ---------- */
   var learnerTable = document.getElementById("learnerTable");
   var thead = learnerTable.querySelector("thead");
-  var headRow = '<tr><th style="width:44px;">#</th><th style="min-width:230px;">Learner</th><th style="width:84px;">G</th>';
+  var headRow = '<tr><th style="width:44px;">#</th><th style="min-width:230px;">Learner</th><th style="width:84px;">Class</th>';
   for (var g = 1; g <= 10; g++){ headRow += '<th style="width:110px;">Q' + g + '</th>'; }
   headRow += '</tr>';
   thead.innerHTML = headRow;
@@ -413,7 +413,7 @@
     var lr = document.createElement("tr");
     var cells = '<td style="font-weight:700;color:#475569;background:#f8fafc;text-align:center;">' + n + '</td>' +
       '<td><select class="learner-pick" data-field="learner' + n + '_pick" aria-label="Learner ' + n + '"><option value="">-- Select learner --</option></select></td>' +
-      '<td><select data-field="learner' + n + '_g" aria-label="Learner ' + n + ' gender"><option value="">\u2013</option><option value="M">M</option><option value="F">F</option></select></td>';
+      '<td><input data-field="learner' + n + '_class" aria-label="Learner ' + n + ' class" readonly style="text-align:center;background:#f1f5f9;color:#0f172a;"/></td>';
     for (var m = 1; m <= 10; m++){
       cells += '<td><input data-field="learner' + n + '_q' + m + '" inputmode="decimal" aria-label="Learner ' + n + ' question ' + m + ' mark"/></td>';
     }
@@ -532,6 +532,16 @@
     for (var i = 0; i < list.length; i++){ if (String(list[i].number) === String(number)) return list[i]; }
     return null;
   }
+  function learnerOption(learner, className){
+    if (!learner) return null;
+    return {
+      number: learner.number,
+      surname: learner.surname,
+      firstname: learner.firstname,
+      _class: className,
+      key: className + "::" + learner.number
+    };
+  }
   function currentPrimaryClass(){
     var classes = classesForGrade(currentGrade());
     return classes.length ? classes[0] : "";
@@ -584,22 +594,31 @@
     var k = String(key);
     var idx = k.indexOf("::");
     if (idx !== -1){
-      return findLearner(k.slice(0, idx), k.slice(idx + 2));
+      var className = k.slice(0, idx);
+      return learnerOption(findLearner(className, k.slice(idx + 2)), className);
     }
     // legacy format: plain learner number
     if (fallbackClass){
       var fl = findLearner(fallbackClass, k);
-      if (fl) return fl;
+      if (fl) return learnerOption(fl, fallbackClass);
     }
     var classes = classesForGrade(currentGrade());
     for (var i = 0; i < classes.length; i++){
       var l = findLearner(classes[i], k);
-      if (l) return l;
+      if (l) return learnerOption(l, classes[i]);
     }
     return null;
   }
+  function classLabel(className){
+    return String(className || "").replace(/^Grade\s+/i, "").trim();
+  }
   function syncRowState(){
-    // Q marks are always editable. Rows without a chosen learner simply print blank on the PDF.
+    for (var n = 1; n <= 15; n++){
+      var pick = byField("learner" + n + "_pick");
+      var classField = byField("learner" + n + "_class");
+      var learner = pick && pick.value ? findLearnerByKey(pick.value, currentPrimaryClass()) : null;
+      if (classField) classField.value = learner ? classLabel(learner._class) : "";
+    }
   }
   function populateLearnerPickers(){
     filterLearnerPickers(learnerSearch ? learnerSearch.value : "");
@@ -1502,13 +1521,14 @@
       fields[prefix + (i + 1)] = numeric ? cleanNumberValue(values[i]) : cleanValue(values[i]);
     }
   }
-  function parseDocxLearnerGrid(fields, rows){
+  function parseDocxLearnerGrid(fields, rows, headers){
     rows.forEach(function(row){
       var num = parseInt(String(row[0] == null ? "" : row[0]).trim(), 10);
       if (!num || num < 1 || num > 15 || String(row[0]).trim().length > 2) return;
       fields["learner" + num + "_surname"] = cleanValue(row[1]);
       fields["learner" + num + "_name"] = cleanValue(row[2]);
-      fields["learner" + num + "_g"] = cleanValue(row[3]);
+      if (headers && headers[3] === "CLASS") fields["learner" + num + "_class"] = cleanValue(row[3]);
+      else fields["learner" + num + "_g"] = cleanValue(row[3]);
       for (var q = 1; q <= 10; q++) fields["learner" + num + "_q" + q] = cleanNumberValue(row[q + 3]);
     });
   }
@@ -1581,7 +1601,7 @@
         return;
       }
       if (head[0] === "QUESTIONS" || head.indexOf("SURNAME") !== -1){
-        parseDocxLearnerGrid(fields, rows);
+        parseDocxLearnerGrid(fields, rows, head);
         return;
       }
       if (head[0] === "NO" && headText.indexOf("CHALLENGES") !== -1){
@@ -1816,10 +1836,10 @@
       docxRun("GRADE: " + (values.grade || ""), { bold: true, size: 22 }),
       docxRun("      SUBJECT: " + (values.subject || ""), { bold: true, size: 22 })
     ], { spacingAfter: 60 }));
-    var gridRows = [[docxHeaderCell("#"), docxHeaderCell("Surname"), docxHeaderCell("Name"), docxHeaderCell("G")].concat(docxNumberedHeaders(10, "Q", "center"))];
+    var gridRows = [[docxHeaderCell("#"), docxHeaderCell("Surname"), docxHeaderCell("Name"), docxHeaderCell("Class")].concat(docxNumberedHeaders(10, "Q", "center"))];
     for (var ln = 1; ln <= 15; ln++){
       var row = [docxBodyCell(String(ln), "center"), docxBodyCell(values["learner" + ln + "_surname"]),
-        docxBodyCell(values["learner" + ln + "_name"]), docxBodyCell(values["learner" + ln + "_g"], "center")];
+        docxBodyCell(values["learner" + ln + "_name"]), docxBodyCell(values["learner" + ln + "_class"], "center")];
       for (var q = 1; q <= 10; q++) row.push(docxBodyCell(values["learner" + ln + "_q" + q], "center"));
       gridRows.push(row);
     }
@@ -2287,6 +2307,9 @@
       var learner = pick ? findLearnerByKey(pick, fallbackClass) : null;
       values["learner" + ln + "_surname"] = learner ? String(learner.surname || "") : "";
       values["learner" + ln + "_name"] = learner ? String(learner.firstname || "") : "";
+      values["learner" + ln + "_class"] = learner ? classLabel(learner._class) : "";
+      // Keep the existing PDF template field name while filling it with the learner's class.
+      values["learner" + ln + "_g"] = values["learner" + ln + "_class"];
     }
     return values;
   }
@@ -2303,7 +2326,7 @@
     for (q = 1; q <= 10; q++){ names.push("grid_topic_q" + q); }
     var n, m;
     for (n = 1; n <= 15; n++){
-      names.push("learner" + n + "_surname", "learner" + n + "_name", "learner" + n + "_g");
+      names.push("learner" + n + "_surname", "learner" + n + "_name", "learner" + n + "_class", "learner" + n + "_g");
       for (m = 1; m <= 10; m++){ names.push("learner" + n + "_q" + m); }
     }
     for (n = 1; n <= 3; n++){
