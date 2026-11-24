@@ -1721,12 +1721,39 @@
 
   function wrapPdfText(text, font, size, maxWidth){
     var lines = [];
-    String(text || "").split(/\r?\n/).forEach(function(paragraph){
-      var words = paragraph.split(/\s+/).filter(Boolean);
+    var max = Math.max(1, maxWidth);
+    function splitLongWord(word){
+      var parts = [];
       var line = "";
+      Array.from(word).forEach(function(character){
+        var next = line + character;
+        if (line && font.widthOfTextAtSize(next, size) > max){
+          parts.push(line);
+          line = character;
+        } else {
+          line = next;
+        }
+      });
+      if (line) parts.push(line);
+      return parts;
+    }
+    String(text || "").replace(/\r\n?/g, "\n").split("\n").forEach(function(paragraph){
+      var words = paragraph.trim().split(/\s+/).filter(Boolean);
+      var line = "";
+      if (!words.length){
+        lines.push("");
+        return;
+      }
       words.forEach(function(word){
+        if (font.widthOfTextAtSize(word, size) > max){
+          if (line){ lines.push(line); line = ""; }
+          var parts = splitLongWord(word);
+          parts.slice(0, -1).forEach(function(part){ lines.push(part); });
+          line = parts[parts.length - 1] || "";
+          return;
+        }
         var next = line ? line + " " + word : word;
-        if (line && font.widthOfTextAtSize(next, size) > maxWidth){
+        if (line && font.widthOfTextAtSize(next, size) > max){
           lines.push(line);
           line = word;
         } else {
@@ -1734,52 +1761,107 @@
         }
       });
       if (line) lines.push(line);
-      if (!words.length) lines.push("");
     });
     return lines.length ? lines : [""];
   }
-  /* Pick the largest font size that fits the WHOLE question inside its grid box.
-     pdf-lib's built-in auto-fit only checks height, so a long single word (no
-     spaces) would overflow the width and get clipped. We check BOTH word-width
-     and wrapped-line-height, using pdf-lib's own greedy word-packing. */
-  function gridTopicFontSize(text, font, pdfField){
-    var clean = String(text || "").trim();
-    if (!clean) return 10;
-    var boxW = 46, boxH = 33;
+  function fitPdfTextToField(text, font, pdfField, maxSize){
+    var boxW = 46, boxH = 30;
     try{
       var rect = pdfField.acroField.getWidgets()[0].getRectangle();
       boxW = rect.width; boxH = rect.height;
     }catch(e){}
-    var maxW = Math.max(10, boxW - 2);
-    var maxH = Math.max(10, boxH - 2);
-    var rawLines = clean.split(/\n/);
-    for (var size = 14; size > 1.4; size -= 0.5){
-      var ok = true;
-      var linesUsed = 0;
-      for (var li = 0; li < rawLines.length; li++){
-        var words = rawLines[li].split(" ");
-        var space = maxW;
-        linesUsed += 1;
-        for (var wi = 0; wi < words.length; wi++){
-          var isLast = wi === words.length - 1;
-          var w = isLast ? words[wi] : words[wi] + " ";
-          var ww = font.widthOfTextAtSize(w, size);
-          if (font.widthOfTextAtSize(words[wi], size) > maxW){ ok = false; break; }
-          space -= ww;
-          if (space <= 0){
-            linesUsed += 1;
-            space = maxW - ww;
-          }
-        }
-        if (!ok) break;
-      }
-      if (!ok) continue;
-      var lineH = font.heightAtSize(size) * 1.2;
-      // 15% height safety margin: pdf-lib's actual line-wrapping can differ
-      // slightly from our greedy count, so leave room for an extra line.
-      if (linesUsed * lineH * 1.15 <= maxH) return size;
+    var maxW = Math.max(8, boxW - 4);
+    var maxH = Math.max(8, boxH - 4);
+    var minSize = 5.5;
+    var topSize = Number(maxSize) || 12;
+    var result = { size: minSize, lines: wrapPdfText(text, font, minSize, maxW), fits: false };
+    for (var size = topSize; size >= minSize; size -= 0.25){
+      var lines = wrapPdfText(text, font, size, maxW);
+      var lineHeight = font.heightAtSize(size) * 1.2;
+      result = { size: size, lines: lines, fits: lines.length * lineHeight <= maxH };
+      if (result.fits) return result;
     }
-    return 1.5;
+    return result;
+  }
+  function fitPdfSingleLine(text, font, pdfField, maxSize){
+    var boxW = 46, boxH = 16;
+    try{
+      var rect = pdfField.acroField.getWidgets()[0].getRectangle();
+      boxW = rect.width; boxH = rect.height;
+    }catch(e){}
+    var clean = String(text || "").replace(/\s+/g, " ").trim();
+    var maxW = Math.max(8, boxW - 4);
+    var maxH = Math.max(8, boxH - 4);
+    var minSize = 5.5;
+    var topSize = Number(maxSize) || 11;
+    var result = { size: minSize, text: clean, fits: false };
+    for (var size = topSize; size >= minSize; size -= 0.25){
+      var fits = font.widthOfTextAtSize(clean, size) <= maxW &&
+        font.heightAtSize(size) * 1.2 <= maxH;
+      result = { size: size, text: clean, fits: fits };
+      if (fits) return result;
+    }
+    return result;
+  }
+  function pdfFieldLabel(name){
+    var match = String(name || "").match(/^ip([1-5])_(topic|evidence|performance_indicator)$/);
+    if (match){
+      var labels = { topic: "Topic", evidence: "Evidence", performance_indicator: "Performance indicator" };
+      return "Intervention plan row " + match[1] + " - " + labels[match[2]];
+    }
+    match = String(name || "").match(/^plan([1-3])_(challenges|action|responsibility|achievement_indicator|time_frame)$/);
+    if (match){
+      var planLabels = {
+        challenges: "Challenges",
+        action: "Action",
+        responsibility: "Responsibility",
+        achievement_indicator: "Achievement indicator",
+        time_frame: "Time frame"
+      };
+      return "Improvement plan row " + match[1] + " - " + planLabels[match[2]];
+    }
+    match = String(name || "").match(/^grid_topic_q([1-9]|10)$/);
+    if (match) return "Item analysis - Question " + match[1];
+    return String(name || "").replace(/_/g, " ");
+  }
+  function drawPdfContinuationPages(pdfDoc, entries, font, boldFont, values){
+    var pageWidth = 841.92, pageHeight = 595.32, margin = 42;
+    var bodyWidth = pageWidth - margin * 2;
+    var fontSize = 9.5, lineHeight = 12;
+    var page = null, cursorY = 0;
+    var pageByField = Object.create(null);
+    function startPage(continued){
+      page = pdfDoc.addPage([pageWidth, pageHeight]);
+      var title = continued ? "Additional SPIP Explanations (continued)" : "Additional SPIP Explanations";
+      page.drawText(title, { x: margin, y: pageHeight - margin - 16, size: 15, font: boldFont });
+      var context = [values.subject && ("Subject: " + values.subject), values.grade && ("Grade: " + values.grade)]
+        .filter(Boolean).join("    ");
+      if (context) page.drawText(context, { x: margin, y: pageHeight - margin - 34, size: 9, font: font });
+      cursorY = pageHeight - margin - (context ? 56 : 44);
+    }
+    entries.forEach(function(entry){
+      var lines = wrapPdfText(entry.text, font, fontSize, bodyWidth);
+      var label = entry.label;
+      var offset = 0;
+      while (offset < lines.length){
+        if (!page) startPage(false);
+        if (cursorY - lineHeight * 2 < margin) startPage(true);
+        if (!pageByField[entry.name]) pageByField[entry.name] = pdfDoc.getPageCount();
+        page.drawText(label, { x: margin, y: cursorY, size: 10, font: boldFont });
+        cursorY -= lineHeight;
+        label = entry.label + " (continued)";
+        var availableLines = Math.max(1, Math.floor((cursorY - margin) / lineHeight));
+        var count = Math.min(availableLines, lines.length - offset);
+        for (var i = 0; i < count; i++){
+          page.drawText(lines[offset + i], { x: margin, y: cursorY, size: fontSize, font: font });
+          cursorY -= lineHeight;
+        }
+        offset += count;
+        if (offset < lines.length) startPage(true);
+        else cursorY -= 8;
+      }
+    });
+    return pageByField;
   }
 
   async function fillPdfBytes(){
@@ -1791,14 +1873,55 @@
       var pdfForm = pdfDoc.getForm();
       var values = collectValues();
       var helv = await pdfDoc.embedFont(window.PDFLib.StandardFonts.Helvetica);
+      var helvBold = await pdfDoc.embedFont(window.PDFLib.StandardFonts.HelveticaBold);
+      var overflowEntries = [];
+      var fieldByName = Object.create(null);
       allFieldNames().forEach(function(fieldName){
         try{
           var pdfField = pdfForm.getTextField(fieldName);
           var text = String(values[fieldName] == null ? "" : values[fieldName]);
-          if (fieldName.indexOf("grid_topic_q") === 0) pdfField.setFontSize(gridTopicFontSize(text, helv, pdfField));
-          pdfField.setText(text);
+          fieldByName[fieldName] = pdfField;
+          if (pdfField.isMultiline() && text){
+            var maxSize = fieldName.indexOf("grid_topic_q") === 0 ? 14 : 12;
+            var fit = fitPdfTextToField(text, helv, pdfField, maxSize);
+            pdfField.setFontSize(fit.size);
+            if (fit.fits){
+              pdfField.setText(fit.lines.join("\n"));
+            } else {
+              overflowEntries.push({ name: fieldName, label: pdfFieldLabel(fieldName), text: text });
+              pdfField.setText("");
+            }
+          } else if (text){
+            var singleFit = fitPdfSingleLine(text, helv, pdfField, 11);
+            pdfField.setFontSize(singleFit.size);
+            if (singleFit.fits){
+              pdfField.setText(singleFit.text);
+            } else {
+              overflowEntries.push({ name: fieldName, label: pdfFieldLabel(fieldName), text: text });
+              pdfField.setText("");
+            }
+          } else {
+            pdfField.setText(text);
+          }
         }catch(e){}
       });
+      if (overflowEntries.length){
+        var overflowPages = drawPdfContinuationPages(pdfDoc, overflowEntries, helv, helvBold, values);
+        overflowEntries.forEach(function(entry){
+          var field = fieldByName[entry.name];
+          if (!field) return;
+          var marker = "See continuation page " + overflowPages[entry.name];
+          if (field.isMultiline()){
+            var markerFit = fitPdfTextToField(marker, helv, field, 10);
+            field.setFontSize(markerFit.size);
+            field.setText(markerFit.lines.join("\n"));
+          } else {
+            var singleMarkerFit = fitPdfSingleLine(marker, helv, field, 9);
+            field.setFontSize(singleMarkerFit.size);
+            field.setText(singleMarkerFit.text);
+          }
+        });
+      }
       try{
         var draftForPdf = collectDraft();
         var keywords = pdfDoc.getKeywords() || [];
@@ -1816,6 +1939,14 @@
       }catch(e){}
       try{ pdfForm.updateFieldAppearances(); }catch(e){}
       try{ pdfForm.flatten(); }catch(e){}
+      // Keep every page clear of the printer's non-printable edge by shrinking
+      // the content slightly and centring it, so nothing is clipped in print.
+      var printScale = 0.94;
+      pdfDoc.getPages().forEach(function(page){
+        var width = page.getWidth(), height = page.getHeight();
+        page.scaleContent(printScale, printScale);
+        page.translateContent(width * (1 - printScale) / 2, height * (1 - printScale) / 2);
+      });
       return pdfDoc.save();
   }
 
