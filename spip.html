@@ -2497,6 +2497,40 @@
     return pageByField;
   }
 
+  function drawPdfQuarterlyTermRows(page, values, font, boldFont){
+    var xs = [87.7, 240.7, 429.7, 622.5, 796.8];
+    var top = 208.7, middle = 192.0, bottom = 175.3;
+    var black = window.PDFLib.rgb(0, 0, 0);
+    page.drawRectangle({
+      x: xs[0] - 1,
+      y: bottom - 1,
+      width: xs[4] - xs[0] + 2,
+      height: top - bottom + 2,
+      color: window.PDFLib.rgb(1, 1, 1)
+    });
+    [top, middle, bottom].forEach(function(y){
+      page.drawLine({ start: { x: xs[0], y: y }, end: { x: xs[4], y: y }, thickness: 0.6, color: black });
+    });
+    xs.forEach(function(x){
+      page.drawLine({ start: { x: x, y: bottom }, end: { x: x, y: top }, thickness: 0.6, color: black });
+    });
+
+    function drawRow(label, pass, fail, average, centerY){
+      var baseline = centerY - 3.1;
+      page.drawText(label, { x: xs[0] + 4, y: baseline, size: 9, font: boldFont, color: black });
+      [pass, fail, average].forEach(function(value, index){
+        var text = String(value || "");
+        if (!text) return;
+        var size = 9;
+        var width = font.widthOfTextAtSize(text, size);
+        var left = xs[index + 1], right = xs[index + 2];
+        page.drawText(text, { x: left + (right - left - width) / 2, y: baseline, size: size, font: font, color: black });
+      });
+    }
+    drawRow("4th Term", values["4th_term_pass"], values["4th_term_fail"], values["4th_term_avg"], (top + middle) / 2);
+    drawRow("Overall", values.overall_pass, values.overall_fail, values.overall_avg, (middle + bottom) / 2);
+  }
+
   async function fillPdfBytes(){
     if (!window.PDFLib || !window.PDFLib.PDFDocument) throw new Error("PDF support is still loading. Please try again in a moment.");
     var res = await fetch(TEMPLATE_PATH, { cache: "no-store" });
@@ -2572,6 +2606,7 @@
       }catch(e){}
       try{ pdfForm.updateFieldAppearances(); }catch(e){}
       try{ pdfForm.flatten(); }catch(e){}
+      drawPdfQuarterlyTermRows(pdfDoc.getPage(0), values, helv, helvBold);
       // Keep every page clear of the printer's non-printable edge by shrinking
       // the content slightly and centring it, so nothing is clipped in print.
       var printScale = 0.94;
