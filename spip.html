@@ -201,6 +201,12 @@
       <button class="btn ghost" id="deleteRecordBtn" type="button">Delete this record</button>
     </div>
     <p class="sub" style="margin-top:8px;margin-bottom:0;">Pick a previous record to continue, or start a new one. Your records are saved to your profile and kept separately, so they come back every time you open the tool.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid #e2e8f0;">
+      <label class="btn ghost" for="spipUpload" style="cursor:pointer;margin:0;">Upload a previous SPIP (PDF)</label>
+      <input type="file" id="spipUpload" accept=".pdf,application/pdf" style="display:none;"/>
+      <a id="attachmentLink" class="btn ghost" href="#" style="display:none;">Download attached file</a>
+      <span class="hint" style="flex:1;min-width:180px;">Uploaded files are kept with your records so you can find them again.</span>
+    </div>
   </div>
 
   <nav class="sections" aria-label="Form sections">
@@ -459,10 +465,14 @@
   var recordSelect = document.getElementById("recordSelect");
   var newRecordBtn = document.getElementById("newRecordBtn");
   var deleteRecordBtn = document.getElementById("deleteRecordBtn");
+  var spipUpload = document.getElementById("spipUpload");
+  var attachmentLink = document.getElementById("attachmentLink");
   var manualAvg = {};
   var saveTimer = null;
   var teacherEmail = "";
   var currentRecordId = null;
+  var currentAttachment = null;
+  var MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
   var records = [];
   var loadingRecord = false;
 
@@ -648,11 +658,17 @@
   function saveDraft(){
     var draft = collectDraft();
     if (teacherEmail){
-      fetch(API + "/spip/draft", {
+      return fetch(API + "/spip/draft", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: draft.id, className: draft.className, subject: draft.subject, data: draft.data })
+        body: JSON.stringify({
+          id: draft.id,
+          className: draft.className,
+          subject: draft.subject,
+          data: draft.data,
+          attachment: currentAttachment || null
+        })
       }).then(function(r){
         if (!r.ok) throw new Error("save failed");
         return r.json();
@@ -663,29 +679,35 @@
           renderRecords();
         }
         markSaved("Saved to your profile");
-      }).catch(function(){ markSaved("Saved on this device"); });
-    } else {
-      var rec = {
-        id: draft.id || ("local-" + Date.now()),
-        className: draft.className || "",
-        subject: draft.subject || "",
-        created_at: draft.savedAt,
-        updated_at: draft.savedAt,
-        fields: draft.data
-      };
-      currentRecordId = rec.id;
-      var idx = -1;
-      for (var ri = 0; ri < records.length; ri++){ if (records[ri].id === rec.id){ idx = ri; break; } }
-      if (idx >= 0){
-        rec.created_at = records[idx].created_at || rec.created_at;
-        records[idx] = rec;
-      } else {
-        records.unshift(rec);
-      }
-      try{ localStorage.setItem(DRAFT_KEY, JSON.stringify(records)); }catch(e){}
-      renderRecords();
-      markSaved("Saved on this device");
+        return j;
+      }).catch(function(){
+        markSaved("Saved on this device");
+        return null;
+      });
     }
+    var rec = {
+      id: draft.id || ("local-" + Date.now()),
+      className: draft.className || "",
+      subject: draft.subject || "",
+      created_at: draft.savedAt,
+      updated_at: draft.savedAt,
+      fields: draft.data,
+      attachment: currentAttachment || null
+    };
+    currentRecordId = rec.id;
+    var idx = -1;
+    for (var ri = 0; ri < records.length; ri++){ if (records[ri].id === rec.id){ idx = ri; break; } }
+    if (idx >= 0){
+      rec.created_at = records[idx].created_at || rec.created_at;
+      rec.attachment = currentAttachment || records[idx].attachment || null;
+      records[idx] = rec;
+    } else {
+      records.unshift(rec);
+    }
+    try{ localStorage.setItem(DRAFT_KEY, JSON.stringify(records)); }catch(e){}
+    renderRecords();
+    markSaved("Saved on this device");
+    return Promise.resolve(rec);
   }
   function queueSave(){
     if (loadingRecord) return;
@@ -788,7 +810,8 @@
     var opts = '<option value="">— New SPIP (unsaved) —</option>';
     if (records.length){
       opts += records.map(function(r){
-        var label = (r.subject || "Untitled") + " · " + (r.className || "—") + " · " + formatDate(r.updated_at);
+        var label = (r.subject || "Untitled") + " · " + (r.className || "—") + " · " + formatDate(r.updated_at) +
+          (r.attachment ? " · file attached" : "");
         return '<option value="' + esc(r.id) + '">' + esc(label) + '</option>';
       }).join("");
     }
@@ -804,6 +827,7 @@
     Array.prototype.forEach.call(document.querySelectorAll(".learner-pick"), function(sel){ sel.value = ""; });
     if (rec){
       currentRecordId = rec.id;
+      currentAttachment = rec.attachment || null;
       applyDraft({ className: rec.className, fields: rec.fields, manualAvg: {}, savedAt: rec.updated_at });
       if (rec.subject){
         var subj = byField("subject");
@@ -811,13 +835,16 @@
       }
     } else {
       currentRecordId = null;
+      currentAttachment = null;
     }
+    updateAttachmentUI();
     renderRecords();
     syncRowState();
     loadingRecord = false;
   }
   function newRecord(){
     currentRecordId = null;
+    currentAttachment = null;
     loadingRecord = true;
     manualAvg = {};
     inputs().forEach(function(el){ el.value = ""; });
@@ -826,6 +853,7 @@
     setGradeField();
     populateLearnerPickers();
     loadingRecord = false;
+    updateAttachmentUI();
     renderRecords();
     recordSelect.value = "";
     draftChip.textContent = "New SPIP · saves automatically";
@@ -866,6 +894,98 @@
       renderRecords();
       if (records.length) switchRecord(records[0].id); else newRecord();
       setStatus("Record deleted.", "ok");
+    }
+  }
+
+  /* ---------- upload a previously saved SPIP so it stays on record ---------- */
+  function formatBytes(n){
+    n = Number(n) || 0;
+    if (n < 1024) return n + " B";
+    if (n < 1024 * 1024) return Math.round(n / 1024) + " KB";
+    return (n / (1024 * 1024)).toFixed(1) + " MB";
+  }
+  function updateAttachmentUI(){
+    if (!attachmentLink) return;
+    var local = currentAttachment && currentAttachment.data ? currentAttachment.data : "";
+    var server = (!local && currentAttachment && currentRecordId)
+      ? (API + "/spip/attachment?id=" + encodeURIComponent(currentRecordId)) : "";
+    var href = local || server;
+    if (href){
+      attachmentLink.style.display = "";
+      attachmentLink.href = href;
+      attachmentLink.setAttribute("download", (currentAttachment && currentAttachment.name) || "spip.pdf");
+      attachmentLink.textContent = "Download attached file (" + ((currentAttachment && currentAttachment.name) || "file") + ")";
+    } else {
+      attachmentLink.style.display = "none";
+      attachmentLink.removeAttribute("href");
+    }
+  }
+  function readFileAsDataURL(file){
+    return new Promise(function(resolve, reject){
+      var fr = new FileReader();
+      fr.onload = function(){ resolve(String(fr.result || "")); };
+      fr.onerror = function(){ reject(new Error("Could not read the selected file.")); };
+      fr.readAsDataURL(file);
+    });
+  }
+  async function parsePdfFields(buffer){
+    if (!window.PDFLib || !window.PDFLib.PDFDocument) return {};
+    var doc = await window.PDFLib.PDFDocument.load(buffer);
+    var form = doc.getForm();
+    var out = {};
+    allFieldNames().forEach(function(name){
+      try{
+        var text = form.getTextField(name).getText();
+        if (text != null && String(text) !== "") out[name] = String(text);
+      }catch(e){}
+    });
+    return out;
+  }
+  async function handleUpload(file){
+    if (!file) return;
+    if (file.size > MAX_UPLOAD_BYTES){
+      setStatus("That file is too large to upload (maximum " + formatBytes(MAX_UPLOAD_BYTES) + ").", "err");
+      return;
+    }
+    setStatus("Reading the uploaded SPIP…", "");
+    try{
+      var dataUrl = await readFileAsDataURL(file);
+      var parsed = {};
+      if (/pdf/i.test(file.type) || /\.pdf$/i.test(file.name)){
+        try{ parsed = await parsePdfFields(await file.arrayBuffer()); }catch(e){ parsed = {}; }
+      }
+      var parsedGrade = String(parsed.grade || parsed.ia_grade || "").trim();
+      var cls = "";
+      if (parsedGrade){
+        var list = classesForGrade(parsedGrade);
+        cls = list.length ? list[0] : "";
+      }
+      // start a fresh record that carries the uploaded file plus any answers
+      // that could be read out of it, then save it straight to the teacher's profile
+      currentAttachment = { name: file.name, type: file.type || "application/pdf", size: file.size, data: dataUrl };
+      currentRecordId = "rec-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      loadingRecord = true;
+      manualAvg = {};
+      inputs().forEach(function(el){ el.value = ""; });
+      Array.prototype.forEach.call(document.querySelectorAll(".learner-pick"), function(sel){ sel.value = ""; });
+      applyDraft({ className: cls, fields: parsed, manualAvg: {}, savedAt: new Date().toISOString() });
+      loadingRecord = false;
+      updateAttachmentUI();
+      renderRecords();
+      var parsedCount = Object.keys(parsed).length;
+      saveDraft().then(function(saved){
+        if (saved){
+          setStatus("Uploaded “" + file.name + "”" +
+            (parsedCount ? " and read " + parsedCount + " saved answers from it" : "") +
+            ". It is now stored in your records.", "ok");
+        } else {
+          setStatus("Could not store “" + file.name + "” on your profile (it may be too large). Please try a smaller file.", "err");
+        }
+      });
+    }catch(err){
+      currentAttachment = null;
+      updateAttachmentUI();
+      setStatus((err && err.message) || "Could not read the uploaded file.", "err");
     }
   }
   function initSession(){
@@ -972,6 +1092,13 @@
   }
   if (deleteRecordBtn){
     deleteRecordBtn.addEventListener("click", function(){ deleteRecord(); });
+  }
+  if (spipUpload){
+    spipUpload.addEventListener("change", function(){
+      var file = spipUpload.files && spipUpload.files[0];
+      spipUpload.value = "";
+      if (file) handleUpload(file);
+    });
   }
 
   /* ---------- collect + fill + download ---------- */

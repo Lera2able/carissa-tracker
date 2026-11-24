@@ -70,7 +70,7 @@ function jsonResponse(obj, status = 200, origin = "*", extraHeaders = {}) {
     headers: {
       "content-type": "application/json; charset=utf-8",
       "access-control-allow-origin": origin,
-      "access-control-allow-methods": "GET,POST,OPTIONS",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
       "access-control-allow-headers": "content-type",
       "access-control-allow-credentials": "true",
       ...extraHeaders,
@@ -1555,6 +1555,25 @@ function spipRecordsFromRow(row) {
   ];
 }
 
+// Strip the heavy base64 file payload from a record before sending it to the
+// browser; keep only the metadata. The file itself is fetched on demand from
+// /api/spip/attachment so that listing records stays lightweight.
+function publicSpipRecord(record) {
+  if (!record) return record;
+  const out = { ...record };
+  const a = out.attachment;
+  if (a && typeof a === "object") {
+    out.attachment = { name: a.name || "", type: a.type || "", size: Number(a.size) || 0 };
+  } else {
+    out.attachment = null;
+  }
+  return out;
+}
+
+function publicSpipRecords(records) {
+  return (records || []).map(publicSpipRecord);
+}
+
 async function handleSpipDraftGet(request, env, corsOrigin) {
   const auth = await requireTeacher(request, env, corsOrigin);
   if (!auth.ok) return auth.res;
@@ -1566,7 +1585,7 @@ async function handleSpipDraftGet(request, env, corsOrigin) {
     limit: "1",
   });
   const row = Array.isArray(rows) && rows.length ? rows[0] : null;
-  return jsonResponse({ records: spipRecordsFromRow(row) }, 200, corsOrigin);
+  return jsonResponse({ records: publicSpipRecords(spipRecordsFromRow(row)) }, 200, corsOrigin);
 }
 
 async function handleSpipDraftSave(request, env, corsOrigin) {
@@ -1591,6 +1610,17 @@ async function handleSpipDraftSave(request, env, corsOrigin) {
     updated_at: now,
     fields,
   };
+  // An uploaded file travels as a data URL. When a fresh file is supplied we
+  // store it; otherwise the existing attachment on the record is preserved.
+  const att = body && body.attachment;
+  if (att && typeof att === "object" && typeof att.data === "string" && att.data) {
+    incoming.attachment = {
+      name: String(att.name || "spip.pdf"),
+      type: String(att.type || "application/pdf"),
+      size: Number(att.size) || 0,
+      data: att.data,
+    };
+  }
 
   const rows = await supabaseGet(env, "carissa_spip_drafts", {
     select: "*",
@@ -1624,7 +1654,7 @@ async function handleSpipDraftSave(request, env, corsOrigin) {
   );
   const savedRow = Array.isArray(saved) ? saved[0] : saved;
   return jsonResponse(
-    { ok: true, record: incoming, records: spipRecordsFromRow(savedRow) },
+    { ok: true, record: publicSpipRecord(incoming), records: publicSpipRecords(spipRecordsFromRow(savedRow)) },
     200,
     corsOrigin
   );
@@ -1660,7 +1690,49 @@ async function handleSpipDraftDelete(request, env, corsOrigin) {
     "resolution=merge-duplicates,return=representation"
   );
   const savedRow = Array.isArray(saved) ? saved[0] : saved;
-  return jsonResponse({ ok: true, records: spipRecordsFromRow(savedRow) }, 200, corsOrigin);
+  return jsonResponse({ ok: true, records: publicSpipRecords(spipRecordsFromRow(savedRow)) }, 200, corsOrigin);
+}
+
+// Serve the file attached to one of the signed-in teacher's SPIP records.
+async function handleSpipDraftAttachmentGet(request, env, corsOrigin) {
+  const auth = await requireTeacher(request, env, corsOrigin);
+  if (!auth.ok) return auth.res;
+  const email = String(auth.session.email || "").trim().toLowerCase();
+  const url = new URL(request.url);
+  const id = (url.searchParams.get("id") || "").trim();
+  if (!email || !id) return jsonResponse({ error: "Record id missing." }, 400, corsOrigin);
+  const rows = await supabaseGet(env, "carissa_spip_drafts", {
+    select: "*",
+    teacher_email: `eq.${email}`,
+    limit: "1",
+  });
+  const row = Array.isArray(rows) && rows.length ? rows[0] : null;
+  const record = spipRecordsFromRow(row).find((r) => r.id === id);
+  const attachment = record && record.attachment;
+  if (!attachment || typeof attachment.data !== "string" || !attachment.data) {
+    return jsonResponse({ error: "No file is attached to this record." }, 404, corsOrigin);
+  }
+  const dataUrl = attachment.data;
+  const comma = dataUrl.indexOf(",");
+  const base64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
+  let bytes;
+  try {
+    const binary = atob(base64);
+    bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  } catch (_e) {
+    return jsonResponse({ error: "The stored file could not be decoded." }, 500, corsOrigin);
+  }
+  const filename = String(attachment.name || "spip.pdf").replace(/["\r\n]/g, "");
+  return new Response(bytes, {
+    status: 200,
+    headers: {
+      "content-type": attachment.type || "application/octet-stream",
+      "content-disposition": `attachment; filename="${filename}"`,
+      "access-control-allow-origin": corsOrigin,
+      "access-control-allow-credentials": "true",
+    },
+  });
 }
 
 function emailAddressOf(value) {
@@ -3225,7 +3297,7 @@ export default {
         status: 204,
         headers: {
           "access-control-allow-origin": corsOrigin,
-          "access-control-allow-methods": "GET,POST,OPTIONS",
+          "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
           "access-control-allow-headers": "content-type",
           "access-control-allow-credentials": "true",
         },
@@ -3261,6 +3333,14 @@ export default {
         return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
       } catch (error) {
         return jsonResponse({ error: error?.message || "SPIP draft request failed" }, 500, corsOrigin);
+      }
+    }
+    if (url.pathname === "/api/spip/attachment") {
+      if (request.method !== "GET") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handleSpipDraftAttachmentGet(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "SPIP attachment request failed" }, 500, corsOrigin);
       }
     }
     if (url.pathname.startsWith("/api/onti/")) {
