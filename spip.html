@@ -265,6 +265,7 @@
           <tr class="term-row"><td>1st Term</td><td><input data-field="1st_term_pass" inputmode="decimal" aria-label="1st term pass percent"/></td><td><input data-field="1st_term_fail" inputmode="decimal" aria-label="1st term fail percent"/></td><td><input data-field="1st_term_avg" inputmode="decimal" aria-label="1st term average"/></td></tr>
           <tr class="term-row"><td>2nd Term</td><td><input data-field="2nd_term_pass" inputmode="decimal" aria-label="2nd term pass percent"/></td><td><input data-field="2nd_term_fail" inputmode="decimal" aria-label="2nd term fail percent"/></td><td><input data-field="2nd_term_avg" inputmode="decimal" aria-label="2nd term average"/></td></tr>
           <tr class="term-row"><td>3rd Term</td><td><input data-field="3rd_term_pass" inputmode="decimal" aria-label="3rd term pass percent"/></td><td><input data-field="3rd_term_fail" inputmode="decimal" aria-label="3rd term fail percent"/></td><td><input data-field="3rd_term_avg" inputmode="decimal" aria-label="3rd term average"/></td></tr>
+          <tr class="term-row"><td>4th Term</td><td><input data-field="4th_term_pass" inputmode="decimal" aria-label="4th term pass percent"/></td><td><input data-field="4th_term_fail" inputmode="decimal" aria-label="4th term fail percent"/></td><td><input data-field="4th_term_avg" inputmode="decimal" aria-label="4th term average"/></td></tr>
           <tr class="term-row"><td>Overall</td><td><input data-field="overall_pass" inputmode="decimal" aria-label="Overall pass percent"/></td><td><input data-field="overall_fail" inputmode="decimal" aria-label="Overall fail percent"/></td><td><input data-field="overall_avg" inputmode="decimal" aria-label="Overall average"/></td></tr>
         </tbody>
       </table>
@@ -1492,6 +1493,7 @@
     if (/^1st/.test(t)) return "1st";
     if (/^2nd/.test(t)) return "2nd";
     if (/^3rd/.test(t)) return "3rd";
+    if (/^4th/.test(t)) return "4th";
     if (/^overall/.test(t)) return "overall";
     return "";
   }
@@ -1788,6 +1790,7 @@
       [docxBodyCell("1st Term"), docxBodyCell(withPct(values["1st_term_pass"]), "center"), docxBodyCell(withPct(values["1st_term_fail"]), "center"), docxBodyCell(withPct(values["1st_term_avg"]), "center")],
       [docxBodyCell("2nd Term"), docxBodyCell(withPct(values["2nd_term_pass"]), "center"), docxBodyCell(withPct(values["2nd_term_fail"]), "center"), docxBodyCell(withPct(values["2nd_term_avg"]), "center")],
       [docxBodyCell("3rd Term"), docxBodyCell(withPct(values["3rd_term_pass"]), "center"), docxBodyCell(withPct(values["3rd_term_fail"]), "center"), docxBodyCell(withPct(values["3rd_term_avg"]), "center")],
+      [docxBodyCell("4th Term"), docxBodyCell(withPct(values["4th_term_pass"]), "center"), docxBodyCell(withPct(values["4th_term_fail"]), "center"), docxBodyCell(withPct(values["4th_term_avg"]), "center")],
       [docxBodyCell("Overall"), docxBodyCell(withPct(values.overall_pass), "center"), docxBodyCell(withPct(values.overall_fail), "center"), docxBodyCell(withPct(values.overall_avg), "center")]
     ], { headerRow: true }));
     body.push(docxP("", { size: 8 }));
@@ -2140,7 +2143,7 @@
   var PERCENT_FIELDS = (function(){
     var map = {};
     ["previous", "current_target", "average"].forEach(function(n){ map[n] = true; });
-    ["1st", "2nd", "3rd"].forEach(function(t){
+    ["1st", "2nd", "3rd", "4th"].forEach(function(t){
       map[t + "_term_pass"] = true; map[t + "_term_fail"] = true; map[t + "_term_avg"] = true;
     });
     ["overall_pass", "overall_fail", "overall_avg"].forEach(function(n){ map[n] = true; });
@@ -2291,7 +2294,7 @@
     var names = ["subject","grade","previous","current_target","average","educator","educator_signature",
       "principal","principal_signature","ia_grade","ia_subject","ia_educator","comments","grid_grade",
       "sip_subject","sip_grade","sip_educator","ip_term","ip_subject","ip_grade","ip_educator"];
-    ["1st","2nd","3rd"].forEach(function(t){
+    ["1st","2nd","3rd","4th"].forEach(function(t){
       names.push(t + "_term_pass", t + "_term_fail", t + "_term_avg");
     });
     names.push("overall_pass", "overall_fail", "overall_avg");
