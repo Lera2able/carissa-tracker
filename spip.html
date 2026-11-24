@@ -808,6 +808,20 @@
     var gi = byField("grade");
     if (gi) gi.value = currentGrade();
   }
+  // Honour ?record=<id> / ?new=1 so dashboard folder links open the right SPIP.
+  function pickInitialRecord(){
+    var params = null;
+    try{ params = new URLSearchParams(location.search); }catch(e){ params = null; }
+    var want = params ? params.get("record") : "";
+    var isNew = params ? params.get("new") : "";
+    if (isNew === "1" || isNew === "true"){ newRecord(); return; }
+    if (want){
+      for (var pi = 0; pi < records.length; pi++){
+        if (records[pi].id === want){ switchRecord(want); return; }
+      }
+    }
+    if (records.length) switchRecord(records[0].id); else newRecord();
+  }
   function loadDraft(){
     if (!teacherEmail){
       var local = null;
@@ -827,7 +841,7 @@
         records = [];
       }
       renderRecords();
-      if (records.length) switchRecord(records[0].id); else newRecord();
+      pickInitialRecord();
       return;
     }
     fetch(API + "/spip/draft", { credentials: "include" })
@@ -836,7 +850,7 @@
       .then(function(j){
         records = (j && Array.isArray(j.records)) ? j.records : [];
         renderRecords();
-        if (records.length) switchRecord(records[0].id); else newRecord();
+        pickInitialRecord();
       });
   }
   function renderRecords(){
