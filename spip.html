@@ -6,6 +6,7 @@
 <title>SPIP Tool — Carissa Primary School</title>
 <meta name="description" content="Capture the Subject Performance Improvement Plan (SPIP) data and download it as a filled official PDF or Word document."/>
 <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://unpkg.com/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="./class-data.js?v=20261119a"></script>
@@ -2404,13 +2405,13 @@
       boxW = rect.width; boxH = rect.height;
     }catch(e){}
     var maxW = Math.max(8, boxW - 4);
-    var maxH = Math.max(8, boxH - 4);
+    var maxH = Math.max(8, boxH - 2);
     var minSize = 5.5;
     var topSize = Number(maxSize) || 12;
     var result = { size: minSize, lines: wrapPdfText(text, font, minSize, maxW), fits: false };
     for (var size = topSize; size >= minSize; size -= 0.25){
       var lines = wrapPdfText(text, font, size, maxW);
-      var lineHeight = font.heightAtSize(size) * 1.2;
+      var lineHeight = font.heightAtSize(size) * 1.05;
       result = { size: size, lines: lines, fits: lines.length * lineHeight <= maxH };
       if (result.fits) return result;
     }
@@ -2457,10 +2458,32 @@
     if (match) return "Item analysis - Question " + match[1];
     return String(name || "").replace(/_/g, " ");
   }
+  function extractEmbeddedPdfFont(pdfDoc, resourceName){
+    var pdfLib = window.PDFLib;
+    var name = pdfLib.PDFName.of;
+    var pageResources = pdfDoc.context.lookup(pdfDoc.getPage(0).node.Resources());
+    var fontResources = pdfDoc.context.lookup(pageResources.lookup(name("Font")));
+    var font = pdfDoc.context.lookup(fontResources.lookup(name(resourceName)));
+    var descendants = font.get(name("DescendantFonts"));
+    if (descendants) font = pdfDoc.context.lookup(pdfDoc.context.lookup(descendants).get(0));
+    var descriptor = pdfDoc.context.lookup(font.get(name("FontDescriptor")));
+    var fontFile = descriptor.get(name("FontFile2"));
+    if (!fontFile) throw new Error("The PDF template does not contain the requested font.");
+    var stream = pdfDoc.context.lookup(fontFile);
+    return pdfLib.decodePDFRawStream(stream).decode();
+  }
+  function supportsPdfFontText(font, values){
+    try{
+      Object.keys(values).forEach(function(key){ font.encodeText(String(values[key] || "")); });
+      ["4th Term", "Overall", "Class"].forEach(function(label){ font.encodeText(label); });
+      return true;
+    }catch(e){ return false; }
+  }
+  var PDF_OUTPUT_FONT_SIZE = 13;
   function drawPdfContinuationPages(pdfDoc, entries, font, boldFont, values){
     var pageWidth = 841.92, pageHeight = 595.32, margin = 42;
     var bodyWidth = pageWidth - margin * 2;
-    var fontSize = 9.5, lineHeight = 12;
+    var fontSize = PDF_OUTPUT_FONT_SIZE, lineHeight = 16;
     var page = null, cursorY = 0;
     var pageByField = Object.create(null);
     function startPage(continued){
@@ -2469,7 +2492,7 @@
       page.drawText(title, { x: margin, y: pageHeight - margin - 16, size: 15, font: boldFont });
       var context = [values.subject && ("Subject: " + values.subject), values.grade && ("Grade: " + values.grade)]
         .filter(Boolean).join("    ");
-      if (context) page.drawText(context, { x: margin, y: pageHeight - margin - 34, size: 9, font: font });
+      if (context) page.drawText(context, { x: margin, y: pageHeight - margin - 34, size: PDF_OUTPUT_FONT_SIZE, font: font });
       cursorY = pageHeight - margin - (context ? 56 : 44);
     }
     entries.forEach(function(entry){
@@ -2480,7 +2503,7 @@
         if (!page) startPage(false);
         if (cursorY - lineHeight * 2 < margin) startPage(true);
         if (!pageByField[entry.name]) pageByField[entry.name] = pdfDoc.getPageCount();
-        page.drawText(label, { x: margin, y: cursorY, size: 10, font: boldFont });
+        page.drawText(label, { x: margin, y: cursorY, size: PDF_OUTPUT_FONT_SIZE, font: boldFont });
         cursorY -= lineHeight;
         label = entry.label + " (continued)";
         var availableLines = Math.max(1, Math.floor((cursorY - margin) / lineHeight));
@@ -2534,13 +2557,20 @@
           width: rect.width,
           height: rect.height,
           font: font,
-          fontSize: 11,
+          fontSize: PDF_OUTPUT_FONT_SIZE,
           textColor: window.PDFLib.rgb(0, 0, 0),
           borderWidth: 0
         });
       }
-      field.setAlignment(window.PDFLib.TextAlignment.Center);
+      field.setAlignment(window.PDFLib.TextAlignment.Left);
     });
+    ["1st_term_pass", "1st_term_fail", "1st_term_avg",
+      "2nd_term_pass", "2nd_term_fail", "2nd_term_avg",
+      "3rd_term_pass", "3rd_term_fail", "3rd_term_avg",
+      "4th_term_pass", "4th_term_fail", "4th_term_avg",
+      "overall_pass", "overall_fail", "overall_avg"].forEach(function(name){
+        pdfForm.getTextField(name).setAlignment(window.PDFLib.TextAlignment.Left);
+      });
   }
 
   function drawPdfQuarterlyTermRows(page, boldFont){
@@ -2562,7 +2592,7 @@
     });
 
     function drawRow(label, baseline){
-      page.drawText(label, { x: 77.64, y: baseline, size: 9, font: boldFont, color: black });
+      page.drawText(label, { x: 77.64, y: baseline, size: 14.04, font: boldFont, color: black });
     }
     drawRow("4th Term", 195.41);
     drawRow("Overall", 178.85);
@@ -2582,7 +2612,7 @@
     page.drawLine({ start: { x: left, y: top }, end: { x: right, y: top }, thickness: 0.48, color: black });
     page.drawLine({ start: { x: left, y: bottom }, end: { x: left, y: top }, thickness: 0.48, color: black });
     page.drawLine({ start: { x: right, y: bottom }, end: { x: right, y: top }, thickness: 0.48, color: black });
-    var label = "Class", size = 10.5;
+    var label = "Class", size = PDF_OUTPUT_FONT_SIZE;
     var labelWidth = boldFont.widthOfTextAtSize(label, size);
     page.drawText(label, {
       x: left + (right - left - labelWidth) / 2,
@@ -2595,15 +2625,20 @@
 
   async function fillPdfBytes(){
     if (!window.PDFLib || !window.PDFLib.PDFDocument) throw new Error("PDF support is still loading. Please try again in a moment.");
+    if (!window.fontkit) throw new Error("Arial font support is still loading. Please try again in a moment.");
     var res = await fetch(TEMPLATE_PATH, { cache: "no-store" });
     if (!res.ok) throw new Error("The SPIP PDF template could not be loaded.");
     var buf = await res.arrayBuffer();
     var pdfDoc = await window.PDFLib.PDFDocument.load(buf);
+      pdfDoc.registerFontkit(window.fontkit);
       var pdfForm = pdfDoc.getForm();
       var values = collectValues();
-      var helv = await pdfDoc.embedFont(window.PDFLib.StandardFonts.Helvetica);
-      var helvBold = await pdfDoc.embedFont(window.PDFLib.StandardFonts.HelveticaBold);
-      addPdfQuarterlyTermFields(pdfDoc, pdfForm, helv);
+      var arial = await pdfDoc.embedFont(extractEmbeddedPdfFont(pdfDoc, "F3"), { subset: true });
+      var arialBold = await pdfDoc.embedFont(extractEmbeddedPdfFont(pdfDoc, "F4"), { subset: true });
+      if (!supportsPdfFontText(arial, values) || !supportsPdfFontText(arialBold, { labels: "4th Term Overall Class" })){
+        throw new Error("One or more characters in this SPIP are not available in the embedded Arial font.");
+      }
+      addPdfQuarterlyTermFields(pdfDoc, pdfForm, arial);
       var overflowEntries = [];
       var fieldByName = Object.create(null);
       allFieldNames().forEach(function(fieldName){
@@ -2612,53 +2647,47 @@
           var text = String(values[fieldName] == null ? "" : values[fieldName]);
           fieldByName[fieldName] = pdfField;
           if (pdfField.isMultiline() && text){
-            var maxSize = fieldName.indexOf("grid_topic_q") === 0 ? 14 : 12;
-            var fit = fitPdfTextToField(text, helv, pdfField, maxSize);
-            pdfField.setFontSize(fit.size);
-            if (fit.fits){
+            var fit = fitPdfTextToField(text, arial, pdfField, PDF_OUTPUT_FONT_SIZE);
+            if (fit.fits && fit.size >= PDF_OUTPUT_FONT_SIZE){
+              pdfField.setFontSize(PDF_OUTPUT_FONT_SIZE);
               pdfField.setText(fit.lines.join("\n"));
             } else {
+              pdfField.setFontSize(PDF_OUTPUT_FONT_SIZE);
               overflowEntries.push({ name: fieldName, label: pdfFieldLabel(fieldName), text: text });
               pdfField.setText("");
             }
           } else if (text){
-            var singleFit = fitPdfSingleLine(text, helv, pdfField, 11);
-            var readableHeaderField = fieldName === "subject" || fieldName === "grade";
-            var readableHeaderFits = false;
-            if (readableHeaderField){
-              var fieldRect = pdfField.acroField.getWidgets()[0].getRectangle();
-              readableHeaderFits = helv.widthOfTextAtSize(singleFit.text, 12) <= Math.max(8, fieldRect.width - 4);
-            }
-            if (readableHeaderFits){
-              pdfField.setFontSize(12);
-              pdfField.setText(singleFit.text);
-            } else if (singleFit.fits){
-              pdfField.setFontSize(singleFit.size);
+            var singleFit = fitPdfSingleLine(text, arial, pdfField, PDF_OUTPUT_FONT_SIZE);
+            var fieldRect = pdfField.acroField.getWidgets()[0].getRectangle();
+            var fitsAtStandardSize = arial.widthOfTextAtSize(singleFit.text, PDF_OUTPUT_FONT_SIZE) <= Math.max(8, fieldRect.width - 4);
+            if (fitsAtStandardSize){
+              pdfField.setFontSize(PDF_OUTPUT_FONT_SIZE);
               pdfField.setText(singleFit.text);
             } else {
-              pdfField.setFontSize(singleFit.size);
+              pdfField.setFontSize(PDF_OUTPUT_FONT_SIZE);
               overflowEntries.push({ name: fieldName, label: pdfFieldLabel(fieldName), text: text });
               pdfField.setText("");
             }
           } else {
+            pdfField.setFontSize(PDF_OUTPUT_FONT_SIZE);
             pdfField.setText(text);
           }
         }catch(e){}
       });
       if (overflowEntries.length){
-        var overflowPages = drawPdfContinuationPages(pdfDoc, overflowEntries, helv, helvBold, values);
+        var overflowPages = drawPdfContinuationPages(pdfDoc, overflowEntries, arial, arialBold, values);
         overflowEntries.forEach(function(entry){
           var field = fieldByName[entry.name];
           if (!field) return;
-          var marker = "See continuation page " + overflowPages[entry.name];
+          var marker = "See p. " + overflowPages[entry.name];
+          var markerRect = field.acroField.getWidgets()[0].getRectangle();
+          if (arial.widthOfTextAtSize(marker, PDF_OUTPUT_FONT_SIZE) > markerRect.width - 4) marker = "p." + overflowPages[entry.name];
           if (field.isMultiline()){
-            var markerFit = fitPdfTextToField(marker, helv, field, 10);
-            field.setFontSize(markerFit.size);
-            field.setText(markerFit.lines.join("\n"));
+            field.setFontSize(PDF_OUTPUT_FONT_SIZE);
+            field.setText(marker);
           } else {
-            var singleMarkerFit = fitPdfSingleLine(marker, helv, field, 9);
-            field.setFontSize(singleMarkerFit.size);
-            field.setText(singleMarkerFit.text);
+            field.setFontSize(PDF_OUTPUT_FONT_SIZE);
+            field.setText(marker);
           }
         });
       }
@@ -2677,9 +2706,9 @@
         }));
         pdfDoc.setKeywords(keywords);
       }catch(e){}
-      try{ pdfForm.updateFieldAppearances(); }catch(e){}
-      drawPdfQuarterlyTermRows(pdfDoc.getPage(0), helvBold);
-      drawPdfLearnerClassHeader(pdfDoc.getPage(2), pdfForm, helvBold);
+      pdfForm.updateFieldAppearances(arial);
+      drawPdfQuarterlyTermRows(pdfDoc.getPage(0), arialBold);
+      drawPdfLearnerClassHeader(pdfDoc.getPage(2), pdfForm, arialBold);
       // Scale both page content and editable widgets to preserve their alignment.
       var printScale = 0.94;
       var offsetX = pdfDoc.getPage(0).getWidth() * (1 - printScale) / 2;
