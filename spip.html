@@ -2481,25 +2481,28 @@
     if (match) return "Item analysis - Question " + match[1];
     return String(name || "").replace(/_/g, " ");
   }
-  function extractEmbeddedPdfFont(pdfDoc, resourceName){
-    var pdfLib = window.PDFLib;
-    var name = pdfLib.PDFName.of;
-    var pageResources = pdfDoc.context.lookup(pdfDoc.getPage(0).node.Resources());
-    var fontResources = pdfDoc.context.lookup(pageResources.lookup(name("Font")));
-    var font = pdfDoc.context.lookup(fontResources.lookup(name(resourceName)));
-    var descendants = font.get(name("DescendantFonts"));
-    if (descendants) font = pdfDoc.context.lookup(pdfDoc.context.lookup(descendants).get(0));
-    var descriptor = pdfDoc.context.lookup(font.get(name("FontDescriptor")));
-    var fontFile = descriptor.get(name("FontFile2"));
-    if (!fontFile) throw new Error("The PDF template does not contain the requested font.");
-    var stream = pdfDoc.context.lookup(fontFile);
-    return pdfLib.decodePDFRawStream(stream).decode();
+  async function loadPdfFont(path){
+    var res = await fetch(path, { cache: "force-cache" });
+    if (!res.ok) throw new Error("The Arial-compatible PDF font could not be loaded.");
+    var bytes = new Uint8Array(await res.arrayBuffer());
+    return { bytes: bytes, face: window.fontkit.create(bytes) };
   }
-  function supportsPdfFontText(font, values){
+  function supportsPdfFontText(fontFace, values){
     try{
-      Object.keys(values).forEach(function(key){ font.encodeText(String(values[key] || "")); });
-      ["4th Term", "Overall", "Class"].forEach(function(label){ font.encodeText(label); });
-      return true;
+      var strings = Object.keys(values).map(function(key){ return String(values[key] || ""); });
+      strings.push("4th Term", "Overall", "Class");
+      var supported = true;
+      strings.forEach(function(text){
+        for (var i = 0; i < text.length;){
+          var codePoint = text.codePointAt(i);
+          if (codePoint !== 9 && codePoint !== 10 && codePoint !== 13){
+            var glyph = fontFace.glyphForCodePoint(codePoint);
+            if (!glyph || glyph.id === 0) supported = false;
+          }
+          i += codePoint > 65535 ? 2 : 1;
+        }
+      });
+      return supported;
     }catch(e){ return false; }
   }
   var PDF_OUTPUT_FONT_SIZE = 13;
@@ -2648,7 +2651,7 @@
 
   async function fillPdfBytes(){
     if (!window.PDFLib || !window.PDFLib.PDFDocument) throw new Error("PDF support is still loading. Please try again in a moment.");
-    if (!window.fontkit) throw new Error("Arial font support is still loading. Please try again in a moment.");
+    if (!window.fontkit) throw new Error("PDF font support is still loading. Please try again in a moment.");
     var res = await fetch(TEMPLATE_PATH, { cache: "no-store" });
     if (!res.ok) throw new Error("The SPIP PDF template could not be loaded.");
     var buf = await res.arrayBuffer();
@@ -2656,11 +2659,13 @@
       pdfDoc.registerFontkit(window.fontkit);
       var pdfForm = pdfDoc.getForm();
       var values = collectValues();
-      var arial = await pdfDoc.embedFont(extractEmbeddedPdfFont(pdfDoc, "F3"), { subset: true });
-      var arialBold = await pdfDoc.embedFont(extractEmbeddedPdfFont(pdfDoc, "F4"), { subset: true });
-      if (!supportsPdfFontText(arial, values) || !supportsPdfFontText(arialBold, { labels: "4th Term Overall Class" })){
-        throw new Error("One or more characters in this SPIP are not available in the embedded Arial font.");
+      var regularFontData = await loadPdfFont("monitoring-tools/Arimo-Regular.ttf");
+      var boldFontData = await loadPdfFont("monitoring-tools/Arimo-Bold.ttf");
+      if (!supportsPdfFontText(regularFontData.face, values) || !supportsPdfFontText(boldFontData.face, { labels: "4th Term Overall Class" })){
+        throw new Error("This SPIP contains characters that are not supported by the PDF fonts.");
       }
+      var arial = await pdfDoc.embedFont(regularFontData.bytes);
+      var arialBold = await pdfDoc.embedFont(boldFontData.bytes);
       addPdfQuarterlyTermFields(pdfDoc, pdfForm, arial);
       var overflowEntries = [];
       var fieldByName = Object.create(null);
