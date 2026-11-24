@@ -660,7 +660,7 @@
       var tn = num(tot);
       if (avgEl){
         if (page4MarkOut && page4MarkOut > 0 && tn != null){
-          avgEl.value = String(Math.round((tn / page4MarkOut) * 1000) / 10);
+          avgEl.value = withPercentSign(String(Math.round((tn / page4MarkOut) * 1000) / 10));
         }
       }
     }
@@ -814,6 +814,7 @@
     }
     recalcGridTotals();
     syncItemAnalysisFromGrid();
+    formatPercentFields();
     syncRowState();
     autogrowAll();
     if (saved.savedAt){
@@ -2131,8 +2132,43 @@
     var out = num(outEl.value), tot = num(totEl.value);
     if (out && out > 0 && tot != null){
       var pct = Math.round((tot / out) * 1000) / 10;
-      avgEl.value = String(pct);
+      avgEl.value = withPercentSign(String(pct));
     }
+  }
+
+  /* ---------- percentage fields carry a % sign automatically ---------- */
+  var PERCENT_FIELDS = (function(){
+    var map = {};
+    ["previous", "current_target", "average"].forEach(function(n){ map[n] = true; });
+    ["1st", "2nd", "3rd"].forEach(function(t){
+      map[t + "_term_pass"] = true; map[t + "_term_fail"] = true; map[t + "_term_avg"] = true;
+    });
+    ["overall_pass", "overall_fail", "overall_avg"].forEach(function(n){ map[n] = true; });
+    for (var q = 1; q <= 12; q++) map["avg_pct_q" + q] = true;
+    for (var i = 1; i <= 5; i++) map["ip" + i + "_percentage"] = true;
+    return map;
+  })();
+  function isPlainNumber(v){ return /^-?\d+(?:[.,]\d+)?$/.test(String(v == null ? "" : v).trim()); }
+  function withPercentSign(v){
+    var s = String(v == null ? "" : v).trim();
+    if (!s || /%$/.test(s)) return s;
+    return isPlainNumber(s) ? s + "%" : s;
+  }
+  function formatPercentField(el){
+    if (!el || !el.getAttribute) return;
+    var name = el.getAttribute("data-field");
+    if (!name || !PERCENT_FIELDS[name]) return;
+    var next = withPercentSign(el.value);
+    if (next !== el.value) el.value = next;
+  }
+  function formatPercentFields(){ inputs().forEach(formatPercentField); }
+  // While the field has focus show the bare number, so typing stays natural.
+  function editPercentField(el){
+    if (!el || !el.getAttribute) return;
+    var name = el.getAttribute("data-field");
+    if (!name || !PERCENT_FIELDS[name]) return;
+    var m = String(el.value).trim().match(/^(-?\d+(?:[.,]\d+)?)%$/);
+    if (m) el.value = m[1];
   }
 
   /* ---------- auto-grow paragraph boxes so long text is never cramped ---------- */
@@ -2161,8 +2197,11 @@
     queueSave();
   });
   document.addEventListener("change", function(ev){
+    formatPercentField(ev.target);
     if (ev.target && ev.target.getAttribute && ev.target.getAttribute("data-field")) queueSave();
   });
+  document.addEventListener("focusin", function(ev){ editPercentField(ev.target); });
+  document.addEventListener("focusout", function(ev){ formatPercentField(ev.target); });
 
   /* ---------- grade + learner picker wiring ---------- */
   gradeSelect.addEventListener("change", function(){
