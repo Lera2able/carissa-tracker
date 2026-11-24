@@ -242,6 +242,13 @@
     <p class="sub">These details repeat automatically on the item analysis, improvement plan and intervention plan pages of the document.</p>
     <div class="grid">
       <div><label class="lbl" for="gradeSelect">Grade</label><select class="inp" id="gradeSelect"></select></div>
+      <div><label class="lbl" for="ip_term">SPIP Term</label>
+        <select class="inp" id="ip_term" data-field="ip_term" required>
+          <option value="" disabled>Select term</option>
+          <option value="Term 1">Term 1</option><option value="Term 2">Term 2</option>
+          <option value="Term 3">Term 3</option><option value="Term 4" selected>Term 4</option>
+        </select>
+      </div>
       <div><label class="lbl">Classes <span class="hint">(whole grade)</span></label><div class="inp" id="classList" style="padding:12px;border:2px solid var(--input-line);border-radius:8px;background:#f8fafc;color:var(--ink-soft);font-size:15px;min-height:48px;display:flex;align-items:center;flex-wrap:wrap;gap:6px;">—</div></div>
       <div><label class="lbl" for="subject">Subject</label><input class="inp" id="subject" data-field="subject" placeholder="Example: Mathematics"/></div>
       <input type="hidden" id="grade" data-field="grade"/>
@@ -338,15 +345,7 @@
   <section class="card" id="sec-intervention">
     <h2><span class="num">6</span> Intervention plan</h2>
     <p class="sub">Up to five intervention entries. Type the HOD’s name as the signature for each entry.</p>
-    <div class="grid" style="margin-bottom:16px;">
-      <div><label class="lbl" for="ip_term">Term</label>
-        <select class="inp" id="ip_term" data-field="ip_term">
-          <option value="">Select term</option>
-          <option>Term 1</option><option>Term 2</option><option>Term 3</option><option>Term 4</option>
-        </select>
-      </div>
-    </div>
-    <span class="auto-note">Subject, grade and educator copy over from Plan details.</span>
+    <span class="auto-note">SPIP term, subject, grade and educator copy over from Plan details.</span>
     <div id="interventionBlocks"></div>
   </section>
 
@@ -514,6 +513,17 @@
 
   function inputs(){ return Array.prototype.slice.call(document.querySelectorAll("[data-field]")); }
   function byField(name){ return document.querySelector('[data-field="' + name + '"]'); }
+  var DEFAULT_SPIP_TERM = "Term 4";
+  function normalizeSpipTerm(value){
+    var match = String(value == null ? "" : value).trim().match(/^(?:term\s*)?([1-4])$/i);
+    return match ? "Term " + match[1] : DEFAULT_SPIP_TERM;
+  }
+  function ensureSpipTerm(){
+    var termField = byField("ip_term");
+    var term = normalizeSpipTerm(termField && termField.value);
+    if (termField) termField.value = term;
+    return term;
+  }
   function esc(s){
     return String(s == null ? "" : s).replace(/[&<>"]/g, function(c){
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
@@ -691,6 +701,7 @@
   function collectDraft(){
     var values = {};
     inputs().forEach(function(el){ values[el.getAttribute("data-field")] = el.value; });
+    values.ip_term = ensureSpipTerm();
     return {
       id: currentRecordId,
       className: currentPrimaryClass(),
@@ -804,6 +815,7 @@
         var k = el.getAttribute("data-field");
         if (data[k] == null) return;
         var v = data[k];
+        if (k === "ip_term") v = normalizeSpipTerm(v);
         // migrate legacy plain-number learner picks to whole-grade composite keys
         if (/^learner\d+_pick$/.test(k) && v && String(v).indexOf("::") === -1){
           var num = String(v);
@@ -820,6 +832,7 @@
         el.value = v;
       });
     }
+    ensureSpipTerm();
     manualAvg = saved.manualAvg || {};
     setGradeField();
     // migrate old item-analysis-only data into the learner grid for Q1-Q10
@@ -969,6 +982,7 @@
     for (var i = 0; i < records.length; i++){ if (String(records[i].id) === String(id)){ rec = records[i]; break; } }
     manualAvg = {};
     inputs().forEach(function(el){ el.value = ""; });
+    ensureSpipTerm();
     Array.prototype.forEach.call(document.querySelectorAll(".learner-pick"), function(sel){ sel.value = ""; });
     if (rec){
       currentRecordId = rec.id;
@@ -995,6 +1009,7 @@
     loadingRecord = true;
     manualAvg = {};
     inputs().forEach(function(el){ el.value = ""; });
+    ensureSpipTerm();
     Array.prototype.forEach.call(document.querySelectorAll(".learner-pick"), function(sel){ sel.value = ""; });
     syncRowState();
     setGradeField();
@@ -1686,11 +1701,17 @@
   function docxRun(text, opts){
     opts = opts || {};
     var rpr = "";
+    var size = Number(opts.size) || 24;
+    if (String(text == null ? "" : text).trim()){
+      if (size < 24) size = 24;
+      else if (size < 28) size = 28;
+    }
+    rpr += '<w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/>';
     if (opts.bold) rpr += "<w:b/>";
     if (opts.italic) rpr += "<w:i/>";
     if (opts.underline) rpr += '<w:u w:val="single"/>';
     if (opts.color) rpr += '<w:color w:val="' + opts.color + '"/>';
-    if (opts.size) rpr += '<w:sz w:val="' + opts.size + '"/><w:szCs w:val="' + opts.size + '"/>';
+    rpr += '<w:sz w:val="' + size + '"/><w:szCs w:val="' + size + '"/>';
     rpr = rpr ? "<w:rPr>" + rpr + "</w:rPr>" : "";
     var out = "";
     String(text == null ? "" : text).split("\n").forEach(function(part, idx){
@@ -1799,6 +1820,7 @@
       docxRun("Subject: " + (values.subject || ""), { bold: true, size: 22 }),
       docxRun("          Grade: " + (values.grade || ""), { bold: true, size: 22 })
     ], { spacingAfter: 60 }));
+    body.push(docxP("SPIP TERM: " + normalizeSpipTerm(values.ip_term), { bold: true, size: 22, spacingAfter: 60 }));
     body.push(docxP("SUBJECT PERFORMANCE IMPROVEMENT PLAN", { align: "center", bold: true, underline: true, size: 26, spacingAfter: 100 }));
     body.push(docxTable(wA, [
       [docxHeaderCell("PREVIOUS"), docxHeaderCell("CURRENT TARGET"), docxHeaderCell("AVERAGE")],
@@ -1866,7 +1888,7 @@
     body.push(docxTable(wE, planRows, { headerRow: true }));
     // intervention plan
     body.push(docxP("Intervention Plan", { align: "center", bold: true, underline: true, size: 26, spacingAfter: 60, pageBreakBefore: true }));
-    body.push(docxP("TERM: " + (values.ip_term || ""), { bold: true, size: 22 }));
+    body.push(docxP("TERM: " + normalizeSpipTerm(values.ip_term), { bold: true, size: 22 }));
     body.push(docxP("SUBJECT: " + (values.subject || ""), { bold: true, size: 22 }));
     body.push(docxP("GRADE: " + (values.grade || ""), { bold: true, size: 22 }));
     body.push(docxP("EDUCATOR: " + (values.educator || ""), { bold: true, size: 22, spacingAfter: 60 }));
@@ -1917,7 +1939,7 @@
       '<w:styles xmlns:w="' + W_NS + '">' +
       "<w:docDefaults><w:rPrDefault><w:rPr>" +
       '<w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/>' +
-      '<w:sz w:val="20"/><w:szCs w:val="20"/>' +
+      '<w:sz w:val="24"/><w:szCs w:val="24"/>' +
       "</w:rPr></w:rPrDefault>" +
       '<w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr></w:pPrDefault>' +
       "</w:docDefaults>" +
@@ -2289,6 +2311,7 @@
       if (el.getAttribute("data-date")) v = isoToDmy(v);
       values[k] = v;
     });
+    values.ip_term = ensureSpipTerm();
     // repeat plan details onto the later pages of the document
     values.ia_subject = values.subject; values.ia_grade = values.grade; values.ia_educator = values.educator;
     values.sip_subject = values.subject; values.sip_grade = values.grade; values.sip_educator = values.educator;
@@ -2645,6 +2668,7 @@
         try{
           var pdfField = pdfForm.getTextField(fieldName);
           var text = String(values[fieldName] == null ? "" : values[fieldName]);
+          if (fieldName === "ip_term") text = normalizeSpipTerm(text).replace(/^Term\s+/i, "");
           fieldByName[fieldName] = pdfField;
           if (pdfField.isMultiline() && text){
             var fit = fitPdfTextToField(text, arial, pdfField, PDF_OUTPUT_FONT_SIZE);
@@ -2812,6 +2836,7 @@
     if (!window.confirm("Clear all fields in this SPIP? The record itself will remain.")) return;
     manualAvg = {};
     inputs().forEach(function(el){ el.value = ""; });
+    ensureSpipTerm();
     Array.prototype.forEach.call(document.querySelectorAll(".learner-pick"), function(sel){ sel.value = ""; });
     syncRowState();
     draftChip.textContent = "Fields cleared · saves automatically";
