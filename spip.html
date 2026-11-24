@@ -2497,7 +2497,53 @@
     return pageByField;
   }
 
-  function drawPdfQuarterlyTermRows(page, values, font, boldFont){
+  function addPdfQuarterlyTermFields(pdfDoc, pdfForm, font){
+    var page = pdfDoc.getPage(0);
+    var overallNames = ["overall_pass", "overall_fail", "overall_avg"];
+    var overallRects = overallNames.map(function(name){
+      return pdfForm.getTextField(name).acroField.getWidgets()[0].getRectangle();
+    });
+    var termY = overallRects[0].y;
+    var overallY = termY - 16.65;
+    overallNames.forEach(function(name){
+      pdfForm.getTextField(name).acroField.getWidgets().forEach(function(widget){
+        var rect = widget.getRectangle();
+        widget.setRectangle({ x: rect.x, y: overallY, width: rect.width, height: rect.height });
+      });
+    });
+    ["4th_term_pass", "4th_term_fail", "4th_term_avg"].forEach(function(name, index){
+      var field;
+      try{ field = pdfForm.getTextField(name); }
+      catch(e){ field = pdfForm.createTextField(name); }
+      var anchor = overallRects[index];
+      var rect = {
+        x: anchor.x,
+        y: termY,
+        width: anchor.width,
+        height: anchor.height
+      };
+      var widgets = field.acroField.getWidgets();
+      if (widgets.length){
+        widgets.forEach(function(widget){
+          widget.setRectangle({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
+        });
+      } else {
+        field.addToPage(page, {
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height,
+          font: font,
+          fontSize: 11,
+          textColor: window.PDFLib.rgb(0, 0, 0),
+          borderWidth: 0
+        });
+      }
+      field.setAlignment(window.PDFLib.TextAlignment.Center);
+    });
+  }
+
+  function drawPdfQuarterlyTermRows(page, boldFont){
     var xs = [87.7, 240.7, 429.7, 622.5, 796.8];
     var top = 208.7, middle = 192.0, bottom = 175.3;
     var black = window.PDFLib.rgb(0, 0, 0);
@@ -2515,20 +2561,41 @@
       page.drawLine({ start: { x: x, y: bottom }, end: { x: x, y: top }, thickness: 0.6, color: black });
     });
 
-    function drawRow(label, pass, fail, average, centerY){
+    function drawRow(label, centerY){
       var baseline = centerY - 3.1;
       page.drawText(label, { x: xs[0] + 4, y: baseline, size: 9, font: boldFont, color: black });
-      [pass, fail, average].forEach(function(value, index){
-        var text = String(value || "");
-        if (!text) return;
-        var size = 9;
-        var width = font.widthOfTextAtSize(text, size);
-        var left = xs[index + 1], right = xs[index + 2];
-        page.drawText(text, { x: left + (right - left - width) / 2, y: baseline, size: size, font: font, color: black });
-      });
     }
-    drawRow("4th Term", values["4th_term_pass"], values["4th_term_fail"], values["4th_term_avg"], (top + middle) / 2);
-    drawRow("Overall", values.overall_pass, values.overall_fail, values.overall_avg, (middle + bottom) / 2);
+    drawRow("4th Term", (top + middle) / 2);
+    drawRow("Overall", (middle + bottom) / 2);
+  }
+
+  function drawPdfLearnerClassHeader(page, pdfForm, boldFont){
+    var learnerField = pdfForm.getTextField("learner1_g").acroField.getWidgets()[0].getRectangle();
+    var left = learnerField.x;
+    var right = left + learnerField.width + 2;
+    var bottom = learnerField.y + learnerField.height + 2;
+    var top = bottom + 18;
+    var black = window.PDFLib.rgb(0, 0, 0);
+    page.drawRectangle({
+      x: left - 1,
+      y: bottom - 1,
+      width: right - left + 2,
+      height: top - bottom + 2,
+      color: window.PDFLib.rgb(1, 1, 1)
+    });
+    page.drawLine({ start: { x: left, y: bottom }, end: { x: right, y: bottom }, thickness: 0.6, color: black });
+    page.drawLine({ start: { x: left, y: top }, end: { x: right, y: top }, thickness: 0.6, color: black });
+    page.drawLine({ start: { x: left, y: bottom }, end: { x: left, y: top }, thickness: 0.6, color: black });
+    page.drawLine({ start: { x: right, y: bottom }, end: { x: right, y: top }, thickness: 0.6, color: black });
+    var label = "Class", size = 6.3;
+    var labelWidth = boldFont.widthOfTextAtSize(label, size);
+    page.drawText(label, {
+      x: left + (right - left - labelWidth) / 2,
+      y: (top + bottom) / 2 - 2.3,
+      size: size,
+      font: boldFont,
+      color: black
+    });
   }
 
   async function fillPdfBytes(){
@@ -2541,6 +2608,7 @@
       var values = collectValues();
       var helv = await pdfDoc.embedFont(window.PDFLib.StandardFonts.Helvetica);
       var helvBold = await pdfDoc.embedFont(window.PDFLib.StandardFonts.HelveticaBold);
+      addPdfQuarterlyTermFields(pdfDoc, pdfForm, helv);
       var overflowEntries = [];
       var fieldByName = Object.create(null);
       allFieldNames().forEach(function(fieldName){
@@ -2605,15 +2673,26 @@
         pdfDoc.setKeywords(keywords);
       }catch(e){}
       try{ pdfForm.updateFieldAppearances(); }catch(e){}
-      try{ pdfForm.flatten(); }catch(e){}
-      drawPdfQuarterlyTermRows(pdfDoc.getPage(0), values, helv, helvBold);
-      // Keep every page clear of the printer's non-printable edge by shrinking
-      // the content slightly and centring it, so nothing is clipped in print.
+      drawPdfQuarterlyTermRows(pdfDoc.getPage(0), helvBold);
+      drawPdfLearnerClassHeader(pdfDoc.getPage(2), pdfForm, helvBold);
+      // Scale both page content and editable widgets to preserve their alignment.
       var printScale = 0.94;
+      var offsetX = pdfDoc.getPage(0).getWidth() * (1 - printScale) / 2;
+      var offsetY = pdfDoc.getPage(0).getHeight() * (1 - printScale) / 2;
+      pdfForm.getFields().forEach(function(field){
+        field.acroField.getWidgets().forEach(function(widget){
+          var rect = widget.getRectangle();
+          widget.setRectangle({
+            x: rect.x * printScale + offsetX,
+            y: rect.y * printScale + offsetY,
+            width: rect.width * printScale,
+            height: rect.height * printScale
+          });
+        });
+      });
       pdfDoc.getPages().forEach(function(page){
-        var width = page.getWidth(), height = page.getHeight();
         page.scaleContent(printScale, printScale);
-        page.translateContent(width * (1 - printScale) / 2, height * (1 - printScale) / 2);
+        page.translateContent(offsetX, offsetY);
       });
       return pdfDoc.save();
   }
