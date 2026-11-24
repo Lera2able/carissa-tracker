@@ -254,9 +254,10 @@
     <h2><span class="num">3</span> Learner question grid</h2>
     <p class="sub">Write the question learners struggled with in the top row. The boxes are taller, grow as you type, and can be resized. Then pick up to 15 learners from any class in this grade and enter their marks for Q1–Q10. The “Mark out of” and total for each question are used in section 4.</p>
     <span class="auto-note">Learners come from all classes in the grade you selected in step 1.</span>
-    <div style="margin-bottom:12px;">
-      <label class="lbl" for="learnerSearch">Find a learner</label>
-      <input class="inp" id="learnerSearch" placeholder="Type a name or class to filter the learner lists…" autocomplete="off"/>
+    <div style="margin-bottom:14px;position:relative;">
+      <label class="lbl" for="learnerSearch" style="font-size:15px;">Find a learner</label>
+      <span style="position:absolute;left:14px;bottom:13px;font-size:18px;pointer-events:none;color:#64748b;">&#128269;</span>
+      <input class="inp" id="learnerSearch" placeholder="Type a name, surname or class to filter all learner lists…" autocomplete="off" style="padding-left:42px;font-size:15px;min-height:44px;"/>
     </div>
     <div class="table-scroll">
       <table class="sheet grid10" id="learnerTable">
