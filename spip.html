@@ -588,13 +588,16 @@
       var outEl = byField("mark_out_q" + q);
       var totEl = byField("total_mark_q" + q);
       var avgEl = byField("avg_pct_q" + q);
+      // page 4 "Mark out of" = per-question mark out of (per learner) x 15 learners
+      var outNum = num(out);
+      var page4MarkOut = outNum != null ? outNum * 15 : null;
       if (topicEl) topicEl.value = topic || topicEl.value;
-      if (outEl) outEl.value = out || outEl.value;
+      if (outEl) outEl.value = page4MarkOut != null ? String(page4MarkOut) : "";
       if (totEl) totEl.value = tot || totEl.value;
-      var on = num(out), tn = num(tot);
+      var tn = num(tot);
       if (avgEl){
-        if (on && on > 0 && tn != null){
-          avgEl.value = String(Math.round((tn / on) * 1000) / 10);
+        if (page4MarkOut && page4MarkOut > 0 && tn != null){
+          avgEl.value = String(Math.round((tn / page4MarkOut) * 1000) / 10);
         }
       }
     }
@@ -825,7 +828,8 @@
     // Q1-Q10 item analysis is sourced from the learner grid
     for (var cq = 1; cq <= 10; cq++){
       if (values["grid_topic_q" + cq]) values["topic_q" + cq] = values["grid_topic_q" + cq];
-      if (values["grid_mark_out_q" + cq]) values["mark_out_q" + cq] = values["grid_mark_out_q" + cq];
+      var gmo = num(values["grid_mark_out_q" + cq]);
+      if (gmo != null) values["mark_out_q" + cq] = String(gmo * 15);
       if (values["grid_total_q" + cq]) values["total_mark_q" + cq] = values["grid_total_q" + cq];
     }
     // resolve the learner picker (a whole-grade composite key, or legacy number) into the template's surname/first-name fields
