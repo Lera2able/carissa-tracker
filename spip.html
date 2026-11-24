@@ -191,7 +191,7 @@
     </div>
   </div>
 
-  <div class="card" style="padding:16px 20px;">
+  <div class="card" id="recordCard" style="padding:16px 20px;">
     <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
       <div style="flex:1;min-width:220px;">
         <label class="lbl" for="recordSelect">Your SPIP records</label>
@@ -210,6 +210,18 @@
       <span class="hint" style="flex:1;min-width:180px;">Uploaded files are kept with your records so you can find them again.</span>
     </div>
   </div>
+
+  <div class="card" id="libraryCard" style="padding:16px 20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <div>
+        <b>SPIP library</b>
+        <p class="sub" style="margin:4px 0 0;">All your saved and uploaded SPIPs, grouped by grade. Click any one to open and edit it.</p>
+      </div>
+      <span class="hint" id="libraryCount"></span>
+    </div>
+    <div id="libraryList" style="margin-top:12px;"></div>
+  </div>
+
 
   <nav class="sections" aria-label="Form sections">
     <a href="#sec-plan">1 · Plan details</a>
@@ -472,6 +484,9 @@
   var uploadNewLabel = document.getElementById("uploadNewLabel");
   var replaceFileLabel = document.getElementById("replaceFileLabel");
   var recordStatus = document.getElementById("recordStatus");
+  var recordCard = document.getElementById("recordCard");
+  var libraryList = document.getElementById("libraryList");
+  var libraryCount = document.getElementById("libraryCount");
   var uploadMode = "new";
   var manualAvg = {};
   var saveTimer = null;
@@ -824,6 +839,58 @@
     recordSelect.innerHTML = opts;
     recordSelect.value = currentRecordId || "";
     updateRecordStatus();
+    renderLibrary();
+  }
+  function gradeSortKey(label){
+    var n = parseFloat(String(label).replace(/[^0-9.]/g, ""));
+    return isNaN(n) ? 999 : n;
+  }
+  // A folder-style view of every saved/uploaded SPIP, grouped by grade.
+  function renderLibrary(){
+    if (!libraryList) return;
+    if (libraryCount){
+      libraryCount.textContent = records.length
+        ? records.length + (records.length === 1 ? " SPIP" : " SPIPs") : "";
+    }
+    if (!records.length){
+      libraryList.innerHTML = '<p class="hint" style="margin:0;">No SPIPs yet. Start a new one, or upload a previous SPIP above.</p>';
+      return;
+    }
+    var groups = {};
+    records.forEach(function(r){
+      var g = gradeFromClass(r.className) || "";
+      var key = g ? ("Grade " + g) : "No grade yet";
+      (groups[key] = groups[key] || []).push(r);
+    });
+    var keys = Object.keys(groups).sort(function(a, b){
+      if (a === "No grade yet") return 1;
+      if (b === "No grade yet") return -1;
+      return gradeSortKey(a) - gradeSortKey(b);
+    });
+    var html = "";
+    keys.forEach(function(key){
+      var list = groups[key].slice().sort(function(a, b){
+        return (b.updated_at || "").localeCompare(a.updated_at || "");
+      });
+      html += '<div style="margin-bottom:14px;">';
+      html += '<div style="font-weight:700;font-size:14px;margin-bottom:6px;">' + esc(key) +
+        ' <span class="hint">(' + list.length + ')</span></div>';
+      html += '<div style="display:flex;flex-direction:column;gap:6px;">';
+      list.forEach(function(r){
+        var active = (r.id === currentRecordId);
+        var label = (r.subject || "Untitled") + " · " + (r.className || "No class");
+        var meta = formatDate(r.updated_at) + (r.attachment ? " · file attached" : "");
+        html += '<button type="button" class="btn ghost" data-record-id="' + esc(r.id) + '"' +
+          ' style="display:flex;gap:10px;align-items:center;justify-content:flex-start;text-align:left;width:100%;' +
+          (active ? 'border-color:#1d4ed8;background:#eff6ff;' : '') + '">' +
+          '<span style="flex:1;min-width:0;font-weight:600;">' + esc(label) + '</span>' +
+          '<span class="hint">' + esc(meta) + '</span>' +
+          '<span class="hint" style="font-weight:600;color:#1d4ed8;">' + (active ? "Editing now" : "Open &amp; edit") + '</span>' +
+          '</button>';
+      });
+      html += '</div></div>';
+    });
+    libraryList.innerHTML = html;
   }
   function switchRecord(id){
     loadingRecord = true;
@@ -1128,6 +1195,21 @@
   }
   if (deleteRecordBtn){
     deleteRecordBtn.addEventListener("click", function(){ deleteRecord(); });
+  }
+  if (libraryList){
+    libraryList.addEventListener("click", function(ev){
+      var el = ev.target;
+      while (el && el !== libraryList && !(el.getAttribute && el.getAttribute("data-record-id"))){
+        el = el.parentNode;
+      }
+      if (el && el !== libraryList && el.getAttribute){
+        var id = el.getAttribute("data-record-id");
+        if (id){
+          switchRecord(id);
+          if (recordCard) recordCard.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }
+    });
   }
   if (uploadNewLabel){
     uploadNewLabel.addEventListener("click", function(){ uploadMode = "new"; });
