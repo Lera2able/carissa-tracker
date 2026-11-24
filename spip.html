@@ -353,6 +353,7 @@
 
 <div class="bar">
   <div class="bar-inner">
+    <button class="btn primary" id="saveRecordBtn" type="button">Save to SPIP folder</button>
     <button class="btn primary" id="downloadWordBtn" type="button">Download Word (.docx)</button>
     <button class="btn ghost" id="downloadBtn" type="button">Download filled SPIP (PDF)</button>
     <button class="btn ghost" id="printBtn" type="button">Print SPIP</button>
@@ -477,6 +478,7 @@
   var statusEl = document.getElementById("status");
   var draftChip = document.getElementById("draftChip");
   var downloadBtn = document.getElementById("downloadBtn");
+  var saveRecordBtn = document.getElementById("saveRecordBtn");
   var downloadWordBtn = document.getElementById("downloadWordBtn");
   var printBtn = document.getElementById("printBtn");
   var clearBtn = document.getElementById("clearBtn");
@@ -2575,6 +2577,21 @@
       setStatus((err && err.message) || "Could not prepare the SPIP for printing.", "err");
     }).finally(function(){
       printBtn.disabled = false;
+    });
+  });
+
+  saveRecordBtn.addEventListener("click", function(){
+    clearTimeout(saveTimer);
+    saveRecordBtn.disabled = true;
+    setStatus("Saving this SPIP to your SPIP folder…", "");
+    saveDraft().then(function(saved){
+      if (saved){
+        setStatus("Saved to your SPIP folder. Open it again any time from the SPIP library above to continue editing.", "ok");
+      } else {
+        setStatus("Could not save to your SPIP folder. " + (lastSaveError || "Please try again."), "err");
+      }
+    }).finally(function(){
+      saveRecordBtn.disabled = false;
     });
   });
 
