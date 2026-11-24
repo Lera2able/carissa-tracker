@@ -200,9 +200,11 @@
       <button class="btn primary" id="newRecordBtn" type="button">+ Create new SPIP</button>
       <button class="btn ghost" id="deleteRecordBtn" type="button">Delete this record</button>
     </div>
-    <p class="sub" style="margin-top:8px;margin-bottom:0;">Pick a previous record to continue, or start a new one. Your records are saved to your profile and kept separately, so they come back every time you open the tool.</p>
+    <p class="sub" style="margin-top:8px;margin-bottom:0;">Pick a previous record to continue and edit it, or start a new one. Your records are saved to your profile and kept separately, so they come back every time you open the tool.</p>
+    <p class="sub" id="recordStatus" style="margin:6px 0 0;font-weight:600;">New SPIP (not yet saved).</p>
     <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid #e2e8f0;">
-      <label class="btn ghost" for="spipUpload" style="cursor:pointer;margin:0;">Upload a previous SPIP (PDF)</label>
+      <label class="btn ghost" id="uploadNewLabel" for="spipUpload" style="cursor:pointer;margin:0;">Upload a previous SPIP (PDF)</label>
+      <label class="btn ghost" id="replaceFileLabel" for="spipUpload" style="cursor:pointer;margin:0;display:none;">Replace attached file</label>
       <input type="file" id="spipUpload" accept=".pdf,application/pdf" style="display:none;"/>
       <a id="attachmentLink" class="btn ghost" href="#" style="display:none;">Download attached file</a>
       <span class="hint" style="flex:1;min-width:180px;">Uploaded files are kept with your records so you can find them again.</span>
@@ -467,6 +469,10 @@
   var deleteRecordBtn = document.getElementById("deleteRecordBtn");
   var spipUpload = document.getElementById("spipUpload");
   var attachmentLink = document.getElementById("attachmentLink");
+  var uploadNewLabel = document.getElementById("uploadNewLabel");
+  var replaceFileLabel = document.getElementById("replaceFileLabel");
+  var recordStatus = document.getElementById("recordStatus");
+  var uploadMode = "new";
   var manualAvg = {};
   var saveTimer = null;
   var teacherEmail = "";
@@ -817,6 +823,7 @@
     }
     recordSelect.innerHTML = opts;
     recordSelect.value = currentRecordId || "";
+    updateRecordStatus();
   }
   function switchRecord(id){
     loadingRecord = true;
@@ -919,6 +926,24 @@
       attachmentLink.style.display = "none";
       attachmentLink.removeAttribute("href");
     }
+    // the "replace" action only makes sense once the open record has a file
+    if (replaceFileLabel) replaceFileLabel.style.display = (href && currentRecordId) ? "" : "none";
+  }
+  function currentRecord(){
+    for (var i = 0; i < records.length; i++){ if (records[i].id === currentRecordId) return records[i]; }
+    return null;
+  }
+  function updateRecordStatus(){
+    if (!recordStatus) return;
+    var rec = currentRecord();
+    if (rec){
+      recordStatus.textContent = "Editing saved SPIP: " + (rec.subject || "Untitled") + " · " + (rec.className || "—") +
+        (rec.attachment ? " · file attached" : "") + ". Changes save automatically.";
+    } else if (currentRecordId){
+      recordStatus.textContent = "Editing this SPIP. Changes save automatically.";
+    } else {
+      recordStatus.textContent = "New SPIP (not yet saved). Type in any field to save it to your profile.";
+    }
   }
   function readFileAsDataURL(file){
     return new Promise(function(resolve, reject){
@@ -941,7 +966,7 @@
     });
     return out;
   }
-  async function handleUpload(file){
+  async function handleUpload(file, mode){
     if (!file) return;
     if (file.size > MAX_UPLOAD_BYTES){
       setStatus("That file is too large to upload (maximum " + formatBytes(MAX_UPLOAD_BYTES) + ").", "err");
@@ -950,6 +975,17 @@
     setStatus("Reading the uploaded SPIP…", "");
     try{
       var dataUrl = await readFileAsDataURL(file);
+      // "replace": swap the file on the record that is already open for editing,
+      // keeping its current answers untouched.
+      if (mode === "replace" && currentRecordId){
+        currentAttachment = { name: file.name, type: file.type || "application/pdf", size: file.size, data: dataUrl };
+        updateAttachmentUI();
+        saveDraft().then(function(saved){
+          if (saved) setStatus("Replaced the attached file with “" + file.name + "”.", "ok");
+          else setStatus("Could not store “" + file.name + "” on your profile (it may be too large).", "err");
+        });
+        return;
+      }
       var parsed = {};
       if (/pdf/i.test(file.type) || /\.pdf$/i.test(file.name)){
         try{ parsed = await parsePdfFields(await file.arrayBuffer()); }catch(e){ parsed = {}; }
@@ -1093,11 +1129,19 @@
   if (deleteRecordBtn){
     deleteRecordBtn.addEventListener("click", function(){ deleteRecord(); });
   }
+  if (uploadNewLabel){
+    uploadNewLabel.addEventListener("click", function(){ uploadMode = "new"; });
+  }
+  if (replaceFileLabel){
+    replaceFileLabel.addEventListener("click", function(){ uploadMode = "replace"; });
+  }
   if (spipUpload){
     spipUpload.addEventListener("change", function(){
       var file = spipUpload.files && spipUpload.files[0];
+      var mode = uploadMode;
+      uploadMode = "new";
       spipUpload.value = "";
-      if (file) handleUpload(file);
+      if (file) handleUpload(file, mode);
     });
   }
 
