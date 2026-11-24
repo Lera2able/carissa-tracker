@@ -205,9 +205,10 @@
     <h2><span class="num">1</span> Plan details</h2>
     <p class="sub">These details repeat automatically on the item analysis, improvement plan and intervention plan pages of the document.</p>
     <div class="grid">
-      <div><label class="lbl" for="classSelect">Class <span class="hint">(your class)</span></label><select class="inp" id="classSelect"></select></div>
+      <div><label class="lbl" for="gradeSelect">Grade</label><select class="inp" id="gradeSelect"></select></div>
+      <div><label class="lbl" for="classSelect">Class <span class="hint">(all classes in this grade)</span></label><select class="inp" id="classSelect"></select></div>
       <div><label class="lbl" for="subject">Subject</label><input class="inp" id="subject" data-field="subject" placeholder="Example: Mathematics"/></div>
-      <div><label class="lbl" for="grade">Grade</label><input class="inp" id="grade" data-field="grade" placeholder="Example: 5"/></div>
+      <input type="hidden" id="grade" data-field="grade"/>
       <div><label class="lbl" for="educator">Educator</label><input class="inp" id="educator" data-field="educator" placeholder="Educator name"/></div>
       <div><label class="lbl" for="principal">Principal</label><input class="inp" id="principal" data-field="principal" placeholder="Principal name"/></div>
       <div><label class="lbl" for="previous">Previous average (%)</label><input class="inp" id="previous" data-field="previous" inputmode="decimal" placeholder="Example: 54"/></div>
@@ -421,6 +422,7 @@
   var printBtn = document.getElementById("printBtn");
   var clearBtn = document.getElementById("clearBtn");
   var classSelect = document.getElementById("classSelect");
+  var gradeSelect = document.getElementById("gradeSelect");
   var manualAvg = {};
   var saveTimer = null;
   var teacherEmail = "";
@@ -450,6 +452,30 @@
   function gradeFromClass(c){
     var rest = String(c || "").replace(/^Grade\s+/i, "").trim();
     return rest.split(/[.\s]/)[0] || "";
+  }
+  function classesForGrade(grade){
+    return allClassNames().filter(function(c){ return gradeFromClass(c) === grade; });
+  }
+  function gradesFromClassNames(names){
+    var seen = {}, grades = [];
+    names.forEach(function(n){
+      var g = gradeFromClass(n);
+      if (g && !seen[g]){ seen[g] = true; grades.push(g); }
+    });
+    return grades;
+  }
+  function currentGrade(){ return gradeSelect.value || ""; }
+  function populateGradeSelect(grades, selected){
+    var html = "";
+    grades.forEach(function(g){
+      html += '<option value="' + esc(g) + '">Grade ' + esc(g) + '</option>';
+    });
+    gradeSelect.innerHTML = html || '<option value="">No grades</option>';
+    if (selected){
+      for (var i = 0; i < gradeSelect.options.length; i++){
+        if (gradeSelect.options[i].value === selected){ gradeSelect.selectedIndex = i; break; }
+      }
+    } else gradeSelect.selectedIndex = 0;
   }
   function setClassValue(v){
     var key = resolveClassKey(v);
@@ -531,7 +557,15 @@
   }
   function applyDraft(saved){
     if (!saved) return;
-    if (saved.className) setClassValue(saved.className);
+    if (saved.className){
+      var g = gradeFromClass(saved.className);
+      for (var gi = 0; gi < gradeSelect.options.length; gi++){
+        if (gradeSelect.options[gi].value === g){ gradeSelect.selectedIndex = gi; break; }
+      }
+      populateClassSelect(classesForGrade(g), saved.className);
+      setClassValue(saved.className);
+    }
+    setGradeField();
     populateLearnerPickers();
     if (saved.data){
       inputs().forEach(function(el){
@@ -540,7 +574,7 @@
       });
     }
     manualAvg = saved.manualAvg || {};
-    setGradeFromClass();
+    setGradeField();
     syncRowState();
     autogrowAll();
     if (saved.savedAt){
@@ -548,15 +582,15 @@
       draftChip.textContent = "Restored · " + d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     }
   }
-  function setGradeFromClass(){
+  function setGradeField(){
     var gi = byField("grade");
-    if (gi && !gi.value) gi.value = gradeFromClass(currentClass());
+    if (gi) gi.value = currentGrade();
   }
   function loadDraft(){
     if (!teacherEmail){
       var local = null;
       try{ local = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"); }catch(e){}
-      if (local) applyDraft(local); else { populateLearnerPickers(); setGradeFromClass(); }
+      if (local) applyDraft(local); else { populateLearnerPickers(); setGradeField(); }
       return;
     }
     fetch(API + "/spip/draft", { credentials: "include" })
@@ -564,7 +598,7 @@
       .catch(function(){ return null; })
       .then(function(j){
         var draft = j && j.draft ? { className: j.draft.class_name, data: j.draft.data, savedAt: j.draft.updated_at } : null;
-        if (draft) applyDraft(draft); else { populateLearnerPickers(); setGradeFromClass(); }
+        if (draft) applyDraft(draft); else { populateLearnerPickers(); setGradeField(); }
       });
   }
   function initSession(){
@@ -583,7 +617,12 @@
           if (edu && eduEl && !eduEl.value) eduEl.value = edu;
         }
         if (!names.length) names = allClassNames();
-        populateClassSelect(names, preferred);
+        var grades = gradesFromClassNames(names);
+        if (!grades.length) grades = gradesFromClassNames(allClassNames());
+        var preferredGrade = preferred ? gradeFromClass(preferred) : (grades[0] || "");
+        populateGradeSelect(grades, preferredGrade);
+        populateClassSelect(classesForGrade(currentGrade()), preferred);
+        setGradeField();
         loadDraft();
       });
   }
@@ -631,9 +670,14 @@
   });
 
   /* ---------- class + learner picker wiring ---------- */
+  gradeSelect.addEventListener("change", function(){
+    populateClassSelect(classesForGrade(currentGrade()), "");
+    setGradeField();
+    populateLearnerPickers();
+    queueSave();
+  });
   classSelect.addEventListener("change", function(){
-    var gi = byField("grade");
-    if (gi) gi.value = gradeFromClass(currentClass());
+    setGradeField();
     populateLearnerPickers();
     queueSave();
   });
