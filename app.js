@@ -6790,175 +6790,39 @@ ${trimmedReviewNote}` : noteHeader;
       setReportExporting(true);
       try {
         if (!window.PDFLib) throw new Error("PDF export is unavailable. Refresh the page and try again.");
-        const { PDFDocument, StandardFonts, rgb } = window.PDFLib;
+        if (typeof window.html2canvas !== "function") throw new Error("Report rendering library is still loading. Refresh the page and try again.");
+        const { PDFDocument } = window.PDFLib;
         const pdfDoc = await PDFDocument.create();
-        const regular = await pdfDoc.embedFont(StandardFonts.Helvetica);
-        const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-        const logoBytes = Uint8Array.from(atob(LOGO.split(",")[1]), (char) => char.charCodeAt(0));
-        const logoImage = await pdfDoc.embedPng(logoBytes);
-        const [teacherBytes, principalBytes, stampBytes] = await Promise.all(
-          ["./teacher_signature.png", "./principal_signature.png", "./school_stamp.png"].map(async (url) => {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`Could not load report artwork: ${url}`);
-            return new Uint8Array(await response.arrayBuffer());
-          })
-        );
-        const teacherImage = await pdfDoc.embedPng(teacherBytes);
-        const principalImage = await pdfDoc.embedPng(principalBytes);
-        const stampImage = await pdfDoc.embedPng(stampBytes);
-        const pageWidth = 595.28;
-        const pageHeight = 841.89;
-        const margin = 38;
-        const contentWidth = pageWidth - margin * 2;
-        const ink = rgb(0.12, 0.23, 0.37);
-        const muted = rgb(0.35, 0.4, 0.47);
-        const pale = rgb(0.96, 0.97, 0.98);
-        let page;
-        let cursorY;
-        const addPage = () => {
-          page = pdfDoc.addPage([pageWidth, pageHeight]);
-          cursorY = pageHeight - margin;
-        };
-        const ensureRoom = (height) => {
-          if (cursorY - height < 58) addPage();
-        };
-        const cleanText = (value) => String(value == null ? "" : value)
-          .normalize("NFKD")
-          .replace(/[\u2013\u2014]/g, "-")
-          .replace(/[^\x20-\x7E]/g, "");
-        const fitText = (value, font, size, maxWidth) => {
-          let text = cleanText(value);
-          while (text && font.widthOfTextAtSize(text, size) > maxWidth) text = `${text.slice(0, -2)}...`;
-          return text;
-        };
-        const drawParagraph = (text, options = {}) => {
-          const size = options.size || 9;
-          const font = options.bold ? bold : regular;
-          const color = options.color || muted;
-          const maxWidth = options.width || contentWidth;
-          const lineHeight = options.lineHeight || size + 4;
-          const words = cleanText(text).split(/\s+/);
-          let line = "";
-          words.forEach((word) => {
-            const next = line ? `${line} ${word}` : word;
-            if (line && font.widthOfTextAtSize(next, size) > maxWidth) {
-              ensureRoom(lineHeight);
-              page.drawText(line, { x: options.x || margin, y: cursorY, size, font, color });
-              cursorY -= lineHeight;
-              line = word;
-            } else {
-              line = next;
-            }
+        const pageWidth = 841.89;
+        const pageHeight = 595.28;
+        const margin = 18;
+        const cardElements = Array.from(document.querySelectorAll("#learner-report-print-area .learner-report-card"));
+        for (let i = 0; i < reportDownloadData.length; i++) {
+          const el = cardElements[i];
+          if (!el) continue;
+          const canvas = await window.html2canvas(el, {
+            backgroundColor: "#ffffff",
+            scale: 2,
+            useCORS: true,
+            logging: false
           });
-          if (line) {
-            ensureRoom(lineHeight);
-            page.drawText(line, { x: options.x || margin, y: cursorY, size, font, color });
-            cursorY -= lineHeight;
-          }
-        };
-        const drawSection = (title) => {
-          ensureRoom(27);
-          cursorY -= 5;
-          page.drawText(title.toUpperCase(), { x: margin, y: cursorY, size: 9, font: bold, color: ink });
-          page.drawLine({ start: { x: margin, y: cursorY - 4 }, end: { x: pageWidth - margin, y: cursorY - 4 }, thickness: 0.7, color: rgb(0.82, 0.86, 0.9) });
-          cursorY -= 18;
-        };
-        const drawTable = (headers, rows, widths) => {
-          const drawRow = (cells, header = false, index = 0) => {
-            const rowHeight = 20;
-            ensureRoom(rowHeight);
-            const y = cursorY - rowHeight + 4;
-            page.drawRectangle({
-              x: margin,
-              y: cursorY - 3,
-              width: contentWidth,
-              height: rowHeight,
-              color: header ? ink : index % 2 ? pale : rgb(1, 1, 1)
-            });
-            let x = margin + 5;
-            cells.forEach((cell, cellIndex) => {
-              const font = header ? bold : regular;
-              const size = header ? 7.5 : 7.4;
-              page.drawText(fitText(cell, font, size, widths[cellIndex] - 9), {
-                x,
-                y,
-                size,
-                font,
-                color: header ? rgb(1, 1, 1) : muted
-              });
-              x += widths[cellIndex];
-            });
-            cursorY -= rowHeight;
-          };
-          drawRow(headers, true);
-          (rows.length ? rows : [["-", "No records available", "-", "-", "-"]]).forEach((row, index) => drawRow(row, false, index));
-          cursorY -= 5;
-        };
-        const drawSummary = (items) => {
-          ensureRoom(55);
-          const gap = 7;
-          const cardWidth = (contentWidth - gap * (items.length - 1)) / items.length;
-          items.forEach((item, index) => {
-            const x = margin + index * (cardWidth + gap);
-            page.drawRectangle({ x, y: cursorY - 43, width: cardWidth, height: 43, color: pale, borderColor: rgb(0.87, 0.89, 0.92), borderWidth: 0.6 });
-            page.drawText(fitText(item.label, regular, 7, cardWidth - 10), { x: x + 5, y: cursorY - 13, size: 7, font: regular, color: muted });
-            page.drawText(fitText(item.value, bold, 10, cardWidth - 10), { x: x + 5, y: cursorY - 29, size: 10, font: bold, color: ink });
+          const pngDataUrl = canvas.toDataURL("image/png");
+          const pngBytes = Uint8Array.from(atob(pngDataUrl.split(",")[1]), (c) => c.charCodeAt(0));
+          const image = await pdfDoc.embedPng(pngBytes);
+          const page = pdfDoc.addPage([pageWidth, pageHeight]);
+          const availableWidth = pageWidth - margin * 2;
+          const availableHeight = pageHeight - margin * 2;
+          const scale = Math.min(availableWidth / image.width, availableHeight / image.height);
+          const drawWidth = image.width * scale;
+          const drawHeight = image.height * scale;
+          page.drawImage(image, {
+            x: (pageWidth - drawWidth) / 2,
+            y: (pageHeight - drawHeight) / 2,
+            width: drawWidth,
+            height: drawHeight
           });
-          cursorY -= 52;
-        };
-        reportDownloadData.forEach((report) => {
-          addPage();
-          const logoSize = logoImage.scaleToFit(66, 66);
-          page.drawImage(logoImage, { x: margin, y: cursorY - 68, width: logoSize.width, height: logoSize.height });
-          page.drawText("CARISSA PRIMARY SCHOOL", { x: margin + 78, y: cursorY - 20, size: 17, font: bold, color: ink });
-          page.drawText("23 Hofmeyer Street, Witbank 1035", { x: margin + 78, y: cursorY - 37, size: 7.5, font: regular, color: muted });
-          page.drawText("P.O. Box 430, Witbank 1035  |  Mpumalanga", { x: margin + 78, y: cursorY - 48, size: 7.5, font: regular, color: muted });
-          page.drawLine({ start: { x: margin, y: cursorY - 68 }, end: { x: pageWidth - margin, y: cursorY - 68 }, thickness: 1.4, color: ink });
-          cursorY -= 89;
-          page.drawText("LEARNER PROGRESS REPORT", { x: margin, y: cursorY, size: 12, font: bold, color: ink });
-          cursorY -= 15;
-          page.drawText("Reading and Computer Skills (ICT) | Term 4 | 2026", { x: margin, y: cursorY, size: 9, font: regular, color: muted });
-          cursorY -= 21;
-          page.drawText(`Class: ${cleanText(report.className)}`, { x: margin, y: cursorY, size: 9, font: bold, color: ink });
-          page.drawText(`Learner: ${cleanText(report.name)}`, { x: margin + 150, y: cursorY, size: 9, font: bold, color: ink });
-          page.drawText(`Report date: ${new Date().toLocaleDateString("en-ZA")}`, { x: margin + 365, y: cursorY, size: 8, font: regular, color: muted });
-          cursorY -= 20;
-          drawSummary([
-            { label: "Reading speed", value: report.readingWpm == null ? "-" : `${report.readingWpm} WPM` },
-            { label: "Reading age / status", value: `${report.readingAge} / ${report.readingStatus}` },
-            { label: "Typing", value: `${report.typingWpm} WPM / ${report.typingAccuracy}%` }
-          ]);
-          drawSection("1-Minute Reading");
-          drawTable(
-            ["Term", "Words per minute", "Reading age", "Status", "Date assessed"],
-            report.readingHistory.map((row) => [row.term, `${row.wpm} WPM`, row.age, row.status, row.date]),
-            [55, 100, 85, 100, contentWidth - 340]
-          );
-          drawParagraph(report.readingComment, { size: 8.5, color: ink });
-          drawSection("eLearning Typing");
-          drawSummary([
-            { label: "Average WPM", value: `${report.typingWpm} WPM` },
-            { label: "Average accuracy", value: `${report.typingAccuracy}%` },
-            { label: "Grade target", value: `${report.typingTargetWpm} WPM / ${report.typingTargetAccuracy}%` }
-          ]);
-          drawParagraph(report.typingComment, { size: 8.5, color: ink });
-          if (cursorY < 225) addPage();
-          const issuedY = 190;
-          page.drawText(`Date issued: ${new Date().toLocaleDateString("en-ZA")}`, { x: margin, y: issuedY, size: 8.5, font: bold, color: ink });
-          const sigWidth = 135;
-          const teacherSize = teacherImage.scaleToFit(sigWidth, 43);
-          const principalSize = principalImage.scaleToFit(sigWidth, 43);
-          page.drawImage(teacherImage, { x: margin + (sigWidth - teacherSize.width) / 2, y: 132, width: teacherSize.width, height: teacherSize.height });
-          page.drawImage(principalImage, { x: margin + 152 + (sigWidth - principalSize.width) / 2, y: 132, width: principalSize.width, height: principalSize.height });
-          page.drawLine({ start: { x: margin, y: 127 }, end: { x: margin + sigWidth, y: 127 }, thickness: 0.8, color: ink });
-          page.drawLine({ start: { x: margin + 152, y: 127 }, end: { x: margin + 152 + sigWidth, y: 127 }, thickness: 0.8, color: ink });
-          page.drawText("Ms L Mogajane", { x: margin, y: 112, size: 8.5, font: bold, color: ink });
-          page.drawText("Computer Teacher", { x: margin, y: 100, size: 7.5, font: regular, color: muted });
-          page.drawText("Ms V Sibande", { x: margin + 152, y: 112, size: 8.5, font: bold, color: ink });
-          page.drawText("Principal", { x: margin + 152, y: 100, size: 7.5, font: regular, color: muted });
-          const stampSize = stampImage.scaleToFit(158, 108);
-          page.drawImage(stampImage, { x: pageWidth - margin - stampSize.width, y: 76, width: stampSize.width, height: stampSize.height });
-        });
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        }
         const pdfBytes = await pdfDoc.save();
         const url = URL.createObjectURL(new Blob([pdfBytes], { type: "application/pdf" }));
         const link = document.createElement("a");
@@ -6975,7 +6839,7 @@ ${trimmedReviewNote}` : noteHeader;
       }
     };
     const reportPrintStyle = React.createElement("style", null,
-      `@page { size: A4; margin: 10mm; } @media print { body * { visibility: hidden; } #learner-report-print-area, #learner-report-print-area * { visibility: visible; } #learner-report-print-area { position: absolute; left: 0; top: 0; width: 100%; } .learner-report-card { page-break-after: always; break-after: page; box-shadow: none !important; border: 1px solid #cbd5e1 !important; } .learner-report-card:last-child { page-break-after: auto; break-after: auto; } .no-print { display: none !important; } }`);
+      `@page { size: A4 landscape; margin: 8mm; } @media print { body * { visibility: hidden; } #learner-report-print-area, #learner-report-print-area * { visibility: visible; } #learner-report-print-area { position: absolute; left: 0; top: 0; width: 100%; -webkit-print-color-adjust: exact; print-color-adjust: exact; } .learner-report-card { page-break-after: always; break-after: page; box-shadow: none !important; border: none !important; border-radius: 0 !important; margin: 0 !important; padding: 18px 22px !important; width: 100% !important; } .learner-report-card:last-child { page-break-after: auto; break-after: auto; } .no-print { display: none !important; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff; } }`);
     const reportToolbar = React.createElement("div", { className: "no-print", style: { ...card, marginBottom: "14px" } },
       React.createElement("h3", { style: ctitle }, "\u{1F4C4} Term 4 Reports"),
       React.createElement("p", { style: { color: "#64748b", fontSize: "13px", margin: "0 0 14px" } }, "Select a grade to view and download reports for all learners in that grade."),
