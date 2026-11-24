@@ -471,7 +471,8 @@
 (function(){
   "use strict";
   var API = "/api";
-  var TEMPLATE_PATH = "monitoring-tools/carissa_spip_fillable.pdf";
+  var TEMPLATE_PATH = "monitoring-tools/carissa_spip_template.pdf";
+  var DOCX_TEMPLATE_PATH = "monitoring-tools/carissa_spip_template.docx";
   var SPIP_PDF_METADATA_PREFIX = "CARISSA_SPIP_DATA_V1:";
   var SPIP_IMPORT_VERSION = 1;
   var DRAFT_KEY = "carissa-spip-draft-v1";
@@ -1537,15 +1538,26 @@
       fields[prefix + (i + 1)] = numeric ? cleanNumberValue(values[i]) : cleanValue(values[i]);
     }
   }
-  function parseDocxLearnerGrid(fields, rows, headers){
+  function parseDocxLearnerGrid(fields, rows){
+    var header = rows.find(function(row){
+      return row.some(function(cell){ return /^surname$/i.test(cleanValue(cell)); }) &&
+        row.some(function(cell){ return /^name$/i.test(cleanValue(cell)); });
+    }) || [];
+    var surnameIndex = header.findIndex(function(cell){ return /^surname$/i.test(cleanValue(cell)); });
+    var nameIndex = header.findIndex(function(cell){ return /^name$/i.test(cleanValue(cell)); });
+    var classIndex = header.findIndex(function(cell){ return /^(class|g)$/i.test(cleanValue(cell)); });
+    if (surnameIndex < 0) surnameIndex = 1;
+    if (nameIndex < 0) nameIndex = 2;
+    if (classIndex < 0) classIndex = 3;
     rows.forEach(function(row){
       var num = parseInt(String(row[0] == null ? "" : row[0]).trim(), 10);
       if (!num || num < 1 || num > 15 || String(row[0]).trim().length > 2) return;
-      fields["learner" + num + "_surname"] = cleanValue(row[1]);
-      fields["learner" + num + "_name"] = cleanValue(row[2]);
-      if (headers && headers[3] === "CLASS") fields["learner" + num + "_class"] = cleanValue(row[3]);
-      else fields["learner" + num + "_g"] = cleanValue(row[3]);
-      for (var q = 1; q <= 10; q++) fields["learner" + num + "_q" + q] = cleanNumberValue(row[q + 3]);
+      fields["learner" + num + "_surname"] = cleanValue(row[surnameIndex]);
+      fields["learner" + num + "_name"] = cleanValue(row[nameIndex]);
+      var classValue = cleanValue(row[classIndex]);
+      fields["learner" + num + "_class"] = classValue;
+      fields["learner" + num + "_g"] = classValue;
+      for (var q = 1; q <= 10; q++) fields["learner" + num + "_q" + q] = cleanNumberValue(row[classIndex + q]);
     });
   }
   function parseDocxDocument(xml){
@@ -1617,7 +1629,13 @@
         return;
       }
       if (head[0] === "QUESTIONS" || head.indexOf("SURNAME") !== -1){
-        parseDocxLearnerGrid(fields, rows, head);
+        var topicRow = rows.find(function(row){ return /^topics$/i.test(cleanValue(row[0])); });
+        var questionRow = rows.find(function(row){ return /^questions$/i.test(cleanValue(row[0])); });
+        if (topicRow && questionRow){
+          var firstQuestion = questionRow.findIndex(function(cell){ return /^Q1$/i.test(cleanValue(cell)); });
+          if (firstQuestion >= 0) setQuestionFields(fields, "grid_topic_q", topicRow.slice(firstQuestion), false);
+        }
+        parseDocxLearnerGrid(fields, rows);
         return;
       }
       if (head[0] === "NO" && headText.indexOf("CHALLENGES") !== -1){
@@ -1647,6 +1665,12 @@
         return;
       }
     });
+    if (paragraphs.some(function(text){ return /^COMMENTS:$/i.test(cleanValue(text)); })){
+      var commentsTable = tables.find(function(rows){
+        return rows.length === 4 && rows.every(function(row){ return row.length === 1; });
+      });
+      if (commentsTable) fields.comments = cleanValue(commentsTable.map(function(row){ return row[0]; }).join(" "));
+    }
     return { fields: fields, className: "", manualAvg: {} };
   }
   function mergeDocxVisible(visible, metadata){
@@ -1971,6 +1995,172 @@
     zip.file("word/_rels/document.xml.rels", docRels);
     zip.file("docProps/core.xml", core);
     zip.file("docProps/app.xml", app);
+    return zip.generateAsync({ type: "blob", mimeType: DOCX_MIME, compression: "DEFLATE" });
+  }
+  function docxSetText(container, value){
+    var nodes = Array.prototype.slice.call(container.getElementsByTagNameNS(W_NS, "t"));
+    if (!nodes.length){
+      var paragraph = container.localName === "p" ? container : container.getElementsByTagNameNS(W_NS, "p")[0];
+      if (!paragraph) return;
+      var doc = container.ownerDocument;
+      var run = doc.createElementNS(W_NS, "w:r");
+      var properties = doc.createElementNS(W_NS, "w:rPr");
+      var fonts = doc.createElementNS(W_NS, "w:rFonts");
+      fonts.setAttributeNS(W_NS, "w:ascii", "Arial");
+      fonts.setAttributeNS(W_NS, "w:hAnsi", "Arial");
+      fonts.setAttributeNS(W_NS, "w:cs", "Arial");
+      properties.appendChild(fonts);
+      var size = doc.createElementNS(W_NS, "w:sz");
+      size.setAttributeNS(W_NS, "w:val", "24");
+      properties.appendChild(size);
+      var sizeCs = doc.createElementNS(W_NS, "w:szCs");
+      sizeCs.setAttributeNS(W_NS, "w:val", "24");
+      properties.appendChild(sizeCs);
+      run.appendChild(properties);
+      var text = doc.createElementNS(W_NS, "w:t");
+      run.appendChild(text);
+      paragraph.appendChild(run);
+      nodes.push(text);
+    }
+    nodes.forEach(function(node){ node.textContent = ""; });
+    var parts = String(value == null ? "" : value).split(/\r\n?|\n/);
+    var first = nodes[0];
+    first.textContent = parts.shift() || "";
+    first.setAttributeNS("http://www.w3.org/XML/1998/namespace", "xml:space", "preserve");
+    var run = first.parentNode, reference = first.nextSibling;
+    parts.forEach(function(part){
+      run.insertBefore(container.ownerDocument.createElementNS(W_NS, "w:br"), reference);
+      var text = container.ownerDocument.createElementNS(W_NS, "w:t");
+      text.setAttributeNS("http://www.w3.org/XML/1998/namespace", "xml:space", "preserve");
+      text.textContent = part;
+      run.insertBefore(text, reference);
+    });
+  }
+  function docxSetTextAt(container, index, value){
+    var nodes = container.getElementsByTagNameNS(W_NS, "t");
+    if (nodes[index]) nodes[index].textContent = String(value == null ? "" : value);
+  }
+  function docxFillTemplateParagraphs(doc, values){
+    Array.prototype.forEach.call(doc.getElementsByTagNameNS(W_NS, "p"), function(paragraph){
+      var text = docxParagraphText(paragraph);
+      if (text.indexOf("Subject:") === 0 && text.indexOf("Educator:") !== -1){
+        docxSetTextAt(paragraph, 1, values.subject);
+        docxSetTextAt(paragraph, 4, values.grade);
+        docxSetTextAt(paragraph, 7, values.educator);
+      } else if (text.indexOf("Subject:") === 0 && text.indexOf("Grade:") !== -1){
+        docxSetTextAt(paragraph, 1, values.subject);
+        docxSetTextAt(paragraph, 4, values.grade);
+      } else if (text.indexOf("GRADE:") === 0 && text.indexOf("SUBJECT:") !== -1){
+        docxSetTextAt(paragraph, 1, values.grade);
+        docxSetTextAt(paragraph, 4, values.subject);
+        docxSetTextAt(paragraph, 7, values.educator);
+      } else if (text.indexOf("GRADE:") === 0){
+        docxSetTextAt(paragraph, 1, values.grade);
+      } else if (text.indexOf("TERM:") === 0){
+        docxSetTextAt(paragraph, 1, normalizeSpipTerm(values.ip_term));
+      } else if (text.indexOf("SUBJECT:") === 0){
+        docxSetTextAt(paragraph, 1, values.subject);
+      } else if (text.indexOf("EDUCATOR:") === 0){
+        docxSetTextAt(paragraph, 1, values.educator);
+      }
+    });
+  }
+  function docxFillTemplateTables(doc, values){
+    var tables = Array.prototype.slice.call(doc.getElementsByTagNameNS(W_NS, "tbl"));
+    if (tables.length < 8) throw new Error("The SPIP Word template is missing one or more sections.");
+    function rows(table){
+      return Array.prototype.slice.call(table.getElementsByTagNameNS(W_NS, "tr")).filter(function(row){
+        return row.parentNode === table;
+      });
+    }
+    function cells(row){ return collectChildrenByLocal(row, "tc"); }
+    var tableRows = tables.map(rows);
+
+    [values.previous, values.current_target, values.average].forEach(function(value, index){
+      docxSetText(cells(tableRows[0][1])[index], value);
+    });
+    var terms = [
+      ["1st_term_pass", "1st_term_fail", "1st_term_avg"],
+      ["2nd_term_pass", "2nd_term_fail", "2nd_term_avg"],
+      ["3rd_term_pass", "3rd_term_fail", "3rd_term_avg"],
+      ["4th_term_pass", "4th_term_fail", "4th_term_avg"],
+      ["overall_pass", "overall_fail", "overall_avg"]
+    ];
+    var termLabels = ["1st Term", "2nd Term", "3rd Term", "4th Term", "Overall"];
+    terms.forEach(function(names, rowIndex){
+      var rowCells = cells(tableRows[1][rowIndex + 1]);
+      docxSetText(rowCells[0], termLabels[rowIndex]);
+      names.forEach(function(name, colIndex){ docxSetText(rowCells[colIndex + 1], withPct(values[name])); });
+    });
+    [[values.educator, values.educator_signature], [values.principal, values.principal_signature]].forEach(function(items, rowIndex){
+      var rowCells = cells(tableRows[2][rowIndex]);
+      docxSetTextAt(rowCells[0], 1, items[0]);
+      docxSetText(rowCells[2], items[1]);
+    });
+
+    ["topic_q", "mark_out_q", "total_mark_q", "avg_pct_q"].forEach(function(prefix, rowIndex){
+      var rowCells = cells(tableRows[3][rowIndex + 1]);
+      for (var q = 1; q <= 12; q++) docxSetText(rowCells[q], values[prefix + q]);
+    });
+    docxSetText(cells(tableRows[4][0])[0], values.comments);
+
+    var learnerRows = tableRows[5];
+    var topicCells = cells(learnerRows[1]);
+    for (var topic = 1; topic <= 12; topic++){
+      docxSetText(topicCells[topic], values["grid_topic_q" + topic] || values["topic_q" + topic]);
+    }
+    for (var learner = 1; learner <= 15; learner++){
+      var learnerCells = cells(learnerRows[learner + 2]);
+      docxSetText(learnerCells[1], values["learner" + learner + "_surname"]);
+      docxSetText(learnerCells[2], values["learner" + learner + "_name"]);
+      docxSetText(learnerCells[3], values["learner" + learner + "_class"]);
+      for (var question = 1; question <= 10; question++){
+        docxSetText(learnerCells[question + 3], values["learner" + learner + "_q" + question]);
+      }
+    }
+
+    for (var plan = 1; plan <= 3; plan++){
+      var planCells = cells(tableRows[6][plan]);
+      ["challenges", "action", "responsibility", "achievement_indicator", "time_frame"].forEach(function(field, index){
+        docxSetText(planCells[index + 1], values["plan" + plan + "_" + field]);
+      });
+    }
+    for (var intervention = 1; intervention <= 5; intervention++){
+      var interventionCells = cells(tableRows[7][intervention]);
+      ["topic", "date", "time", "evidence", "performance_indicator", "percentage", "hod_signature"].forEach(function(field, index){
+        docxSetText(interventionCells[index], values["ip" + intervention + "_" + field]);
+      });
+    }
+  }
+  async function buildTemplateDocxBlob(){
+    if (!window.JSZip) throw new Error("Word support is still loading. Please try again in a moment.");
+    var response = await fetch(DOCX_TEMPLATE_PATH, { cache: "force-cache" });
+    if (!response.ok) throw new Error("The SPIP Word template could not be loaded.");
+    var zip = await window.JSZip.loadAsync(await response.arrayBuffer());
+    var values = collectValues();
+    var documentFile = zip.file("word/document.xml");
+    var coreFile = zip.file("docProps/core.xml");
+    if (!documentFile || !coreFile) throw new Error("The SPIP Word template is incomplete.");
+    var doc = docxXmlDoc(await documentFile.async("string"));
+    docxFillTemplateParagraphs(doc, values);
+    docxFillTemplateTables(doc, values);
+    zip.file("word/document.xml", new window.XMLSerializer().serializeToString(doc));
+
+    var draft = collectDraft();
+    var metadataKeyword = SPIP_PDF_METADATA_PREFIX + encodeSpipPdfMetadata({
+      version: 1,
+      className: draft.className,
+      fields: values,
+      manualAvg: draft.manualAvg || {}
+    });
+    var coreXml = await coreFile.async("string");
+    var keywords = "<cp:keywords>" + xmlEscapeDocx(metadataKeyword) + "</cp:keywords>";
+    if (/<cp:keywords(?:\s[^>]*)?>[\s\S]*?<\/cp:keywords>/i.test(coreXml)){
+      coreXml = coreXml.replace(/<cp:keywords(?:\s[^>]*)?>[\s\S]*?<\/cp:keywords>/i, keywords);
+    } else {
+      coreXml = coreXml.replace("</cp:coreProperties>", keywords + "</cp:coreProperties>");
+    }
+    zip.file("docProps/core.xml", coreXml);
     return zip.generateAsync({ type: "blob", mimeType: DOCX_MIME, compression: "DEFLATE" });
   }
   async function readRecordPdfBuffer(rec){
@@ -2347,7 +2537,7 @@
     names.push("overall_pass", "overall_fail", "overall_avg");
     var q;
     for (q = 1; q <= 12; q++){ names.push("topic_q" + q, "mark_out_q" + q, "total_mark_q" + q, "avg_pct_q" + q); }
-    for (q = 1; q <= 10; q++){ names.push("grid_topic_q" + q); }
+    for (q = 1; q <= 12; q++){ names.push("grid_topic_q" + q); }
     var n, m;
     for (n = 1; n <= 15; n++){
       names.push("learner" + n + "_surname", "learner" + n + "_name", "learner" + n + "_class", "learner" + n + "_g");
@@ -2384,7 +2574,7 @@
       var line = "";
       Array.from(word).forEach(function(character){
         var next = line + character;
-        if (line && font.widthOfTextAtSize(next, size) > max){
+        if (line && font.widthOfTextAtSize(next + "-", size) > max){
           parts.push(line);
           line = character;
         } else {
@@ -2405,7 +2595,7 @@
         if (font.widthOfTextAtSize(word, size) > max){
           if (line){ lines.push(line); line = ""; }
           var parts = splitLongWord(word);
-          parts.slice(0, -1).forEach(function(part){ lines.push(part); });
+          parts.slice(0, -1).forEach(function(part){ lines.push(part + "-"); });
           line = parts[parts.length - 1] || "";
           return;
         }
@@ -2505,7 +2695,7 @@
       return supported;
     }catch(e){ return false; }
   }
-  var PDF_OUTPUT_FONT_SIZE = 13;
+  var PDF_OUTPUT_FONT_SIZE = 12;
   function drawPdfContinuationPages(pdfDoc, entries, font, boldFont, values){
     var pageWidth = 841.92, pageHeight = 595.32, margin = 42;
     var bodyWidth = pageWidth - margin * 2;
@@ -2546,107 +2736,198 @@
     return pageByField;
   }
 
-  function addPdfQuarterlyTermFields(pdfDoc, pdfForm, font){
-    var page = pdfDoc.getPage(0);
-    var overallNames = ["overall_pass", "overall_fail", "overall_avg"];
-    var overallRects = overallNames.map(function(name){
-      return pdfForm.getTextField(name).acroField.getWidgets()[0].getRectangle();
+  function addPdfTemplateField(pdfDoc, pdfForm, name, pageIndex, x, top, width, height, font, options){
+    options = options || {};
+    var page = pdfDoc.getPage(pageIndex);
+    var field = pdfForm.createTextField(name);
+    if (options.multiline) field.enableMultiline();
+    field.setAlignment(options.center ? window.PDFLib.TextAlignment.Center : window.PDFLib.TextAlignment.Left);
+    field.addToPage(page, {
+      x: x,
+      y: page.getHeight() - top - height,
+      width: width,
+      height: height,
+      font: font,
+      fontSize: PDF_OUTPUT_FONT_SIZE,
+      textColor: window.PDFLib.rgb(0, 0, 0),
+      backgroundColor: window.PDFLib.rgb(1, 1, 1),
+      borderWidth: 0
     });
-    var termY = overallRects[0].y;
-    var overallY = termY - 16.56;
-    overallNames.forEach(function(name){
-      pdfForm.getTextField(name).acroField.getWidgets().forEach(function(widget){
-        var rect = widget.getRectangle();
-        widget.setRectangle({ x: rect.x, y: overallY, width: rect.width, height: rect.height });
+    if (options.transparent){
+      field.acroField.getWidgets().forEach(function(widget){
+        var appearance = widget.getAppearanceCharacteristics();
+        if (appearance) appearance.dict.delete(window.PDFLib.PDFName.of("BG"));
       });
-    });
-    ["4th_term_pass", "4th_term_fail", "4th_term_avg"].forEach(function(name, index){
-      var field;
-      try{ field = pdfForm.getTextField(name); }
-      catch(e){ field = pdfForm.createTextField(name); }
-      var anchor = overallRects[index];
-      var rect = {
-        x: anchor.x,
-        y: termY,
-        width: anchor.width,
-        height: anchor.height
-      };
-      var widgets = field.acroField.getWidgets();
-      if (widgets.length){
-        widgets.forEach(function(widget){
-          widget.setRectangle({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
-        });
-      } else {
-        field.addToPage(page, {
-          x: rect.x,
-          y: rect.y,
-          width: rect.width,
-          height: rect.height,
-          font: font,
-          fontSize: PDF_OUTPUT_FONT_SIZE,
-          textColor: window.PDFLib.rgb(0, 0, 0),
-          borderWidth: 0
-        });
-      }
-      field.setAlignment(window.PDFLib.TextAlignment.Left);
-    });
-    ["1st_term_pass", "1st_term_fail", "1st_term_avg",
-      "2nd_term_pass", "2nd_term_fail", "2nd_term_avg",
-      "3rd_term_pass", "3rd_term_fail", "3rd_term_avg",
-      "4th_term_pass", "4th_term_fail", "4th_term_avg",
-      "overall_pass", "overall_fail", "overall_avg"].forEach(function(name){
-        pdfForm.getTextField(name).setAlignment(window.PDFLib.TextAlignment.Left);
-      });
-  }
-
-  function drawPdfQuarterlyTermRows(page, boldFont){
-    var xs = [72, 239.42, 428.45, 621.31, 799.66];
-    var top = 208.49, middle = 192.29, bottom = 175.73;
-    var black = window.PDFLib.rgb(0, 0, 0);
-    page.drawRectangle({
-      x: xs[0] - 0.5,
-      y: bottom - 0.5,
-      width: xs[4] - xs[0] + 1,
-      height: top - bottom + 1,
-      color: window.PDFLib.rgb(1, 1, 1)
-    });
-    [top, middle, bottom].forEach(function(y){
-      page.drawLine({ start: { x: xs[0], y: y }, end: { x: xs[4], y: y }, thickness: 0.48, color: black });
-    });
-    xs.forEach(function(x){
-      page.drawLine({ start: { x: x, y: bottom }, end: { x: x, y: top }, thickness: 0.48, color: black });
-    });
-
-    function drawRow(label, baseline){
-      page.drawText(label, { x: 77.64, y: baseline, size: 14.04, font: boldFont, color: black });
     }
-    drawRow("4th Term", 195.41);
-    drawRow("Overall", 178.85);
+    return field;
   }
-
-  function drawPdfLearnerClassHeader(page, pdfForm, boldFont){
-    var left = 280.01, right = 306.53, bottom = 475.54, top = 491.62;
-    var black = window.PDFLib.rgb(0, 0, 0);
+  function coverPdfTemplateArea(page, x, top, width, height){
     page.drawRectangle({
-      x: left - 0.48,
-      y: bottom - 0.48,
-      width: right - left + 0.96,
-      height: top - bottom + 0.96,
+      x: x,
+      y: page.getHeight() - top - height,
+      width: width,
+      height: height,
       color: window.PDFLib.rgb(1, 1, 1)
     });
-    page.drawLine({ start: { x: left, y: bottom }, end: { x: right, y: bottom }, thickness: 0.48, color: black });
-    page.drawLine({ start: { x: left, y: top }, end: { x: right, y: top }, thickness: 0.48, color: black });
-    page.drawLine({ start: { x: left, y: bottom }, end: { x: left, y: top }, thickness: 0.48, color: black });
-    page.drawLine({ start: { x: right, y: bottom }, end: { x: right, y: top }, thickness: 0.48, color: black });
-    var label = "Class", size = PDF_OUTPUT_FONT_SIZE;
-    var labelWidth = boldFont.widthOfTextAtSize(label, size);
-    page.drawText(label, {
-      x: left + (right - left - labelWidth) / 2,
-      y: 478.54,
-      size: size,
-      font: boldFont,
-      color: black
+  }
+  function drawPdfTemplateLabel(page, text, x, top, font){
+    page.drawText(text, {
+      x: x,
+      y: page.getHeight() - top - 12,
+      size: PDF_OUTPUT_FONT_SIZE,
+      font: font,
+      color: window.PDFLib.rgb(0, 0, 0)
     });
+  }
+  function addPdfTemplateFields(pdfDoc, pdfForm, regularFont, boldFont){
+    var pages = pdfDoc.getPages();
+    var black = window.PDFLib.rgb(0, 0, 0);
+
+    // Re-space the short metadata line so long subject and educator names fit cleanly.
+    coverPdfTemplateArea(pages[0], 34, 169, 500, 22);
+    drawPdfTemplateLabel(pages[0], "Subject:", 36, 174, boldFont);
+    drawPdfTemplateLabel(pages[0], "Grade:", 326, 174, boldFont);
+    addPdfTemplateField(pdfDoc, pdfForm, "subject", 0, 94, 171, 222, 18, regularFont);
+    addPdfTemplateField(pdfDoc, pdfForm, "grade", 0, 376, 171, 80, 18, regularFont);
+
+    [[ "previous", 36.5, 234.9, 239.5 ],
+      [ "current_target", 276.5, 234.9, 299.5 ],
+      [ "average", 576.5, 234.9, 229.5 ]].forEach(function(item){
+        addPdfTemplateField(pdfDoc, pdfForm, item[0], 0, item[1] + 2, item[2] + 1, item[3] - 4, 22, regularFont);
+      });
+
+    var termLabels = ["1st Term", "2nd Term", "3rd Term", "4th Term", "Overall"];
+    var termNames = ["1st", "2nd", "3rd", "4th", "overall"];
+    var termTop = [322, 345.8, 369.3, 392.8, 416.3];
+    var quarterColumns = [[216.5, 396], [396.5, 576], [576.5, 806]];
+    termLabels.forEach(function(label, row){
+      var top = termTop[row];
+      pages[0].drawText(label, {
+        x: 41,
+        y: pages[0].getHeight() - top - 16,
+        size: 13,
+        font: boldFont,
+        color: black
+      });
+      ["pass", "fail", "avg"].forEach(function(suffix, col){
+        var bounds = quarterColumns[col];
+        var fieldName = row === 4 ? "overall_" + suffix : termNames[row] + "_term_" + suffix;
+        addPdfTemplateField(pdfDoc, pdfForm, fieldName,
+          0, bounds[0] + 2, top + 2, bounds[1] - bounds[0] - 4, 19.5, regularFont, { center: true });
+      });
+    });
+
+    // The template's educator and principal names sit beside signature lines.
+    coverPdfTemplateArea(pages[0], 36, 469, 360, 18);
+    coverPdfTemplateArea(pages[0], 36, 499, 360, 18);
+    drawPdfTemplateLabel(pages[0], "EDUCATOR:", 40.5, 472, boldFont);
+    drawPdfTemplateLabel(pages[0], "SIGNATURE:", 320, 472, boldFont);
+    drawPdfTemplateLabel(pages[0], "PRINCIPAL:", 40.5, 502, boldFont);
+    drawPdfTemplateLabel(pages[0], "SIGNATURE:", 320, 502, boldFont);
+    addPdfTemplateField(pdfDoc, pdfForm, "educator", 0, 116, 467, 184, 17, regularFont);
+    addPdfTemplateField(pdfDoc, pdfForm, "educator_signature", 0, 411, 475, 210, 16, regularFont);
+    addPdfTemplateField(pdfDoc, pdfForm, "principal", 0, 116, 497, 184, 17, regularFont);
+    addPdfTemplateField(pdfDoc, pdfForm, "principal_signature", 0, 411, 505, 210, 16, regularFont);
+
+    // Page 2: item analysis and the four-line comments area.
+    coverPdfTemplateArea(pages[1], 34, 55, 775, 19);
+    drawPdfTemplateLabel(pages[1], "GRADE:", 36, 57, boldFont);
+    drawPdfTemplateLabel(pages[1], "SUBJECT:", 184, 57, boldFont);
+    drawPdfTemplateLabel(pages[1], "EDUCATOR:", 465, 57, boldFont);
+    addPdfTemplateField(pdfDoc, pdfForm, "ia_grade", 1, 88, 55, 70, 18, regularFont);
+    addPdfTemplateField(pdfDoc, pdfForm, "ia_subject", 1, 245, 55, 210, 18, regularFont);
+    addPdfTemplateField(pdfDoc, pdfForm, "ia_educator", 1, 547, 55, 254, 18, regularFont);
+    var analysisColumns = [128.5, 184.9, 241.4, 297.8, 354.4, 410.8, 467.2, 523.7, 580.2, 636.6, 693.1, 749.5, 806];
+    var analysisRows = [
+      ["topic_q", 104, 153],
+      ["mark_out_q", 153.5, 185.5],
+      ["total_mark_q", 186, 225],
+      ["avg_pct_q", 227.5, 264.5]
+    ];
+    analysisRows.forEach(function(row){
+      for (var q = 1; q <= 12; q++){
+        var left = analysisColumns[q - 1];
+        var right = analysisColumns[q];
+        var isTopic = row[0] === "topic_q";
+        addPdfTemplateField(pdfDoc, pdfForm, row[0] + q, 1, left + (isTopic ? -0.25 : 1), row[1] + 1,
+          right - left + (isTopic ? 0.5 : -1.5), row[2] - row[1] - 2, regularFont, {
+            multiline: isTopic,
+            center: !isTopic,
+            transparent: isTopic
+          });
+      }
+    });
+    addPdfTemplateField(pdfDoc, pdfForm, "comments", 1, 36.5, 319, 769, 96, regularFont, {
+      multiline: true,
+      transparent: true
+    });
+
+    // Page 3: question topics, learner names/classes, and marks.
+    addPdfTemplateField(pdfDoc, pdfForm, "grid_grade", 2, 449, 34, 62, 17, regularFont);
+    var learnerColumns = [36, 62, 147, 277, 332, 371.5, 411, 450.4, 489.9, 529.2, 568.8, 608.2, 647.7, 687.1, 726.6, 766, 805.5];
+    for (var topic = 1; topic <= 12; topic++){
+      var topicLeft = learnerColumns[topic + 3];
+      var topicRight = learnerColumns[topic + 4];
+      addPdfTemplateField(pdfDoc, pdfForm, "grid_topic_q" + topic, 2, topicLeft + 0.5, 83,
+        topicRight - topicLeft - 1, 38, regularFont, { multiline: true, center: true });
+    }
+    for (var learner = 1; learner <= 15; learner++){
+      var rowTop = 149.2 + (learner - 1) * 21;
+      addPdfTemplateField(pdfDoc, pdfForm, "learner" + learner + "_surname", 2,
+        learnerColumns[1] + 1, rowTop, learnerColumns[2] - learnerColumns[1] - 2, 17, regularFont);
+      addPdfTemplateField(pdfDoc, pdfForm, "learner" + learner + "_name", 2,
+        learnerColumns[2] + 1, rowTop, learnerColumns[3] - learnerColumns[2] - 2, 17, regularFont);
+      addPdfTemplateField(pdfDoc, pdfForm, "learner" + learner + "_g", 2,
+        learnerColumns[3] + 1, rowTop, learnerColumns[4] - learnerColumns[3] - 2, 17, regularFont, { center: true });
+      for (var mark = 1; mark <= 10; mark++){
+        var markLeft = learnerColumns[mark + 3];
+        var markRight = learnerColumns[mark + 4];
+        addPdfTemplateField(pdfDoc, pdfForm, "learner" + learner + "_q" + mark, 2,
+          markLeft + 0.5, rowTop, markRight - markLeft - 1, 17, regularFont, { center: true });
+      }
+    }
+
+    // Page 4: preserve the wide explanation cells for the subject improvement plan.
+    coverPdfTemplateArea(pages[3], 34, 55, 775, 19);
+    drawPdfTemplateLabel(pages[3], "Subject:", 36, 57, boldFont);
+    drawPdfTemplateLabel(pages[3], "Grade:", 296, 57, boldFont);
+    drawPdfTemplateLabel(pages[3], "Educator:", 405, 57, boldFont);
+    addPdfTemplateField(pdfDoc, pdfForm, "sip_subject", 3, 99, 55, 184, 18, regularFont);
+    addPdfTemplateField(pdfDoc, pdfForm, "sip_grade", 3, 350, 55, 48, 18, regularFont);
+    addPdfTemplateField(pdfDoc, pdfForm, "sip_educator", 3, 476, 55, 326, 18, regularFont);
+    var planColumns = [36.5, 91, 276, 446, 566, 711.1, 806];
+    for (var plan = 1; plan <= 3; plan++){
+      var planTop = [114.2, 228.7, 343.3][plan - 1] + 1;
+      ["challenges", "action", "responsibility", "achievement_indicator", "time_frame"].forEach(function(key, col){
+        var left = planColumns[col + 1];
+        var right = planColumns[col + 2];
+        addPdfTemplateField(pdfDoc, pdfForm, "plan" + plan + "_" + key, 3,
+          left + 1, planTop, right - left - 2, 109, regularFont, { multiline: true });
+      });
+    }
+
+    // Page 5: the selected term and intervention details.
+    [[ "TERM:", "ip_term", 56, 79, 130 ],
+      [ "SUBJECT:", "ip_subject", 74, 103, 280 ],
+      [ "GRADE:", "ip_grade", 92, 90, 80 ],
+      [ "EDUCATOR:", "ip_educator", 110, 115, 340 ]].forEach(function(item){
+        coverPdfTemplateArea(pages[4], 34, item[2], 760, 17);
+        drawPdfTemplateLabel(pages[4], item[0], 36, item[2] + 1, boldFont);
+        addPdfTemplateField(pdfDoc, pdfForm, item[1], 4, item[3], item[2], item[4], 16, regularFont);
+      });
+    var interventionColumns = [36.5, 171, 246, 321, 461, 606.1, 716.1, 806];
+    for (var intervention = 1; intervention <= 5; intervention++){
+      var interventionTop = [186.6, 236.1, 285.6, 335.1, 384.7][intervention - 1] + 1;
+      ["topic", "date", "time", "evidence", "performance_indicator", "percentage", "hod_signature"].forEach(function(key, col){
+        var left = interventionColumns[col];
+        var right = interventionColumns[col + 1];
+        addPdfTemplateField(pdfDoc, pdfForm, "ip" + intervention + "_" + key, 4,
+          left + 1, interventionTop, right - left - 2, 45, regularFont, {
+            multiline: key === "topic" || key === "evidence" || key === "performance_indicator" || key === "hod_signature",
+            center: key === "date" || key === "time" || key === "percentage"
+          });
+      });
+    }
   }
 
   async function fillPdfBytes(){
@@ -2666,7 +2947,7 @@
       }
       var arial = await pdfDoc.embedFont(regularFontData.bytes);
       var arialBold = await pdfDoc.embedFont(boldFontData.bytes);
-      addPdfQuarterlyTermFields(pdfDoc, pdfForm, arial);
+      addPdfTemplateFields(pdfDoc, pdfForm, arial, arialBold);
       var overflowEntries = [];
       var fieldByName = Object.create(null);
       allFieldNames().forEach(function(fieldName){
@@ -2736,34 +3017,13 @@
         pdfDoc.setKeywords(keywords);
       }catch(e){}
       pdfForm.updateFieldAppearances(arial);
-      drawPdfQuarterlyTermRows(pdfDoc.getPage(0), arialBold);
-      drawPdfLearnerClassHeader(pdfDoc.getPage(2), pdfForm, arialBold);
-      // Scale both page content and editable widgets to preserve their alignment.
-      var printScale = 0.94;
-      var offsetX = pdfDoc.getPage(0).getWidth() * (1 - printScale) / 2;
-      var offsetY = pdfDoc.getPage(0).getHeight() * (1 - printScale) / 2;
-      pdfForm.getFields().forEach(function(field){
-        field.acroField.getWidgets().forEach(function(widget){
-          var rect = widget.getRectangle();
-          widget.setRectangle({
-            x: rect.x * printScale + offsetX,
-            y: rect.y * printScale + offsetY,
-            width: rect.width * printScale,
-            height: rect.height * printScale
-          });
-        });
-      });
-      pdfDoc.getPages().forEach(function(page){
-        page.scaleContent(printScale, printScale);
-        page.translateContent(offsetX, offsetY);
-      });
       return pdfDoc.save();
   }
 
   downloadWordBtn.addEventListener("click", function(){
     setStatus("", "");
     downloadWordBtn.disabled = true;
-    buildDocxBlob().then(function(blob){
+    buildTemplateDocxBlob().then(function(blob){
       var values = collectValues();
       var name = "carissa-spip" +
         (safePart(values.subject) ? "-" + safePart(values.subject) : "") +
