@@ -6646,12 +6646,12 @@ ${trimmedReviewNote}` : noteHeader;
       if (g === 7) return 120; if (g === 8) return 135; return null;
     })();
     const reportReadingTargetYears = reportGradeNum >= 1 ? reportGradeNum + 6 : null;
-    const reportCardStyle = { background: "#fff", border: "1px solid #cbd5e1", borderRadius: "4px", padding: "24px 26px", marginBottom: "16px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)", position: "relative" };
-    const reportSectionTitle = { fontSize: "13px", fontWeight: 800, color: "#334155", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "8px" };
-    const reportStat = (label, value, sub, color) => React.createElement("div", { style: { background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "10px 12px", flex: "1 1 140px" } },
-      React.createElement("div", { style: { fontSize: "11px", color: "#64748b", marginBottom: "3px" } }, label),
-      React.createElement("div", { style: { fontSize: "20px", fontWeight: 700, color: color || "#334155" } }, value),
-      sub ? React.createElement("div", { style: { fontSize: "11px", color: "#94a3b8", marginTop: "3px" } }, sub) : null);
+    const reportCardStyle = { background: "#fff", border: "1px solid #cbd5e1", borderRadius: "4px", padding: "14px 22px", marginBottom: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.04)", position: "relative", width: "1100px", boxSizing: "border-box" };
+    const reportSectionTitle = { fontSize: "12px", fontWeight: 800, color: "#334155", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "5px" };
+    const reportStat = (label, value, sub, color) => React.createElement("div", { style: { background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "7px 11px", flex: "1 1 140px" } },
+      React.createElement("div", { style: { fontSize: "10px", color: "#64748b", marginBottom: "2px" } }, label),
+      React.createElement("div", { style: { fontSize: "17px", fontWeight: 700, color: color || "#334155" } }, value),
+      sub ? React.createElement("div", { style: { fontSize: "10px", color: "#94a3b8", marginTop: "2px" } }, sub) : null);
     const sigLineStyle = { borderTop: "1.5px solid #334155", marginTop: "4px", width: "100%" };
     const reportDownloadData = [];
     const reportRows = reportRoster.map((learner) => {
@@ -6740,49 +6740,49 @@ ${trimmedReviewNote}` : noteHeader;
         ? buildTable(["Term", "Words per minute", "Reading age", "Status", "Date assessed"], readingHistoryRows)
         : empty("No reading marks recorded for this learner yet.");
       return React.createElement("div", { key: `report-${key}`, className: "learner-report-card", style: reportCardStyle },
-        React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: "18px", borderBottom: "2px solid #1e3a5f", paddingBottom: "12px", marginBottom: "14px" } },
-          React.createElement("img", { src: LOGO, alt: "Carissa Primary School logo", style: { width: "78px", height: "78px", objectFit: "contain", flex: "0 0 auto", borderRadius: "6px" } }),
+        React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: "16px", borderBottom: "2px solid #1e3a5f", paddingBottom: "8px", marginBottom: "9px" } },
+          React.createElement("img", { src: LOGO, alt: "Carissa Primary School logo", style: { width: "64px", height: "64px", objectFit: "contain", flex: "0 0 auto", borderRadius: "6px" } }),
           React.createElement("div", { style: { textAlign: "left" } },
-            React.createElement("div", { style: { fontSize: "22px", fontWeight: 900, color: "#1e3a5f", letterSpacing: "1px" } }, "CARISSA PRIMARY SCHOOL"),
-            React.createElement("div", { style: { fontSize: "12px", color: "#475569", marginTop: "4px", lineHeight: 1.5 } },
+            React.createElement("div", { style: { fontSize: "20px", fontWeight: 900, color: "#1e3a5f", letterSpacing: "1px" } }, "CARISSA PRIMARY SCHOOL"),
+            React.createElement("div", { style: { fontSize: "11px", color: "#475569", marginTop: "2px", lineHeight: 1.4 } },
               "23 Hofmeyer Street, Witbank 1035", React.createElement("br"),
               "P.O. Box 430, Witbank 1035", React.createElement("br"),
               "Mpumalanga"))),
-        React.createElement("div", { style: { textAlign: "center", marginBottom: "12px" } },
-          React.createElement("div", { style: { fontSize: "17px", fontWeight: 900, color: "#1e3a5f", letterSpacing: "0.6px" } }, "LEARNER PROGRESS REPORT"),
-          React.createElement("div", { style: { fontSize: "13px", color: "#475569", marginTop: "3px" } }, "Reading and Computer Skills (ICT) | Term 4 | 2026")),
-        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(145px,1fr))", gap: "8px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "7px", padding: "10px 12px", marginBottom: "12px" } },
+        React.createElement("div", { style: { textAlign: "center", marginBottom: "8px" } },
+          React.createElement("div", { style: { fontSize: "15px", fontWeight: 900, color: "#1e3a5f", letterSpacing: "0.6px" } }, "LEARNER PROGRESS REPORT"),
+          React.createElement("div", { style: { fontSize: "12px", color: "#475569", marginTop: "2px" } }, "Reading and Computer Skills (ICT) | Term 4 | 2026")),
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(145px,1fr))", gap: "8px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "7px", padding: "7px 12px", marginBottom: "8px" } },
           React.createElement("div", null, React.createElement("div", { style: { fontSize: "10px", color: "#64748b", textTransform: "uppercase" } }, "Class"), React.createElement("div", { style: { fontSize: "13px", fontWeight: 700, color: "#1e293b" } }, learner._class)),
           React.createElement("div", null, React.createElement("div", { style: { fontSize: "10px", color: "#64748b", textTransform: "uppercase" } }, "Learner"), React.createElement("div", { style: { fontSize: "13px", fontWeight: 700, color: "#1e293b" } }, `${learner.surname}, ${learner.firstname}`)),
           React.createElement("div", null, React.createElement("div", { style: { fontSize: "10px", color: "#64748b", textTransform: "uppercase" } }, "Report date"), React.createElement("div", { style: { fontSize: "13px", fontWeight: 700, color: "#1e293b" } }, new Date().toLocaleDateString("en-ZA"))),
           React.createElement("button", { type: "button", className: "no-print", onClick: () => { setPrintOnly(key); setTimeout(() => { window.print(); setTimeout(() => setPrintOnly(null), 500); }, 100); }, style: { padding: "6px 12px", borderRadius: "7px", border: "1px solid #c7d2fe", background: "#eef2ff", color: "#3730a3", fontWeight: 700, cursor: "pointer", fontSize: "12px", alignSelf: "center" } }, "Print Report")),
-        React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "12px" } },
+        React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "8px" } },
           reportStat("Reading", readWpm == null ? "\u2014" : `${readWpm} WPM`, `target ${reportReadingTargetWpm || "\u2014"} WPM`, readOk ? "#15803d" : "#b45309"),
           reportStat("Reading age / status", `${readAge || "\u2014"}${readStatus ? ` / ${readStatus.label}` : ""}`, `target ${reportReadingTargetYears || "\u2014"} years`, "#7c3aed"),
           reportStat("Typing", `${rWpm} WPM / ${rAcc}%`, `target ${reportTypingTarget.wpmTarget} WPM / ${reportTypingTarget.accTarget}%`, wpmOk && accOk ? "#15803d" : "#b45309")),
         React.createElement("div", { style: reportSectionTitle }, "1-Minute Reading"),
         readingHistoryTable,
-        React.createElement("div", { style: { fontSize: "12px", color: "#475569", background: "#f8fafc", borderLeft: "3px solid #60a5fa", padding: "8px 10px", margin: "7px 0 12px" } }, readingComment),
+        React.createElement("div", { style: { fontSize: "11px", color: "#475569", background: "#f8fafc", borderLeft: "3px solid #60a5fa", padding: "6px 10px", margin: "5px 0 8px" } }, readingComment),
         React.createElement("div", { style: reportSectionTitle }, "eLearning Typing"),
-        React.createElement("div", { style: { display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "6px" } },
+        React.createElement("div", { style: { display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "4px" } },
           reportStat("Average WPM", rWpm == null ? "\u2014" : `${rWpm} WPM`, `target ${reportTypingTarget.wpmTarget} WPM`, wpmOk ? "#15803d" : "#b45309"),
           reportStat("Average accuracy", rAcc == null ? "\u2014" : `${rAcc}%`, `target ${reportTypingTarget.accTarget}%`, accOk ? "#15803d" : "#b45309"),
           reportStat("Source", typingSource === "target" ? "Grade target" : typingSource === "activity" ? "Typing activity" : "Typing assessment", "", "#0f766e")),
-        React.createElement("div", { style: { fontSize: "12px", color: "#475569", background: "#f8fafc", borderLeft: "3px solid #a78bfa", padding: "8px 10px", marginTop: "7px" } }, typingComment),
-        React.createElement("div", { style: { fontSize: "12px", color: "#475569", marginTop: "14px", fontWeight: 700 } }, "Date issued: ", new Date().toLocaleDateString("en-ZA")),
-        React.createElement("div", { style: { display: "flex", gap: "12px", justifyContent: "space-between", alignItems: "flex-end", marginTop: "14px", flexWrap: "wrap", breakInside: "avoid" } },
+        React.createElement("div", { style: { fontSize: "11px", color: "#475569", background: "#f8fafc", borderLeft: "3px solid #a78bfa", padding: "6px 10px", marginTop: "5px" } }, typingComment),
+        React.createElement("div", { style: { fontSize: "12px", color: "#475569", marginTop: "9px", fontWeight: 700 } }, "Date issued: ", new Date().toLocaleDateString("en-ZA")),
+        React.createElement("div", { style: { display: "flex", gap: "12px", justifyContent: "space-between", alignItems: "flex-end", marginTop: "8px", flexWrap: "wrap", breakInside: "avoid" } },
           React.createElement("div", { style: { display: "flex", flex: "1 1 390px", gap: "18px", minWidth: "280px" } },
             React.createElement("div", { style: { flex: "1 1 0", minWidth: 0, textAlign: "center" } },
-              React.createElement("img", { src: "./teacher_signature.png", alt: "Computer teacher signature", style: { height: "54px", width: "100%", objectFit: "contain", filter: "contrast(1.3) brightness(0.72)" } }),
+              React.createElement("img", { src: "./teacher_signature.png", alt: "Computer teacher signature", style: { height: "44px", width: "100%", objectFit: "contain", filter: "contrast(1.3) brightness(0.72)" } }),
               React.createElement("div", { style: sigLineStyle }),
-              React.createElement("div", { style: { fontSize: "12px", fontWeight: 700, color: "#1e293b", marginTop: "5px" } }, "Ms L Mogajane"),
-              React.createElement("div", { style: { fontSize: "11px", color: "#64748b" } }, "Computer Teacher")),
+              React.createElement("div", { style: { fontSize: "11px", fontWeight: 700, color: "#1e293b", marginTop: "3px" } }, "Ms L Mogajane"),
+              React.createElement("div", { style: { fontSize: "10px", color: "#64748b" } }, "Computer Teacher")),
             React.createElement("div", { style: { flex: "1 1 0", minWidth: 0, textAlign: "center" } },
-              React.createElement("img", { src: "./principal_signature.png", alt: "Principal signature", style: { height: "54px", width: "100%", objectFit: "contain" } }),
+              React.createElement("img", { src: "./principal_signature.png", alt: "Principal signature", style: { height: "44px", width: "100%", objectFit: "contain" } }),
               React.createElement("div", { style: sigLineStyle }),
-              React.createElement("div", { style: { fontSize: "12px", fontWeight: 700, color: "#1e293b", marginTop: "5px" } }, "Ms V Sibande"),
-              React.createElement("div", { style: { fontSize: "11px", color: "#64748b" } }, "Principal"))),
-          React.createElement("img", { src: "./school_stamp.png", alt: "Carissa Primary School stamp", className: "school-stamp", style: { width: "160px", height: "100px", flex: "0 0 160px", objectFit: "contain" } })));
+              React.createElement("div", { style: { fontSize: "11px", fontWeight: 700, color: "#1e293b", marginTop: "3px" } }, "Ms V Sibande"),
+              React.createElement("div", { style: { fontSize: "10px", color: "#64748b" } }, "Principal"))),
+          React.createElement("img", { src: "./school_stamp.png", alt: "Carissa Primary School stamp", className: "school-stamp", style: { width: "130px", height: "82px", flex: "0 0 130px", objectFit: "contain" } })));
     });
     const downloadAllReports = async () => {
       if (!reportDownloadData.length) return;
@@ -6839,7 +6839,7 @@ ${trimmedReviewNote}` : noteHeader;
       }
     };
     const reportPrintStyle = React.createElement("style", null,
-      `@page { size: A4 landscape; margin: 8mm; } @media print { body * { visibility: hidden; } #learner-report-print-area, #learner-report-print-area * { visibility: visible; } #learner-report-print-area { position: absolute; left: 0; top: 0; width: 100%; -webkit-print-color-adjust: exact; print-color-adjust: exact; } .learner-report-card { page-break-after: always; break-after: page; box-shadow: none !important; border: none !important; border-radius: 0 !important; margin: 0 !important; padding: 18px 22px !important; width: 100% !important; } .learner-report-card:last-child { page-break-after: auto; break-after: auto; } .no-print { display: none !important; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff; } }`);
+      `@page { size: A4 landscape; margin: 6mm; } @media print { body * { visibility: hidden; } #learner-report-print-area, #learner-report-print-area * { visibility: visible; } #learner-report-print-area { position: absolute; left: 0; top: 0; width: 100%; -webkit-print-color-adjust: exact; print-color-adjust: exact; } .learner-report-card { page-break-after: always; break-after: page; box-shadow: none !important; border: none !important; border-radius: 0 !important; margin: 0 0 10px !important; padding: 12px 18px !important; width: 100% !important; box-sizing: border-box; } .learner-report-card:last-child { page-break-after: auto; break-after: auto; } .no-print { display: none !important; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff; } }`);
     const reportToolbar = React.createElement("div", { className: "no-print", style: { ...card, marginBottom: "14px" } },
       React.createElement("h3", { style: ctitle }, "\u{1F4C4} Term 4 Reports"),
       React.createElement("p", { style: { color: "#64748b", fontSize: "13px", margin: "0 0 14px" } }, "Select a grade to view and download reports for all learners in that grade."),
