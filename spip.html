@@ -2504,7 +2504,7 @@
       return pdfForm.getTextField(name).acroField.getWidgets()[0].getRectangle();
     });
     var termY = overallRects[0].y;
-    var overallY = termY - 16.65;
+    var overallY = termY - 16.56;
     overallNames.forEach(function(name){
       pdfForm.getTextField(name).acroField.getWidgets().forEach(function(widget){
         var rect = widget.getRectangle();
@@ -2544,54 +2544,49 @@
   }
 
   function drawPdfQuarterlyTermRows(page, boldFont){
-    var xs = [87.7, 240.7, 429.7, 622.5, 796.8];
-    var top = 208.7, middle = 192.0, bottom = 175.3;
+    var xs = [72, 239.42, 428.45, 621.31, 799.66];
+    var top = 208.49, middle = 192.29, bottom = 175.73;
     var black = window.PDFLib.rgb(0, 0, 0);
     page.drawRectangle({
-      x: xs[0] - 1,
-      y: bottom - 1,
-      width: xs[4] - xs[0] + 2,
-      height: top - bottom + 2,
+      x: xs[0] - 0.5,
+      y: bottom - 0.5,
+      width: xs[4] - xs[0] + 1,
+      height: top - bottom + 1,
       color: window.PDFLib.rgb(1, 1, 1)
     });
     [top, middle, bottom].forEach(function(y){
-      page.drawLine({ start: { x: xs[0], y: y }, end: { x: xs[4], y: y }, thickness: 0.6, color: black });
+      page.drawLine({ start: { x: xs[0], y: y }, end: { x: xs[4], y: y }, thickness: 0.48, color: black });
     });
     xs.forEach(function(x){
-      page.drawLine({ start: { x: x, y: bottom }, end: { x: x, y: top }, thickness: 0.6, color: black });
+      page.drawLine({ start: { x: x, y: bottom }, end: { x: x, y: top }, thickness: 0.48, color: black });
     });
 
-    function drawRow(label, centerY){
-      var baseline = centerY - 3.1;
-      page.drawText(label, { x: xs[0] + 4, y: baseline, size: 9, font: boldFont, color: black });
+    function drawRow(label, baseline){
+      page.drawText(label, { x: 77.64, y: baseline, size: 9, font: boldFont, color: black });
     }
-    drawRow("4th Term", (top + middle) / 2);
-    drawRow("Overall", (middle + bottom) / 2);
+    drawRow("4th Term", 195.41);
+    drawRow("Overall", 178.85);
   }
 
   function drawPdfLearnerClassHeader(page, pdfForm, boldFont){
-    var learnerField = pdfForm.getTextField("learner1_g").acroField.getWidgets()[0].getRectangle();
-    var left = learnerField.x;
-    var right = left + learnerField.width + 2;
-    var bottom = learnerField.y + learnerField.height + 2;
-    var top = bottom + 18;
+    var left = 280.01, right = 306.53, bottom = 475.54, top = 491.62;
     var black = window.PDFLib.rgb(0, 0, 0);
     page.drawRectangle({
-      x: left - 1,
-      y: bottom - 1,
-      width: right - left + 2,
-      height: top - bottom + 2,
+      x: left - 0.48,
+      y: bottom - 0.48,
+      width: right - left + 0.96,
+      height: top - bottom + 0.96,
       color: window.PDFLib.rgb(1, 1, 1)
     });
-    page.drawLine({ start: { x: left, y: bottom }, end: { x: right, y: bottom }, thickness: 0.6, color: black });
-    page.drawLine({ start: { x: left, y: top }, end: { x: right, y: top }, thickness: 0.6, color: black });
-    page.drawLine({ start: { x: left, y: bottom }, end: { x: left, y: top }, thickness: 0.6, color: black });
-    page.drawLine({ start: { x: right, y: bottom }, end: { x: right, y: top }, thickness: 0.6, color: black });
-    var label = "Class", size = 6.3;
+    page.drawLine({ start: { x: left, y: bottom }, end: { x: right, y: bottom }, thickness: 0.48, color: black });
+    page.drawLine({ start: { x: left, y: top }, end: { x: right, y: top }, thickness: 0.48, color: black });
+    page.drawLine({ start: { x: left, y: bottom }, end: { x: left, y: top }, thickness: 0.48, color: black });
+    page.drawLine({ start: { x: right, y: bottom }, end: { x: right, y: top }, thickness: 0.48, color: black });
+    var label = "Class", size = 10.5;
     var labelWidth = boldFont.widthOfTextAtSize(label, size);
     page.drawText(label, {
       x: left + (right - left - labelWidth) / 2,
-      y: (top + bottom) / 2 - 2.3,
+      y: 478.54,
       size: size,
       font: boldFont,
       color: black
@@ -2628,10 +2623,20 @@
             }
           } else if (text){
             var singleFit = fitPdfSingleLine(text, helv, pdfField, 11);
-            pdfField.setFontSize(singleFit.size);
-            if (singleFit.fits){
+            var readableHeaderField = fieldName === "subject" || fieldName === "grade";
+            var readableHeaderFits = false;
+            if (readableHeaderField){
+              var fieldRect = pdfField.acroField.getWidgets()[0].getRectangle();
+              readableHeaderFits = helv.widthOfTextAtSize(singleFit.text, 12) <= Math.max(8, fieldRect.width - 4);
+            }
+            if (readableHeaderFits){
+              pdfField.setFontSize(12);
+              pdfField.setText(singleFit.text);
+            } else if (singleFit.fits){
+              pdfField.setFontSize(singleFit.size);
               pdfField.setText(singleFit.text);
             } else {
+              pdfField.setFontSize(singleFit.size);
               overflowEntries.push({ name: fieldName, label: pdfFieldLabel(fieldName), text: text });
               pdfField.setText("");
             }
