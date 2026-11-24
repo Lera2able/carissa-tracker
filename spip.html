@@ -6,6 +6,7 @@
 <title>SPIP Tool — Carissa Primary School</title>
 <meta name="description" content="Capture the Subject Performance Improvement Plan (SPIP) data and download it as a filled official PDF template."/>
 <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="./class-data.js?v=20261119a"></script>
 <style>
   :root{
@@ -467,6 +468,8 @@
   "use strict";
   var API = "/api";
   var TEMPLATE_PATH = "monitoring-tools/carissa_spip_fillable.pdf";
+  var SPIP_PDF_METADATA_PREFIX = "CARISSA_SPIP_DATA_V1:";
+  var SPIP_IMPORT_VERSION = 1;
   var DRAFT_KEY = "carissa-spip-draft-v1";
   var CLASS_DATA = window.CLASS_DATA || {};
   var statusEl = document.getElementById("status");
@@ -499,6 +502,8 @@
   var lastSaveError = "";
   var records = [];
   var loadingRecord = false;
+  var templatePdfFieldRectsPromise = null;
+  var attachmentImportGeneration = 0;
 
   function inputs(){ return Array.prototype.slice.call(document.querySelectorAll("[data-field]")); }
   function byField(name){ return document.querySelector('[data-field="' + name + '"]'); }
@@ -709,7 +714,12 @@
         // The file is now stored server-side; drop the heavy base64 from memory
         // so later auto-saves do not re-upload it.
         if (currentAttachment && currentAttachment.data){
-          currentAttachment = { name: currentAttachment.name, type: currentAttachment.type, size: currentAttachment.size };
+          currentAttachment = {
+            name: currentAttachment.name,
+            type: currentAttachment.type,
+            size: currentAttachment.size,
+            importedVersion: Number(currentAttachment.importedVersion) || 0
+          };
           updateAttachmentUI();
         }
         lastSaveError = "";
@@ -926,9 +936,10 @@
     libraryList.innerHTML = html;
   }
   function switchRecord(id){
+    var importGeneration = ++attachmentImportGeneration;
     loadingRecord = true;
     var rec = null;
-    for (var i = 0; i < records.length; i++){ if (records[i].id === id){ rec = records[i]; break; } }
+    for (var i = 0; i < records.length; i++){ if (String(records[i].id) === String(id)){ rec = records[i]; break; } }
     manualAvg = {};
     inputs().forEach(function(el){ el.value = ""; });
     Array.prototype.forEach.call(document.querySelectorAll(".learner-pick"), function(sel){ sel.value = ""; });
@@ -948,8 +959,10 @@
     renderRecords();
     syncRowState();
     loadingRecord = false;
+    if (rec) importAttachedPdfAnswers(rec, importGeneration);
   }
   function newRecord(){
+    attachmentImportGeneration++;
     currentRecordId = null;
     currentAttachment = null;
     loadingRecord = true;
@@ -1129,18 +1142,286 @@
       fr.readAsDataURL(file);
     });
   }
-  async function parsePdfFields(buffer){
-    if (!window.PDFLib || !window.PDFLib.PDFDocument) return {};
-    var doc = await window.PDFLib.PDFDocument.load(buffer);
-    var form = doc.getForm();
-    var out = {};
-    allFieldNames().forEach(function(name){
+  function encodeSpipPdfMetadata(payload){
+    var bytes = new TextEncoder().encode(JSON.stringify(payload));
+    var binary = "";
+    for (var i = 0; i < bytes.length; i += 32768){
+      var part = bytes.subarray(i, Math.min(i + 32768, bytes.length));
+      for (var j = 0; j < part.length; j++) binary += String.fromCharCode(part[j]);
+    }
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  }
+  function readSpipPdfMetadata(doc){
+    var keywords = [];
+    try{ keywords = doc.getKeywords() || []; }catch(e){}
+    if (!Array.isArray(keywords)) keywords = [keywords];
+    for (var i = 0; i < keywords.length; i++){
+      var keyword = String(keywords[i] || "");
+      if (keyword.indexOf(SPIP_PDF_METADATA_PREFIX) !== 0) continue;
       try{
-        var text = form.getTextField(name).getText();
-        if (text != null && String(text) !== "") out[name] = String(text);
+        var encoded = keyword.slice(SPIP_PDF_METADATA_PREFIX.length).replace(/-/g, "+").replace(/_/g, "/");
+        while (encoded.length % 4) encoded += "=";
+        var binary = atob(encoded);
+        var bytes = new Uint8Array(binary.length);
+        for (var bi = 0; bi < binary.length; bi++) bytes[bi] = binary.charCodeAt(bi);
+        var payload = JSON.parse(new TextDecoder().decode(bytes));
+        if (payload && payload.version === 1 && payload.fields && typeof payload.fields === "object"){
+          return payload;
+        }
       }catch(e){}
+    }
+    return null;
+  }
+  function sanitizeImportedFields(source){
+    var allowed = Object.create(null);
+    inputs().forEach(function(el){ allowed[el.getAttribute("data-field")] = true; });
+    var out = {};
+    if (!source || typeof source !== "object" || Array.isArray(source)) return out;
+    Object.keys(source).forEach(function(name){
+      if (!allowed[name] && !/^learner(?:[1-9]|1[0-5])_(?:surname|name)$/.test(name)) return;
+      if (source[name] != null) out[name] = String(source[name]);
     });
     return out;
+  }
+  function normalizeImportedDates(fields){
+    inputs().forEach(function(el){
+      if (!el.hasAttribute("data-date")) return;
+      var name = el.getAttribute("data-field");
+      var value = String(fields[name] || "").trim();
+      var match = value.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+      if (match){
+        fields[name] = match[3] + "-" + ("0" + match[2]).slice(-2) + "-" + ("0" + match[1]).slice(-2);
+      }
+    });
+  }
+  function normalizeLearnerName(value){
+    var text = String(value || "");
+    if (text.normalize) text = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return text.toLowerCase().replace(/[^a-z0-9]/g, "");
+  }
+  function matchImportedLearners(fields, className){
+    var grade = gradeFromClass(className) || String(fields.grade || fields.ia_grade || "").trim();
+    var classes = classesForGrade(grade);
+    for (var n = 1; n <= 15; n++){
+      var pickName = "learner" + n + "_pick";
+      if (String(fields[pickName] || "").trim()) continue;
+      var surname = normalizeLearnerName(fields["learner" + n + "_surname"]);
+      var firstname = normalizeLearnerName(fields["learner" + n + "_name"]);
+      if (!surname || !firstname) continue;
+      for (var ci = 0; ci < classes.length; ci++){
+        var cls = classes[ci], learners = CLASS_DATA[cls] || [];
+        var found = null;
+        for (var li = 0; li < learners.length; li++){
+          if (normalizeLearnerName(learners[li].surname) === surname &&
+              normalizeLearnerName(learners[li].firstname) === firstname){
+            found = learners[li];
+            break;
+          }
+        }
+        if (found){
+          fields[pickName] = cls + "::" + found.number;
+          break;
+        }
+      }
+    }
+  }
+  function mergeImportedFields(imported, existing){
+    var out = sanitizeImportedFields(imported);
+    var keep = sanitizeImportedFields(existing);
+    Object.keys(keep).forEach(function(name){
+      if (String(keep[name] || "").trim()) out[name] = keep[name];
+    });
+    return out;
+  }
+  function countImportedValues(fields){
+    return Object.keys(fields || {}).filter(function(name){
+      return String(fields[name] == null ? "" : fields[name]).trim() !== "";
+    }).length;
+  }
+  async function getTemplatePdfFieldRects(){
+    if (!window.pdfjsLib || !window.pdfjsLib.getDocument) throw new Error("PDF text reading is unavailable.");
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    if (!templatePdfFieldRectsPromise){
+      templatePdfFieldRectsPromise = (async function(){
+        var response = await fetch(TEMPLATE_PATH, { cache: "force-cache" });
+        if (!response.ok) throw new Error("The SPIP template could not be loaded for PDF reading.");
+        var template = await window.pdfjsLib.getDocument({ data: new Uint8Array(await response.arrayBuffer()) }).promise;
+        var allowed = Object.create(null);
+        allFieldNames().forEach(function(name){ allowed[name] = true; });
+        var pages = [];
+        try{
+          for (var pageNumber = 1; pageNumber <= template.numPages; pageNumber++){
+            var page = await template.getPage(pageNumber);
+            var viewport = page.getViewport({ scale: 1, rotation: 0 });
+            var annotations = await page.getAnnotations();
+            var fields = [];
+            annotations.forEach(function(annotation){
+              if (!annotation.fieldName || !allowed[annotation.fieldName] || !annotation.rect) return;
+              var rect = viewport.convertToViewportRectangle(annotation.rect);
+              fields.push({
+                name: annotation.fieldName,
+                left: Math.min(rect[0], rect[2]),
+                right: Math.max(rect[0], rect[2]),
+                top: Math.min(rect[1], rect[3]),
+                bottom: Math.max(rect[1], rect[3])
+              });
+            });
+            pages.push({ width: viewport.width, height: viewport.height, fields: fields });
+          }
+        }finally{
+          await template.destroy();
+        }
+        return pages;
+      })().catch(function(err){
+        templatePdfFieldRectsPromise = null;
+        throw err;
+      });
+    }
+    return templatePdfFieldRectsPromise;
+  }
+  function textInsidePdfField(items, rect){
+    var hits = items.filter(function(item){
+      return item.x >= rect.left - 2 && item.x <= rect.right + 2 &&
+        item.y >= rect.top - 2 && item.y <= rect.bottom + 2;
+    }).sort(function(a, b){ return a.y - b.y || a.x - b.x; });
+    var lines = [];
+    hits.forEach(function(item){
+      var text = String(item.text || "").replace(/\s+/g, " ").trim();
+      if (!text || /^[\s_\-.]+$/.test(text)) return;
+      var line = lines.length ? lines[lines.length - 1] : null;
+      if (!line || Math.abs(line.y - item.y) > Math.max(2, item.height * 0.35)){
+        line = { y: item.y, text: "", right: item.x };
+        lines.push(line);
+      }
+      if (line.text && item.x - line.right > 2) line.text += " ";
+      line.text += text;
+      line.right = Math.max(line.right, item.x + item.width);
+    });
+    return lines.map(function(line){ return line.text.trim(); }).filter(Boolean).join("\n");
+  }
+  async function parseFlattenedPdfFields(buffer){
+    if (!window.pdfjsLib || !window.pdfjsLib.getDocument) return {};
+    var templatePages = await getTemplatePdfFieldRects();
+    var pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(buffer.slice(0)) }).promise;
+    var out = {};
+    try{
+      for (var pageNumber = 1; pageNumber <= Math.min(pdf.numPages, templatePages.length); pageNumber++){
+        var page = await pdf.getPage(pageNumber);
+        var viewport = page.getViewport({ scale: 1, rotation: 0 });
+        var templatePage = templatePages[pageNumber - 1];
+        var scaleX = viewport.width / templatePage.width;
+        var scaleY = viewport.height / templatePage.height;
+        var content = await page.getTextContent();
+        var items = content.items.filter(function(item){ return item.str; }).map(function(item){
+          var transform = window.pdfjsLib.Util.transform(viewport.transform, item.transform);
+          return {
+            text: item.str,
+            x: transform[4],
+            y: transform[5],
+            width: Math.abs(Number(item.width) || 0) * scaleX,
+            height: Math.abs(Number(item.height) || 0) * scaleY
+          };
+        });
+        templatePage.fields.forEach(function(field){
+          if (out[field.name]) return;
+          var rect = {
+            left: field.left * scaleX,
+            right: field.right * scaleX,
+            top: field.top * scaleY,
+            bottom: field.bottom * scaleY
+          };
+          var value = textInsidePdfField(items, rect);
+          if (value) out[field.name] = value;
+        });
+      }
+    }finally{
+      await pdf.destroy();
+    }
+    return out;
+  }
+  async function parsePdfFields(buffer){
+    if (window.PDFLib && window.PDFLib.PDFDocument){
+      try{
+        var doc = await window.PDFLib.PDFDocument.load(buffer.slice(0));
+        var metadata = readSpipPdfMetadata(doc);
+        if (metadata){
+          return {
+            fields: sanitizeImportedFields(metadata.fields),
+            className: String(metadata.className || ""),
+            manualAvg: metadata.manualAvg || {}
+          };
+        }
+        var form = doc.getForm();
+        var out = {};
+        allFieldNames().forEach(function(name){
+          try{
+            var text = form.getTextField(name).getText();
+            if (text != null && String(text) !== "") out[name] = String(text);
+          }catch(e){}
+        });
+        if (Object.keys(out).length){
+          return { fields: sanitizeImportedFields(out), className: "", manualAvg: {} };
+        }
+      }catch(e){}
+    }
+    return {
+      fields: sanitizeImportedFields(await parseFlattenedPdfFields(buffer)),
+      className: "",
+      manualAvg: {}
+    };
+  }
+  async function readRecordPdfBuffer(rec){
+    var attachment = rec && rec.attachment;
+    var url = attachment && attachment.data
+      ? attachment.data
+      : API + "/spip/attachment?id=" + encodeURIComponent(rec.id);
+    var response = await fetch(url, attachment && attachment.data ? {} : { credentials: "include" });
+    if (!response.ok) throw new Error("The saved PDF could not be read (HTTP " + response.status + ").");
+    return response.arrayBuffer();
+  }
+  async function importAttachedPdfAnswers(rec, generation){
+    var attachment = rec && rec.attachment;
+    if (!attachment || Number(attachment.importedVersion || 0) >= SPIP_IMPORT_VERSION ||
+        (!/pdf/i.test(attachment.type || "") && !/\.pdf$/i.test(attachment.name || ""))) return;
+    setStatus("Reading answers from the attached SPIP PDF…", "");
+    try{
+      var parsed = await parsePdfFields(await readRecordPdfBuffer(rec));
+      if (generation !== attachmentImportGeneration || String(currentRecordId) !== String(rec.id)) return;
+      var importedCount = countImportedValues(parsed.fields);
+      if (!importedCount){
+        setStatus("The PDF is attached, but it contains no readable answers. Please check the SPIP fields.", "err");
+        return;
+      }
+      var fields = mergeImportedFields(parsed.fields, rec.fields || {});
+      fields = mergeImportedFields(fields, collectDraft().data);
+      normalizeImportedDates(fields);
+      var grade = gradeFromClass(parsed.className || rec.className) ||
+        String(fields.grade || fields.ia_grade || "").trim();
+      var className = parsed.className || rec.className || "";
+      if (!className && grade){
+        var classes = classesForGrade(grade);
+        className = classes.length ? classes[0] : "";
+      }
+      matchImportedLearners(fields, className);
+      loadingRecord = true;
+      applyDraft({ className: className, fields: fields, manualAvg: parsed.manualAvg || {}, savedAt: rec.updated_at });
+      loadingRecord = false;
+      currentAttachment = Object.assign({}, currentAttachment || attachment, { importedVersion: SPIP_IMPORT_VERSION });
+      updateAttachmentUI();
+      renderRecords();
+      var saved = await saveDraft();
+      if (generation !== attachmentImportGeneration || String(currentRecordId) !== String(rec.id)) return;
+      if (!saved){
+        setStatus("Answers were read from the PDF but could not be saved. " + (lastSaveError || ""), "err");
+      } else {
+        setStatus("Filled this SPIP with " + importedCount + " answers from its attached PDF.", "ok");
+      }
+    }catch(err){
+      loadingRecord = false;
+      if (generation === attachmentImportGeneration && String(currentRecordId) === String(rec.id)){
+        setStatus("Could not import answers from the attached PDF. " + ((err && err.message) || "Please try again."), "err");
+      }
+    }
   }
   async function handleUpload(file, mode){
     if (!file) return;
@@ -1156,47 +1437,83 @@
     setStatus("Reading the uploaded SPIP…", "");
     try{
       var dataUrl = await readFileAsDataURL(file);
+      var parsed = { fields: {}, className: "", manualAvg: {} };
+      var parseError = "";
+      if (isPdf){
+        try{ parsed = await parsePdfFields(await file.arrayBuffer()); }
+        catch(err){ parseError = (err && err.message) || "The PDF answers could not be read."; }
+      }
+      var parsedFields = sanitizeImportedFields(parsed.fields || {});
+      normalizeImportedDates(parsedFields);
+      var parsedGrade = String(parsedFields.grade || parsedFields.ia_grade || "").trim();
+      var parsedClass = String(parsed.className || "");
+      if (!parsedClass && parsedGrade){
+        var parsedClasses = classesForGrade(parsedGrade);
+        parsedClass = parsedClasses.length ? parsedClasses[0] : "";
+      }
+      matchImportedLearners(parsedFields, parsedClass);
+      var parsedCount = countImportedValues(parsedFields);
       // "replace": swap the file on the record that is already open for editing,
-      // keeping its current answers untouched.
+      // preserving existing answers while filling any blank fields from the PDF.
       if (mode === "replace" && currentRecordId){
-        currentAttachment = { name: file.name, type: file.type || "application/pdf", size: file.size, data: dataUrl };
+        if (isPdf && parsedCount){
+          var mergedFields = mergeImportedFields(parsedFields, collectDraft().data);
+          normalizeImportedDates(mergedFields);
+          matchImportedLearners(mergedFields, currentPrimaryClass() || parsedClass);
+          loadingRecord = true;
+          applyDraft({
+            className: currentPrimaryClass() || parsedClass,
+            fields: mergedFields,
+            manualAvg: parsed.manualAvg || {},
+            savedAt: new Date().toISOString()
+          });
+          loadingRecord = false;
+        }
+        currentAttachment = {
+          name: file.name,
+          type: file.type || "application/pdf",
+          size: file.size,
+          importedVersion: isPdf && parsedCount ? SPIP_IMPORT_VERSION : 0,
+          data: dataUrl
+        };
         updateAttachmentUI();
         saveDraft().then(function(saved){
-          if (saved) setStatus("Replaced the attached file with “" + file.name + "”.", "ok");
+          if (saved && parsedCount) setStatus("Replaced the file and filled " + parsedCount + " blank fields from “" + file.name + "”.", "ok");
+          else if (saved) setStatus("Replaced the attached file with “" + file.name + "”.", "ok");
           else setStatus("Could not store “" + file.name + "” on your profile. " + (lastSaveError || ""), "err");
         });
         return;
       }
-      var parsed = {};
-      if (isPdf){
-        // Many PDFs (e.g. Chrome's "Print to PDF") have no form fields at all —
-        // that is fine, we simply keep the file and leave the fields blank.
-        try{ parsed = await parsePdfFields(await file.arrayBuffer()); }catch(e){ parsed = {}; }
-      }
-      var parsedGrade = String(parsed.grade || parsed.ia_grade || "").trim();
-      var cls = "";
-      if (parsedGrade){
-        var list = classesForGrade(parsedGrade);
-        cls = list.length ? list[0] : "";
-      }
       // start a fresh record that carries the uploaded file plus any answers
       // that could be read out of it, then save it straight to the teacher's profile
-      currentAttachment = { name: file.name, type: file.type || "application/pdf", size: file.size, data: dataUrl };
+      currentAttachment = {
+        name: file.name,
+        type: file.type || "application/pdf",
+        size: file.size,
+        importedVersion: isPdf && parsedCount ? SPIP_IMPORT_VERSION : 0,
+        data: dataUrl
+      };
       currentRecordId = "rec-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
       loadingRecord = true;
       manualAvg = {};
       inputs().forEach(function(el){ el.value = ""; });
       Array.prototype.forEach.call(document.querySelectorAll(".learner-pick"), function(sel){ sel.value = ""; });
-      applyDraft({ className: cls, fields: parsed, manualAvg: {}, savedAt: new Date().toISOString() });
+      applyDraft({
+        className: parsedClass,
+        fields: parsedFields,
+        manualAvg: parsed.manualAvg || {},
+        savedAt: new Date().toISOString()
+      });
       loadingRecord = false;
       updateAttachmentUI();
       renderRecords();
-      var parsedCount = Object.keys(parsed).length;
       saveDraft().then(function(saved){
         if (saved){
           setStatus("Uploaded “" + file.name + "”" +
-            (parsedCount ? " and read " + parsedCount + " saved answers from it" : "") +
-            ". It is now stored in your records.", "ok");
+            (parsedCount ? " and filled " + parsedCount + " answers from the PDF" :
+              (isPdf ? " but no form answers could be read" : "")) +
+            (parseError ? ". " + parseError : ". It is now stored in your records."),
+          parsedCount || !isPdf ? "ok" : "err");
         } else {
           setStatus("Could not store “" + file.name + "” on your profile. " + (lastSaveError || "Please try again."), "err");
         }
@@ -1482,6 +1799,21 @@
           pdfField.setText(text);
         }catch(e){}
       });
+      try{
+        var draftForPdf = collectDraft();
+        var keywords = pdfDoc.getKeywords() || [];
+        if (!Array.isArray(keywords)) keywords = [keywords];
+        keywords = keywords.filter(function(value){
+          return String(value || "").indexOf(SPIP_PDF_METADATA_PREFIX) !== 0;
+        });
+        keywords.push(SPIP_PDF_METADATA_PREFIX + encodeSpipPdfMetadata({
+          version: 1,
+          className: draftForPdf.className,
+          fields: draftForPdf.data,
+          manualAvg: draftForPdf.manualAvg || {}
+        }));
+        pdfDoc.setKeywords(keywords);
+      }catch(e){}
       try{ pdfForm.updateFieldAppearances(); }catch(e){}
       try{ pdfForm.flatten(); }catch(e){}
       return pdfDoc.save();

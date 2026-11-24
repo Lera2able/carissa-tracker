@@ -1625,7 +1625,12 @@ function publicSpipRecord(record) {
   const out = { ...record };
   const a = out.attachment;
   if (a && typeof a === "object") {
-    out.attachment = { name: a.name || "", type: a.type || "", size: Number(a.size) || 0 };
+    out.attachment = {
+      name: a.name || "",
+      type: a.type || "",
+      size: Number(a.size) || 0,
+      importedVersion: Number(a.importedVersion) || 0,
+    };
   } else {
     out.attachment = null;
   }
@@ -1688,6 +1693,7 @@ async function handleSpipDraftSave(request, env, corsOrigin) {
         name: displayName,
         type: decoded.type || String(att.type || "application/pdf"),
         size: decoded.bytes.length,
+        importedVersion: Number(att.importedVersion) || 0,
         path: objectPath,
       };
     } catch (_e) {
@@ -1695,6 +1701,7 @@ async function handleSpipDraftSave(request, env, corsOrigin) {
         name: displayName,
         type: String(att.type || "application/pdf"),
         size: Number(att.size) || 0,
+        importedVersion: Number(att.importedVersion) || 0,
         data: att.data,
       };
     }
@@ -1708,6 +1715,22 @@ async function handleSpipDraftSave(request, env, corsOrigin) {
   const existing = Array.isArray(rows) && rows.length ? rows[0] : null;
   const currentRecords = spipRecordsFromRow(existing);
   const idx = currentRecords.findIndex((r) => r.id === recordId);
+  if (
+    att &&
+    typeof att === "object" &&
+    !(typeof att.data === "string" && att.data) &&
+    idx >= 0 &&
+    currentRecords[idx].attachment
+  ) {
+    const currentAttachment = currentRecords[idx].attachment;
+    incoming.attachment = {
+      ...currentAttachment,
+      importedVersion: Math.max(
+        Number(currentAttachment.importedVersion) || 0,
+        Number(att.importedVersion) || 0
+      ),
+    };
+  }
   if (idx >= 0) {
     incoming.created_at = currentRecords[idx].created_at || now;
     currentRecords[idx] = { ...currentRecords[idx], ...incoming };
