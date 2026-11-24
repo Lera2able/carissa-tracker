@@ -194,8 +194,8 @@
   <nav class="sections" aria-label="Form sections">
     <a href="#sec-plan">1 · Plan details</a>
     <a href="#sec-quarterly">2 · Quarterly review</a>
-    <a href="#sec-item">3 · Item analysis</a>
-    <a href="#sec-grid">4 · Learner grid</a>
+    <a href="#sec-grid">3 · Learner grid</a>
+    <a href="#sec-item">4 · Item analysis</a>
     <a href="#sec-improve">5 · Improvement plan</a>
     <a href="#sec-intervention">6 · Intervention plan</a>
   </nav>
@@ -249,10 +249,27 @@
     </div>
   </section>
 
-  <!-- 3 · ITEM ANALYSIS -->
+  <!-- 3 · LEARNER GRID -->
+  <section class="card" id="sec-grid">
+    <h2><span class="num">3</span> Learner question grid</h2>
+    <p class="sub">Write the question learners struggled with in the top row. The boxes are taller, grow as you type, and can be resized. Then pick up to 15 learners from any class in this grade and enter their marks for Q1–Q10. The “Mark out of” and total for each question are used in section 4.</p>
+    <span class="auto-note">Learners come from all classes in the grade you selected in step 1.</span>
+    <div style="margin-bottom:12px;">
+      <label class="lbl" for="learnerSearch">Find a learner</label>
+      <input class="inp" id="learnerSearch" placeholder="Type a name or class to filter the learner lists…" autocomplete="off"/>
+    </div>
+    <div class="table-scroll">
+      <table class="sheet grid10" id="learnerTable">
+        <thead></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 4 · ITEM ANALYSIS -->
   <section class="card" id="sec-item">
-    <h2><span class="num">3</span> Item analysis</h2>
-    <p class="sub">One row per question. The average percentage is worked out for you from “mark out of” and “total mark obtained” — you can still type over it.</p>
+    <h2><span class="num">4</span> Item analysis</h2>
+    <p class="sub">One row per question. Questions Q1–Q10, their “mark out of”, total mark obtained and average % are filled in automatically from the learner grid above. Type Q11 and Q12 manually if needed.</p>
     <span class="auto-note">Grade, subject and educator copy over from Plan details.</span>
     <div class="table-scroll">
       <table class="sheet" id="itemTable">
@@ -268,19 +285,6 @@
     <div style="margin-top:16px;">
       <label class="lbl" for="comments">Comments</label>
       <textarea class="inp para" id="comments" data-field="comments" rows="6" placeholder="Comments on the item analysis"></textarea>
-    </div>
-  </section>
-
-  <!-- 4 · LEARNER GRID -->
-  <section class="card" id="sec-grid">
-    <h2><span class="num">4</span> Learner question grid</h2>
-    <p class="sub">Write the question learners struggled with in the top row. The boxes are taller, grow as you type, and can be resized. Then pick up to 15 learners from any class in this grade and enter their marks for Q1–Q10.</p>
-    <span class="auto-note">Learners come from all classes in the grade you selected in step 1.</span>
-    <div class="table-scroll">
-      <table class="sheet grid10" id="learnerTable">
-        <thead></thead>
-        <tbody></tbody>
-      </table>
     </div>
   </section>
 
@@ -327,12 +331,14 @@
   var itemBody = document.querySelector("#itemTable tbody");
   for (var q = 1; q <= 12; q++){
     var tr = document.createElement("tr");
+    var auto = q <= 10; // Q1-Q10 are filled automatically from the learner grid
+    var ro = auto ? ' readonly style="background:#f1f5f9;color:#0f172a;"' : '';
     tr.innerHTML =
       '<td style="font-weight:700;color:#475569;background:#f8fafc;text-align:center;">Q' + q + '</td>' +
-      '<td><input data-field="topic_q' + q + '" aria-label="Topic question ' + q + '"/></td>' +
-      '<td><input data-field="mark_out_q' + q + '" inputmode="decimal" aria-label="Mark out of question ' + q + '"/></td>' +
-      '<td><input data-field="total_mark_q' + q + '" inputmode="decimal" aria-label="Total mark obtained question ' + q + '"/></td>' +
-      '<td><input data-field="avg_pct_q' + q + '" inputmode="decimal" aria-label="Average percentage question ' + q + '"/></td>';
+      '<td><input data-field="topic_q' + q + '" aria-label="Topic question ' + q + '"' + ro + '/></td>' +
+      '<td><input data-field="mark_out_q' + q + '" inputmode="decimal" aria-label="Mark out of question ' + q + '"' + ro + '/></td>' +
+      '<td><input data-field="total_mark_q' + q + '" inputmode="decimal" aria-label="Total mark obtained question ' + q + '"' + ro + '/></td>' +
+      '<td><input data-field="avg_pct_q' + q + '" inputmode="decimal" aria-label="Average percentage question ' + q + '"' + ro + '/></td>';
     itemBody.appendChild(tr);
   }
 
@@ -351,6 +357,19 @@
   }
   topicRow.innerHTML = topicHtml;
   lbody.appendChild(topicRow);
+  var markRow = document.createElement("tr");
+  var markHtml = '<td colspan="3" style="font-weight:700;color:#475569;background:#f8fafc;vertical-align:middle;">Mark out of &amp; total</td>';
+  for (var t = 1; t <= 10; t++){
+    markHtml +=
+      '<td style="padding:6px;">' +
+        '<div style="display:flex;flex-direction:column;gap:4px;">' +
+          '<input data-field="grid_mark_out_q' + t + '" inputmode="decimal" aria-label="Mark out of for Q' + t + '" placeholder="Out of" style="padding:6px 4px;border:1.5px solid var(--input-line);border-radius:6px;font-size:13px;width:100%;"/>' +
+          '<input data-field="grid_total_q' + t + '" readonly aria-label="Total mark obtained for Q' + t + '" placeholder="Total" style="padding:6px 4px;border:1.5px solid var(--input-line);border-radius:6px;font-size:13px;width:100%;background:#f1f5f9;color:#0f172a;font-weight:700;"/>' +
+        '</div>' +
+      '</td>';
+  }
+  markRow.innerHTML = markHtml;
+  lbody.appendChild(markRow);
   for (var n = 1; n <= 15; n++){
     var lr = document.createElement("tr");
     var cells = '<td style="font-weight:700;color:#475569;background:#f8fafc;text-align:center;">' + n + '</td>' +
@@ -423,6 +442,7 @@
   var clearBtn = document.getElementById("clearBtn");
   var classList = document.getElementById("classList");
   var gradeSelect = document.getElementById("gradeSelect");
+  var learnerSearch = document.getElementById("learnerSearch");
   var manualAvg = {};
   var saveTimer = null;
   var teacherEmail = "";
@@ -518,12 +538,27 @@
     // Q marks are always editable. Rows without a chosen learner simply print blank on the PDF.
   }
   function populateLearnerPickers(){
-    var list = allLearnersForGrade(currentGrade());
+    filterLearnerPickers(learnerSearch ? learnerSearch.value : "");
+  }
+  function filterLearnerPickers(query){
+    var q = String(query || "").trim().toLowerCase();
+    var baseList = allLearnersForGrade(currentGrade());
+    var list = q ? baseList.filter(function(l){
+      return String(l.surname || "").toLowerCase().indexOf(q) !== -1 ||
+             String(l.firstname || "").toLowerCase().indexOf(q) !== -1 ||
+             String(l._class || "").toLowerCase().indexOf(q) !== -1;
+    }) : baseList;
     var label = currentGrade() ? "-- Select learner --" : "Select a grade first";
     Array.prototype.forEach.call(document.querySelectorAll(".learner-pick"), function(sel){
       var cur = sel.value;
+      var options = list.slice();
+      // keep the currently selected learner visible even if it does not match the filter
+      if (cur && !options.some(function(l){ return l.key === cur; })){
+        var selLearner = findLearnerByKey(cur, currentPrimaryClass());
+        if (selLearner) options.push(selLearner);
+      }
       var html = '<option value="">' + label + '</option>';
-      list.forEach(function(l){
+      options.forEach(function(l){
         html += '<option value="' + esc(l.key) + '">' + esc(l.surname) + ', ' + esc(l.firstname) + ' (' + esc(l._class) + ')</option>';
       });
       sel.innerHTML = html;
@@ -531,6 +566,38 @@
       if (sel.value !== cur) sel.value = "";
     });
     syncRowState();
+  }
+  function recalcGridTotals(){
+    for (var q = 1; q <= 10; q++){
+      var sum = 0, hasAny = false;
+      for (var n = 1; n <= 15; n++){
+        var el = byField("learner" + n + "_q" + q);
+        var v = el ? num(el.value) : null;
+        if (v != null){ sum += v; hasAny = true; }
+      }
+      var totEl = byField("grid_total_q" + q);
+      if (totEl) totEl.value = hasAny ? String(sum) : "";
+    }
+  }
+  function syncItemAnalysisFromGrid(){
+    for (var q = 1; q <= 10; q++){
+      var topic = (byField("grid_topic_q" + q) || {}).value || "";
+      var out = (byField("grid_mark_out_q" + q) || {}).value || "";
+      var tot = (byField("grid_total_q" + q) || {}).value || "";
+      var topicEl = byField("topic_q" + q);
+      var outEl = byField("mark_out_q" + q);
+      var totEl = byField("total_mark_q" + q);
+      var avgEl = byField("avg_pct_q" + q);
+      if (topicEl) topicEl.value = topic || topicEl.value;
+      if (outEl) outEl.value = out || outEl.value;
+      if (totEl) totEl.value = tot || totEl.value;
+      var on = num(out), tn = num(tot);
+      if (avgEl){
+        if (on && on > 0 && tn != null){
+          avgEl.value = String(Math.round((tn / on) * 1000) / 10);
+        }
+      }
+    }
   }
 
   /* ---------- draft save / restore (server-side, tied to the teacher) ---------- */
@@ -605,6 +672,19 @@
     }
     manualAvg = saved.manualAvg || {};
     setGradeField();
+    // migrate old item-analysis-only data into the learner grid for Q1-Q10
+    if (saved.data){
+      for (var qi = 1; qi <= 10; qi++){
+        var gT = byField("grid_topic_q" + qi);
+        var iT = byField("topic_q" + qi);
+        if (gT && !gT.value && iT && iT.value) gT.value = iT.value;
+        var gO = byField("grid_mark_out_q" + qi);
+        var iO = byField("mark_out_q" + qi);
+        if (gO && !gO.value && iO && iO.value) gO.value = iO.value;
+      }
+    }
+    recalcGridTotals();
+    syncItemAnalysisFromGrid();
     syncRowState();
     autogrowAll();
     // persist migrated composite keys so future loads are unambiguous
@@ -690,6 +770,10 @@
     if (!el || !el.getAttribute || !el.getAttribute("data-field")) return;
     var field = el.getAttribute("data-field");
     if (el.tagName === "TEXTAREA") autogrow(el);
+    // learner marks feed the per-question totals in the grid
+    if (/^learner\d+_q\d+$/.test(field)){ recalcGridTotals(); syncItemAnalysisFromGrid(); }
+    // grid topic / mark out of / total feed the item analysis
+    if (/^grid_(topic|mark_out|total)_q\d+$/.test(field)){ syncItemAnalysisFromGrid(); }
     var m = field.match(/^(mark_out|total_mark)_q(\d+)$/);
     if (m) recalcAvg(m[2]);
     if (/^avg_pct_q\d+$/.test(field)){
@@ -714,6 +798,11 @@
       queueSave();
     });
   });
+  if (learnerSearch){
+    learnerSearch.addEventListener("input", function(){
+      filterLearnerPickers(learnerSearch.value);
+    });
+  }
 
   /* ---------- collect + fill + download ---------- */
   function isoToDmy(v){
@@ -733,6 +822,12 @@
     values.sip_subject = values.subject; values.sip_grade = values.grade; values.sip_educator = values.educator;
     values.ip_subject = values.subject; values.ip_grade = values.grade; values.ip_educator = values.educator;
     values.grid_grade = values.grade;
+    // Q1-Q10 item analysis is sourced from the learner grid
+    for (var cq = 1; cq <= 10; cq++){
+      if (values["grid_topic_q" + cq]) values["topic_q" + cq] = values["grid_topic_q" + cq];
+      if (values["grid_mark_out_q" + cq]) values["mark_out_q" + cq] = values["grid_mark_out_q" + cq];
+      if (values["grid_total_q" + cq]) values["total_mark_q" + cq] = values["grid_total_q" + cq];
+    }
     // resolve the learner picker (a whole-grade composite key, or legacy number) into the template's surname/first-name fields
     var fallbackClass = currentPrimaryClass();
     for (var ln = 1; ln <= 15; ln++){
