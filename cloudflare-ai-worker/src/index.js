@@ -1813,12 +1813,18 @@ async function handleSpipDraftAttachmentGet(request, env, corsOrigin) {
   } else {
     return jsonResponse({ error: "No file is attached to this record." }, 404, corsOrigin);
   }
-  const filename = String(attachment.name || "spip.pdf").replace(/["\r\n]/g, "");
+  const filename = String(attachment.name || "spip.pdf").replace(/["\r\n]/g, "") || "spip.pdf";
+  const safeFilename = filename.replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_");
+  const encodedFilename = encodeURIComponent(filename).replace(/['()*]/g, (c) =>
+    "%" + c.charCodeAt(0).toString(16).toUpperCase()
+  );
+  if (/\.pdf$/i.test(filename)) contentType = "application/pdf";
+  const disposition = url.searchParams.get("download") === "1" ? "attachment" : "inline";
   return new Response(bytes, {
     status: 200,
     headers: {
       "content-type": contentType || "application/octet-stream",
-      "content-disposition": `attachment; filename="${filename}"`,
+      "content-disposition": `${disposition}; filename="${safeFilename}"; filename*=UTF-8''${encodedFilename}`,
       "access-control-allow-origin": corsOrigin,
       "access-control-allow-credentials": "true",
     },

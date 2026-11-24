@@ -206,6 +206,7 @@
       <label class="btn ghost" id="uploadNewLabel" for="spipUpload" style="cursor:pointer;margin:0;">Upload a previous SPIP (PDF)</label>
       <label class="btn ghost" id="replaceFileLabel" for="spipUpload" style="cursor:pointer;margin:0;display:none;">Replace attached file</label>
       <input type="file" id="spipUpload" accept=".pdf,application/pdf" style="display:none;"/>
+      <a id="attachmentOpenLink" class="btn ghost" href="#" target="_blank" rel="noopener" style="display:none;">Open attached PDF</a>
       <a id="attachmentLink" class="btn ghost" href="#" style="display:none;">Download attached file</a>
       <span class="hint" style="flex:1;min-width:180px;">Uploaded files are kept with your records so you can find them again.</span>
     </div>
@@ -480,6 +481,7 @@
   var newRecordBtn = document.getElementById("newRecordBtn");
   var deleteRecordBtn = document.getElementById("deleteRecordBtn");
   var spipUpload = document.getElementById("spipUpload");
+  var attachmentOpenLink = document.getElementById("attachmentOpenLink");
   var attachmentLink = document.getElementById("attachmentLink");
   var uploadNewLabel = document.getElementById("uploadNewLabel");
   var replaceFileLabel = document.getElementById("replaceFileLabel");
@@ -817,8 +819,11 @@
     if (isNew === "1" || isNew === "true"){ newRecord(); return; }
     if (want){
       for (var pi = 0; pi < records.length; pi++){
-        if (records[pi].id === want){ switchRecord(want); return; }
+        if (String(records[pi].id) === want){ switchRecord(records[pi].id); return; }
       }
+      newRecord();
+      setStatus("That saved SPIP could not be found in your records. Choose it from your SPIP folder and try again.", "err");
+      return;
     }
     if (records.length) switchRecord(records[0].id); else newRecord();
   }
@@ -907,13 +912,14 @@
         var active = (r.id === currentRecordId);
         var label = (r.subject || "Untitled") + " · " + (r.className || "No class");
         var meta = formatDate(r.updated_at) + (r.attachment ? " · file attached" : "");
-        html += '<button type="button" class="btn ghost" data-record-id="' + esc(r.id) + '"' +
-          ' style="display:flex;gap:10px;align-items:center;justify-content:flex-start;text-align:left;width:100%;' +
+        var editHref = "?record=" + encodeURIComponent(String(r.id || "")) + "#recordCard";
+        html += '<a class="btn ghost" href="' + esc(editHref) + '"' +
+          ' style="display:flex;gap:10px;align-items:center;justify-content:flex-start;text-align:left;width:100%;text-decoration:none;' +
           (active ? 'border-color:#1d4ed8;background:#eff6ff;' : '') + '">' +
           '<span style="flex:1;min-width:0;font-weight:600;">' + esc(label) + '</span>' +
           '<span class="hint">' + esc(meta) + '</span>' +
           '<span class="hint" style="font-weight:600;color:#1d4ed8;">' + (active ? "Editing now" : "Open &amp; edit") + '</span>' +
-          '</button>';
+          '</a>';
       });
       html += '</div></div>';
     });
@@ -1006,22 +1012,98 @@
     return (n / (1024 * 1024)).toFixed(1) + " MB";
   }
   function updateAttachmentUI(){
-    if (!attachmentLink) return;
     var local = currentAttachment && currentAttachment.data ? currentAttachment.data : "";
     var server = (!local && currentAttachment && currentRecordId)
       ? (API + "/spip/attachment?id=" + encodeURIComponent(currentRecordId)) : "";
-    var href = local || server;
-    if (href){
+    var openHref = local || server;
+    var downloadHref = local || (server ? server + "&download=1" : "");
+    var filename = (currentAttachment && currentAttachment.name) || "spip.pdf";
+    if (attachmentOpenLink){
+      if (openHref){
+        attachmentOpenLink.style.display = "";
+        attachmentOpenLink.href = openHref;
+        attachmentOpenLink.textContent = "Open attached PDF (" + filename + ")";
+      } else {
+        attachmentOpenLink.style.display = "none";
+        attachmentOpenLink.removeAttribute("href");
+      }
+    }
+    if (attachmentLink && downloadHref){
       attachmentLink.style.display = "";
-      attachmentLink.href = href;
-      attachmentLink.setAttribute("download", (currentAttachment && currentAttachment.name) || "spip.pdf");
-      attachmentLink.textContent = "Download attached file (" + ((currentAttachment && currentAttachment.name) || "file") + ")";
-    } else {
+      attachmentLink.href = downloadHref;
+      attachmentLink.setAttribute("download", filename);
+      attachmentLink.textContent = "Download attached file (" + filename + ")";
+    } else if (attachmentLink){
       attachmentLink.style.display = "none";
       attachmentLink.removeAttribute("href");
     }
     // the "replace" action only makes sense once the open record has a file
-    if (replaceFileLabel) replaceFileLabel.style.display = (href && currentRecordId) ? "" : "none";
+    if (replaceFileLabel) replaceFileLabel.style.display = (openHref && currentRecordId) ? "" : "none";
+  }
+  function fetchAttachedFile(href, filename){
+    var options = /^data:/i.test(href) ? {} : { credentials: "include" };
+    return fetch(href, options).then(function(response){
+      return response.arrayBuffer().then(function(buffer){
+        if (!response.ok){
+          var detail = "";
+          try{
+            var body = JSON.parse(new TextDecoder().decode(buffer));
+            detail = body.error || body.message || "";
+          }catch(e){
+            detail = new TextDecoder().decode(buffer).replace(/\s+/g, " ").slice(0, 180);
+          }
+          throw new Error("HTTP " + response.status + (detail ? ": " + detail : ""));
+        }
+        var type = response.headers.get("content-type") || "application/pdf";
+        var blob = new Blob([buffer], { type: type });
+        if (!blob.size) throw new Error("The file is empty.");
+        if (/\.pdf$/i.test(filename) || /application\/pdf/i.test(type)){
+          return blob.slice(0, 1024).text().then(function(header){
+            if (header.indexOf("%PDF-") === -1) throw new Error("The server response is not a valid PDF.");
+            return blob;
+          });
+        }
+        return blob;
+      });
+    });
+  }
+  function fileObjectUrl(blob){
+    var href = URL.createObjectURL(blob);
+    window.setTimeout(function(){ URL.revokeObjectURL(href); }, 120000);
+    return href;
+  }
+  if (attachmentOpenLink){
+    attachmentOpenLink.addEventListener("click", function(ev){
+      ev.preventDefault();
+      var href = attachmentOpenLink.href;
+      var filename = (currentAttachment && currentAttachment.name) || "spip.pdf";
+      var viewer = window.open("about:blank", "_blank");
+      fetchAttachedFile(href, filename).then(function(blob){
+        var objectHref = fileObjectUrl(blob);
+        if (viewer) viewer.location.href = objectHref;
+        else window.location.href = objectHref;
+      }).catch(function(err){
+        if (viewer && !viewer.closed) viewer.close();
+        setStatus("Could not open the attached file. " + ((err && err.message) || "Please try again."), "err");
+      });
+    });
+  }
+  if (attachmentLink){
+    attachmentLink.addEventListener("click", function(ev){
+      ev.preventDefault();
+      var href = attachmentLink.href;
+      var filename = (currentAttachment && currentAttachment.name) || "spip.pdf";
+      fetchAttachedFile(href, filename).then(function(blob){
+        var download = document.createElement("a");
+        download.href = fileObjectUrl(blob);
+        download.download = filename;
+        document.body.appendChild(download);
+        download.click();
+        download.remove();
+      }).catch(function(err){
+        setStatus("Could not download the attached file. " + ((err && err.message) || "Please try again."), "err");
+      });
+    });
   }
   function currentRecord(){
     for (var i = 0; i < records.length; i++){ if (records[i].id === currentRecordId) return records[i]; }
@@ -1229,21 +1311,6 @@
   }
   if (deleteRecordBtn){
     deleteRecordBtn.addEventListener("click", function(){ deleteRecord(); });
-  }
-  if (libraryList){
-    libraryList.addEventListener("click", function(ev){
-      var el = ev.target;
-      while (el && el !== libraryList && !(el.getAttribute && el.getAttribute("data-record-id"))){
-        el = el.parentNode;
-      }
-      if (el && el !== libraryList && el.getAttribute){
-        var id = el.getAttribute("data-record-id");
-        if (id){
-          switchRecord(id);
-          if (recordCard) recordCard.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      }
-    });
   }
   if (uploadNewLabel){
     uploadNewLabel.addEventListener("click", function(){ uploadMode = "new"; });

@@ -68,7 +68,7 @@
       list.forEach(function (r) {
         var label = (r.subject || "Untitled") + " \u00b7 " + (r.className || "No class");
         var meta = formatDate(r.updated_at) + (r.attachment ? " \u00b7 file attached" : "");
-        html += '<a href="spip.html?record=' + encodeURIComponent(r.id) + '" target="_blank" rel="noreferrer"' +
+        html += '<a href="spip.html?record=' + encodeURIComponent(r.id) + '#recordCard"' +
           ' style="display:flex;gap:10px;align-items:center;justify-content:space-between;text-decoration:none;' +
           'background:#fff;border:1px solid #c7d2fe;border-radius:8px;padding:8px 10px;">' +
           '<span style="min-width:0;">' +
@@ -98,9 +98,7 @@
     head.appendChild(left);
 
     var link = document.createElement("a");
-    link.href = "spip.html?new=1";
-    link.target = "_blank";
-    link.rel = "noreferrer";
+    link.href = "spip.html?new=1#recordCard";
     link.textContent = "+ New SPIP";
     link.style.cssText = "display:inline-block;background:#4f46e5;color:#fff;font-weight:600;font-size:13px;padding:8px 16px;border-radius:8px;text-decoration:none;cursor:pointer;white-space:nowrap;";
     head.appendChild(link);

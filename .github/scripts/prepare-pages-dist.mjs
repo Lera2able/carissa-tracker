@@ -66,7 +66,7 @@ await copyRecursive(repoRoot, outDir);
 // 1 MB bundle untouched.)
 const indexPath = path.join(outDir, "index.html");
 let indexHtml = await fs.readFile(indexPath, "utf8");
-const SPIP_TAG = '<script src="./spip-button.js?v=20261120fittext"></script>';
+const SPIP_TAG = '<script src="./spip-button.js?v=20261124spipedit"></script>';
 if (!indexHtml.includes("spip-button.js")) {
   const marker = indexHtml.match(/<script src="\.\/app\.js[^"]*"><\/script>/);
   if (!marker) throw new Error("app.js script tag not found in index.html");
