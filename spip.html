@@ -4,9 +4,10 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>SPIP Tool — Carissa Primary School</title>
-<meta name="description" content="Capture the Subject Performance Improvement Plan (SPIP) data and download it as a filled official PDF template."/>
+<meta name="description" content="Capture the Subject Performance Improvement Plan (SPIP) data and download it as a filled official PDF or Word document."/>
 <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="./class-data.js?v=20261119a"></script>
 <style>
   :root{
@@ -184,7 +185,7 @@
   <div class="intro">
     <div class="cell">
       <b>How it works</b>
-      <span>Fill in the sections below. Signed-in teachers: your entries are saved to your profile on the school server, so the list stays on your profile and comes back next time you open the tool. When you are done, download the filled official PDF or print it.</span>
+      <span>Fill in the sections below. Signed-in teachers: your entries are saved to your profile on the school server, so the list stays on your profile and comes back next time you open the tool. When you are done, download the filled official document as Word or PDF, or print it.</span>
     </div>
     <div class="cell">
       <b>What it covers</b>
@@ -204,10 +205,10 @@
     <p class="sub" style="margin-top:8px;margin-bottom:0;">Pick a previous record to continue and edit it, or start a new one. Your records are saved to your profile and kept separately, so they come back every time you open the tool.</p>
     <p class="sub" id="recordStatus" style="margin:6px 0 0;font-weight:600;">New SPIP (not yet saved).</p>
     <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid #e2e8f0;">
-      <label class="btn ghost" id="uploadNewLabel" for="spipUpload" style="cursor:pointer;margin:0;">Upload a previous SPIP (PDF)</label>
+      <label class="btn ghost" id="uploadNewLabel" for="spipUpload" style="cursor:pointer;margin:0;">Upload a previous SPIP (PDF or Word)</label>
       <label class="btn ghost" id="replaceFileLabel" for="spipUpload" style="cursor:pointer;margin:0;display:none;">Replace attached file</label>
-      <input type="file" id="spipUpload" accept=".pdf,application/pdf" style="display:none;"/>
-      <a id="attachmentOpenLink" class="btn ghost" href="#" target="_blank" rel="noopener" style="display:none;">Open attached PDF</a>
+      <input type="file" id="spipUpload" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none;"/>
+      <a id="attachmentOpenLink" class="btn ghost" href="#" target="_blank" rel="noopener" style="display:none;">Open attached file</a>
       <a id="attachmentLink" class="btn ghost" href="#" style="display:none;">Download attached file</a>
       <span class="hint" style="flex:1;min-width:180px;">Uploaded files are kept with your records so you can find them again.</span>
     </div>
@@ -352,7 +353,8 @@
 
 <div class="bar">
   <div class="bar-inner">
-    <button class="btn primary" id="downloadBtn" type="button">Download filled SPIP (PDF)</button>
+    <button class="btn primary" id="downloadWordBtn" type="button">Download Word (.docx)</button>
+    <button class="btn ghost" id="downloadBtn" type="button">Download filled SPIP (PDF)</button>
     <button class="btn ghost" id="printBtn" type="button">Print SPIP</button>
     <button class="btn ghost" id="clearBtn" type="button">Clear draft</button>
     <span class="status" id="status" role="status" aria-live="polite"></span>
@@ -475,6 +477,7 @@
   var statusEl = document.getElementById("status");
   var draftChip = document.getElementById("draftChip");
   var downloadBtn = document.getElementById("downloadBtn");
+  var downloadWordBtn = document.getElementById("downloadWordBtn");
   var printBtn = document.getElementById("printBtn");
   var clearBtn = document.getElementById("clearBtn");
   var classList = document.getElementById("classList");
@@ -1035,7 +1038,7 @@
       if (openHref){
         attachmentOpenLink.style.display = "";
         attachmentOpenLink.href = openHref;
-        attachmentOpenLink.textContent = "Open attached PDF (" + filename + ")";
+        attachmentOpenLink.textContent = (/\.pdf$/i.test(filename) ? "Open attached PDF (" : "Open attached file (") + filename + ")";
       } else {
         attachmentOpenLink.style.display = "none";
         attachmentOpenLink.removeAttribute("href");
@@ -1370,26 +1373,583 @@
       manualAvg: {}
     };
   }
+
+  /* ==================== Word (.docx) support ==================== */
+  var DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  var W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+  var DOCX_SECTPR = "<w:sectPr>" +
+    '<w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/>' +
+    '<w:pgMar w:top="1560" w:right="1440" w:bottom="1276" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/>' +
+    '<w:pgBorders w:offsetFrom="page">' +
+      '<w:top w:val="thinThickSmallGap" w:sz="24" w:space="24" w:color="auto"/>' +
+      '<w:left w:val="thinThickSmallGap" w:sz="24" w:space="24" w:color="auto"/>' +
+      '<w:bottom w:val="thickThinSmallGap" w:sz="24" w:space="24" w:color="auto"/>' +
+      '<w:right w:val="thickThinSmallGap" w:sz="24" w:space="24" w:color="auto"/>' +
+    "</w:pgBorders>" +
+    '<w:cols w:space="720"/>' +
+    '<w:docGrid w:linePitch="360"/>' +
+  "</w:sectPr>";
+  function spipFileMime(file, isDocx){
+    if (file && file.type) return file.type;
+    return isDocx ? DOCX_MIME : "application/pdf";
+  }
+  function cleanValue(v){
+    return String(v == null ? "" : v).replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim()
+      .replace(/^_+|_+$/g, "").trim();
+  }
+  function cleanNumberValue(v){ return cleanValue(v).replace(/\s*%$/, "").trim(); }
+  function decodeSpipMetadataText(text){
+    var prefix = SPIP_PDF_METADATA_PREFIX;
+    if (String(text || "").indexOf(prefix) !== 0) return null;
+    try{
+      var encoded = String(text).slice(prefix.length).replace(/-/g, "+").replace(/_/g, "/");
+      while (encoded.length % 4) encoded += "=";
+      var binary = atob(encoded);
+      var bytes = new Uint8Array(binary.length);
+      for (var bi = 0; bi < binary.length; bi++) bytes[bi] = binary.charCodeAt(bi);
+      var payload = JSON.parse(new TextDecoder().decode(bytes));
+      if (payload && payload.version === 1 && payload.fields && typeof payload.fields === "object") return payload;
+    }catch(e){}
+    return null;
+  }
+  function unescapeXmlText(text){
+    return String(text || "").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+      .replace(/&#(\d+);/g, function(_, d){ return String.fromCharCode(parseInt(d, 10)); })
+      .replace(/&amp;/g, "&");
+  }
+  function docxXmlDoc(xml){
+    var doc = new DOMParser().parseFromString(xml, "application/xml");
+    if (doc.getElementsByTagName("parsererror").length) throw new Error("The Word document could not be read.");
+    return doc;
+  }
+  function docxNodeText(node, out){
+    var kids = node.childNodes;
+    for (var i = 0; i < kids.length; i++){
+      var child = kids[i];
+      if (child.nodeType !== 1) continue;
+      var ln = child.localName || child.nodeName;
+      if (ln === "t"){ out.push(child.textContent || ""); continue; }
+      if (ln === "tab"){ out.push(" "); continue; }
+      if (ln === "br" || ln === "cr"){ out.push(" "); continue; }
+      docxNodeText(child, out);
+    }
+  }
+  function docxParagraphText(p){
+    var parts = [];
+    docxNodeText(p, parts);
+    return parts.join("").replace(/\s+/g, " ").trim();
+  }
+  function collectChildrenByLocal(parent, localName){
+    var out = [], kids = parent.childNodes;
+    for (var i = 0; i < kids.length; i++){
+      var c = kids[i];
+      if (c.nodeType === 1 && c.localName === localName) out.push(c);
+    }
+    return out;
+  }
+  function docxValAttr(el){
+    if (!el) return null;
+    return el.getAttributeNS(W_NS, "val") || el.getAttribute("w:val") || el.getAttribute("val");
+  }
+  function docxCellText(tc){
+    var paras = collectChildrenByLocal(tc, "p");
+    var parts = paras.map(docxParagraphText);
+    return cleanValue(parts.join(" "));
+  }
+  function docxTableRows(tbl){
+    var rows = [];
+    collectChildrenByLocal(tbl, "tr").forEach(function(tr){
+      var cells = [];
+      collectChildrenByLocal(tr, "tc").forEach(function(tc){
+        var span = 1;
+        var spanEl = tc.getElementsByTagNameNS(W_NS, "gridSpan")[0];
+        if (spanEl) span = parseInt(docxValAttr(spanEl), 10) || 1;
+        cells.push(docxCellText(tc));
+        for (var s = 1; s < span; s++) cells.push("");
+      });
+      rows.push(cells);
+    });
+    return rows;
+  }
+  function extractLabeledValues(text){
+    var labels = /(subject|grade|term|educator|principal|comments|signature)\s*:\s*/gi;
+    var found = [], m;
+    while ((m = labels.exec(text))) found.push({ key: m[1].toLowerCase(), start: m.index, end: labels.lastIndex });
+    var out = {};
+    found.forEach(function(item, idx){
+      var nextStart = idx + 1 < found.length ? found[idx + 1].start : text.length;
+      var value = cleanValue(text.slice(item.end, nextStart));
+      if (value && !out[item.key]) out[item.key] = value;
+    });
+    return out;
+  }
+  function termKeyFromLabel(label){
+    var t = String(label || "").toLowerCase().trim();
+    if (/^1st/.test(t)) return "1st";
+    if (/^2nd/.test(t)) return "2nd";
+    if (/^3rd/.test(t)) return "3rd";
+    if (/^overall/.test(t)) return "overall";
+    return "";
+  }
+  function setQuestionFields(fields, prefix, values, numeric){
+    for (var i = 0; i < values.length && i < 12; i++){
+      fields[prefix + (i + 1)] = numeric ? cleanNumberValue(values[i]) : cleanValue(values[i]);
+    }
+  }
+  function parseDocxLearnerGrid(fields, rows){
+    rows.forEach(function(row){
+      var num = parseInt(String(row[0] == null ? "" : row[0]).trim(), 10);
+      if (!num || num < 1 || num > 15 || String(row[0]).trim().length > 2) return;
+      fields["learner" + num + "_surname"] = cleanValue(row[1]);
+      fields["learner" + num + "_name"] = cleanValue(row[2]);
+      fields["learner" + num + "_g"] = cleanValue(row[3]);
+      for (var q = 1; q <= 10; q++) fields["learner" + num + "_q" + q] = cleanNumberValue(row[q + 3]);
+    });
+  }
+  function parseDocxDocument(xml){
+    var doc = docxXmlDoc(xml);
+    var body = doc.getElementsByTagNameNS(W_NS, "body")[0] || doc.documentElement;
+    var paragraphs = [], tables = [];
+    var kids = body.childNodes;
+    for (var i = 0; i < kids.length; i++){
+      var el = kids[i];
+      if (el.nodeType !== 1) continue;
+      if (el.localName === "p") paragraphs.push(docxParagraphText(el));
+      else if (el.localName === "tbl") tables.push(docxTableRows(el));
+    }
+    var fields = {};
+    function setIfEmpty(key, value){
+      if (fields[key] == null || fields[key] === "") fields[key] = value;
+    }
+    paragraphs.forEach(function(text){
+      if (!text) return;
+      var labeled = extractLabeledValues(text);
+      if (labeled.subject) setIfEmpty("subject", labeled.subject);
+      if (labeled.grade) setIfEmpty("grade", labeled.grade);
+      if (labeled.educator) setIfEmpty("educator", labeled.educator);
+      if (labeled.principal) setIfEmpty("principal", labeled.principal);
+      if (labeled.comments) setIfEmpty("comments", labeled.comments);
+      if (labeled.term){
+        var term = labeled.term.match(/^term\s*([1-4])$/i) ? "Term " + RegExp.$1 : labeled.term;
+        setIfEmpty("ip_term", term);
+      }
+    });
+    tables.forEach(function(rows){
+      if (!rows.length) return;
+      var head = rows[0].map(function(c){ return String(c || "").toUpperCase().trim(); });
+      var headText = head.join("|");
+      if (head[0] === "PREVIOUS" && headText.indexOf("CURRENT TARGET") !== -1){
+        var d = rows[1] || [];
+        setIfEmpty("previous", cleanNumberValue(d[0]));
+        setIfEmpty("current_target", cleanNumberValue(d[1]));
+        setIfEmpty("average", cleanNumberValue(d[2]));
+        return;
+      }
+      if (head[0] === "TERM" && headText.indexOf("PASS") !== -1){
+        rows.slice(1).forEach(function(r){
+          var key = termKeyFromLabel(r[0]);
+          if (!key) return;
+          var base = key === "overall" ? "overall" : key + "_term";
+          fields[base + "_pass"] = cleanNumberValue(r[1]);
+          fields[base + "_fail"] = cleanNumberValue(r[2]);
+          fields[base + "_avg"] = cleanNumberValue(r[3]);
+        });
+        return;
+      }
+      if (head[0] === "QUESTION"){
+        rows.forEach(function(r){
+          var label = String(r[0] || "").toLowerCase();
+          var vals = r.slice(1);
+          if (/^topic/.test(label)) setQuestionFields(fields, "topic_q", vals, false);
+          else if (/mark out/.test(label)) setQuestionFields(fields, "mark_out_q", vals, true);
+          else if (/total mark/.test(label)) setQuestionFields(fields, "total_mark_q", vals, true);
+          else if (/average/.test(label)) setQuestionFields(fields, "avg_pct_q", vals, true);
+        });
+        for (var gq = 1; gq <= 10; gq++){
+          var out = num(fields["mark_out_q" + gq]);
+          if (out != null && out > 0 && out % 15 === 0) fields["grid_mark_out_q" + gq] = String(out / 15);
+          // the item-analysis columns are rendered from the grid, so mirror them back
+          if (fields["topic_q" + gq]) fields["grid_topic_q" + gq] = fields["topic_q" + gq];
+          if (fields["total_mark_q" + gq]) fields["grid_total_q" + gq] = fields["total_mark_q" + gq];
+        }
+        return;
+      }
+      if (head[0] === "QUESTIONS" || head.indexOf("SURNAME") !== -1){
+        parseDocxLearnerGrid(fields, rows);
+        return;
+      }
+      if (head[0] === "NO" && headText.indexOf("CHALLENGES") !== -1){
+        rows.slice(1).forEach(function(r, i){
+          if (i >= 3) return;
+          var n = i + 1;
+          fields["plan" + n + "_challenges"] = cleanValue(r[1]);
+          fields["plan" + n + "_action"] = cleanValue(r[2]);
+          fields["plan" + n + "_responsibility"] = cleanValue(r[3]);
+          fields["plan" + n + "_achievement_indicator"] = cleanValue(r[4]);
+          fields["plan" + n + "_time_frame"] = cleanValue(r[5]);
+        });
+        return;
+      }
+      if (head[0] === "TOPIC" && headText.indexOf("EVIDENCE") !== -1){
+        rows.slice(1).forEach(function(r, i){
+          if (i >= 5) return;
+          var n = i + 1;
+          fields["ip" + n + "_topic"] = cleanValue(r[0]);
+          fields["ip" + n + "_date"] = cleanValue(r[1]);
+          fields["ip" + n + "_time"] = cleanValue(r[2]);
+          fields["ip" + n + "_evidence"] = cleanValue(r[3]);
+          fields["ip" + n + "_performance_indicator"] = cleanValue(r[4]);
+          fields["ip" + n + "_percentage"] = cleanNumberValue(r[5]);
+          fields["ip" + n + "_hod_signature"] = cleanValue(r[6]);
+        });
+        return;
+      }
+    });
+    return { fields: fields, className: "", manualAvg: {} };
+  }
+  function mergeDocxVisible(visible, metadata){
+    // The document keywords hold an exact snapshot of the form, but a teacher
+    // who edits the Word file expects those edits back. So the visible content
+    // wins wherever it carries a value, and the snapshot only fills the gaps
+    // (learner picks, manual averages, fields with no visible representation).
+    var out = {};
+    Object.keys(metadata || {}).forEach(function(name){ out[name] = metadata[name]; });
+    Object.keys(visible || {}).forEach(function(name){
+      if (String(visible[name] == null ? "" : visible[name]).trim() !== "") out[name] = visible[name];
+    });
+    return out;
+  }
+  async function parseDocxFields(buffer){
+    if (!window.JSZip) throw new Error("Word reading is unavailable. Please reload the page and try again.");
+    var zip;
+    try{ zip = await window.JSZip.loadAsync(buffer); }
+    catch(e){ throw new Error("The file is not a valid Word (.docx) document."); }
+    // 1) the exact snapshot SPIP exports carry in the document keywords
+    var payload = null;
+    var coreFile = zip.file("docProps/core.xml");
+    if (coreFile){
+      try{
+        var coreXml = await coreFile.async("string");
+        var kwMatch = coreXml.match(/<cp:keywords[^>]*>([\s\S]*?)<\/cp:keywords>/i);
+        payload = kwMatch ? decodeSpipMetadataText(unescapeXmlText(kwMatch[1])) : null;
+      }catch(e){}
+    }
+    // 2) the visible tables and headings (also works for documents made by hand)
+    var documentResult = null;
+    var docFile = zip.file("word/document.xml");
+    if (docFile){
+      try{ documentResult = parseDocxDocument(await docFile.async("string")); }
+      catch(e){ if (!payload) throw e; }
+    }
+    if (payload){
+      var fields = documentResult ? mergeDocxVisible(documentResult.fields, payload.fields) : payload.fields;
+      return {
+        fields: sanitizeImportedFields(fields),
+        className: String(payload.className || (documentResult && documentResult.className) || ""),
+        manualAvg: payload.manualAvg || {}
+      };
+    }
+    if (!documentResult) throw new Error("The Word document has no readable content.");
+    return documentResult;
+  }
+  function xmlEscapeDocx(s){
+    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+  }
+  function docxRun(text, opts){
+    opts = opts || {};
+    var rpr = "";
+    if (opts.bold) rpr += "<w:b/>";
+    if (opts.italic) rpr += "<w:i/>";
+    if (opts.underline) rpr += '<w:u w:val="single"/>';
+    if (opts.color) rpr += '<w:color w:val="' + opts.color + '"/>';
+    if (opts.size) rpr += '<w:sz w:val="' + opts.size + '"/><w:szCs w:val="' + opts.size + '"/>';
+    rpr = rpr ? "<w:rPr>" + rpr + "</w:rPr>" : "";
+    var out = "";
+    String(text == null ? "" : text).split("\n").forEach(function(part, idx){
+      if (idx > 0) out += "<w:br/>";
+      out += '<w:t xml:space="preserve">' + xmlEscapeDocx(part) + "</w:t>";
+    });
+    return "<w:r>" + rpr + out + "</w:r>";
+  }
+  function docxP(text, opts){
+    opts = opts || {};
+    var runs = Array.isArray(text) ? text : [docxRun(text, opts)];
+    var ppr = "";
+    if (opts.align || opts.pageBreakBefore || opts.keepNext ||
+        opts.spacingBefore !== undefined || opts.spacingAfter !== undefined){
+      ppr = "<w:pPr>";
+      if (opts.pageBreakBefore) ppr += "<w:pageBreakBefore/>";
+      if (opts.keepNext) ppr += "<w:keepNext/>";
+      if (opts.spacingBefore !== undefined || opts.spacingAfter !== undefined){
+        ppr += '<w:spacing w:before="' + (opts.spacingBefore || 0) + '" w:after="' + (opts.spacingAfter || 0) + '"/>';
+      }
+      if (opts.align) ppr += '<w:jc w:val="' + opts.align + '"/>';
+      ppr += "</w:pPr>";
+    }
+    return "<w:p>" + ppr + runs.join("") + "</w:p>";
+  }
+  function docxTable(widths, rows, opts){
+    opts = opts || {};
+    var total = widths.reduce(function(a, b){ return a + b; }, 0);
+    var xml = "<w:tbl><w:tblPr>" +
+      '<w:tblW w:w="' + total + '" w:type="dxa"/>' +
+      '<w:tblLayout w:type="fixed"/>' +
+      "<w:tblBorders>" +
+      '<w:top w:val="single" w:sz="8" w:space="0" w:color="000000"/>' +
+      '<w:left w:val="single" w:sz="8" w:space="0" w:color="000000"/>' +
+      '<w:bottom w:val="single" w:sz="8" w:space="0" w:color="000000"/>' +
+      '<w:right w:val="single" w:sz="8" w:space="0" w:color="000000"/>' +
+      '<w:insideH w:val="single" w:sz="8" w:space="0" w:color="000000"/>' +
+      '<w:insideV w:val="single" w:sz="8" w:space="0" w:color="000000"/>' +
+      "</w:tblBorders>" +
+      '<w:tblCellMar><w:top w:w="40" w:type="dxa"/><w:left w:w="70" w:type="dxa"/><w:bottom w:w="40" w:type="dxa"/><w:right w:w="70" w:type="dxa"/></w:tblCellMar>' +
+      "</w:tblPr><w:tblGrid>";
+    widths.forEach(function(w){ xml += '<w:gridCol w:w="' + w + '"/>'; });
+    xml += "</w:tblGrid>";
+    rows.forEach(function(row, ri){
+      xml += "<w:tr>";
+      if (opts.headerRow && ri === 0) xml += "<w:trPr><w:tblHeader/></w:trPr>";
+      var col = 0;
+      row.forEach(function(cell){
+        var span = 1, text = cell, cellOpts = {};
+        if (cell && typeof cell === "object"){ span = cell.span || 1; text = cell.text; cellOpts = cell; }
+        var w = 0;
+        for (var s = 0; s < span; s++) w += (widths[col + s] || 0);
+        col += span;
+        var tcpr = '<w:tcPr><w:tcW w:w="' + w + '" w:type="dxa"/>';
+        if (span > 1) tcpr += '<w:gridSpan w:val="' + span + '"/>';
+        if (cellOpts.shade) tcpr += '<w:shd w:val="clear" w:color="auto" w:fill="' + cellOpts.shade + '"/>';
+        tcpr += '<w:vAlign w:val="center"/></w:tcPr>';
+        var paras = String(text == null ? "" : text).split("\n");
+        var inner = "";
+        paras.forEach(function(pt){
+          inner += docxP(pt, { bold: cellOpts.bold, align: cellOpts.align || "left", size: cellOpts.size });
+        });
+        xml += "<w:tc>" + tcpr + inner + "</w:tc>";
+      });
+      xml += "</w:tr>";
+    });
+    return xml + "</w:tbl>";
+  }
+  function docxHeaderCell(text, align){
+    return { text: text, bold: true, align: align || "center", size: 18, shade: "F1F5F9" };
+  }
+  function docxBodyCell(text, align, size){
+    return { text: text == null ? "" : String(text), align: align || "left", size: size || 18 };
+  }
+  function withPct(v){
+    var s = cleanNumberValue(v);
+    return s ? (/[%]$/.test(s) ? s : s + "%") : "";
+  }
+  function docxQuestionCells(values, prefix, count){
+    var out = [];
+    for (var i = 1; i <= count; i++) out.push(docxBodyCell(values[prefix + i], "center"));
+    return out;
+  }
+  function docxNumberedHeaders(count, label, align){
+    var out = [];
+    for (var i = 1; i <= count; i++) out.push(docxHeaderCell(label + i, align));
+    return out;
+  }
+  function buildDocxDocumentXml(values){
+    var body = [];
+    var wA = [4652, 4653, 4653];
+    var wB = [2998, 3653, 3653, 3654];
+    var wC = [2402];
+    for (var ci = 0; ci < 12; ci++) wC.push(963);
+    var wD = [500, 1898, 2400, 500];
+    for (var di = 0; di < 10; di++) wD.push(866);
+    var wE = [600, 3600, 3600, 2100, 2600, 1458];
+    var wF = [2400, 1500, 1500, 2300, 2400, 1500, 2358];
+    // header
+    body.push(docxP("CARISSA PRIMARY SCHOOL", { align: "center", bold: true, size: 28, spacingAfter: 60 }));
+    body.push(docxP("23 Hofmeyer Street                          P.O. Box 430", { align: "center", size: 18 }));
+    body.push(docxP("WITBANK                                     WITBANK", { align: "center", size: 18 }));
+    body.push(docxP("Tel. (013) 656 1286                         1035", { align: "center", size: 18 }));
+    body.push(docxP("E-mail: admin@carissaprimary.co.za", { align: "center", size: 18, spacingAfter: 160 }));
+    body.push(docxP([
+      docxRun("Subject: " + (values.subject || ""), { bold: true, size: 22 }),
+      docxRun("          Grade: " + (values.grade || ""), { bold: true, size: 22 })
+    ], { spacingAfter: 60 }));
+    body.push(docxP("SUBJECT PERFORMANCE IMPROVEMENT PLAN", { align: "center", bold: true, underline: true, size: 26, spacingAfter: 100 }));
+    body.push(docxTable(wA, [
+      [docxHeaderCell("PREVIOUS"), docxHeaderCell("CURRENT TARGET"), docxHeaderCell("AVERAGE")],
+      [docxBodyCell(values.previous, "center"), docxBodyCell(values.current_target, "center"), docxBodyCell(values.average, "center")]
+    ], { headerRow: true }));
+    body.push(docxP("", { size: 8 }));
+    body.push(docxP("QUARTERLY PERFORMANCE REVIEW", { align: "center", bold: true, underline: true, size: 24, spacingAfter: 60 }));
+    body.push(docxTable(wB, [
+      [docxHeaderCell("TERM"), docxHeaderCell("PASS %"), docxHeaderCell("FAIL %"), docxHeaderCell("AVERAGE")],
+      [docxBodyCell("1st Term"), docxBodyCell(withPct(values["1st_term_pass"]), "center"), docxBodyCell(withPct(values["1st_term_fail"]), "center"), docxBodyCell(withPct(values["1st_term_avg"]), "center")],
+      [docxBodyCell("2nd Term"), docxBodyCell(withPct(values["2nd_term_pass"]), "center"), docxBodyCell(withPct(values["2nd_term_fail"]), "center"), docxBodyCell(withPct(values["2nd_term_avg"]), "center")],
+      [docxBodyCell("3rd Term"), docxBodyCell(withPct(values["3rd_term_pass"]), "center"), docxBodyCell(withPct(values["3rd_term_fail"]), "center"), docxBodyCell(withPct(values["3rd_term_avg"]), "center")],
+      [docxBodyCell("Overall"), docxBodyCell(withPct(values.overall_pass), "center"), docxBodyCell(withPct(values.overall_fail), "center"), docxBodyCell(withPct(values.overall_avg), "center")]
+    ], { headerRow: true }));
+    body.push(docxP("", { size: 8 }));
+    body.push(docxP("EDUCATOR: " + (values.educator || "") + "          SIGNATURE:  ____________________________", { size: 20 }));
+    body.push(docxP("PRINCIPAL: " + (values.principal || "") + "          SIGNATURE:  ____________________________", { size: 20 }));
+    // item analysis
+    body.push(docxP("ITEM ANALYSIS", { align: "center", bold: true, underline: true, size: 26, spacingAfter: 60, pageBreakBefore: true }));
+    body.push(docxP([
+      docxRun("GRADE: " + (values.grade || ""), { bold: true, size: 22 }),
+      docxRun("      SUBJECT: " + (values.subject || ""), { bold: true, size: 22 }),
+      docxRun("      EDUCATOR: " + (values.educator || ""), { bold: true, size: 22 })
+    ], { spacingAfter: 60 }));
+    var itemRows = [[docxHeaderCell("QUESTION")].concat(docxNumberedHeaders(12, "", "center"))];
+    itemRows.push([docxBodyCell("Topic")].concat(docxQuestionCells(values, "topic_q", 12)));
+    itemRows.push([docxBodyCell("Mark out of")].concat(docxQuestionCells(values, "mark_out_q", 12)));
+    itemRows.push([docxBodyCell("Total mark obtained")].concat(docxQuestionCells(values, "total_mark_q", 12)));
+    itemRows.push([docxBodyCell("Average percentage")].concat(docxQuestionCells(values, "avg_pct_q", 12)));
+    body.push(docxTable(wC, itemRows, { headerRow: true }));
+    body.push(docxP("COMMENTS: " + (values.comments || ""), { size: 20, spacingBefore: 100 }));
+    // learner grid
+    body.push(docxP("LEARNER QUESTION GRID", { align: "center", bold: true, underline: true, size: 26, spacingAfter: 60, pageBreakBefore: true }));
+    body.push(docxP([
+      docxRun("GRADE: " + (values.grade || ""), { bold: true, size: 22 }),
+      docxRun("      SUBJECT: " + (values.subject || ""), { bold: true, size: 22 })
+    ], { spacingAfter: 60 }));
+    var gridRows = [[docxHeaderCell("#"), docxHeaderCell("Surname"), docxHeaderCell("Name"), docxHeaderCell("G")].concat(docxNumberedHeaders(10, "Q", "center"))];
+    for (var ln = 1; ln <= 15; ln++){
+      var row = [docxBodyCell(String(ln), "center"), docxBodyCell(values["learner" + ln + "_surname"]),
+        docxBodyCell(values["learner" + ln + "_name"]), docxBodyCell(values["learner" + ln + "_g"], "center")];
+      for (var q = 1; q <= 10; q++) row.push(docxBodyCell(values["learner" + ln + "_q" + q], "center"));
+      gridRows.push(row);
+    }
+    body.push(docxTable(wD, gridRows, { headerRow: true }));
+    // subject improvement plan
+    body.push(docxP("Subject Improvement Plan", { align: "center", bold: true, underline: true, size: 26, spacingAfter: 60, pageBreakBefore: true }));
+    body.push(docxP([
+      docxRun("Subject: " + (values.subject || ""), { bold: true, size: 22 }),
+      docxRun("     Grade: " + (values.grade || ""), { bold: true, size: 22 }),
+      docxRun("     Educator: " + (values.educator || ""), { bold: true, size: 22 })
+    ], { spacingAfter: 60 }));
+    var planRows = [[docxHeaderCell("NO"), docxHeaderCell("CHALLENGES"), docxHeaderCell("ACTION"), docxHeaderCell("RESPONSIBILITY"), docxHeaderCell("ACHIEVEMENT INDICATOR"), docxHeaderCell("TIME FRAME")]];
+    for (var p = 1; p <= 3; p++){
+      planRows.push([
+        docxBodyCell(p + ".", "center"),
+        docxBodyCell(values["plan" + p + "_challenges"]),
+        docxBodyCell(values["plan" + p + "_action"]),
+        docxBodyCell(values["plan" + p + "_responsibility"]),
+        docxBodyCell(values["plan" + p + "_achievement_indicator"]),
+        docxBodyCell(values["plan" + p + "_time_frame"])
+      ]);
+    }
+    body.push(docxTable(wE, planRows, { headerRow: true }));
+    // intervention plan
+    body.push(docxP("Intervention Plan", { align: "center", bold: true, underline: true, size: 26, spacingAfter: 60, pageBreakBefore: true }));
+    body.push(docxP("TERM: " + (values.ip_term || ""), { bold: true, size: 22 }));
+    body.push(docxP("SUBJECT: " + (values.subject || ""), { bold: true, size: 22 }));
+    body.push(docxP("GRADE: " + (values.grade || ""), { bold: true, size: 22 }));
+    body.push(docxP("EDUCATOR: " + (values.educator || ""), { bold: true, size: 22, spacingAfter: 60 }));
+    var ipRows = [[docxHeaderCell("TOPIC"), docxHeaderCell("DATE"), docxHeaderCell("TIME"), docxHeaderCell("EVIDENCE"), docxHeaderCell("PERFORMANCE INDICATOR"), docxHeaderCell("PERCENTAGE %"), docxHeaderCell("SIGNATURE OF HOD")]];
+    for (var ip = 1; ip <= 5; ip++){
+      ipRows.push([
+        docxBodyCell(values["ip" + ip + "_topic"]), docxBodyCell(values["ip" + ip + "_date"], "center"),
+        docxBodyCell(values["ip" + ip + "_time"], "center"), docxBodyCell(values["ip" + ip + "_evidence"]),
+        docxBodyCell(values["ip" + ip + "_performance_indicator"]), docxBodyCell(values["ip" + ip + "_percentage"], "center"),
+        docxBodyCell(values["ip" + ip + "_hod_signature"])
+      ]);
+    }
+    body.push(docxTable(wF, ipRows, { headerRow: true }));
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<w:document xmlns:w="' + W_NS + '" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+      "<w:body>" + body.join("") + DOCX_SECTPR + "</w:body></w:document>";
+  }
+  function buildDocxBlob(){
+    if (!window.JSZip) return Promise.reject(new Error("Word support is still loading. Please try again in a moment."));
+    var values = collectValues();
+    var draftForDocx = collectDraft();
+    var metadataKeyword = SPIP_PDF_METADATA_PREFIX + encodeSpipPdfMetadata({
+      version: 1,
+      className: draftForDocx.className,
+      fields: draftForDocx.data,
+      manualAvg: draftForDocx.manualAvg || {}
+    });
+    var contentTypes = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+      '<Default Extension="xml" ContentType="application/xml"/>' +
+      '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
+      '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
+      '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>' +
+      '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>' +
+      "</Types>";
+    var rootRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+      '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>' +
+      '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>' +
+      "</Relationships>";
+    var docRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+      "</Relationships>";
+    var styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<w:styles xmlns:w="' + W_NS + '">' +
+      "<w:docDefaults><w:rPrDefault><w:rPr>" +
+      '<w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/>' +
+      '<w:sz w:val="20"/><w:szCs w:val="20"/>' +
+      "</w:rPr></w:rPrDefault>" +
+      '<w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr></w:pPrDefault>' +
+      "</w:docDefaults>" +
+      '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>' +
+      "</w:styles>";
+    var now = new Date().toISOString().replace(/\.\d+Z$/, "Z");
+    var core = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" ' +
+      'xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" ' +
+      'xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">' +
+      "<dc:title>Subject Performance Improvement Plan</dc:title>" +
+      "<dc:subject>" + xmlEscapeDocx(values.subject || "") + "</dc:subject>" +
+      "<dc:creator>Carissa Primary School</dc:creator>" +
+      "<cp:lastModifiedBy>Carissa Primary School</cp:lastModifiedBy>" +
+      '<dcterms:created xsi:type="dcterms:W3CDTF">' + now + "</dcterms:created>" +
+      '<dcterms:modified xsi:type="dcterms:W3CDTF">' + now + "</dcterms:modified>" +
+      "<cp:keywords>" + xmlEscapeDocx(metadataKeyword) + "</cp:keywords>" +
+      "</cp:coreProperties>";
+    var app = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" ' +
+      'xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">' +
+      "<Application>Carissa Primary School SPIP Tool</Application>" +
+      "</Properties>";
+    var zip = new window.JSZip();
+    zip.file("[Content_Types].xml", contentTypes);
+    zip.file("_rels/.rels", rootRels);
+    zip.file("word/document.xml", buildDocxDocumentXml(values));
+    zip.file("word/styles.xml", styles);
+    zip.file("word/_rels/document.xml.rels", docRels);
+    zip.file("docProps/core.xml", core);
+    zip.file("docProps/app.xml", app);
+    return zip.generateAsync({ type: "blob", mimeType: DOCX_MIME, compression: "DEFLATE" });
+  }
   async function readRecordPdfBuffer(rec){
     var attachment = rec && rec.attachment;
     var url = attachment && attachment.data
       ? attachment.data
       : API + "/spip/attachment?id=" + encodeURIComponent(rec.id);
     var response = await fetch(url, attachment && attachment.data ? {} : { credentials: "include" });
-    if (!response.ok) throw new Error("The saved PDF could not be read (HTTP " + response.status + ").");
+    if (!response.ok) throw new Error("The saved SPIP file could not be read (HTTP " + response.status + ").");
     return response.arrayBuffer();
   }
   async function importAttachedPdfAnswers(rec, generation){
     var attachment = rec && rec.attachment;
-    if (!attachment || Number(attachment.importedVersion || 0) >= SPIP_IMPORT_VERSION ||
-        (!/pdf/i.test(attachment.type || "") && !/\.pdf$/i.test(attachment.name || ""))) return;
-    setStatus("Reading answers from the attached SPIP PDF…", "");
+    if (!attachment || Number(attachment.importedVersion || 0) >= SPIP_IMPORT_VERSION) return;
+    var attName = attachment.name || "";
+    var attType = attachment.type || "";
+    var isDocxAtt = /officedocument\.wordprocessingml/i.test(attType) || /msword/i.test(attType) || /\.docx$/i.test(attName);
+    var isPdfAtt = !isDocxAtt && (/pdf/i.test(attType) || /\.pdf$/i.test(attName));
+    if (!isPdfAtt && !isDocxAtt) return;
+    var kindLabel = isDocxAtt ? "Word document" : "PDF";
+    setStatus("Reading answers from the attached SPIP " + kindLabel + "…", "");
     try{
-      var parsed = await parsePdfFields(await readRecordPdfBuffer(rec));
+      var attBuffer = await readRecordPdfBuffer(rec);
+      var parsed = isDocxAtt ? await parseDocxFields(attBuffer) : await parsePdfFields(attBuffer);
       if (generation !== attachmentImportGeneration || String(currentRecordId) !== String(rec.id)) return;
       var importedCount = countImportedValues(parsed.fields);
       if (!importedCount){
-        setStatus("The PDF is attached, but it contains no readable answers. Please check the SPIP fields.", "err");
+        setStatus("The " + kindLabel + " is attached, but it contains no readable answers. Please check the SPIP fields.", "err");
         return;
       }
       var fields = mergeImportedFields(parsed.fields, rec.fields || {});
@@ -1412,22 +1972,25 @@
       var saved = await saveDraft();
       if (generation !== attachmentImportGeneration || String(currentRecordId) !== String(rec.id)) return;
       if (!saved){
-        setStatus("Answers were read from the PDF but could not be saved. " + (lastSaveError || ""), "err");
+        setStatus("Answers were read from the " + kindLabel + " but could not be saved. " + (lastSaveError || ""), "err");
       } else {
-        setStatus("Filled this SPIP with " + importedCount + " answers from its attached PDF.", "ok");
+        setStatus("Filled this SPIP with " + importedCount + " answers from its attached " + kindLabel + ".", "ok");
       }
     }catch(err){
       loadingRecord = false;
       if (generation === attachmentImportGeneration && String(currentRecordId) === String(rec.id)){
-        setStatus("Could not import answers from the attached PDF. " + ((err && err.message) || "Please try again."), "err");
+        setStatus("Could not import answers from the attached " + kindLabel + ". " + ((err && err.message) || "Please try again."), "err");
       }
     }
   }
   async function handleUpload(file, mode){
     if (!file) return;
     var isPdf = /pdf/i.test(file.type) || /\.pdf$/i.test(file.name);
-    if (!isPdf && file.type && file.type.indexOf("image/") !== 0){
-      setStatus("Please choose a PDF (or an image) file to upload.", "err");
+    var isDocx = /\.docx$/i.test(file.name) ||
+      /officedocument\.wordprocessingml/i.test(file.type) || /msword/i.test(file.type);
+    var isReadable = isPdf || isDocx;
+    if (!isReadable && file.type && file.type.indexOf("image/") !== 0){
+      setStatus("Please choose a PDF or Word (.docx) file to upload.", "err");
       return;
     }
     if (file.size > MAX_UPLOAD_BYTES){
@@ -1442,6 +2005,9 @@
       if (isPdf){
         try{ parsed = await parsePdfFields(await file.arrayBuffer()); }
         catch(err){ parseError = (err && err.message) || "The PDF answers could not be read."; }
+      } else if (isDocx){
+        try{ parsed = await parseDocxFields(await file.arrayBuffer()); }
+        catch(err){ parseError = (err && err.message) || "The Word document answers could not be read."; }
       }
       var parsedFields = sanitizeImportedFields(parsed.fields || {});
       normalizeImportedDates(parsedFields);
@@ -1454,9 +2020,9 @@
       matchImportedLearners(parsedFields, parsedClass);
       var parsedCount = countImportedValues(parsedFields);
       // "replace": swap the file on the record that is already open for editing,
-      // preserving existing answers while filling any blank fields from the PDF.
+      // preserving existing answers while filling any blank fields from the file.
       if (mode === "replace" && currentRecordId){
-        if (isPdf && parsedCount){
+        if (isReadable && parsedCount){
           var mergedFields = mergeImportedFields(parsedFields, collectDraft().data);
           normalizeImportedDates(mergedFields);
           matchImportedLearners(mergedFields, currentPrimaryClass() || parsedClass);
@@ -1471,9 +2037,9 @@
         }
         currentAttachment = {
           name: file.name,
-          type: file.type || "application/pdf",
+          type: spipFileMime(file, isDocx),
           size: file.size,
-          importedVersion: isPdf && parsedCount ? SPIP_IMPORT_VERSION : 0,
+          importedVersion: isReadable && parsedCount ? SPIP_IMPORT_VERSION : 0,
           data: dataUrl
         };
         updateAttachmentUI();
@@ -1488,9 +2054,9 @@
       // that could be read out of it, then save it straight to the teacher's profile
       currentAttachment = {
         name: file.name,
-        type: file.type || "application/pdf",
+        type: spipFileMime(file, isDocx),
         size: file.size,
-        importedVersion: isPdf && parsedCount ? SPIP_IMPORT_VERSION : 0,
+        importedVersion: isReadable && parsedCount ? SPIP_IMPORT_VERSION : 0,
         data: dataUrl
       };
       currentRecordId = "rec-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -1510,10 +2076,10 @@
       saveDraft().then(function(saved){
         if (saved){
           setStatus("Uploaded “" + file.name + "”" +
-            (parsedCount ? " and filled " + parsedCount + " answers from the PDF" :
-              (isPdf ? " but no form answers could be read" : "")) +
+            (parsedCount ? " and filled " + parsedCount + " answers from the " + (isDocx ? "Word document" : "PDF") :
+              (isReadable ? " but no answers could be read" : "")) +
             (parseError ? ". " + parseError : ". It is now stored in your records."),
-          parsedCount || !isPdf ? "ok" : "err");
+          parsedCount || !isReadable ? "ok" : "err");
         } else {
           setStatus("Could not store “" + file.name + "” on your profile. " + (lastSaveError || "Please try again."), "err");
         }
@@ -1949,6 +2515,24 @@
       });
       return pdfDoc.save();
   }
+
+  downloadWordBtn.addEventListener("click", function(){
+    setStatus("", "");
+    downloadWordBtn.disabled = true;
+    buildDocxBlob().then(function(blob){
+      var values = collectValues();
+      var name = "carissa-spip" +
+        (safePart(values.subject) ? "-" + safePart(values.subject) : "") +
+        (safePart(values.grade) ? "-grade-" + safePart(values.grade) : "") +
+        "-" + new Date().toISOString().slice(0,10) + ".docx";
+      downloadBlob(blob, name);
+      setStatus("Filled SPIP downloaded as a Word document.", "ok");
+    }).catch(function(err){
+      setStatus((err && err.message) || "Could not create the SPIP Word document.", "err");
+    }).finally(function(){
+      downloadWordBtn.disabled = false;
+    });
+  });
 
   downloadBtn.addEventListener("click", function(){
     setStatus("", "");

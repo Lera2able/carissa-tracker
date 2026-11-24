@@ -1842,6 +1842,9 @@ async function handleSpipDraftAttachmentGet(request, env, corsOrigin) {
     "%" + c.charCodeAt(0).toString(16).toUpperCase()
   );
   if (/\.pdf$/i.test(filename)) contentType = "application/pdf";
+  else if (/\.docx$/i.test(filename)) {
+    contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  }
   const disposition = url.searchParams.get("download") === "1" ? "attachment" : "inline";
   return new Response(bytes, {
     status: 200,
