@@ -18,3 +18,10 @@ create index if not exists carissa_spip_drafts_updated_idx
 
 alter table public.carissa_spip_drafts enable row level security;
 revoke all on table public.carissa_spip_drafts from anon, authenticated;
+
+-- The Worker accesses this table with its server-only service_role key.
+grant usage on schema public to service_role;
+grant all on table public.carissa_spip_drafts to service_role;
+
+-- Make the new table visible to the Supabase Data API immediately.
+notify pgrst, 'reload schema';
