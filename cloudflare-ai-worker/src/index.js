@@ -1537,18 +1537,36 @@ async function requireTeacher(request, env, corsOrigin) {
   return { ok: true, session };
 }
 
+function spipRecordsFromRow(row) {
+  if (!row || !row.data) return [];
+  if (Array.isArray(row.data.spip_records)) {
+    return row.data.spip_records.slice().sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
+  }
+  // legacy single-draft row: wrap its flat form data into a single record
+  return [
+    {
+      id: "legacy-" + (row.updated_at || "draft"),
+      className: row.class_name || "",
+      subject: row.subject || "",
+      created_at: row.created_at || row.updated_at || new Date().toISOString(),
+      updated_at: row.updated_at || new Date().toISOString(),
+      fields: row.data,
+    },
+  ];
+}
+
 async function handleSpipDraftGet(request, env, corsOrigin) {
   const auth = await requireTeacher(request, env, corsOrigin);
   if (!auth.ok) return auth.res;
   const email = String(auth.session.email || "").trim().toLowerCase();
-  if (!email) return jsonResponse({ draft: null }, 200, corsOrigin);
+  if (!email) return jsonResponse({ records: [] }, 200, corsOrigin);
   const rows = await supabaseGet(env, "carissa_spip_drafts", {
     select: "*",
     teacher_email: `eq.${email}`,
     limit: "1",
   });
-  const draft = Array.isArray(rows) && rows.length ? rows[0] : null;
-  return jsonResponse({ draft }, 200, corsOrigin);
+  const row = Array.isArray(rows) && rows.length ? rows[0] : null;
+  return jsonResponse({ records: spipRecordsFromRow(row) }, 200, corsOrigin);
 }
 
 async function handleSpipDraftSave(request, env, corsOrigin) {
@@ -1561,13 +1579,42 @@ async function handleSpipDraftSave(request, env, corsOrigin) {
     .map((part) => String(part || "").trim())
     .filter(Boolean)
     .join(" ");
+  const fields = (body && typeof body.data === "object" && body.data) || {};
+  const now = new Date().toISOString();
+  const recordId =
+    (body && typeof body.id === "string" && body.id.trim()) ||
+    (crypto && crypto.randomUUID ? crypto.randomUUID() : "rec-" + Date.now());
+  const incoming = {
+    id: recordId,
+    className: String(body?.className || "").trim() || "",
+    subject: String(body?.subject || "").trim() || "",
+    updated_at: now,
+    fields,
+  };
+
+  const rows = await supabaseGet(env, "carissa_spip_drafts", {
+    select: "*",
+    teacher_email: `eq.${email}`,
+    limit: "1",
+  });
+  const existing = Array.isArray(rows) && rows.length ? rows[0] : null;
+  const currentRecords = spipRecordsFromRow(existing);
+  const idx = currentRecords.findIndex((r) => r.id === recordId);
+  if (idx >= 0) {
+    incoming.created_at = currentRecords[idx].created_at || now;
+    currentRecords[idx] = { ...currentRecords[idx], ...incoming };
+  } else {
+    incoming.created_at = now;
+    currentRecords.unshift(incoming);
+  }
+
   const row = {
     teacher_email: email,
     teacher_name: name || null,
-    class_name: String(body?.className || "").trim() || null,
-    subject: String(body?.subject || "").trim() || null,
-    data: (body && typeof body.data === "object" && body.data) || {},
-    updated_at: new Date().toISOString(),
+    class_name: incoming.className || null,
+    subject: incoming.subject || null,
+    data: { spip_records: currentRecords },
+    updated_at: now,
   };
   const saved = await supabasePost(
     env,
@@ -1575,7 +1622,45 @@ async function handleSpipDraftSave(request, env, corsOrigin) {
     row,
     "resolution=merge-duplicates,return=representation"
   );
-  return jsonResponse({ ok: true, draft: Array.isArray(saved) ? saved[0] : saved }, 200, corsOrigin);
+  const savedRow = Array.isArray(saved) ? saved[0] : saved;
+  return jsonResponse(
+    { ok: true, record: incoming, records: spipRecordsFromRow(savedRow) },
+    200,
+    corsOrigin
+  );
+}
+
+async function handleSpipDraftDelete(request, env, corsOrigin) {
+  const auth = await requireTeacher(request, env, corsOrigin);
+  if (!auth.ok) return auth.res;
+  const body = await readJsonBody(request);
+  const email = String(auth.session.email || "").trim().toLowerCase();
+  const id = body && typeof body.id === "string" ? body.id.trim() : "";
+  if (!email || !id) return jsonResponse({ error: "Record id missing." }, 400, corsOrigin);
+  const rows = await supabaseGet(env, "carissa_spip_drafts", {
+    select: "*",
+    teacher_email: `eq.${email}`,
+    limit: "1",
+  });
+  const existing = Array.isArray(rows) && rows.length ? rows[0] : null;
+  const currentRecords = spipRecordsFromRow(existing).filter((r) => r.id !== id);
+  const now = new Date().toISOString();
+  const row = {
+    teacher_email: email,
+    teacher_name: existing?.teacher_name || null,
+    class_name: currentRecords[0]?.className || null,
+    subject: currentRecords[0]?.subject || null,
+    data: { spip_records: currentRecords },
+    updated_at: now,
+  };
+  const saved = await supabasePost(
+    env,
+    "carissa_spip_drafts?on_conflict=teacher_email",
+    row,
+    "resolution=merge-duplicates,return=representation"
+  );
+  const savedRow = Array.isArray(saved) ? saved[0] : saved;
+  return jsonResponse({ ok: true, records: spipRecordsFromRow(savedRow) }, 200, corsOrigin);
 }
 
 function emailAddressOf(value) {
@@ -3172,6 +3257,7 @@ export default {
       try {
         if (request.method === "GET") return await handleSpipDraftGet(request, env, corsOrigin);
         if (request.method === "POST") return await handleSpipDraftSave(request, env, corsOrigin);
+        if (request.method === "DELETE") return await handleSpipDraftDelete(request, env, corsOrigin);
         return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
       } catch (error) {
         return jsonResponse({ error: error?.message || "SPIP draft request failed" }, 500, corsOrigin);

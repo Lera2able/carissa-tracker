@@ -191,6 +191,18 @@
     </div>
   </div>
 
+  <div class="card" style="padding:16px 20px;">
+    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
+      <div style="flex:1;min-width:220px;">
+        <label class="lbl" for="recordSelect">Your SPIP records</label>
+        <select class="inp" id="recordSelect" style="min-height:44px;"></select>
+      </div>
+      <button class="btn primary" id="newRecordBtn" type="button">+ Create new SPIP</button>
+      <button class="btn ghost" id="deleteRecordBtn" type="button">Delete this record</button>
+    </div>
+    <p class="sub" style="margin-top:8px;margin-bottom:0;">Pick a previous record to continue, or start a new one. Your records are saved to your profile and kept separately, so they come back every time you open the tool.</p>
+  </div>
+
   <nav class="sections" aria-label="Form sections">
     <a href="#sec-plan">1 · Plan details</a>
     <a href="#sec-quarterly">2 · Quarterly review</a>
@@ -444,9 +456,15 @@
   var classList = document.getElementById("classList");
   var gradeSelect = document.getElementById("gradeSelect");
   var learnerSearch = document.getElementById("learnerSearch");
+  var recordSelect = document.getElementById("recordSelect");
+  var newRecordBtn = document.getElementById("newRecordBtn");
+  var deleteRecordBtn = document.getElementById("deleteRecordBtn");
   var manualAvg = {};
   var saveTimer = null;
   var teacherEmail = "";
+  var currentRecordId = null;
+  var records = [];
+  var loadingRecord = false;
 
   function inputs(){ return Array.prototype.slice.call(document.querySelectorAll("[data-field]")); }
   function byField(name){ return document.querySelector('[data-field="' + name + '"]'); }
@@ -609,12 +627,19 @@
     var values = {};
     inputs().forEach(function(el){ values[el.getAttribute("data-field")] = el.value; });
     return {
+      id: currentRecordId,
       className: currentPrimaryClass(),
       subject: (byField("subject") && byField("subject").value) || "",
       data: values,
       manualAvg: manualAvg,
       savedAt: new Date().toISOString()
     };
+  }
+  function formatDate(iso){
+    if (!iso) return "";
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso);
+    return d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   }
   function markSaved(text){
     var d = new Date();
@@ -627,22 +652,49 @@
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ className: draft.className, subject: draft.subject, data: draft.data })
+        body: JSON.stringify({ id: draft.id, className: draft.className, subject: draft.subject, data: draft.data })
       }).then(function(r){
         if (!r.ok) throw new Error("save failed");
+        return r.json();
+      }).then(function(j){
+        if (j && j.record && j.record.id){
+          currentRecordId = j.record.id;
+          if (Array.isArray(j.records)) records = j.records;
+          renderRecords();
+        }
         markSaved("Saved to your profile");
       }).catch(function(){ markSaved("Saved on this device"); });
     } else {
-      try{ localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); }catch(e){}
+      var rec = {
+        id: draft.id || ("local-" + Date.now()),
+        className: draft.className || "",
+        subject: draft.subject || "",
+        created_at: draft.savedAt,
+        updated_at: draft.savedAt,
+        fields: draft.data
+      };
+      currentRecordId = rec.id;
+      var idx = -1;
+      for (var ri = 0; ri < records.length; ri++){ if (records[ri].id === rec.id){ idx = ri; break; } }
+      if (idx >= 0){
+        rec.created_at = records[idx].created_at || rec.created_at;
+        records[idx] = rec;
+      } else {
+        records.unshift(rec);
+      }
+      try{ localStorage.setItem(DRAFT_KEY, JSON.stringify(records)); }catch(e){}
+      renderRecords();
       markSaved("Saved on this device");
     }
   }
   function queueSave(){
+    if (loadingRecord) return;
     clearTimeout(saveTimer);
     saveTimer = setTimeout(saveDraft, 700);
   }
   function applyDraft(saved){
     if (!saved) return;
+    var data = saved.fields || saved.data || {};
     if (saved.className){
       var g = gradeFromClass(saved.className);
       for (var gi = 0; gi < gradeSelect.options.length; gi++){
@@ -652,12 +704,12 @@
     setGradeField();
     updateClassListDisplay();
     populateLearnerPickers();
-    if (saved.data){
+    if (data){
       var fallbackClass = saved.className || currentPrimaryClass();
       inputs().forEach(function(el){
         var k = el.getAttribute("data-field");
-        if (saved.data[k] == null) return;
-        var v = saved.data[k];
+        if (data[k] == null) return;
+        var v = data[k];
         // migrate legacy plain-number learner picks to whole-grade composite keys
         if (/^learner\d+_pick$/.test(k) && v && String(v).indexOf("::") === -1){
           var num = String(v);
@@ -677,7 +729,7 @@
     manualAvg = saved.manualAvg || {};
     setGradeField();
     // migrate old item-analysis-only data into the learner grid for Q1-Q10
-    if (saved.data){
+    if (data){
       for (var qi = 1; qi <= 10; qi++){
         var gT = byField("grid_topic_q" + qi);
         var iT = byField("topic_q" + qi);
@@ -691,8 +743,6 @@
     syncItemAnalysisFromGrid();
     syncRowState();
     autogrowAll();
-    // persist migrated composite keys so future loads are unambiguous
-    queueSave();
     if (saved.savedAt){
       var d = new Date(saved.savedAt);
       draftChip.textContent = "Restored · " + d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -706,16 +756,117 @@
     if (!teacherEmail){
       var local = null;
       try{ local = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"); }catch(e){}
-      if (local) applyDraft(local); else { populateLearnerPickers(); setGradeField(); }
+      if (Array.isArray(local)){
+        records = local;
+      } else if (local){
+        records = [{
+          id: "legacy-" + (local.savedAt || Date.now()),
+          className: local.className || "",
+          subject: local.subject || "",
+          created_at: local.savedAt || new Date().toISOString(),
+          updated_at: local.savedAt || new Date().toISOString(),
+          fields: local.data || {}
+        }];
+      } else {
+        records = [];
+      }
+      renderRecords();
+      if (records.length) switchRecord(records[0].id); else newRecord();
       return;
     }
     fetch(API + "/spip/draft", { credentials: "include" })
       .then(function(r){ return r.ok ? r.json() : null; })
       .catch(function(){ return null; })
       .then(function(j){
-        var draft = j && j.draft ? { className: j.draft.class_name, data: j.draft.data, savedAt: j.draft.updated_at } : null;
-        if (draft) applyDraft(draft); else { populateLearnerPickers(); setGradeField(); }
+        records = (j && Array.isArray(j.records)) ? j.records : [];
+        renderRecords();
+        if (records.length) switchRecord(records[0].id); else newRecord();
       });
+  }
+  function renderRecords(){
+    if (!recordSelect) return;
+    var opts = '<option value="">— New SPIP (unsaved) —</option>';
+    if (records.length){
+      opts += records.map(function(r){
+        var label = (r.subject || "Untitled") + " · " + (r.className || "—") + " · " + formatDate(r.updated_at);
+        return '<option value="' + esc(r.id) + '">' + esc(label) + '</option>';
+      }).join("");
+    }
+    recordSelect.innerHTML = opts;
+    recordSelect.value = currentRecordId || "";
+  }
+  function switchRecord(id){
+    loadingRecord = true;
+    var rec = null;
+    for (var i = 0; i < records.length; i++){ if (records[i].id === id){ rec = records[i]; break; } }
+    manualAvg = {};
+    inputs().forEach(function(el){ el.value = ""; });
+    Array.prototype.forEach.call(document.querySelectorAll(".learner-pick"), function(sel){ sel.value = ""; });
+    if (rec){
+      currentRecordId = rec.id;
+      applyDraft({ className: rec.className, fields: rec.fields, manualAvg: {}, savedAt: rec.updated_at });
+      if (rec.subject){
+        var subj = byField("subject");
+        if (subj && !subj.value) subj.value = rec.subject;
+      }
+    } else {
+      currentRecordId = null;
+    }
+    renderRecords();
+    syncRowState();
+    loadingRecord = false;
+  }
+  function newRecord(){
+    currentRecordId = null;
+    loadingRecord = true;
+    manualAvg = {};
+    inputs().forEach(function(el){ el.value = ""; });
+    Array.prototype.forEach.call(document.querySelectorAll(".learner-pick"), function(sel){ sel.value = ""; });
+    syncRowState();
+    setGradeField();
+    populateLearnerPickers();
+    loadingRecord = false;
+    renderRecords();
+    recordSelect.value = "";
+    draftChip.textContent = "New SPIP · saves automatically";
+    setStatus("Started a new SPIP. It is saved when you make changes.", "ok");
+  }
+  function deleteRecord(){
+    if (!currentRecordId){
+      setStatus("Nothing to delete — this is a new, unsaved SPIP.", "ok");
+      return;
+    }
+    var rec = null;
+    for (var di = 0; di < records.length; di++){ if (records[di].id === currentRecordId){ rec = records[di]; break; } }
+    var label = rec ? ((rec.subject || "Untitled") + " · " + (rec.className || "—")) : "this record";
+    if (!window.confirm('Delete the SPIP record "' + label + '"? This cannot be undone.')) return;
+    var removedId = currentRecordId;
+    if (teacherEmail){
+      fetch(API + "/spip/draft", {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: removedId })
+      }).then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(j){
+          if (j && Array.isArray(j.records)) records = j.records;
+          else records = records.filter(function(r){ return r.id !== removedId; });
+          afterDelete();
+        })
+        .catch(function(){
+          records = records.filter(function(r){ return r.id !== removedId; });
+          afterDelete();
+        });
+    } else {
+      records = records.filter(function(r){ return r.id !== removedId; });
+      try{ localStorage.setItem(DRAFT_KEY, JSON.stringify(records)); }catch(e){}
+      afterDelete();
+    }
+    function afterDelete(){
+      renderRecords();
+      if (records.length) switchRecord(records[0].id); else newRecord();
+      setStatus("Record deleted.", "ok");
+    }
   }
   function initSession(){
     fetch(API + "/auth/teacher/session", { credentials: "include" })
@@ -806,6 +957,21 @@
     learnerSearch.addEventListener("input", function(){
       filterLearnerPickers(learnerSearch.value);
     });
+  }
+
+  /* ---------- SPIP record selector ---------- */
+  if (recordSelect){
+    recordSelect.addEventListener("change", function(){
+      var val = recordSelect.value;
+      if (val === "") newRecord();
+      else switchRecord(val);
+    });
+  }
+  if (newRecordBtn){
+    newRecordBtn.addEventListener("click", function(){ newRecord(); });
+  }
+  if (deleteRecordBtn){
+    deleteRecordBtn.addEventListener("click", function(){ deleteRecord(); });
   }
 
   /* ---------- collect + fill + download ---------- */
@@ -1012,15 +1178,14 @@
   });
 
   clearBtn.addEventListener("click", function(){
-    if (!window.confirm("Clear the saved draft and empty every field?")) return;
-    try{ localStorage.removeItem(DRAFT_KEY); }catch(e){}
+    if (!window.confirm("Clear all fields in this SPIP? The record itself will remain.")) return;
     manualAvg = {};
     inputs().forEach(function(el){ el.value = ""; });
     Array.prototype.forEach.call(document.querySelectorAll(".learner-pick"), function(sel){ sel.value = ""; });
     syncRowState();
-    draftChip.textContent = "Draft saves automatically";
-    setStatus("Draft cleared.", "ok");
-    if (teacherEmail) queueSave();
+    draftChip.textContent = "Fields cleared · saves automatically";
+    setStatus("Fields cleared. Changes will be saved to the current record.", "ok");
+    queueSave();
   });
 
   initSession();
