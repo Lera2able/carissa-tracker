@@ -206,7 +206,7 @@
     <p class="sub">These details repeat automatically on the item analysis, improvement plan and intervention plan pages of the document.</p>
     <div class="grid">
       <div><label class="lbl" for="gradeSelect">Grade</label><select class="inp" id="gradeSelect"></select></div>
-      <div><label class="lbl" for="classSelect">Class <span class="hint">(all classes in this grade)</span></label><select class="inp" id="classSelect"></select></div>
+      <div><label class="lbl">Classes <span class="hint">(whole grade)</span></label><div class="inp" id="classList" style="padding:12px;border:2px solid var(--input-line);border-radius:8px;background:#f8fafc;color:var(--ink-soft);font-size:15px;min-height:48px;display:flex;align-items:center;flex-wrap:wrap;gap:6px;">—</div></div>
       <div><label class="lbl" for="subject">Subject</label><input class="inp" id="subject" data-field="subject" placeholder="Example: Mathematics"/></div>
       <input type="hidden" id="grade" data-field="grade"/>
       <div><label class="lbl" for="educator">Educator</label><input class="inp" id="educator" data-field="educator" placeholder="Educator name"/></div>
@@ -274,8 +274,8 @@
   <!-- 4 · LEARNER GRID -->
   <section class="card" id="sec-grid">
     <h2><span class="num">4</span> Learner question grid</h2>
-    <p class="sub">Write the question learners struggled with in the top row. The boxes are taller, grow as you type, and can be resized. Then pick up to 15 learners from your class and enter their marks for Q1–Q10.</p>
-    <span class="auto-note">Learners come from the class you selected in step 1.</span>
+    <p class="sub">Write the question learners struggled with in the top row. The boxes are taller, grow as you type, and can be resized. Then pick up to 15 learners from any class in this grade and enter their marks for Q1–Q10.</p>
+    <span class="auto-note">Learners come from all classes in the grade you selected in step 1.</span>
     <div class="table-scroll">
       <table class="sheet grid10" id="learnerTable">
         <thead></thead>
@@ -421,7 +421,7 @@
   var downloadBtn = document.getElementById("downloadBtn");
   var printBtn = document.getElementById("printBtn");
   var clearBtn = document.getElementById("clearBtn");
-  var classSelect = document.getElementById("classSelect");
+  var classList = document.getElementById("classList");
   var gradeSelect = document.getElementById("gradeSelect");
   var manualAvg = {};
   var saveTimer = null;
@@ -448,7 +448,10 @@
     for (var i = 0; i < list.length; i++){ if (String(list[i].number) === String(number)) return list[i]; }
     return null;
   }
-  function currentClass(){ return classSelect.value || ""; }
+  function currentPrimaryClass(){
+    var classes = classesForGrade(currentGrade());
+    return classes.length ? classes[0] : "";
+  }
   function gradeFromClass(c){
     var rest = String(c || "").replace(/^Grade\s+/i, "").trim();
     return rest.split(/[.\s]/)[0] || "";
@@ -477,39 +480,51 @@
       }
     } else gradeSelect.selectedIndex = 0;
   }
-  function setClassValue(v){
-    var key = resolveClassKey(v);
-    for (var i = 0; i < classSelect.options.length; i++){
-      if (classSelect.options[i].value === key){ classSelect.selectedIndex = i; return true; }
-    }
-    return false;
+  function updateClassListDisplay(){
+    var classes = classesForGrade(currentGrade());
+    if (classList){ classList.textContent = classes.length ? classes.join(", ") : "\u2014"; }
   }
-  function populateClassSelect(names, selected){
-    var seen = {}, opts = [];
-    names.forEach(function(n){
-      var key = resolveClassKey(n);
-      if (seen[key]) return;
-      seen[key] = true;
-      opts.push({ key: key, label: n });
+  function allLearnersForGrade(grade){
+    var out = [];
+    classesForGrade(grade).forEach(function(cls){
+      (CLASS_DATA[cls] || []).forEach(function(l){
+        out.push({ number: l.number, surname: l.surname, firstname: l.firstname, _class: cls, key: cls + "::" + l.number });
+      });
     });
-    var html = "";
-    opts.forEach(function(o){ html += '<option value="' + esc(o.key) + '">' + esc(o.label) + '</option>'; });
-    classSelect.innerHTML = html || '<option value="">No classes</option>';
-    if (selected){ if (!setClassValue(selected)) classSelect.selectedIndex = 0; } else classSelect.selectedIndex = 0;
+    return out.sort(function(a, b){
+      return String(a.surname).localeCompare(String(b.surname)) || String(a.firstname).localeCompare(String(b.firstname));
+    });
+  }
+  function findLearnerByKey(key, fallbackClass){
+    if (!key) return null;
+    var k = String(key);
+    var idx = k.indexOf("::");
+    if (idx !== -1){
+      return findLearner(k.slice(0, idx), k.slice(idx + 2));
+    }
+    // legacy format: plain learner number
+    if (fallbackClass){
+      var fl = findLearner(fallbackClass, k);
+      if (fl) return fl;
+    }
+    var classes = classesForGrade(currentGrade());
+    for (var i = 0; i < classes.length; i++){
+      var l = findLearner(classes[i], k);
+      if (l) return l;
+    }
+    return null;
   }
   function syncRowState(){
     // Q marks are always editable. Rows without a chosen learner simply print blank on the PDF.
   }
   function populateLearnerPickers(){
-    var list = learnerList(currentClass()).sort(function(a, b){
-      return String(a.surname).localeCompare(String(b.surname)) || String(a.firstname).localeCompare(String(b.firstname));
-    });
-    var label = currentClass() ? "-- Select learner --" : "Select a class first";
+    var list = allLearnersForGrade(currentGrade());
+    var label = currentGrade() ? "-- Select learner --" : "Select a grade first";
     Array.prototype.forEach.call(document.querySelectorAll(".learner-pick"), function(sel){
       var cur = sel.value;
       var html = '<option value="">' + label + '</option>';
       list.forEach(function(l){
-        html += '<option value="' + esc(l.number) + '">' + esc(l.surname) + ', ' + esc(l.firstname) + '</option>';
+        html += '<option value="' + esc(l.key) + '">' + esc(l.surname) + ', ' + esc(l.firstname) + ' (' + esc(l._class) + ')</option>';
       });
       sel.innerHTML = html;
       sel.value = cur;
@@ -523,7 +538,7 @@
     var values = {};
     inputs().forEach(function(el){ values[el.getAttribute("data-field")] = el.value; });
     return {
-      className: currentClass(),
+      className: currentPrimaryClass(),
       subject: (byField("subject") && byField("subject").value) || "",
       data: values,
       manualAvg: manualAvg,
@@ -562,21 +577,38 @@
       for (var gi = 0; gi < gradeSelect.options.length; gi++){
         if (gradeSelect.options[gi].value === g){ gradeSelect.selectedIndex = gi; break; }
       }
-      populateClassSelect(classesForGrade(g), saved.className);
-      setClassValue(saved.className);
     }
     setGradeField();
+    updateClassListDisplay();
     populateLearnerPickers();
     if (saved.data){
+      var fallbackClass = saved.className || currentPrimaryClass();
       inputs().forEach(function(el){
         var k = el.getAttribute("data-field");
-        if (saved.data[k] != null) el.value = saved.data[k];
+        if (saved.data[k] == null) return;
+        var v = saved.data[k];
+        // migrate legacy plain-number learner picks to whole-grade composite keys
+        if (/^learner\d+_pick$/.test(k) && v && String(v).indexOf("::") === -1){
+          var num = String(v);
+          var matched = "";
+          if (fallbackClass && findLearner(fallbackClass, num)) matched = fallbackClass;
+          else {
+            var classes = classesForGrade(currentGrade());
+            for (var ci = 0; ci < classes.length; ci++){
+              if (findLearner(classes[ci], num)){ matched = classes[ci]; break; }
+            }
+          }
+          if (matched) v = matched + "::" + num;
+        }
+        el.value = v;
       });
     }
     manualAvg = saved.manualAvg || {};
     setGradeField();
     syncRowState();
     autogrowAll();
+    // persist migrated composite keys so future loads are unambiguous
+    queueSave();
     if (saved.savedAt){
       var d = new Date(saved.savedAt);
       draftChip.textContent = "Restored · " + d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -621,7 +653,7 @@
         if (!grades.length) grades = gradesFromClassNames(allClassNames());
         var preferredGrade = preferred ? gradeFromClass(preferred) : (grades[0] || "");
         populateGradeSelect(grades, preferredGrade);
-        populateClassSelect(classesForGrade(currentGrade()), preferred);
+        updateClassListDisplay();
         setGradeField();
         loadDraft();
       });
@@ -669,14 +701,9 @@
     if (ev.target && ev.target.getAttribute && ev.target.getAttribute("data-field")) queueSave();
   });
 
-  /* ---------- class + learner picker wiring ---------- */
+  /* ---------- grade + learner picker wiring ---------- */
   gradeSelect.addEventListener("change", function(){
-    populateClassSelect(classesForGrade(currentGrade()), "");
-    setGradeField();
-    populateLearnerPickers();
-    queueSave();
-  });
-  classSelect.addEventListener("change", function(){
+    updateClassListDisplay();
     setGradeField();
     populateLearnerPickers();
     queueSave();
@@ -706,11 +733,11 @@
     values.sip_subject = values.subject; values.sip_grade = values.grade; values.sip_educator = values.educator;
     values.ip_subject = values.subject; values.ip_grade = values.grade; values.ip_educator = values.educator;
     values.grid_grade = values.grade;
-    // resolve the learner picker (a class list number) into the template's surname/first-name fields
-    var cls = currentClass();
+    // resolve the learner picker (a whole-grade composite key, or legacy number) into the template's surname/first-name fields
+    var fallbackClass = currentPrimaryClass();
     for (var ln = 1; ln <= 15; ln++){
       var pick = values["learner" + ln + "_pick"];
-      var learner = pick ? findLearner(cls, pick) : null;
+      var learner = pick ? findLearnerByKey(pick, fallbackClass) : null;
       values["learner" + ln + "_surname"] = learner ? String(learner.surname || "") : "";
       values["learner" + ln + "_name"] = learner ? String(learner.firstname || "") : "";
     }
