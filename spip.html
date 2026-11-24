@@ -515,9 +515,16 @@
   function inputs(){ return Array.prototype.slice.call(document.querySelectorAll("[data-field]")); }
   function byField(name){ return document.querySelector('[data-field="' + name + '"]'); }
   var DEFAULT_SPIP_TERM = "Term 4";
+  // Returns "Term N" only when the text really names a term; otherwise "".
+  // Uploaded documents often leave the term blank, and that must not be
+  // mistaken for a term choice.
+  function spipTermFromText(value){
+    var text = String(value == null ? "" : value).trim();
+    var match = text.match(/^(?:spip\s*)?term\s*([1-4])\b/i) || text.match(/^([1-4])$/);
+    return match ? "Term " + match[1] : "";
+  }
   function normalizeSpipTerm(value){
-    var match = String(value == null ? "" : value).trim().match(/^(?:term\s*)?([1-4])$/i);
-    return match ? "Term " + match[1] : DEFAULT_SPIP_TERM;
+    return spipTermFromText(value) || DEFAULT_SPIP_TERM;
   }
   function ensureSpipTerm(){
     var termField = byField("ip_term");
@@ -816,7 +823,12 @@
         var k = el.getAttribute("data-field");
         if (data[k] == null) return;
         var v = data[k];
-        if (k === "ip_term") v = normalizeSpipTerm(v);
+        // A file that never states a term leaves the teacher's choice alone.
+        if (k === "ip_term"){
+          var fileTerm = spipTermFromText(v);
+          if (!fileTerm) return;
+          v = fileTerm;
+        }
         // migrate legacy plain-number learner picks to whole-grade composite keys
         if (/^learner\d+_pick$/.test(k) && v && String(v).indexOf("::") === -1){
           var num = String(v);
