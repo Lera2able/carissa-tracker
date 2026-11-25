@@ -28,6 +28,7 @@ const ALLOWED_EXTS = new Set([
   ".json",
   ".xml",
   ".pdf",
+  ".docx",
   ".ttf",
   ".otf",
   ".woff",
