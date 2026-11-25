@@ -2662,27 +2662,7 @@
     }
     return result;
   }
-  function pdfFieldLabel(name){
-    var match = String(name || "").match(/^ip([1-5])_(topic|evidence|performance_indicator)$/);
-    if (match){
-      var labels = { topic: "Topic", evidence: "Evidence", performance_indicator: "Performance indicator" };
-      return "Intervention plan row " + match[1] + " - " + labels[match[2]];
-    }
-    match = String(name || "").match(/^plan([1-3])_(challenges|action|responsibility|achievement_indicator|time_frame)$/);
-    if (match){
-      var planLabels = {
-        challenges: "Challenges",
-        action: "Action",
-        responsibility: "Responsibility",
-        achievement_indicator: "Achievement indicator",
-        time_frame: "Time frame"
-      };
-      return "Improvement plan row " + match[1] + " - " + planLabels[match[2]];
-    }
-    match = String(name || "").match(/^grid_topic_q([1-9]|10)$/);
-    if (match) return "Item analysis - Question " + match[1];
-    return String(name || "").replace(/_/g, " ");
-  }
+
   async function loadPdfFont(path){
     var res = await fetch(path, { cache: "force-cache" });
     if (!res.ok) throw new Error("The Arial-compatible PDF font could not be loaded.");
@@ -2708,46 +2688,6 @@
     }catch(e){ return false; }
   }
   var PDF_OUTPUT_FONT_SIZE = 12;
-  function drawPdfContinuationPages(pdfDoc, entries, font, boldFont, values){
-    var pageWidth = 841.92, pageHeight = 595.32, margin = 42;
-    var bodyWidth = pageWidth - margin * 2;
-    var fontSize = PDF_OUTPUT_FONT_SIZE, lineHeight = 16;
-    var page = null, cursorY = 0;
-    var pageByField = Object.create(null);
-    function startPage(continued){
-      page = pdfDoc.addPage([pageWidth, pageHeight]);
-      var title = continued ? "Additional SPIP Explanations (continued)" : "Additional SPIP Explanations";
-      page.drawText(title, { x: margin, y: pageHeight - margin - 16, size: 15, font: boldFont });
-      var context = [values.subject && ("Subject: " + values.subject), values.grade && ("Grade: " + values.grade)]
-        .filter(Boolean).join("    ");
-      if (context) page.drawText(context, { x: margin, y: pageHeight - margin - 34, size: PDF_OUTPUT_FONT_SIZE, font: font });
-      cursorY = pageHeight - margin - (context ? 56 : 44);
-    }
-    entries.forEach(function(entry){
-      var lines = wrapPdfText(entry.text, font, fontSize, bodyWidth);
-      var label = entry.label;
-      var offset = 0;
-      while (offset < lines.length){
-        if (!page) startPage(false);
-        if (cursorY - lineHeight * 2 < margin) startPage(true);
-        if (!pageByField[entry.name]) pageByField[entry.name] = pdfDoc.getPageCount();
-        page.drawText(label, { x: margin, y: cursorY, size: PDF_OUTPUT_FONT_SIZE, font: boldFont });
-        cursorY -= lineHeight;
-        label = entry.label + " (continued)";
-        var availableLines = Math.max(1, Math.floor((cursorY - margin) / lineHeight));
-        var count = Math.min(availableLines, lines.length - offset);
-        for (var i = 0; i < count; i++){
-          page.drawText(lines[offset + i], { x: margin, y: cursorY, size: fontSize, font: font });
-          cursorY -= lineHeight;
-        }
-        offset += count;
-        if (offset < lines.length) startPage(true);
-        else cursorY -= 8;
-      }
-    });
-    return pageByField;
-  }
-
   function addPdfTemplateField(pdfDoc, pdfForm, name, pageIndex, x, top, width, height, font, options){
     options = options || {};
     var page = pdfDoc.getPage(pageIndex);
@@ -2971,7 +2911,6 @@
         arialBold = await pdfDoc.embedFont(window.PDFLib.StandardFonts.HelveticaBold);
       }
       addPdfTemplateFields(pdfDoc, pdfForm, arial, arialBold);
-      var overflowEntries = [];
       var fieldByName = Object.create(null);
       allFieldNames().forEach(function(fieldName){
         try{
@@ -2980,50 +2919,22 @@
           if (fieldName === "ip_term") text = normalizeSpipTerm(text).replace(/^Term\s+/i, "");
           fieldByName[fieldName] = pdfField;
           if (pdfField.isMultiline() && text){
+            // Wrap text and shrink font size (down to 5.5pt) until it fits
+            // inside the cell. Never overflow to a separate page.
             var fit = fitPdfTextToField(text, arial, pdfField, PDF_OUTPUT_FONT_SIZE);
-            if (fit.fits && fit.size >= PDF_OUTPUT_FONT_SIZE){
-              pdfField.setFontSize(PDF_OUTPUT_FONT_SIZE);
-              pdfField.setText(fit.lines.join("\n"));
-            } else {
-              pdfField.setFontSize(PDF_OUTPUT_FONT_SIZE);
-              overflowEntries.push({ name: fieldName, label: pdfFieldLabel(fieldName), text: text });
-              pdfField.setText("");
-            }
+            pdfField.setFontSize(fit.size);
+            pdfField.setText(fit.lines.join("\n"));
           } else if (text){
+            // Single-line fields: shrink to fit the column width.
             var singleFit = fitPdfSingleLine(text, arial, pdfField, PDF_OUTPUT_FONT_SIZE);
-            var fieldRect = pdfField.acroField.getWidgets()[0].getRectangle();
-            var fitsAtStandardSize = arial.widthOfTextAtSize(singleFit.text, PDF_OUTPUT_FONT_SIZE) <= Math.max(8, fieldRect.width - 4);
-            if (fitsAtStandardSize){
-              pdfField.setFontSize(PDF_OUTPUT_FONT_SIZE);
-              pdfField.setText(singleFit.text);
-            } else {
-              pdfField.setFontSize(PDF_OUTPUT_FONT_SIZE);
-              overflowEntries.push({ name: fieldName, label: pdfFieldLabel(fieldName), text: text });
-              pdfField.setText("");
-            }
+            pdfField.setFontSize(singleFit.size);
+            pdfField.setText(singleFit.text);
           } else {
             pdfField.setFontSize(PDF_OUTPUT_FONT_SIZE);
             pdfField.setText(text);
           }
         }catch(e){}
       });
-      if (overflowEntries.length){
-        var overflowPages = drawPdfContinuationPages(pdfDoc, overflowEntries, arial, arialBold, values);
-        overflowEntries.forEach(function(entry){
-          var field = fieldByName[entry.name];
-          if (!field) return;
-          var marker = "See p. " + overflowPages[entry.name];
-          var markerRect = field.acroField.getWidgets()[0].getRectangle();
-          if (arial.widthOfTextAtSize(marker, PDF_OUTPUT_FONT_SIZE) > markerRect.width - 4) marker = "p." + overflowPages[entry.name];
-          if (field.isMultiline()){
-            field.setFontSize(PDF_OUTPUT_FONT_SIZE);
-            field.setText(marker);
-          } else {
-            field.setFontSize(PDF_OUTPUT_FONT_SIZE);
-            field.setText(marker);
-          }
-        });
-      }
       try{
         var draftForPdf = collectDraft();
         var keywords = pdfDoc.getKeywords() || [];
