@@ -622,6 +622,166 @@
       date_teacher: ""
     };
   }
+  // Draws the QMS lesson observation data sheet from scratch (A4 portrait).
+  // The old approach filled a form template whose six comment boxes accept only
+  // 100 characters, so longer notes were silently dropped and the page broke
+  // mid-section. This version wraps text, grows the boxes and keeps sections whole.
+  async function buildModerationPdfBytes(form) {
+    const PL = window.PDFLib;
+    const rgb = PL.rgb;
+    const pdfDoc = await PL.PDFDocument.create();
+    const regular = await pdfDoc.embedFont(PL.StandardFonts.Helvetica);
+    const bold = await pdfDoc.embedFont(PL.StandardFonts.HelveticaBold);
+    let crest = null;
+    try { crest = await pdfDoc.embedPng(LOGO); } catch (e) {}
+    const PW = 595.28, PH = 841.89, MX = 42, CW = PW - 2 * MX, BOTTOM = 52;
+    const TEAL = rgb(0.055, 0.361, 0.431), BLUE = rgb(0.165, 0.545, 0.659), BLACK = rgb(0, 0, 0);
+    let page = null, y = 0;
+    const safe = (font, text) => {
+      text = String(text == null ? "" : text).replace(/\r\n?/g, "\n").replace(/ /g, " ");
+      return Array.from(text).map((ch) => {
+        if (ch === "\n") return ch;
+        try { font.encodeText(ch); return ch; } catch (e) { return "?"; }
+      }).join("");
+    };
+    const dmy = (s) => {
+      const m = String(s || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      return m ? m[3] + "/" + m[2] + "/" + m[1] : String(s || "");
+    };
+    const wrap = (font, text, size, maxW) => {
+      const out = [];
+      safe(font, text).split("\n").forEach((par) => {
+        const words = par.trim().split(/\s+/).filter(Boolean);
+        let line = "";
+        if (!words.length) { out.push(""); return; }
+        words.forEach((w) => {
+          if (font.widthOfTextAtSize(w, size) > maxW) {
+            if (line) { out.push(line); line = ""; }
+            let part = "";
+            Array.from(w).forEach((ch) => {
+              if (part && font.widthOfTextAtSize(part + ch, size) > maxW) { out.push(part); part = ch; } else part += ch;
+            });
+            line = part;
+            return;
+          }
+          const next = line ? line + " " + w : w;
+          if (line && font.widthOfTextAtSize(next, size) > maxW) { out.push(line); line = w; } else line = next;
+        });
+        if (line) out.push(line);
+      });
+      return out.length ? out : [""];
+    };
+    const footer = () => {
+      page.drawLine({ start: { x: MX, y: 36 }, end: { x: PW - MX, y: 36 }, thickness: 0.8, color: BLUE });
+      const t = "Carissa Primary School • Principal: Ms V. Sibande";
+      let tt = t;
+      try { regular.encodeText(t); } catch (e) { tt = "Carissa Primary School - Principal: Ms V. Sibande"; }
+      page.drawText(tt, { x: (PW - regular.widthOfTextAtSize(tt, 8)) / 2, y: 24, size: 8, font: regular, color: rgb(0.53, 0.53, 0.53) });
+    };
+    const newPage = () => { page = pdfDoc.addPage([PW, PH]); footer(); y = PH - 36; };
+    const centred = (text, size, font, color, dy) => {
+      const t = safe(font, text);
+      page.drawText(t, { x: (PW - font.widthOfTextAtSize(t, size)) / 2, y: y - size, size, font, color: color || BLACK });
+      y -= size + (dy == null ? 8 : dy);
+    };
+
+    newPage();
+    if (crest) {
+      const ch = 56, cw = crest.width * ch / crest.height;
+      page.drawImage(crest, { x: (PW - cw) / 2, y: y - ch, width: cw, height: ch });
+      y -= ch + 5;
+    }
+    const title = "CARISSA PRIMARY SCHOOL", tsz = 19, sp = 3;
+    let tw = 0;
+    Array.from(title).forEach((c) => { tw += bold.widthOfTextAtSize(c, tsz) + sp; });
+    let tx = (PW - tw + sp) / 2;
+    Array.from(title).forEach((c) => {
+      page.drawText(c, { x: tx, y: y - tsz, size: tsz, font: bold, color: TEAL });
+      tx += bold.widthOfTextAtSize(c, tsz) + sp;
+    });
+    y -= tsz + 7;
+    page.drawLine({ start: { x: MX, y }, end: { x: PW - MX, y }, thickness: 0.5, color: rgb(0.66, 0.83, 0.88) });
+    y -= 5;
+    centred("23 Hofmeyer Street, Witbank, 1035  •  P.O. Box 430, Witbank, 1035", 8.5, regular, rgb(0.29, 0.29, 0.29), 3);
+    centred("Tel: (013) 656 1286  •  E-mail: info@carissaprimary.co.za  •  Web: www.carissaprimary.co.za", 8.5, regular, rgb(0.29, 0.29, 0.29), 5);
+    page.drawLine({ start: { x: MX, y }, end: { x: PW - MX, y }, thickness: 2, color: BLUE });
+    y -= 18;
+    centred("LESSON OBSERVATION", 14, bold, BLACK, 4);
+    centred("Data sheet for QMS", 10, regular, BLACK, 12);
+
+    // details table: [label, value] pairs, two columns
+    const half = CW / 2;
+    const infoRow = (left, right, h) => {
+      page.drawRectangle({ x: MX, y: y - h, width: CW, height: h, borderColor: BLACK, borderWidth: 0.8 });
+      page.drawLine({ start: { x: MX + half, y }, end: { x: MX + half, y: y - h }, thickness: 0.8, color: BLACK });
+      [[left, MX], [right, MX + half]].forEach(([items, x0]) => {
+        let x = x0 + 6;
+        items.forEach(([lab, val, w]) => {
+          const l = safe(bold, lab + " ");
+          page.drawText(l, { x, y: y - h / 2 - 3.5, size: 10, font: bold, color: BLACK });
+          const vx = x + bold.widthOfTextAtSize(l, 10);
+          const avail = (w || half - 12) - bold.widthOfTextAtSize(l, 10);
+          let v = safe(regular, val || "");
+          let sz = 10;
+          while (sz > 6.5 && regular.widthOfTextAtSize(v, sz) > avail) sz -= 0.5;
+          page.drawText(v, { x: vx, y: y - h / 2 - 3.5, size: sz, font: regular, color: BLACK });
+          x += w || 0;
+        });
+      });
+      y -= h;
+    };
+    infoRow([["Name:", form.name]], [["Persal number:", form.persal_number]], 26);
+    infoRow([["Subject:", form.subject, half * 0.68], ["Grade:", form.grade, half * 0.3]], [["Date of observation:", dmy(form.date_of_observation)]], 26);
+    infoRow([["DH:", form.dh]], [["Educator:", form.educator]], 26);
+    y -= 20;
+
+    const ITEMS = ["CREATION OF A POSITIVE LEARNING AND TEACHER ENVIRONMENT.", "CURRICULUM KNOWLEDGE, LESSON PLANNING AND PRESENTATION.", "LEARNER ASSESSMENT AND ACHIEVEMENT."];
+    const section = (heading, dateValue, keys) => {
+      const bodySize = 10, boxW = CW - 14, minBox = 62;
+      const boxes = keys.map((k) => {
+        const lines = wrap(regular, form[k], bodySize, boxW - 12);
+        return { lines, h: Math.max(minBox, lines.length * bodySize * 1.25 + 12) };
+      });
+      const total = 26 + boxes.reduce((s, b) => s + 20 + b.h + 10, 0);
+      if (y - total < BOTTOM) newPage();
+      page.drawText(heading, { x: MX, y: y - 11, size: 11, font: bold, color: BLACK });
+      page.drawLine({ start: { x: MX, y: y - 13 }, end: { x: MX + bold.widthOfTextAtSize(heading, 11), y: y - 13 }, thickness: 0.7, color: BLACK });
+      const dl = "Date:", dx = MX + CW - 150;
+      page.drawText(dl, { x: dx, y: y - 11, size: 10, font: bold, color: BLACK });
+      page.drawText(safe(regular, dmy(dateValue)), { x: dx + 32, y: y - 11, size: 10, font: regular, color: BLACK });
+      page.drawLine({ start: { x: dx + 30, y: y - 13 }, end: { x: MX + CW, y: y - 13 }, thickness: 0.6, color: BLACK });
+      y -= 30;
+      boxes.forEach((b, i) => {
+        page.drawText((i + 1) + ".  " + ITEMS[i], { x: MX + 6, y: y - 10, size: 10, font: regular, color: BLACK });
+        y -= 18;
+        page.drawRectangle({ x: MX + 6, y: y - b.h, width: boxW, height: b.h, borderColor: rgb(0.45, 0.45, 0.45), borderWidth: 0.7 });
+        b.lines.forEach((ln, j) => {
+          page.drawText(ln, { x: MX + 12, y: y - 6 - bodySize - j * bodySize * 1.25 + 2, size: bodySize, font: regular, color: BLACK });
+        });
+        y -= b.h + 12;
+      });
+      y -= 6;
+    };
+    section("Pre-observation discussion:", form.pre_obs_date, ["pre_1_environment", "pre_2_curriculum", "pre_3_assessment"]);
+    section("Post-observation:", form.post_obs_date, ["post_1_environment", "post_2_curriculum", "post_3_assessment"]);
+
+    if (y - 90 < BOTTOM) newPage();
+    page.drawText("Signatures:", { x: MX, y: y - 10, size: 10.5, font: bold, color: BLACK });
+    y -= 30;
+    const sigLine = (lab, val, x, w) => {
+      page.drawText(lab, { x, y: y - 3, size: 10, font: bold, color: BLACK });
+      const lx = x + bold.widthOfTextAtSize(lab, 10) + 6;
+      page.drawText(safe(regular, val || ""), { x: lx + 2, y: y - 1, size: 10, font: regular, color: BLACK });
+      page.drawLine({ start: { x: lx, y: y - 4 }, end: { x: x + w, y: y - 4 }, thickness: 0.6, color: BLACK });
+    };
+    sigLine("DH:", form.signature_dh, MX, half - 14);
+    sigLine("TEACHER:", form.signature_teacher, MX + half, half);
+    y -= 28;
+    sigLine("DATE:", dmy(form.date_dh), MX, half - 14);
+    sigLine("DATE:", dmy(form.date_teacher), MX + half, half);
+    pdfDoc.setTitle("Carissa Lesson Observation - QMS data sheet");
+    return pdfDoc.save();
+  }
   function moderationFileName(form) {
     const safeEducator = String(form.educator || form.name || "moderation-tool").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "moderation-tool";
     const safeDate = String(form.date_of_observation || (/* @__PURE__ */ new Date()).toISOString().slice(0, 10)).replace(/[^0-9]+/g, "-");
@@ -6066,6 +6226,15 @@ ${trimmedReviewNote}` : noteHeader;
       setStatus("");
       try {
         if (!((_a = window.PDFLib) == null ? void 0 : _a.PDFDocument)) throw new Error("PDF support is still loading. Please try again in a moment.");
+        try {
+          const cleanBytes = await buildModerationPdfBytes(form);
+          downloadBlob(new Blob([cleanBytes], { type: "application/pdf" }), moderationFileName(form));
+          setStatus("Filled moderation PDF downloaded.");
+          setBusy(false);
+          return;
+        } catch (cleanErr) {
+          try { console.warn("Clean moderation PDF failed, using template fallback:", cleanErr); } catch (e) {}
+        }
         const res = await fetch(MODERATION_TEMPLATE_PATH, { cache: "no-store" });
         if (!res.ok) throw new Error("The moderation PDF template could not be loaded.");
         const pdfDoc = await window.PDFLib.PDFDocument.load(await res.arrayBuffer());
