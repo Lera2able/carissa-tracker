@@ -2954,6 +2954,277 @@
       return pdfDoc.save();
   }
 
+  /* ==================== Clean, flattened PDF output ==================== */
+  // Draws the SPIP pack from scratch (A4 landscape) instead of filling the form
+  // template, so text is a readable size, aligned and never overlaps. Falls back
+  // to the old template filler if anything goes wrong.
+  async function buildCleanPdfBytes(){
+    if (!window.PDFLib || !window.PDFLib.PDFDocument) throw new Error("PDF support is still loading. Please try again in a moment.");
+    var PL = window.PDFLib, rgb = PL.rgb;
+    var values = collectValues();
+    var pdfDoc = await PL.PDFDocument.create();
+    var regular, bold;
+    try{
+      if (!window.fontkit) throw new Error("no fontkit");
+      pdfDoc.registerFontkit(window.fontkit);
+      var rf = await loadPdfFont("monitoring-tools/Arimo-Regular.ttf");
+      var bf = await loadPdfFont("monitoring-tools/Arimo-Bold.ttf");
+      if (!supportsPdfFontText(rf.face, values)) throw new Error("unsupported glyphs");
+      regular = await pdfDoc.embedFont(rf.bytes);
+      bold = await pdfDoc.embedFont(bf.bytes);
+    }catch(fontErr){
+      regular = await pdfDoc.embedFont(PL.StandardFonts.Helvetica);
+      bold = await pdfDoc.embedFont(PL.StandardFonts.HelveticaBold);
+    }
+    var crest = null;
+    try{
+      var cr = await fetch("school-crest.png", { cache: "force-cache" });
+      if (cr.ok) crest = await pdfDoc.embedPng(await cr.arrayBuffer());
+    }catch(e){}
+
+    var PW = 841.89, PH = 595.28, MX = 36, TOP = 34, BOTTOM = 48, CW = PW - 2 * MX;
+    var TEAL = rgb(0.055, 0.361, 0.431), BLUE = rgb(0.165, 0.545, 0.659), GREY = rgb(0.85, 0.85, 0.85);
+    var BLACK = rgb(0, 0, 0);
+    var page = null, y = 0;
+
+    function safe(font, text){
+      text = String(text == null ? "" : text).replace(/\r\n?/g, "\n").replace(/ /g, " ");
+      try{ font.encodeText(text.replace(/\n/g, " ")); return text; }catch(e){}
+      return Array.from(text).map(function(ch){
+        if (ch === "\n") return ch;
+        try{ font.encodeText(ch); return ch; }catch(e2){ return "?"; }
+      }).join("");
+    }
+    function wrap(font, text, size, maxW){
+      text = safe(font, text);
+      var out = [];
+      text.split("\n").forEach(function(par){
+        var words = par.trim().split(/\s+/).filter(Boolean), line = "";
+        if (!words.length){ out.push(""); return; }
+        words.forEach(function(w){
+          if (font.widthOfTextAtSize(w, size) > maxW){
+            if (line){ out.push(line); line = ""; }
+            var part = "";
+            Array.from(w).forEach(function(ch){
+              if (part && font.widthOfTextAtSize(part + ch, size) > maxW){ out.push(part); part = ch; }
+              else part += ch;
+            });
+            line = part; return;
+          }
+          var next = line ? line + " " + w : w;
+          if (line && font.widthOfTextAtSize(next, size) > maxW){ out.push(line); line = w; }
+          else line = next;
+        });
+        if (line) out.push(line);
+      });
+      return out.length ? out : [""];
+    }
+    function footer(){
+      page.drawLine({ start: { x: MX, y: 34 }, end: { x: PW - MX, y: 34 }, thickness: 0.8, color: BLUE });
+      var t = "Carissa Primary School • Principal: Ms V. Sibande";
+      try{ regular.encodeText(t); }catch(e){ t = "Carissa Primary School - Principal: Ms V. Sibande"; }
+      var w = regular.widthOfTextAtSize(t, 8);
+      page.drawText(t, { x: (PW - w) / 2, y: 22, size: 8, font: regular, color: rgb(0.53, 0.53, 0.53) });
+    }
+    function newPage(){
+      page = pdfDoc.addPage([PW, PH]);
+      footer();
+      y = PH - TOP;
+    }
+    function ensure(h){ if (y - h < BOTTOM) newPage(); }
+    function centred(text, size, font, color, dy){
+      var t = safe(font, text), w = font.widthOfTextAtSize(t, size);
+      page.drawText(t, { x: (PW - w) / 2, y: y - size, size: size, font: font, color: color || BLACK });
+      y -= size + (dy == null ? 8 : dy);
+    }
+    // "LABEL: value" pairs on one line, value underlined
+    function fieldLine(pairs, size, gap){
+      var x = MX, base = y - size;
+      pairs.forEach(function(p){
+        var lab = safe(bold, p[0] + " "), val = safe(regular, p[1] || "");
+        page.drawText(lab, { x: x, y: base, size: size, font: bold, color: BLACK });
+        x += bold.widthOfTextAtSize(lab, size);
+        var vw = Math.max(regular.widthOfTextAtSize(val, size), p[2] || 40);
+        if (val) page.drawText(val, { x: x, y: base, size: size, font: regular, color: BLACK });
+        page.drawLine({ start: { x: x, y: base - 2 }, end: { x: x + vw, y: base - 2 }, thickness: 0.6, color: BLACK });
+        x += vw + (gap || 22);
+      });
+      y -= size + 12;
+    }
+    // cells: [{t, bold, align, fill, span}]; widths sum to table width
+    function drawRow(x0, widths, cells, opts){
+      opts = opts || {};
+      var size = opts.size || 9, pad = 4, lh = size * 1.22;
+      var heights = [], wrapped = [], ci = 0;
+      cells.forEach(function(c){
+        var span = c.span || 1, w = 0;
+        for (var s = 0; s < span; s++) w += widths[ci + s];
+        var f = c.bold ? bold : regular, sz = c.size || size;
+        var lines = wrap(f, c.t, sz, w - 2 * pad);
+        wrapped.push({ lines: lines, w: w, x: 0, f: f, sz: sz, c: c });
+        heights.push(lines.length * sz * 1.22 + 2 * pad - 1);
+        ci += span;
+      });
+      var h = Math.max(opts.minH || 0, Math.max.apply(null, heights));
+      ensure(h);
+      var x = x0;
+      wrapped.forEach(function(wc){
+        var c = wc.c;
+        if (c.fill) page.drawRectangle({ x: x, y: y - h, width: wc.w, height: h, color: c.fill });
+        page.drawRectangle({ x: x, y: y - h, width: wc.w, height: h, borderColor: BLACK, borderWidth: 0.7 });
+        var ty = (c.vmid ? y - (h - wc.lines.length * wc.sz * 1.22) / 2 : y - pad) - wc.sz;
+        wc.lines.forEach(function(line, i){
+          var lw = wc.f.widthOfTextAtSize(line, wc.sz), tx = x + pad;
+          if (c.align === "center") tx = x + (wc.w - lw) / 2;
+          page.drawText(line, { x: tx, y: ty - i * wc.sz * 1.22, size: wc.sz, font: wc.f, color: BLACK });
+        });
+        x += wc.w;
+      });
+      y -= h;
+    }
+    function C(t, o){ var c = Object.assign({}, o || {}); c.t = t == null ? "" : String(t); return c; }
+    function H(t, o){ var c = Object.assign({}, o || {}); c.t = t; c.bold = true; c.fill = GREY; return c; }
+
+    var v = values, grade = v.grade || "", subject = v.subject || "", educator = v.educator || "";
+
+    /* ---- Page 1: letterhead + SPIP summary ---- */
+    newPage();
+    if (crest){
+      var ch = 50, cw = crest.width * ch / crest.height;
+      page.drawImage(crest, { x: (PW - cw) / 2, y: y - ch, width: cw, height: ch });
+      y -= ch + 4;
+    }
+    var title = "CARISSA PRIMARY SCHOOL", tsz = 19, sp = 3, tw = 0;
+    Array.from(title).forEach(function(ch){ tw += bold.widthOfTextAtSize(ch, tsz) + sp; });
+    var tx = (PW - tw + sp) / 2;
+    Array.from(title).forEach(function(ch){
+      page.drawText(ch, { x: tx, y: y - tsz, size: tsz, font: bold, color: TEAL });
+      tx += bold.widthOfTextAtSize(ch, tsz) + sp;
+    });
+    y -= tsz + 6;
+    page.drawLine({ start: { x: MX, y: y }, end: { x: PW - MX, y: y }, thickness: 0.5, color: rgb(0.66, 0.83, 0.88) });
+    y -= 4;
+    centred("23 Hofmeyer Street, Witbank, 1035  •  P.O. Box 430, Witbank, 1035", 8.5, regular, rgb(0.29, 0.29, 0.29), 3);
+    centred("Tel: (013) 656 1286  •  E-mail: info@carissaprimary.co.za  •  Web: www.carissaprimary.co.za", 8.5, regular, rgb(0.29, 0.29, 0.29), 4);
+    page.drawLine({ start: { x: MX, y: y }, end: { x: PW - MX, y: y }, thickness: 2, color: BLUE });
+    y -= 16;
+    fieldLine([["Subject:", subject, 140], ["Grade:", grade, 40]], 11);
+    y -= 2;
+    centred("SUBJECT PERFORMANCE IMPROVEMENT PLAN", 13, bold, BLACK, 8);
+    var w3 = [CW * 0.31, CW * 0.40, CW * 0.29];
+    drawRow(MX, w3, [H("PREVIOUS"), H("CURRENT TARGET"), H("AVERAGE")], { size: 10, minH: 20 });
+    drawRow(MX, w3, [C(v.previous), C(v.current_target), C(v.average)], { size: 10, minH: 20 });
+    y -= 12;
+    centred("QUARTERLY PERFORMANCE REVIEW", 13, bold, BLACK, 8);
+    var w4 = [CW * 0.25, CW * 0.25, CW * 0.25, CW * 0.25];
+    drawRow(MX, w4, [H("TERM"), H("PASS %"), H("FAIL %"), H("AVERAGE")], { size: 10, minH: 20 });
+    [["1st Term", "1st_term"], ["2nd Term", "2nd_term"], ["3rd Term", "3rd_term"], ["4th Term", "4th_term"], ["Overall", "overall"]].forEach(function(r){
+      drawRow(MX, w4, [C(r[0], { bold: true }), C(withPct(v[r[1] + "_pass"])), C(withPct(v[r[1] + "_fail"])), C(withPct(v[r[1] + "_avg"]))], { size: 10, minH: 18 });
+    });
+    y -= 18;
+    [["EDUCATOR:", educator, v.educator_signature], ["PRINCIPAL:", v.principal || "", v.principal_signature]].forEach(function(r){
+      ensure(26);
+      var base = y - 11;
+      page.drawText(r[0], { x: MX, y: base, size: 10.5, font: bold, color: BLACK });
+      var lx = MX + bold.widthOfTextAtSize(r[0], 10.5) + 6;
+      page.drawText(safe(regular, r[1]), { x: lx, y: base, size: 10.5, font: regular, color: BLACK });
+      page.drawLine({ start: { x: lx, y: base - 2 }, end: { x: lx + 200, y: base - 2 }, thickness: 0.6, color: BLACK });
+      page.drawText("SIGNATURE:", { x: MX + 330, y: base, size: 10.5, font: bold, color: BLACK });
+      page.drawLine({ start: { x: MX + 420, y: base - 2 }, end: { x: MX + 620, y: base - 2 }, thickness: 0.6, color: BLACK });
+      if (r[2]) page.drawText(safe(regular, r[2]), { x: MX + 424, y: base, size: 10.5, font: regular, color: BLACK });
+      y -= 28;
+    });
+
+    /* ---- Page 2: item analysis ---- */
+    newPage();
+    centred("ITEM ANALYSIS", 14, bold, BLACK, 10);
+    fieldLine([["GRADE:", grade, 30], ["SUBJECT:", subject, 110], ["EDUCATOR:", educator, 130]], 10.5, 28);
+    y -= 4;
+    var lw = 96, qw = (CW - lw) / 12, wq = [lw].concat(new Array(12).fill(qw));
+    function qRow(label, prefix, o){
+      var cells = [C(label, { bold: true, size: 9.5 })];
+      for (var q = 1; q <= 12; q++) cells.push(C(prefix ? v[prefix + q] : String(q), o));
+      return cells;
+    }
+    drawRow(MX, wq, qRow("QUESTION", null, { bold: true, align: "center" }), { size: 10, minH: 20 });
+    drawRow(MX, wq, qRow("Topic", "topic_q"), { size: 7.5, minH: 52 });
+    drawRow(MX, wq, qRow("Mark out of", "mark_out_q"), { size: 9.5, minH: 30 });
+    drawRow(MX, wq, qRow("Total mark obtained", "total_mark_q"), { size: 9.5, minH: 30 });
+    drawRow(MX, wq, qRow("Average percentage", "avg_pct_q"), { size: 9.5, minH: 30 });
+    y -= 18;
+    ensure(120);
+    page.drawText("COMMENTS:", { x: MX, y: y - 10, size: 10.5, font: bold, color: BLACK });
+    y -= 22;
+    var clines = wrap(regular, v.comments || "", 10.5, CW - 8), nLines = Math.max(4, clines.length);
+    for (var ln = 0; ln < nLines; ln++){
+      ensure(24);
+      if (clines[ln]) page.drawText(clines[ln], { x: MX + 4, y: y - 14, size: 10.5, font: regular, color: BLACK });
+      page.drawLine({ start: { x: MX, y: y - 18 }, end: { x: PW - MX, y: y - 18 }, thickness: 0.6, color: BLACK });
+      y -= 24;
+    }
+
+    /* ---- Page 3: learner marks ---- */
+    newPage();
+    centred("GRADE: " + grade, 12, bold, BLACK, 8);
+    var nw = 22, sw = 100, nmw = 130, gw = 38, qwl = (CW - nw - sw - nmw - gw) / 12;
+    var wl = [nw + sw + nmw + gw].concat(new Array(12).fill(qwl));
+    var hdr = [H("Questions", { align: "center" })];
+    for (var q1 = 1; q1 <= 12; q1++) hdr.push(H("Q" + q1, { align: "center" }));
+    drawRow(MX, wl, hdr, { size: 10, minH: 20 });
+    var trow = [H("Topics", { align: "center", vmid: true })];
+    for (var q2 = 1; q2 <= 12; q2++) trow.push(C(v["grid_topic_q" + q2] || v["topic_q" + q2] || "", { size: 6.5 }));
+    drawRow(MX, wl, trow, { size: 7, minH: 46 });
+    var wl2 = [nw, sw, nmw, gw].concat(new Array(12).fill(qwl));
+    var sub = [C(""), H("Surname"), H("Name"), H("Class")];
+    for (var q3 = 1; q3 <= 12; q3++) sub.push(C(""));
+    drawRow(MX, wl2, sub, { size: 9.5, minH: 18 });
+    for (var L = 1; L <= 15; L++){
+      var row = [C(String(L), { bold: true }), C(v["learner" + L + "_surname"]), C(v["learner" + L + "_name"]), C(v["learner" + L + "_class"], { size: 8 })];
+      for (var q4 = 1; q4 <= 12; q4++) row.push(C(q4 <= 10 ? v["learner" + L + "_q" + q4] : "", { align: "center" }));
+      drawRow(MX, wl2, row, { size: 9, minH: 21 });
+    }
+
+    /* ---- Page 4: subject improvement plan ---- */
+    newPage();
+    centred("Subject Improvement Plan", 14, bold, BLACK, 10);
+    fieldLine([["Subject:", subject, 110], ["Grade:", grade, 30], ["Educator:", educator, 130]], 10.5, 24);
+    y -= 6;
+    var wp = [CW * 0.06, CW * 0.26, CW * 0.24, CW * 0.16, CW * 0.18, CW * 0.10];
+    drawRow(MX, wp, ["NO", "CHALLENGES", "ACTION", "RESPONSIBILITY", "ACHIEVEMENT INDICATOR", "TIME FRAME"].map(function(t){ return H(t); }), { size: 9.5, minH: 26 });
+    for (var P = 1; P <= 3; P++){
+      drawRow(MX, wp, [C(P + ".", { bold: true }),
+        C(v["plan" + P + "_challenges"]), C(v["plan" + P + "_action"]), C(v["plan" + P + "_responsibility"]),
+        C(v["plan" + P + "_achievement_indicator"]), C(v["plan" + P + "_time_frame"])], { size: 9.5, minH: 100 });
+    }
+
+    /* ---- Page 5: intervention plan ---- */
+    newPage();
+    centred("Intervention Plan", 14, bold, BLACK, 12);
+    [["TERM:", v.ip_term || ""], ["SUBJECT:", subject], ["GRADE:", grade], ["EDUCATOR:", educator]].forEach(function(p){
+      fieldLine([[p[0], p[1], 120]], 10.5);
+    });
+    y -= 6;
+    var wi = [CW * 0.19, CW * 0.10, CW * 0.10, CW * 0.19, CW * 0.19, CW * 0.11, CW * 0.12];
+    drawRow(MX, wi, ["TOPIC", "DATE", "TIME", "EVIDENCE", "PERFORMANCE INDICATOR", "PERCENTAGE %", "SIGNATURE OF HOD"].map(function(t){ return H(t, { align: "center", vmid: true }); }), { size: 9, minH: 30 });
+    for (var I = 1; I <= 5; I++){
+      drawRow(MX, wi, ["topic", "date", "time", "evidence", "performance_indicator", "percentage", "hod_signature"].map(function(f){ return C(v["ip" + I + "_" + f]); }), { size: 9.5, minH: 52 });
+    }
+
+    // keep the hidden data block so an uploaded copy of this PDF can be re-imported
+    try{
+      var draftForPdf = collectDraft();
+      pdfDoc.setKeywords([SPIP_PDF_METADATA_PREFIX + encodeSpipPdfMetadata({
+        version: 1, className: draftForPdf.className, fields: draftForPdf.data, manualAvg: draftForPdf.manualAvg || {}
+      })]);
+      pdfDoc.setTitle("Carissa SPIP - " + subject + (grade ? " Grade " + grade : ""));
+    }catch(e){}
+    return pdfDoc.save();
+  }
+  async function buildPdfBytes(){
+    try{ return await buildCleanPdfBytes(); }
+    catch(e){ try{ console.warn("Clean SPIP PDF failed, using template fallback:", e); }catch(_){} return fillPdfBytes(); }
+  }
+
   downloadWordBtn.addEventListener("click", function(){
     setStatus("", "");
     downloadWordBtn.disabled = true;
@@ -2975,7 +3246,7 @@
   downloadBtn.addEventListener("click", function(){
     setStatus("", "");
     downloadBtn.disabled = true;
-    fillPdfBytes().then(function(bytes){
+    buildPdfBytes().then(function(bytes){
       var values = collectValues();
       var name = "carissa-spip" +
         (safePart(values.subject) ? "-" + safePart(values.subject) : "") +
@@ -2993,7 +3264,7 @@
   printBtn.addEventListener("click", function(){
     setStatus("", "");
     printBtn.disabled = true;
-    fillPdfBytes().then(function(bytes){
+    buildPdfBytes().then(function(bytes){
       var url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
       var frame = document.createElement("iframe");
       frame.setAttribute("aria-hidden", "true");
