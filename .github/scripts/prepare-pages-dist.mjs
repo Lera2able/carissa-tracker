@@ -28,6 +28,11 @@ const ALLOWED_EXTS = new Set([
   ".json",
   ".xml",
   ".pdf",
+  ".ttf",
+  ".otf",
+  ".woff",
+  ".woff2",
+  ".eot",
 ]);
 
 async function ensureCleanDir(dir) {

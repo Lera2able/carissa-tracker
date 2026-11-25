@@ -2952,13 +2952,24 @@
       pdfDoc.registerFontkit(window.fontkit);
       var pdfForm = pdfDoc.getForm();
       var values = collectValues();
-      var regularFontData = await loadPdfFont("monitoring-tools/Arimo-Regular.ttf");
-      var boldFontData = await loadPdfFont("monitoring-tools/Arimo-Bold.ttf");
-      if (!supportsPdfFontText(regularFontData.face, values) || !supportsPdfFontText(boldFontData.face, { labels: "4th Term Overall Class" })){
-        throw new Error("This SPIP contains characters that are not supported by the PDF fonts.");
+      var arial, arialBold;
+      try {
+        var regularFontData = await loadPdfFont("monitoring-tools/Arimo-Regular.ttf");
+        var boldFontData = await loadPdfFont("monitoring-tools/Arimo-Bold.ttf");
+        if (!supportsPdfFontText(regularFontData.face, values) || !supportsPdfFontText(boldFontData.face, { labels: "4th Term Overall Class" })){
+          throw new Error("unsupported glyphs");
+        }
+        arial = await pdfDoc.embedFont(regularFontData.bytes);
+        arialBold = await pdfDoc.embedFont(boldFontData.bytes);
+      } catch (fontErr) {
+        // Arimo fonts may be missing from the deployment (e.g. build script
+        // did not copy .ttf files). Fall back to the standard PDF fonts
+        // (Helvetica / Helvetica-Bold), which are metric-compatible with
+        // Arial and require no embedded file. This keeps PDF download/print
+        // working even when the custom font files are unavailable.
+        arial = await pdfDoc.embedFont(window.PDFLib.StandardFonts.Helvetica);
+        arialBold = await pdfDoc.embedFont(window.PDFLib.StandardFonts.HelveticaBold);
       }
-      var arial = await pdfDoc.embedFont(regularFontData.bytes);
-      var arialBold = await pdfDoc.embedFont(boldFontData.bytes);
       addPdfTemplateFields(pdfDoc, pdfForm, arial, arialBold);
       var overflowEntries = [];
       var fieldByName = Object.create(null);
