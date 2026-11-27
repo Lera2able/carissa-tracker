@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pre &amp; Post Moderation — Carissa Primary School</title>
+<meta name="description" content="Capture the DH pre- and post-moderation information and download it filled in on the official Carissa Primary School letterhead."/>
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<style>
+  :root{
+    --bg:#f0f2ff;
+    --card:#ffffff;
+    --ink:#1f2937;
+    --ink-soft:#475569;
+    --ink-faint:#64748b;
+    --brand:#4f46e5;
+    --brand-dark:#4338ca;
+    --brand-soft:#eef2ff;
+    --brand-border:#c7d2fe;
+    --line:#e2e8f0;
+    --input-line:#d5dbe7;
+    --ok:#047857;
+    --ok-bg:#ecfdf5;
+    --err:#b91c1c;
+    --radius:15px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto;}
+    *{transition:none !important; animation:none !important;}
+  }
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    min-height:100dvh;
+    font-size:16px;
+    line-height:1.6;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:24px 16px 120px;}
+  header.top{
+    display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+    background:var(--card);border-radius:var(--radius);
+    box-shadow:0 10px 30px rgba(15,23,42,.10);
+    padding:20px 24px;margin-bottom:18px;
+  }
+  header.top img{width:58px;height:58px;object-fit:contain;flex:none;}
+  header.top .titles{flex:1;min-width:220px;}
+  header.top h1{margin:0;font-size:22px;color:var(--brand-dark);letter-spacing:-.01em;}
+  header.top p{margin:2px 0 0;font-size:13.5px;color:var(--ink-faint);}
+  .draft-chip{
+    font-size:12.5px;font-weight:700;color:var(--brand-dark);
+    background:var(--brand-soft);border:1px solid var(--brand-border);
+    border-radius:999px;padding:8px 14px;white-space:nowrap;
+  }
+  .intro{
+    background:var(--card);border-radius:var(--radius);
+    box-shadow:0 10px 30px rgba(15,23,42,.08);
+    padding:18px 24px;margin-bottom:18px;
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;
+  }
+  .intro .cell{border:1px solid var(--line);border-radius:12px;padding:14px;background:#f8fafc;}
+  .intro .cell b{display:block;font-size:14px;margin-bottom:4px;color:var(--ink);}
+  .intro .cell span{font-size:13px;color:var(--ink-faint);line-height:1.55;display:block;}
+  nav.sections{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px;}
+  nav.sections a{
+    font-size:12.5px;font-weight:700;color:var(--brand-dark);text-decoration:none;
+    background:var(--card);border:1px solid var(--brand-border);
+    border-radius:999px;padding:8px 13px;transition:background .15s ease,color .15s ease;
+  }
+  nav.sections a:hover{background:var(--brand-soft);}
+  nav.sections a:focus-visible{outline:3px solid var(--brand-border);outline-offset:2px;}
+  section.card{
+    background:var(--card);border-radius:var(--radius);
+    box-shadow:0 10px 30px rgba(15,23,42,.08);
+    padding:26px 24px;margin-bottom:18px;scroll-margin-top:16px;
+  }
+  section.card h2{
+    margin:0 0 4px;font-size:18px;color:var(--brand-dark);
+    display:flex;align-items:center;gap:10px;
+  }
+  section.card h2 .num{
+    flex:none;width:28px;height:28px;border-radius:8px;
+    background:var(--brand-soft);border:1px solid var(--brand-border);
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:13px;color:var(--brand-dark);
+  }
+  section.card .sub{margin:0 0 18px;font-size:13.5px;color:var(--ink-faint);}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;}
+  label.lbl{display:block;margin-bottom:7px;color:#333;font-weight:600;font-size:13.5px;}
+  .hint{font-weight:400;color:var(--ink-faint);font-size:12px;}
+  input.inp,textarea.inp,select.inp{
+    width:100%;padding:12px;border:2px solid var(--input-line);border-radius:8px;
+    font-size:15px;outline:none;font-family:inherit;color:var(--ink);background:#fff;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  input.inp:focus,textarea.inp:focus,select.inp:focus{
+    border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.15);
+  }
+  textarea.inp{resize:vertical;min-height:84px;line-height:1.5;}
+  textarea.big{min-height:170px;font-size:15.5px;}
+  table.sheet{width:100%;border-collapse:collapse;font-size:14px;}
+  table.sheet th,table.sheet td{border:1px solid var(--line);padding:6px;}
+  table.sheet th{background:#f8fafc;color:var(--ink-soft);font-size:12.5px;text-align:left;font-weight:700;}
+  table.sheet td input,table.sheet td select{
+    width:100%;padding:9px 10px;border:1.5px solid var(--input-line);border-radius:6px;
+    font-size:14px;font-family:inherit;outline:none;background:#fff;
+  }
+  table.sheet td input:focus,table.sheet td select:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.12);}
+  table.sheet td input[readonly]{background:#f1f5f9;color:var(--ink-soft);font-weight:700;}
+  .table-scroll{overflow-x:auto;border-radius:10px;}
+  .table-scroll table{min-width:680px;}
+  .table-scroll table.grid10{min-width:980px;}
+  .num-col{width:40px;text-align:center;}
+  .crit-cell{font-size:13.5px;color:var(--ink);line-height:1.45;}
+  .auto-note{
+    display:inline-block;font-size:12px;font-weight:600;color:var(--ok);
+    background:var(--ok-bg);border:1px solid #a7f3d0;border-radius:8px;padding:6px 10px;margin-bottom:14px;
+  }
+  .bar{
+    position:fixed;left:0;right:0;bottom:0;z-index:40;
+    background:rgba(255,255,255,.96);backdrop-filter:blur(6px);
+    border-top:1px solid var(--line);
+    padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+  }
+  .bar-inner{max-width:1080px;margin:0 auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .btn{
+    border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:15px;
+    border-radius:10px;padding:13px 22px;min-height:48px;
+    transition:background .15s ease, transform .1s ease, box-shadow .15s ease;
+  }
+  .btn:active{transform:scale(.98);}
+  .btn:focus-visible{outline:3px solid var(--brand-border);outline-offset:2px;}
+  .btn.primary{background:var(--brand);color:#fff;box-shadow:0 6px 16px rgba(79,70,229,.28);}
+  .btn.primary:hover{background:var(--brand-dark);}
+  .btn.primary:disabled{background:#a5b4fc;cursor:not-allowed;box-shadow:none;}
+  .btn.ghost{background:#fff;color:var(--brand-dark);border:2px solid var(--brand-border);}
+  .btn.ghost:hover{background:var(--brand-soft);}
+  .status{font-size:13.5px;font-weight:600;color:var(--ink-soft);margin-left:auto;}
+  .status.ok{color:var(--ok);}
+  .status.err{color:var(--err);}
+  footer.foot{text-align:center;font-size:12.5px;color:var(--ink-faint);margin-top:8px;}
+  @media (max-width:640px){
+    .wrap{padding:14px 10px 120px;}
+    section.card{padding:20px 14px;}
+    header.top{padding:16px;}
+    header.top h1{font-size:19px;}
+    .status{margin-left:0;width:100%;}
+    .bar-inner .btn{flex:1;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <img src="./school-crest.png" alt="Carissa Primary School crest"/>
+    <div class="titles">
+      <h1>Pre &amp; Post Moderation — DH Tool</h1>
+      <p>Carissa Primary School · Capture the moderation information below, then download it on the school letterhead.</p>
+    </div>
+    <span class="draft-chip" id="draftChip">Draft saves automatically</span>
+  </header>
+
+  <div class="intro">
+    <div class="cell">
+      <b>How it works</b>
+      <span>Fill in the sections below. Your entries are stored as a draft on this device while you work. When you are done, choose “Download filled form” — the document downloads as a filled PDF on the official Carissa Primary School letterhead.</span>
+    </div>
+    <div class="cell">
+      <b>What it covers</b>
+      <span>Pre-moderation of the paper before it is written, post-moderation after marking, and the item analysis grid. The <b>State</b> and <b>Comments</b> boxes are large — write full sentences.</span>
+    </div>
+  </div>
+
+  <nav class="sections" aria-label="Form sections">
+    <a href="#sec-details">1 · Details</a>
+    <a href="#sec-pre">2 · Pre-moderation</a>
+    <a href="#sec-post">3 · Post-moderation</a>
+    <a href="#sec-sign">4 · Sign-off</a>
+    <a href="#sec-item">5 · Item analysis</a>
+  </nav>
+
+  <!-- 1 · DETAILS -->
+  <section class="card" id="sec-details">
+    <h2><span class="num">1</span> Details</h2>
+    <p class="sub">These details appear at the top of the document. The educator and DH names copy into the sign-off block — you can still change them there.</p>
+    <div class="grid">
+      <div><label class="lbl" for="educator">Educator</label><input class="inp" id="educator" data-field="educator" placeholder="Educator name"/></div>
+      <div><label class="lbl" for="subject">Subject</label><input class="inp" id="subject" data-field="subject" placeholder="Example: Mathematics"/></div>
+      <div><label class="lbl" for="grade">Grade</label><input class="inp" id="grade" data-field="grade" placeholder="Example: 5"/></div>
+      <div><label class="lbl" for="dh">DH (moderator)</label><input class="inp" id="dh" data-field="dh" placeholder="Departmental head name"/></div>
+      <div><label class="lbl" for="term">Term</label>
+        <select class="inp" id="term" data-field="term">
+          <option value="">Select term</option>
+          <option>Term 1</option><option>Term 2</option><option>Term 3</option><option>Term 4</option>
+        </select>
+      </div>
+      <div><label class="lbl" for="date">Date</label><input class="inp" id="date" data-field="date" data-date="1" type="date"/></div>
+    </div>
+  </section>
+
+  <!-- 2 · PRE-MODERATION -->
+  <section class="card" id="sec-pre">
+    <h2><span class="num">2</span> Section A — Pre-moderation</h2>
+    <p class="sub">Completed before the assessment is written. Answer Yes or No for each item and add remarks where needed.</p>
+    <div class="table-scroll">
+      <table class="sheet" id="preTable">
+        <thead>
+          <tr><th class="num-col">No</th><th>Criteria</th><th style="width:110px;">Yes / No</th><th style="width:38%;">Remarks</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div style="margin-top:18px;">
+      <label class="lbl" for="pre_state">State <span class="hint">(overall findings and recommendations before the paper is approved — big answer space, write full sentences)</span></label>
+      <textarea class="inp big" id="pre_state" data-field="pre_state" rows="7" placeholder="Example: The paper is well balanced across the cognitive levels. Question 5 must be reworded because…"></textarea>
+    </div>
+  </section>
+
+  <!-- 3 · POST-MODERATION -->
+  <section class="card" id="sec-post">
+    <h2><span class="num">3</span> Section B — Post-moderation (Part A)</h2>
+    <p class="sub">Completed after marking. Answer Yes or No for each item and add remarks where needed.</p>
+    <div class="table-scroll">
+      <table class="sheet" id="postTable">
+        <thead>
+          <tr><th class="num-col">No</th><th>Criteria</th><th style="width:110px;">Yes / No</th><th style="width:38%;">Remarks</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div style="margin-top:18px;">
+      <label class="lbl" for="post_comments">Comments <span class="hint">(marking quality, irregularities, support needed — big answer space, write full sentences)</span></label>
+      <textarea class="inp big" id="post_comments" data-field="post_comments" rows="8" placeholder="Example: Marking was consistent with the memorandum. Two scripts had addition errors on Question 3 which were corrected…"></textarea>
+    </div>
+  </section>
+
+  <!-- 4 · SIGN-OFF -->
+  <section class="card" id="sec-sign">
+    <h2><span class="num">4</span> Sign-off</h2>
+    <p class="sub">Type names as signatures. If a name is left empty it copies from the Details section automatically.</p>
+    <div class="grid">
+      <div><label class="lbl" for="sign_educator_name">Educator name</label><input class="inp" id="sign_educator_name" data-field="sign_educator_name" placeholder="Educator name"/></div>
+      <div><label class="lbl" for="sign_dh_name">DH / Moderator name</label><input class="inp" id="sign_dh_name" data-field="sign_dh_name" placeholder="DH name"/></div>
+      <div><label class="lbl" for="sign_educator_sig">Educator signature <span class="hint">(type name)</span></label><input class="inp" id="sign_educator_sig" data-field="sign_educator_sig" placeholder="Type full name"/></div>
+      <div><label class="lbl" for="sign_dh_sig">DH / Moderator signature <span class="hint">(type name)</span></label><input class="inp" id="sign_dh_sig" data-field="sign_dh_sig" placeholder="Type full name"/></div>
+      <div><label class="lbl" for="sign_educator_date">Educator date</label><input class="inp" id="sign_educator_date" data-field="sign_educator_date" data-date="1" type="date"/></div>
+      <div><label class="lbl" for="sign_dh_date">DH / Moderator date</label><input class="inp" id="sign_dh_date" data-field="sign_dh_date" data-date="1" type="date"/></div>
+    </div>
+  </section>
+
+  <!-- 5 · ITEM ANALYSIS -->
+  <section class="card" id="sec-item">
+    <h2><span class="num">5</span> Section C — Item analysis (Part B)</h2>
+    <p class="sub">Analyse 10% of the scripts (minimum 5). Enter the mark out of per question, then each learner’s mark per question. Totals, averages, percentages and the 7-point level calculate automatically.</p>
+    <span class="auto-note">Leave unused learner rows empty — they stay blank on the document.</span>
+    <div class="table-scroll">
+      <table class="sheet grid10" id="itemTable">
+        <thead></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="foot">Carissa Primary School · 23 Hofmeyer Street, Witbank · Pre &amp; post moderation tool</footer>
+</div>
+
+<div class="bar">
+  <div class="bar-inner">
+    <button class="btn primary" id="downloadBtn" type="button">Download filled form (PDF)</button>
+    <button class="btn ghost" id="clearBtn" type="button">Clear draft</button>
+    <span class="status" id="status" role="status" aria-live="polite"></span>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var TEMPLATE_PARTS = [];
+  for (var pi = 1; pi <= 10; pi++){
+    TEMPLATE_PARTS.push("monitoring-tools/carissa_pre_post_moderation_pdf/part" + (pi < 10 ? "0" : "") + pi + ".txt");
+  }
+  var DRAFT_KEY = "carissa-prepost-mod-draft-v1";
+  var statusEl = document.getElementById("status");
+  var draftChip = document.getElementById("draftChip");
+  var downloadBtn = document.getElementById("downloadBtn");
+
+  /* ---------- build checklist rows ---------- */
+  var PRE_CRITERIA = [
+    "Is the total mark in accordance with the set requirements?",
+    "Do questions cover all levels of the Barrett\u2019s / Bloom\u2019s taxonomies?",
+    "Is mark allocation per question appropriate?",
+    "Is the number of questions justifiable?",
+    "Is the time allocated to the task appropriate?",
+    "Are the questions sequenced from simple to complex?",
+    "Do the questions cover the intended ATP / curriculum?",
+    "Is the amount of content covered sufficient and necessary?",
+    "Is there evidence of a memo / rubric?"
+  ];
+  var POST_CRITERIA = [
+    "Was the set paper written?",
+    "Were all the scripts marked?",
+    "Do the totals on scripts correlate with the mark sheet?",
+    "Were all the questions marked?",
+    "Do the marks adhere to the marks indicated on the memorandum?",
+    "Were the marks correctly added up?",
+    "Were all possible answers accommodated?"
+  ];
+  function buildChecklist(tbody, criteria, prefix){
+    criteria.forEach(function(text, i){
+      var n = i + 1;
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td class="num-col" style="font-weight:700;color:#475569;background:#f8fafc;">' + n + '</td>' +
+        '<td class="crit-cell">' + text + '</td>' +
+        '<td><select data-field="' + prefix + n + '_yesno" aria-label="Yes or no, item ' + n + '">' +
+          '<option value="">\u2014</option><option>Yes</option><option>No</option>' +
+        '</select></td>' +
+        '<td><input data-field="' + prefix + n + '_remarks" aria-label="Remarks, item ' + n + '" placeholder="Remarks"/></td>';
+      tbody.appendChild(tr);
+    });
+  }
+  buildChecklist(document.querySelector("#preTable tbody"), PRE_CRITERIA, "pre");
+  buildChecklist(document.querySelector("#postTable tbody"), POST_CRITERIA, "post");
+
+  /* ---------- build item analysis grid ---------- */
+  var itemTable = document.getElementById("itemTable");
+  var head = '<tr><th class="num-col">No</th><th style="min-width:130px;">Name of learner</th>';
+  for (var q = 1; q <= 10; q++){ head += '<th style="width:64px;">Q' + q + '</th>'; }
+  head += '<th style="width:74px;">Marks</th></tr>';
+  itemTable.querySelector("thead").innerHTML = head;
+
+  var tbody = itemTable.querySelector("tbody");
+  function row(cells, cls){
+    var tr = document.createElement("tr");
+    if (cls) tr.className = cls;
+    tr.innerHTML = cells;
+    tbody.appendChild(tr);
+  }
+  var moCells = '<td class="num-col" style="background:#f8fafc;"></td><td style="font-weight:700;color:#475569;background:#f8fafc;">Mark out of</td>';
+  for (var q1 = 1; q1 <= 10; q1++){
+    moCells += '<td><input data-field="mo_q' + q1 + '" inputmode="decimal" aria-label="Mark out of question ' + q1 + '" style="font-weight:700;"/></td>';
+  }
+  moCells += '<td style="background:#f8fafc;"></td>';
+  row(moCells);
+
+  for (var r = 1; r <= 10; r++){
+    var cells = '<td class="num-col" style="font-weight:700;color:#475569;background:#f8fafc;">' + r + '</td>' +
+      '<td><input data-field="learner' + r + '_name" aria-label="Learner ' + r + ' name"/></td>';
+    for (var q2 = 1; q2 <= 10; q2++){
+      cells += '<td><input data-field="learner' + r + '_q' + q2 + '" inputmode="decimal" aria-label="Learner ' + r + ' question ' + q2 + '"/></td>';
+    }
+    cells += '<td><input data-field="learner' + r + '_total" readonly tabindex="-1" aria-label="Learner ' + r + ' total marks"/></td>';
+    row(cells);
+  }
+  var CALC_ROWS = [["tot", "Total per question"], ["avg", "Average per question"], ["pct", "Percentage per question"], ["lvl", "Level (7-point scale)"]];
+  CALC_ROWS.forEach(function(pair){
+    var cells = '<td class="num-col" style="background:#f8fafc;"></td><td style="font-weight:700;color:#475569;background:#f8fafc;font-size:12.5px;">' + pair[1] + '</td>';
+    for (var q3 = 1; q3 <= 10; q3++){
+      cells += '<td><input data-field="' + pair[0] + '_q' + q3 + '" readonly tabindex="-1" aria-label="' + pair[1] + ' question ' + q3 + '"/></td>';
+    }
+    cells += '<td style="background:#f8fafc;"></td>';
+    row(cells);
+  });
+
+  function inputs(){ return Array.prototype.slice.call(document.querySelectorAll("[data-field]")); }
+  function get(name){
+    var el = document.querySelector('[data-field="' + name + '"]');
+    return el ? el.value : "";
+  }
+  function set(name, v){
+    var el = document.querySelector('[data-field="' + name + '"]');
+    if (el) el.value = v;
+  }
+
+  /* ---------- restore draft ---------- */
+  try{
+    var saved = JSON.parse(localStorage.getItem(DRAFT_KEY) || "{}");
+    if (saved.values){
+      inputs().forEach(function(el){
+        var k = el.getAttribute("data-field");
+        if (saved.values[k] != null) el.value = saved.values[k];
+      });
+      if (saved.savedAt){
+        var d = new Date(saved.savedAt);
+        draftChip.textContent = "Draft restored \u00b7 " + d.toLocaleDateString() + " " + d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+      }
+    }
+  }catch(e){}
+
+  /* ---------- autosave ---------- */
+  var saveTimer = null;
+  function saveDraft(){
+    var values = {};
+    inputs().forEach(function(el){ values[el.getAttribute("data-field")] = el.value; });
+    try{
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ values: values, savedAt: new Date().toISOString() }));
+      var d = new Date();
+      draftChip.textContent = "Draft saved \u00b7 " + d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+    }catch(e){}
+  }
+  function queueSave(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveDraft, 350);
+  }
+
+  /* ---------- auto-calc item analysis ---------- */
+  function num(v){
+    var n = parseFloat(String(v).replace(",", "."));
+    return isNaN(n) ? null : n;
+  }
+  function levelFor(pct){
+    if (pct >= 80) return "7";
+    if (pct >= 70) return "6";
+    if (pct >= 60) return "5";
+    if (pct >= 50) return "4";
+    if (pct >= 40) return "3";
+    if (pct >= 30) return "2";
+    return "1";
+  }
+  function recalc(){
+    // per-question columns
+    for (var q = 1; q <= 10; q++){
+      var sum = 0, count = 0;
+      for (var r = 1; r <= 10; r++){
+        var v = num(get("learner" + r + "_q" + q));
+        if (v != null){ sum += v; count++; }
+      }
+      var mo = num(get("mo_q" + q));
+      if (count > 0){
+        var avg = Math.round((sum / count) * 10) / 10;
+        set("tot_q" + q, String(Math.round(sum * 10) / 10));
+        set("avg_q" + q, String(avg));
+        if (mo && mo > 0){
+          var pct = Math.round((avg / mo) * 1000) / 10;
+          set("pct_q" + q, String(pct));
+          set("lvl_q" + q, levelFor(pct));
+        } else {
+          set("pct_q" + q, "");
+          set("lvl_q" + q, "");
+        }
+      } else {
+        set("tot_q" + q, "");
+        set("avg_q" + q, "");
+        set("pct_q" + q, "");
+        set("lvl_q" + q, "");
+      }
+    }
+    // per-learner row totals
+    for (var r2 = 1; r2 <= 10; r2++){
+      var rsum = 0, rcount = 0;
+      for (var q4 = 1; q4 <= 10; q4++){
+        var rv = num(get("learner" + r2 + "_q" + q4));
+        if (rv != null){ rsum += rv; rcount++; }
+      }
+      set("learner" + r2 + "_total", rcount > 0 ? String(Math.round(rsum * 10) / 10) : "");
+    }
+  }
+
+  document.addEventListener("input", function(ev){
+    var el = ev.target;
+    if (!el || !el.getAttribute || !el.getAttribute("data-field")) return;
+    var field = el.getAttribute("data-field");
+    if (/^mo_q\d+$/.test(field) || /^learner\d+_q\d+$/.test(field)) recalc();
+    queueSave();
+  });
+  document.addEventListener("change", function(ev){
+    if (ev.target && ev.target.getAttribute && ev.target.getAttribute("data-field")) queueSave();
+  });
+
+  /* ---------- collect + fill + download ---------- */
+  function isoToDmy(v){
+    var m = String(v || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return m ? m[3] + "/" + m[2] + "/" + m[1] : v;
+  }
+  function collectValues(){
+    recalc();
+    var values = {};
+    inputs().forEach(function(el){
+      var k = el.getAttribute("data-field");
+      var v = el.value;
+      if (el.getAttribute("data-date")) v = isoToDmy(v);
+      values[k] = v;
+    });
+    // copy educator / DH names into the sign-off block when left empty
+    if (!values.sign_educator_name) values.sign_educator_name = values.educator;
+    if (!values.sign_dh_name) values.sign_dh_name = values.dh;
+    if (!values.sign_educator_date) values.sign_educator_date = values.date;
+    if (!values.sign_dh_date) values.sign_dh_date = values.date;
+    return values;
+  }
+  function allFieldNames(){
+    var names = ["educator","subject","grade","dh","term","date","pre_state","post_comments",
+      "sign_educator_name","sign_educator_sig","sign_educator_date",
+      "sign_dh_name","sign_dh_sig","sign_dh_date"];
+    var i, q, r;
+    for (i = 1; i <= 9; i++){ names.push("pre" + i + "_yesno", "pre" + i + "_remarks"); }
+    for (i = 1; i <= 7; i++){ names.push("post" + i + "_yesno", "post" + i + "_remarks"); }
+    for (q = 1; q <= 10; q++){ names.push("mo_q" + q, "tot_q" + q, "avg_q" + q, "pct_q" + q, "lvl_q" + q); }
+    for (r = 1; r <= 10; r++){
+      names.push("learner" + r + "_name", "learner" + r + "_total");
+      for (q = 1; q <= 10; q++){ names.push("learner" + r + "_q" + q); }
+    }
+    return names;
+  }
+  function downloadBlob(blob, fileName){
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = fileName;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1500);
+  }
+  function safePart(s){ return String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""); }
+  function setStatus(msg, kind){
+    statusEl.textContent = msg || "";
+    statusEl.className = "status" + (kind ? " " + kind : "");
+  }
+
+  downloadBtn.addEventListener("click", function(){
+    setStatus("", "");
+    downloadBtn.disabled = true;
+    var go = async function(){
+      if (!window.PDFLib || !window.PDFLib.PDFDocument) throw new Error("PDF support is still loading. Please try again in a moment.");
+      if (!window.DecompressionStream) throw new Error("Your browser is too old to build the PDF. Please use an up-to-date Chrome, Edge, Firefox or Safari.");
+      var texts = await Promise.all(TEMPLATE_PARTS.map(function(p){
+        return fetch(p, { cache: "no-store" }).then(function(r){
+          if (!r.ok) throw new Error("The moderation PDF template could not be loaded.");
+          return r.text();
+        });
+      }));
+      var b64 = texts.join("").replace(/\s+/g, "");
+      var bin = atob(b64);
+      var gzBytes = new Uint8Array(bin.length);
+      for (var ti = 0; ti < bin.length; ti++) gzBytes[ti] = bin.charCodeAt(ti);
+      var plain = new Blob([gzBytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+      var templateBytes = new Uint8Array(await new Response(plain).arrayBuffer());
+      var pdfDoc = await window.PDFLib.PDFDocument.load(templateBytes);
+      var pdfForm = pdfDoc.getForm();
+      var values = collectValues();
+      allFieldNames().forEach(function(fieldName){
+        try{
+          pdfForm.getTextField(fieldName).setText(String(values[fieldName] == null ? "" : values[fieldName]));
+        }catch(e){}
+      });
+      try{ pdfForm.updateFieldAppearances(); }catch(e){}
+      try{ pdfForm.flatten(); }catch(e){}
+      var bytes = await pdfDoc.save();
+      var name = "carissa-moderation" +
+        (safePart(values.subject) ? "-" + safePart(values.subject) : "") +
+        (safePart(values.grade) ? "-grade-" + safePart(values.grade) : "") +
+        "-" + new Date().toISOString().slice(0,10) + ".pdf";
+      downloadBlob(new Blob([bytes], { type: "application/pdf" }), name);
+      setStatus("Filled moderation form downloaded.", "ok");
+    };
+    go().catch(function(err){
+      setStatus((err && err.message) || "Could not create the moderation PDF.", "err");
+    }).finally(function(){
+      downloadBtn.disabled = false;
+    });
+  });
+
+  document.getElementById("clearBtn").addEventListener("click", function(){
+    if (!window.confirm("Clear the saved draft and empty every field?")) return;
+    try{ localStorage.removeItem(DRAFT_KEY); }catch(e){}
+    inputs().forEach(function(el){ el.value = ""; });
+    draftChip.textContent = "Draft saves automatically";
+    setStatus("Draft cleared.", "ok");
+  });
+
+  recalc();
+})();
+</script>
+</body>
+</html>
