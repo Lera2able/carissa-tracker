@@ -5,176 +5,349 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="robots" content="noindex,nofollow"/>
 <title>Lesson Planning — Carissa Primary School</title>
+<meta name="description" content="Fill in a lesson plan online and get it neatly set out on the Carissa Primary School letterhead."/>
 <style>
   :root{
-    --brand:#be185d;
-    --brand-dark:#9d174d;
-    --brand-soft:#fdf2f8;
-    --brand-border:#fbcfe8;
-    --ink:#111827;
-    --line:#1f2937;
-    --ok:#047857;
-    --err:#b91c1c;
+    --bg:#f0f2ff; --card:#ffffff; --ink:#1f2937; --ink-soft:#475569; --ink-faint:#64748b;
+    --brand:#4f46e5; --brand-dark:#4338ca; --brand-soft:#eef2ff; --brand-border:#c7d2fe;
+    --line:#e2e8f0; --input-line:#d5dbe7; --ok:#047857; --err:#b91c1c; --radius:15px;
+    --teal:#0e5c6e; --blue:#2a8ba8;
   }
   *{box-sizing:border-box;}
-  body{margin:0;background:#f3f4f6;color:var(--ink);font-family:Arial,Helvetica,sans-serif;}
+  [hidden]{display:none !important;}
+  html{scroll-behavior:smooth;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--ink);min-height:100dvh;font-size:16px;line-height:1.6;}
+  .wrap{max-width:1080px;margin:0 auto;padding:24px 16px 130px;}
 
-  /* ---------- screen-only toolbar ---------- */
-  .toolbar{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid var(--brand-border);padding:10px 14px;}
-  .toolbar-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;max-width:900px;margin:0 auto;}
-  .toolbar a.back{color:var(--brand-dark);font-weight:700;font-size:14px;text-decoration:none;margin-right:6px;}
-  .toolbar select{flex:1 1 240px;min-width:0;padding:8px 10px;border:1px solid var(--brand-border);border-radius:8px;font-size:14px;background:#fff;}
-  .btn{border:0;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;color:#fff;background:var(--brand);}
-  .btn.alt{background:#475569;}
-  .btn.warn{background:#b91c1c;}
-  .btn:disabled{opacity:.55;cursor:default;}
-  .status{max-width:900px;margin:6px auto 0;font-size:13px;min-height:18px;color:#475569;}
-  .status.ok{color:var(--ok);}
-  .status.err{color:var(--err);}
-  .hint{max-width:900px;margin:12px auto 0;padding:0 14px;font-size:13px;color:#6b7280;}
+  header.top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:var(--card);border-radius:var(--radius);box-shadow:0 10px 30px rgba(15,23,42,.10);padding:20px 24px;margin-bottom:18px;}
+  header.top img{width:58px;height:58px;object-fit:contain;flex:none;}
+  header.top .titles{flex:1;min-width:220px;}
+  header.top h1{margin:0;font-size:22px;color:var(--brand-dark);letter-spacing:-.01em;}
+  header.top p{margin:2px 0 0;font-size:13.5px;color:var(--ink-faint);}
+  .chip{font-size:12.5px;font-weight:700;color:var(--brand-dark);background:var(--brand-soft);border:1px solid var(--brand-border);border-radius:999px;padding:8px 14px;white-space:nowrap;}
+  a.back{font-size:13px;font-weight:700;color:var(--brand-dark);text-decoration:none;display:inline-block;margin-bottom:10px;}
 
-  /* ---------- access gate ---------- */
+  section.card,.card{background:var(--card);border-radius:var(--radius);box-shadow:0 10px 30px rgba(15,23,42,.08);padding:26px 24px;margin-bottom:18px;scroll-margin-top:16px;}
+  section.card h2{margin:0 0 4px;font-size:18px;color:var(--brand-dark);display:flex;align-items:center;gap:10px;}
+  section.card h2 .num{flex:none;width:28px;height:28px;border-radius:8px;background:var(--brand-soft);border:1px solid var(--brand-border);display:inline-flex;align-items:center;justify-content:center;font-size:13px;color:var(--brand-dark);}
+  section.card .sub{margin:0 0 18px;font-size:13.5px;color:var(--ink-faint);}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;}
+  .grid .wide{grid-column:1/-1;}
+  label.lbl{display:block;margin-bottom:7px;color:#333;font-weight:600;font-size:13.5px;}
+  .hint{font-weight:400;color:var(--ink-faint);font-size:12px;}
+  input.inp,textarea.inp,select.inp{width:100%;padding:12px;border:2px solid var(--input-line);border-radius:8px;font-size:15px;outline:none;font-family:inherit;color:var(--ink);background:#fff;transition:border-color .15s ease,box-shadow .15s ease;}
+  input.inp:focus,textarea.inp:focus,select.inp:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.15);}
+  textarea.inp{resize:vertical;min-height:120px;line-height:1.6;padding:14px;}
+  .auto-note{display:inline-block;font-size:12px;font-weight:600;color:var(--ok);background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:6px 10px;margin-bottom:14px;}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px;}
+  .chips .lab{font-size:12.5px;color:var(--ink-faint);align-self:center;}
+  .chipbtn{border:1px solid var(--brand-border);background:var(--brand-soft);color:var(--brand-dark);font-size:12.5px;font-weight:700;border-radius:999px;padding:6px 12px;cursor:pointer;font-family:inherit;}
+  .chipbtn:hover{background:#e0e7ff;}
+  .sigbox{border:1px dashed var(--input-line);border-radius:12px;padding:14px;background:#f8fafc;font-size:13px;color:var(--ink-faint);}
+
+  .infogrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin-bottom:18px;}
+  .infogrid .card{margin:0;padding:20px 22px;} .infogrid h3{margin:0 0 6px;font-size:15px;color:var(--brand-dark);}
+  .infogrid p,.infogrid li{font-size:13.5px;color:var(--ink-soft);margin:0;} .infogrid ul{margin:0;padding-left:18px;}
+  .secnav{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px;}
+  .secnav a{font-size:13px;font-weight:700;text-decoration:none;color:var(--brand-dark);background:#fff;border:1px solid var(--brand-border);border-radius:999px;padding:7px 14px;}
+  .secnav a:hover{background:var(--brand-soft);}
+  .lib{margin-top:16px;border-top:1px solid var(--line);padding-top:14px;}
+  .lib h4{margin:10px 0 6px;font-size:13px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.04em;}
+  .lib .items{display:flex;flex-wrap:wrap;gap:8px;}
+  .lib button{font-family:inherit;font-size:13px;text-align:left;border:1px solid var(--input-line);background:#fff;border-radius:10px;padding:8px 12px;cursor:pointer;color:var(--ink);max-width:100%;}
+  .lib button:hover{border-color:var(--brand);} .lib button.on{background:var(--brand-soft);border-color:var(--brand);font-weight:700;}
+  /* guided mode */
+  .wizcard{padding:22px 24px 20px;overflow:hidden;position:relative;}
+  .qtop{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--ink-faint);font-weight:600;margin-bottom:8px;}
+  .qtrack{height:10px;border-radius:99px;background:var(--brand-soft);overflow:hidden;margin-bottom:6px;}
+  #qbar{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#6366f1,#ec4899,#f59e0b);transition:width .5s cubic-bezier(.4,.8,.3,1);}
+  #qcheer{font-size:13px;font-weight:700;color:var(--brand-dark);min-height:20px;margin-bottom:10px;}
+  #qstage{min-height:300px;}
+  .qcard{animation:inR .45s cubic-bezier(.2,.8,.3,1) both;}
+  .qcard.in-left{animation-name:inL;}
+  @keyframes inR{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}
+  @keyframes inL{from{opacity:0;transform:translateX(-40px)}to{opacity:1;transform:none}}
+  .qemoji{font-size:54px;line-height:1;display:inline-block;animation:bob 2.4s ease-in-out infinite;transform-origin:50% 80%;}
+  @keyframes bob{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-8px) rotate(4deg)}}
+  .qtitle{margin:10px 0 4px;font-size:24px;color:var(--brand-dark);letter-spacing:-.01em;line-height:1.25;}
+  .qhelp{margin:0 0 16px;font-size:14px;color:var(--ink-faint);min-height:20px;}
+  .qinp{font-size:18px;padding:16px;} textarea.qinp{min-height:170px;}
+  .qnav{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;align-items:center;}
+  .qnav .spacer{flex:1;}
+  .secnav button{font-family:inherit;cursor:pointer;font-size:13px;font-weight:700;color:var(--brand-dark);background:#fff;border:1px solid var(--brand-border);border-radius:999px;padding:7px 14px;}
+  .secnav button:hover,.secnav button.on{background:var(--brand-soft);border-color:var(--brand);}
+  .confetti{position:fixed;inset:0;pointer-events:none;z-index:100;overflow:hidden;}
+  .confetti i{position:absolute;top:-14px;width:9px;height:14px;border-radius:2px;animation:fall 2s linear forwards;}
+  @keyframes fall{to{top:105vh;transform:rotate(720deg)}}
+  .upl{margin-top:14px;border:2px dashed var(--brand-border);border-radius:12px;padding:14px 16px;background:#fafbff;display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+  .upl.drag{background:var(--brand-soft);border-color:var(--brand);}
+  .upl span{font-size:13.5px;color:var(--ink-soft);flex:1;min-width:200px;}
+  @media (prefers-reduced-motion:reduce){.qcard,.qemoji,#qbar{animation:none !important;transition:none !important;}}
+  .play{display:grid;grid-template-columns:minmax(0,430px) minmax(0,1fr);gap:18px;align-items:start;}
+  .play .wizcard,.play .livecard{margin-bottom:18px;}
+  .play .wizcard{position:sticky;top:12px;}
+  .livecard{padding:16px 16px 14px;} .livecard h3{margin:0 0 10px;font-size:15px;color:var(--brand-dark);}
+  .docwrap.live{max-height:78vh;overflow-y:auto;overflow-x:hidden;padding:10px;position:relative;}
+  .doc.live{width:100%;padding:16px 18px;font-size:11.5px;line-height:1.35;box-shadow:none;}
+  .doc.live .lh img{height:38px;} .doc.live .lh .name{font-size:13px;letter-spacing:2px;} .doc.live .lh .addr{font-size:8px;}
+  .doc.live .term{font-size:12px;} .doc.live .ltitle{font-size:12.5px;} .doc.live .ltitle .em{font-size:16px;}
+  .doc [data-k].hl{outline:3px solid #f59e0b;outline-offset:-2px;background:#fffbeb;animation:glow 1.3s ease-in-out infinite;}
+  .doc .term.hl,.doc .ltitle.hl{outline-offset:2px;border-radius:6px;}
+  @keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,.55)}50%{box-shadow:0 0 0 7px rgba(245,158,11,0)}}
+  .gamebar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;position:relative;}
+  .xpbadge{background:linear-gradient(90deg,#4f46e5,#7c3aed);color:#fff;border-radius:999px;padding:6px 14px;font-size:13px;display:inline-flex;gap:8px;align-items:center;}
+  .xpbadge i{font-style:normal;opacity:.92;font-weight:600;}
+  .medals{display:flex;gap:6px;}
+  .medal{width:32px;height:32px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:16px;background:#f1f5f9;border:2px dashed #cbd5e1;filter:grayscale(1);opacity:.55;transition:all .4s;}
+  .medal.got{filter:none;opacity:1;border:2px solid #f59e0b;background:#fffbeb;}
+  .medal.won{animation:wonpop .9s cubic-bezier(.2,1.6,.4,1);}
+  @keyframes wonpop{0%{transform:scale(.3) rotate(-90deg)}60%{transform:scale(1.4) rotate(10deg)}100%{transform:scale(1)}}
+  .xppop{position:absolute;right:0;top:34px;background:#10b981;color:#fff;font-weight:800;font-size:13px;border-radius:999px;padding:6px 14px;box-shadow:0 8px 20px rgba(16,185,129,.35);animation:floatup 1.3s ease-out forwards;pointer-events:none;z-index:5;white-space:nowrap;}
+  @keyframes floatup{0%{opacity:0;transform:translateY(10px) scale(.8)}20%{opacity:1;transform:translateY(0) scale(1.05)}100%{opacity:0;transform:translateY(-34px)}}
+  @media (max-width:940px){.play{grid-template-columns:minmax(0,1fr);}.play .wizcard{position:static;}.docwrap.live{max-height:60vh;}}
+  @media (prefers-reduced-motion:reduce){.doc [data-k].hl,.medal.won,.xppop{animation:none !important;}}
+  /* buttons */
+  .btn{border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:15px;border-radius:10px;padding:13px 22px;min-height:48px;transition:background .15s ease,transform .1s ease,box-shadow .15s ease;}
+  .btn:active{transform:scale(.98);}
+  .btn:focus-visible{outline:3px solid var(--brand-border);outline-offset:2px;}
+  .btn.primary{background:var(--brand);color:#fff;box-shadow:0 6px 16px rgba(79,70,229,.28);}
+  .btn.primary:hover{background:var(--brand-dark);}
+  .btn.primary:disabled{background:#a5b4fc;cursor:not-allowed;box-shadow:none;}
+  .btn.ghost{background:#fff;color:var(--brand-dark);border:2px solid var(--brand-border);}
+  .btn.ghost:hover{background:var(--brand-soft);}
+  .btn.danger{background:#fff;color:var(--err);border:2px solid #fecaca;}
+  .btn.small{padding:9px 14px;min-height:40px;font-size:13.5px;}
+  .bar{position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(255,255,255,.96);backdrop-filter:blur(6px);border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom));}
+  .bar-inner{max-width:1080px;margin:0 auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .status{font-size:13.5px;font-weight:600;color:var(--ink-soft);margin-left:auto;}
+  .status.ok{color:var(--ok);} .status.err{color:var(--err);}
+
   .gate{max-width:560px;margin:60px auto;background:#fff;border:1px solid var(--brand-border);border-radius:14px;padding:26px;text-align:center;line-height:1.6;}
   .gate a{color:var(--brand);font-weight:700;}
+  footer.foot{text-align:center;font-size:12.5px;color:var(--ink-faint);margin-top:8px;}
 
-  /* ---------- the plan (paper) ---------- */
-  .paper{max-width:900px;margin:14px auto 40px;background:#fff;padding:34px 40px;box-shadow:0 2px 14px rgba(0,0,0,.12);font-size:15px;line-height:1.35;}
-  .school{text-align:center;font-weight:700;font-size:20px;letter-spacing:.2px;margin-top:6px;}
-  .term{text-align:center;font-weight:700;font-size:19px;margin-top:10px;}
-  .ltitle{text-align:center;font-weight:700;font-size:19px;margin:10px 0 6px;}
-
-  table.grid{width:100%;border-collapse:collapse;table-layout:fixed;}
-  table.grid td{border:1px solid var(--line);padding:3px 7px;vertical-align:top;word-wrap:break-word;overflow-wrap:anywhere;}
-  table.grid td.r{width:34%;}
-  .b{font-weight:700;}
-  .h{font-weight:700;margin:1px 0 2px;}
-  .h.sub{margin-top:14px;}
-
-  /* editable text */
-  .fld{display:inline-block;min-width:5em;max-width:100%;vertical-align:top;outline:none;border-radius:3px;background:#fffbeb;padding:0 3px;}
-  .fld.wide{display:block;min-width:0;}
-  .fld.center{display:inline-block;text-align:center;min-width:8em;}
-  .fld:empty::before{content:attr(data-ph);color:#9ca3af;font-weight:400;}
-  .fld:focus,.lst:focus{background:#fef3c7;box-shadow:0 0 0 2px #fbcfe8;}
-  .fld.multi{display:block;min-height:6.5em;white-space:pre-wrap;}
-
-  /* bulleted, editable lists */
-  .lst{list-style:none;margin:2px 0 4px 6px;padding:2px 3px;outline:none;border-radius:3px;background:#fffbeb;}
-  .lst li{position:relative;padding-left:24px;min-height:1.35em;}
-  .lst li::before{position:absolute;left:4px;top:0;}
-  .lst.dash li{padding-left:14px;}
-  .lst.dash li::before{content:"-";left:0;}
-  .lst.arrow li::before{content:"\27A4";font-size:11px;top:2px;}
-  .lst.circle li::before{content:"o";font-family:"Courier New",monospace;}
-  .lst.diamond li::before{content:"\2756";font-size:12px;top:1px;}
-  .lst.square li::before{content:"\25AA";font-size:15px;top:-1px;}
-
-  .reflect td{padding:5px 7px;}
-  .reflect .sig{height:20px;}
-  .reflect .gap{height:24px;}
-  .footer-gap{height:14px;}
+  /* ===== the lesson plan on the school letterhead (preview + print) ===== */
+  .docwrap{background:#e5e7eb;border-radius:12px;padding:16px;overflow-x:auto;}
+  .doc{background:#fff;color:#000;width:794px;max-width:100%;margin:0 auto;padding:36px 44px 30px;font-family:Arial,Helvetica,sans-serif;font-size:14.5px;line-height:1.4;box-shadow:0 2px 12px rgba(0,0,0,.18);}
+  .lh{text-align:center;}
+  .lh img{height:56px;display:block;margin:0 auto 4px;}
+  .lh .name{font-family:'Times New Roman',Times,serif;font-weight:700;font-size:19px;letter-spacing:3px;color:var(--teal);padding-left:3px;}
+  .lh .rule1{border-top:.5px solid #a8d4e0;margin:6px 0 4px;}
+  .lh .addr{font-family:Calibri,Carlito,Arial,sans-serif;font-size:10px;color:#4a4a4a;line-height:1.5;}
+  .lh .rule2{border-top:2px solid var(--blue);margin:5px 0 14px;}
+  .doc .term,.doc .ltitle{text-align:center;font-weight:700;font-size:15px;margin:0 0 4px;}
+  .doc .ltitle{margin-bottom:10px;font-size:16px;} .doc .ltitle .em{font-size:22px;color:var(--teal);letter-spacing:1px;}
+  .doc table{width:100%;border-collapse:collapse;table-layout:fixed;}
+  .doc td{border:1px solid #000;padding:3px 7px;vertical-align:top;overflow-wrap:anywhere;}
+  .doc td.half{width:34%;}
+  .doc b{font-weight:700;}
+  .doc .h{font-weight:700;margin:1px 0 2px;}
+  .doc .h.again{margin-top:12px;}
+  .doc ul{list-style:none;margin:2px 0 4px 6px;padding:0;}
+  .doc li{position:relative;padding-left:24px;min-height:1.2em;margin:0;}
+  .doc li::before{position:absolute;left:4px;top:0;}
+  .doc ul.dash li{padding-left:14px;} .doc ul.dash li::before{content:"-";left:0;}
+  .doc ul.arrow li::before{content:"\27A4";font-size:10px;top:2px;}
+  .doc ul.circle li::before{content:"o";font-family:"Courier New",monospace;}
+  .doc ul.diamond li::before{content:"\2756";font-size:11px;top:1px;}
+  .doc ul.square li::before{content:"\25AA";font-size:14px;top:-1px;}
+  .doc .blank{min-height:1.4em;}
+  .doc .gap{height:12px;}
+  .doc td{padding:5px 8px;} .doc .tall{min-height:110px;white-space:pre-wrap;}
+  .doc .signrow td{height:24px;}
+  .doc-foot{margin-top:18px;border-top:1px solid #d1d5db;padding-top:6px;text-align:center;font-size:9.5px;color:#6b7280;}
 
   @media (max-width:640px){
-    .paper{padding:18px 12px;font-size:14px;margin:8px 0 24px;}
-    table.grid td.r{width:38%;}
+    .wrap{padding:14px 10px 150px;} section.card{padding:20px 14px;} header.top{padding:16px;} header.top h1{font-size:19px;}
+    .status{margin-left:0;width:100%;} .bar-inner .btn{flex:1 1 45%;padding:11px 8px;font-size:14px;}
+    .docwrap{padding:8px;} .doc{padding:20px 16px;font-size:12px;}
   }
 
-  /* ---------- print: just the plan, like the paper copy ---------- */
-  @page{size:A4;margin:12mm;}
+  /* ===== print: only the letterhead page ===== */
+  @page{size:A4;margin:12mm 14mm 20mm;}
   @media print{
     body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-    .toolbar,.status,.hint,.gate,.noprint{display:none !important;}
-    .paper{max-width:none;margin:0;padding:0;box-shadow:none;font-size:12pt;}
-    .school{font-size:15pt;}
-    .term,.ltitle{font-size:14pt;}
-    .fld,.lst{background:none !important;box-shadow:none !important;padding-top:0;padding-bottom:0;}
-    .fld:empty::before{content:"";}
-    .fld.multi{min-height:70px;}
-    .lst li.blank-li{display:none;}
-    .reflect{break-inside:avoid;page-break-inside:avoid;}
+    .noprint,.bar,header.top,.gate,a.back{display:none !important;}
+    .wrap{max-width:none;padding:0;}
+    #previewCard{box-shadow:none;padding:0;margin:0;background:none;}
+    .docwrap{background:none;padding:0;border-radius:0;overflow:visible;}
+    .doc{width:auto;max-width:none;padding:0;box-shadow:none;font-size:12pt;}
+    .lh img{height:20mm;} .lh .name{font-size:16pt;} .lh .addr{font-size:8pt;}
+    .doc .term,.doc .ltitle{font-size:13pt;} .doc .ltitle .em{font-size:17pt;}
+    .doc tr{break-inside:avoid;page-break-inside:avoid;}
+    .doc .keep{break-inside:avoid;page-break-inside:avoid;}
+    .doc-foot{position:fixed;left:0;right:0;bottom:-13mm;margin:0;border-top:0;font-size:8.5pt;}
   }
 </style>
 </head>
 <body>
 
-<div class="toolbar noprint" id="toolbar" hidden>
-  <div class="toolbar-row">
-    <a class="back" href="./">&larr; Dashboard</a>
-    <select id="planSelect" aria-label="Choose a saved lesson plan"></select>
-    <button class="btn" id="saveBtn" type="button">Save</button>
-    <button class="btn alt" id="newBtn" type="button">New plan</button>
-    <button class="btn alt" id="copyBtn" type="button" title="Start a new plan from this one">Copy as new</button>
-    <button class="btn alt" id="printBtn" type="button">Print / Save as PDF</button>
-    <button class="btn warn" id="delBtn" type="button">Delete</button>
-  </div>
-  <div class="status" id="status" role="status" aria-live="polite"></div>
-</div>
-
 <div class="gate" id="gate">Checking your access&hellip;</div>
 
-<div id="app" hidden>
-  <div class="hint">Tap any highlighted area to type. In the lists, press Enter for a new bullet point. Your changes save automatically once you have saved the plan once.</div>
+<div class="wrap" id="app" hidden>
+  <a class="back noprint" href="./">&larr; Back to the dashboard</a>
 
-  <div class="paper" id="paper">
-    <div class="school">CARISSA PRIMARY SCHOOL</div>
-    <div class="term"><span class="fld center" data-f="term" data-ph="TERM 4" contenteditable="true" role="textbox" aria-label="Term"></span></div>
-    <div class="ltitle"><span class="fld center" data-f="subjectTitle" data-ph="SOCIAL SCIENCES" contenteditable="true" role="textbox" aria-label="Subject heading"></span> LESSON PLAN</div>
+  <header class="top noprint">
+    <img src="./school-crest.png" alt="Carissa Primary School crest"/>
+    <div class="titles">
+      <h1>Lesson Planning</h1>
+      <p>Carissa Primary School · Teachers capture the lesson plan here, then print it or download it on the school letterhead. Draft saves automatically.</p>
+    </div>
+    <span class="chip" id="chip">For DHs and the Acting Principal</span>
+  </header>
 
-    <table class="grid">
-      <tr>
-        <td colspan="2"><span class="b">Educator:</span> <span class="fld" data-f="educator" data-ph="Teacher's name" contenteditable="true" role="textbox" aria-label="Educator name"></span></td>
-      </tr>
-      <tr>
-        <td><span class="b">Subject:</span> <span class="fld" data-f="subject" data-ph="Subject" contenteditable="true" role="textbox" aria-label="Subject"></span></td>
-        <td class="r"><span class="b">Grade</span> <span class="fld" data-f="grade" data-ph="6" contenteditable="true" role="textbox" aria-label="Grade"></span></td>
-      </tr>
-      <tr>
-        <td><span class="b">Discipline:</span> <span class="fld" data-f="discipline" data-ph="e.g. Geography" contenteditable="true" role="textbox" aria-label="Discipline"></span></td>
-        <td class="r"><span class="b">Week</span> <span class="fld" data-f="week" data-ph="1 &amp; 2" contenteditable="true" role="textbox" aria-label="Week"></span></td>
-      </tr>
-      <tr>
-        <td><span class="b">Duration:</span> <span class="fld" data-f="duration" data-ph="e.g. 3 hours x2" contenteditable="true" role="textbox" aria-label="Duration"></span></td>
-        <td class="r"><span class="b">Date:</span> <span class="fld" data-f="date" data-ph="Date" contenteditable="true" role="textbox" aria-label="Date"></span></td>
-      </tr>
-      <tr>
-        <td colspan="2"><span class="b">Topic:</span> <span class="fld" data-f="topic" data-ph="Topic" contenteditable="true" role="textbox" aria-label="Topic"></span></td>
-      </tr>
-    </table>
+  <div class="card noprint" style="padding:18px 20px;" id="recordCard">
+    <h2 style="margin:0 0 10px;font-size:17px;color:var(--brand-dark);">Your lesson plan records</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
+      <div style="flex:1;min-width:220px;">
+        <label class="lbl" for="planSelect">Your lesson plans</label>
+        <select class="inp" id="planSelect"></select>
+      </div>
+      <button class="btn ghost small" id="newBtn" type="button">+ Create new lesson plan</button>
+      <button class="btn ghost small" id="copyBtn" type="button" title="Start a new plan from this one">Copy as new</button>
+      <button class="btn danger small" id="delBtn" type="button">Delete this record</button>
+    </div>
+    <div class="upl" id="upl">
+      <span><b>Already have a lesson plan?</b> Upload the Word file (.docx) and I will read it, fill in the answers and let you edit them.</span>
+      <button class="btn ghost small" id="uplBtn" type="button">Upload lesson plan</button>
+      <input type="file" id="uplFile" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden/>
+    </div>
+    <div class="lib" id="lib"></div>
+  </div>
 
-    <table class="grid" id="sections">
-      <tr><td><div class="h">Content:</div>
-        <ul class="lst dash" data-list="content" contenteditable="true" aria-label="Content"></ul></td></tr>
-      <tr><td><div class="h">Concepts</div>
-        <ul class="lst dash" data-list="concepts" contenteditable="true" aria-label="Concepts"></ul></td></tr>
-      <tr><td><div class="h">Aims and objectives:</div>
-        <ul class="lst arrow" data-list="aims" contenteditable="true" aria-label="Aims and objectives"></ul></td></tr>
-      <tr><td><div class="h">Teaching methods</div>
-        <ul class="lst dash" data-list="methods" contenteditable="true" aria-label="Teaching methods"></ul></td></tr>
-      <tr><td><div class="h">Teaching activities:</div>
-        <ul class="lst circle" data-list="teaching" contenteditable="true" aria-label="Teaching activities"></ul></td></tr>
-      <tr><td><div class="h">Learning activities</div>
-        <ul class="lst diamond" data-list="learning" contenteditable="true" aria-label="Learning activities"></ul>
-        <div class="h sub">Resources:</div>
-        <ul class="lst dash" data-list="resources" contenteditable="true" aria-label="Resources"></ul></td></tr>
-      <tr><td><div class="h">Forms of assessment</div>
-        <ul class="lst dash" data-list="assessment" contenteditable="true" aria-label="Forms of assessment"></ul></td></tr>
-      <tr><td><div class="h">Addressing diversity</div>
-        <ul class="lst square" data-list="diversity" contenteditable="true" aria-label="Addressing diversity"></ul></td></tr>
-    </table>
+  <nav class="secnav noprint" aria-label="Sections">
+    <button type="button" data-g="0">1 Details</button><button type="button" data-g="1">2 Content</button><button type="button" data-g="2">3 Aims &amp; activities</button><button type="button" data-g="3">4 Assessment</button><button type="button" data-g="4">5 Reflection</button><button type="button" data-g="review">6 Letterhead</button>
+  </nav>
 
-    <div class="footer-gap"></div>
+  <div class="play noprint" id="wizard" hidden>
+  <section class="card wizcard" id="wizardCard">
+    <div class="gamebar" id="xpwrap"><span class="xpbadge"><b id="xpnum">0 XP</b> <i id="xplevel"></i></span><span class="medals" id="medals" aria-label="Badges"></span></div>
+    <div class="qtop"><span id="qcount"></span><span>Draft saves automatically</span></div>
+    <div class="qtrack"><div id="qbar"></div></div>
+    <div id="qcheer" aria-live="polite"></div>
+    <div id="qstage"></div>
+    <div class="qnav">
+      <button class="btn ghost" id="qBack" type="button">← Back</button>
+      <span class="spacer"></span>
+      <button class="btn ghost" id="qSkip" type="button">Skip</button>
+      <button class="btn primary" id="qNext" type="button">Next →</button>
+    </div>
+  </section>
+    <section class="card livecard" aria-label="Your form is filling in">
+      <h3>✍️ Your form is filling in as you answer</h3>
+      <div class="docwrap live"><div class="doc live" id="liveDoc"></div></div>
+    </section>
+  </div>
 
-    <table class="grid reflect">
-      <tr><td><div class="b">Educator&rsquo;s reflection</div>
-        <div class="fld multi" data-f="reflection" data-multi="1" data-ph="Write your reflection here" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Educator's reflection"></div></td></tr>
-      <tr><td><span class="b">Educator:</span> <span class="fld" data-f="educator" data-ph="Teacher's name" contenteditable="true" role="textbox" aria-label="Educator name (signature block)"></span></td></tr>
-      <tr><td><span class="b">Date:</span> <span class="fld" data-f="refDate" data-ph="Date" contenteditable="true" role="textbox" aria-label="Educator signature date"></span></td></tr>
-      <tr><td class="sig"><span class="b">Sign:</span></td></tr>
-      <tr><td class="gap"></td></tr>
-      <tr><td><span class="b">DH:</span> <span class="fld" data-f="dh" data-ph="Department head" contenteditable="true" role="textbox" aria-label="Department head"></span></td></tr>
-      <tr><td><span class="b">Date:</span> <span class="fld" data-f="dhDate" data-ph="Date" contenteditable="true" role="textbox" aria-label="Department head date"></span></td></tr>
-      <tr><td class="sig"><span class="b">Sign:</span></td></tr>
-    </table>
+
+  <div class="infogrid noprint">
+    <div class="card"><h3>How it works</h3><p>I ask you one question at a time and you type your answer in the box. When you finish, your answers are set out neatly on the school letterhead. Tap Save to keep the plan in your lesson plan folder.</p></div>
+    <div class="card"><h3>What it covers</h3><ul><li>Details, content and concepts</li><li>Aims, methods and activities</li><li>Assessment, diversity, reflection and sign-off</li><li>Upload an old plan (.docx) and I fill the answers in for you</li></ul></div>
+  </div>
+
+  <div id="formArea" class="noprint" hidden>
+    <section class="card" id="sec-details">
+      <h2><span class="num">1</span> Lesson details</h2>
+      <p class="sub">These fill in the top of your lesson plan.</p>
+      <div class="grid">
+        <div><label class="lbl" for="f-term">Term</label>
+          <select class="inp" id="f-term" data-field="term"><option>Term 1</option><option>Term 2</option><option>Term 3</option><option selected>Term 4</option></select></div>
+        <div><label class="lbl" for="f-grade">Grade</label>
+          <select class="inp" id="f-grade" data-field="grade"><option value="">Choose a grade</option><option>R</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option></select></div>
+        <div><label class="lbl" for="f-week">Week <span class="hint">(e.g. 1 &amp; 2)</span></label>
+          <input class="inp" id="f-week" data-field="week" placeholder="1 &amp; 2" autocomplete="off"/></div>
+        <div><label class="lbl" for="f-subject">Subject</label>
+          <input class="inp" id="f-subject" data-field="subject" autocomplete="off"/></div>
+        <div><label class="lbl" for="f-educator">Educator</label>
+          <input class="inp" id="f-educator" data-field="educator" autocomplete="off"/></div>
+        <div><label class="lbl" for="f-discipline">Discipline <span class="hint">(e.g. Geography)</span></label>
+          <input class="inp" id="f-discipline" data-field="discipline" autocomplete="off"/></div>
+        <div><label class="lbl" for="f-duration">Duration <span class="hint">(e.g. 3 hours x2)</span></label>
+          <input class="inp" id="f-duration" data-field="duration" autocomplete="off"/></div>
+        <div><label class="lbl" for="f-date">Date</label>
+          <input class="inp" id="f-date" data-field="date" type="date"/></div>
+        <div class="wide"><label class="lbl" for="f-topic">Topic</label>
+          <input class="inp" id="f-topic" data-field="topic" placeholder="e.g. Population: Why people live where they do." autocomplete="off"/></div>
+      </div>
+    </section>
+
+    <section class="card" id="sec-content">
+      <h2><span class="num">2</span> Content and concepts</h2>
+      <p class="sub">One point per line. Press Enter to start the next point.</p>
+      <div class="grid">
+        <div><label class="lbl" for="f-content">Content</label>
+          <textarea class="inp" id="f-content" data-field="content" rows="4" placeholder="People and provinces in South Africa"></textarea></div>
+        <div><label class="lbl" for="f-concepts">Concepts</label>
+          <textarea class="inp" id="f-concepts" data-field="concepts" rows="4" placeholder="Population distribution and population density."></textarea></div>
+      </div>
+    </section>
+
+    <section class="card" id="sec-aims">
+      <h2><span class="num">3</span> Aims, methods and activities</h2>
+      <p class="sub">One point per line. The opening lines “Learners:”, “The teacher will;” and “Learner will;” are added for you.</p>
+      <div class="grid">
+        <div class="wide"><label class="lbl" for="f-aims">Aims and objectives</label>
+          <textarea class="inp" id="f-aims" data-field="aims" rows="4" placeholder="Are curious about the world they live in."></textarea></div>
+        <div class="wide"><label class="lbl" for="f-methods">Teaching methods</label>
+          <div class="chips" data-chips="methods"><span class="lab">Quick add:</span></div>
+          <textarea class="inp" id="f-methods" data-field="methods" rows="4"></textarea></div>
+        <div class="wide"><label class="lbl" for="f-teaching">Teaching activities <span class="hint">(The teacher will;)</span></label>
+          <textarea class="inp" id="f-teaching" data-field="teaching" rows="5" placeholder="Explain new words and concepts"></textarea></div>
+        <div class="wide"><label class="lbl" for="f-learning">Learning activities <span class="hint">(Learner will;)</span></label>
+          <textarea class="inp" id="f-learning" data-field="learning" rows="5" placeholder="Listen to the teacher’s explanation of new words and concepts"></textarea></div>
+        <div class="wide"><label class="lbl" for="f-resources">Resources</label>
+          <textarea class="inp" id="f-resources" data-field="resources" rows="3" placeholder="Platinum Social Sciences textbook"></textarea></div>
+      </div>
+    </section>
+
+    <section class="card" id="sec-assess">
+      <h2><span class="num">4</span> Assessment and diversity</h2>
+      <p class="sub">One point per line.</p>
+      <div class="grid">
+        <div class="wide"><label class="lbl" for="f-assessment">Forms of assessment</label>
+          <div class="chips" data-chips="assessment"><span class="lab">Quick add:</span></div>
+          <textarea class="inp" id="f-assessment" data-field="assessment" rows="3"></textarea></div>
+        <div class="wide"><label class="lbl" for="f-diversity">Addressing diversity</label>
+          <div class="chips"><button class="chipbtn" type="button" id="stdDiversity">Add my usual wording</button></div>
+          <textarea class="inp" id="f-diversity" data-field="diversity" rows="5"></textarea></div>
+      </div>
+    </section>
+
+    <section class="card" id="sec-reflect">
+      <h2><span class="num">5</span> Reflection and sign-off</h2>
+      <p class="sub">Complete the reflection after the lesson. The educator and the DH sign the printed copy by hand.</p>
+      <div class="grid">
+        <div class="wide"><label class="lbl" for="f-reflection">Educator’s reflection</label>
+          <textarea class="inp" id="f-reflection" data-field="reflection" rows="5"></textarea></div>
+        <div><label class="lbl" for="f-refdate">Educator’s signing date</label>
+          <input class="inp" id="f-refdate" data-field="refDate" type="date"/></div>
+        <div><label class="lbl" for="f-dh">DH name</label>
+          <input class="inp" id="f-dh" data-field="dh" autocomplete="off"/></div>
+        <div><label class="lbl" for="f-dhdate">DH signing date</label>
+          <input class="inp" id="f-dhdate" data-field="dhDate" type="date"/></div>
+      </div>
+      <div class="sigbox" style="margin-top:16px;">The “Sign:” lines are left empty on the printed lesson plan so you can sign by hand.</div>
+    </section>
+  </div>
+
+  <section class="card" id="previewCard" hidden>
+    <h2 class="noprint"><span class="num">6</span> Your lesson plan on the school letterhead</h2>
+    <p class="sub noprint">This is exactly what will print. Use the buttons at the bottom to save it, print it or download it in Word.</p>
+    <p class="noprint" style="margin:0 0 14px;"><button class="btn ghost small" id="editAnswers" type="button">← Edit my answers</button></p>
+    <div class="docwrap"><div class="doc" id="doc"></div></div>
+  </section>
+
+  <footer class="foot noprint">Carissa Primary School · 23 Hofmeyer Street, Witbank · Lesson planning tool</footer>
+</div>
+
+<div class="bar noprint" id="bar" hidden>
+  <div class="bar-inner">
+    <button class="btn primary" id="saveBtn" type="button">Save to lesson plan folder</button>
+    <button class="btn ghost" id="previewBtn" type="button">Preview on letterhead</button>
+    <button class="btn ghost" id="printBtn" type="button">Print / Save as PDF</button>
+    <button class="btn ghost" id="wordBtn" type="button">Download Word (.docx)</button>
+    <button class="btn ghost" id="clearBtn" type="button">Clear draft</button>
+    <span class="status" id="status" role="status" aria-live="polite"></span>
   </div>
 </div>
 
@@ -184,102 +357,54 @@
   var API = "/api";
   var DEFAULT_EDUCATOR = "Mrs E. Makandiwona";
   var DEFAULT_DH = "Mrs M.Moyo";
-
-  // Opening lines that are part of the printed layout (the rest is written by the teacher).
-  var LEAD_INS = { aims: ["Learners:"], teaching: ["The teacher will;"], learning: ["Learner will;"] };
   var LIST_KEYS = ["content","concepts","aims","methods","teaching","learning","resources","assessment","diversity"];
+  var METHODS = ["Question and answer","Demonstration method","Class discussion","One on one method","Differentiated instruction","Peer education","Group work"];
+  var ASSESSMENTS = ["Classwork","Homework","Worksheets"];
+  var DIVERSITY = [
+    "Learners with hearing, sight and physical challenges are accommodated in front of the class.",
+    "Classroom environment is conducive to cater for all learners",
+    "There is enough space for learner movement",
+    "Air-conditions provide a perfect atmosphere for teaching and learning.",
+    "One on support is given to learners"
+  ];
 
-  var records = [];
-  var currentId = "";
-  var educatorName = DEFAULT_EDUCATOR;
-  var dirty = false, saving = false, editSeq = 0, titleTouched = false;
-  var autosaveTimer = null;
+  var records = [], currentId = "", educatorName = DEFAULT_EDUCATOR;
+  var dirty = false, saving = false, editSeq = 0, autosaveTimer = null;
 
-  var el = {
-    gate: document.getElementById("gate"),
-    app: document.getElementById("app"),
-    toolbar: document.getElementById("toolbar"),
-    select: document.getElementById("planSelect"),
-    status: document.getElementById("status"),
-    save: document.getElementById("saveBtn"),
-    nw: document.getElementById("newBtn"),
-    copy: document.getElementById("copyBtn"),
-    print: document.getElementById("printBtn"),
-    del: document.getElementById("delBtn")
-  };
-
+  function $(id){ return document.getElementById(id); }
   function all(sel){ return Array.prototype.slice.call(document.querySelectorAll(sel)); }
-  function setStatus(msg, kind){
-    el.status.textContent = msg || "";
-    el.status.className = "status" + (kind ? " " + kind : "");
-  }
-  function newId(){
-    try{ if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); }catch(e){}
-    return "lp-" + Date.now() + "-" + Math.floor(Math.random() * 1e6);
-  }
-  function formatDate(iso){
-    var d = new Date(iso); if (isNaN(d.getTime())) return "";
-    return d.toLocaleDateString(undefined, { day:"2-digit", month:"short", year:"numeric" });
-  }
+  var el = { gate:$("gate"), app:$("app"), bar:$("bar"), select:$("planSelect"), status:$("status"),
+    save:$("saveBtn"), nw:$("newBtn"), copy:$("copyBtn"), del:$("delBtn"), preview:$("previewBtn"),
+    print:$("printBtn"), word:$("wordBtn"), previewCard:$("previewCard"), doc:$("doc") };
 
-  /* ---------- reading and writing the form ---------- */
-  function cleanLine(s){ return String(s || "").replace(/ /g, " ").replace(/\s+/g, " ").trim(); }
+  function setStatus(msg, kind){ el.status.textContent = msg || ""; el.status.className = "status" + (kind ? " " + kind : ""); }
+  function newId(){ try{ if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); }catch(e){} return "lp-" + Date.now() + "-" + Math.floor(Math.random()*1e6); }
+  function formatDate(iso){ var d = new Date(iso); return isNaN(d.getTime()) ? "" : d.toLocaleDateString(undefined,{day:"2-digit",month:"short",year:"numeric"}); }
+  function lines(text){ return String(text || "").replace(/\r/g,"").split("\n").map(function(s){ return s.replace(/^\s*(?:[-*•▪➤❖]|o\s)\s*/,"").trim(); }).filter(Boolean); }
+  function nice(isoDate){ var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(isoDate||"")); return m ? (m[3] + "/" + m[2] + "/" + m[1]) : String(isoDate || ""); }
 
-  function listItems(ul){
-    var out = [];
-    Array.prototype.forEach.call(ul.children, function(li){ out.push(String(li.textContent || "").replace(/ /g, " ").trim()); });
-    return out;
+  /* ---------- form <-> data ---------- */
+  function blankData(){
+    return { term:"Term 4", grade:"", week:"", subject:"Social Sciences", educator:educatorName, discipline:"", duration:"", date:"", topic:"",
+      content:"", concepts:"", aims:"", methods:"", teaching:"", learning:"", resources:"", assessment:"", diversity:"",
+      reflection:"", refDate:"", dh:DEFAULT_DH, dhDate:"" };
   }
-
-  function fillList(ul, items){
-    ul.textContent = "";
-    var list = (items && items.length) ? items : [""];
-    list.forEach(function(t){ ul.appendChild(makeLi(t)); });
-  }
-
-  function makeLi(text){
-    var li = document.createElement("li");
-    if (text) li.textContent = text; else li.appendChild(document.createElement("br"));
-    return li;
-  }
-
   function getData(){
     var d = {};
-    all("[data-f]").forEach(function(n){
-      var k = n.getAttribute("data-f");
-      if (n.getAttribute("data-multi")){
-        d[k] = String(n.innerText || "").replace(/ /g, " ").replace(/\s+$/g, "");
-      } else {
-        d[k] = cleanLine(n.innerText || n.textContent);
-      }
-    });
-    d.lists = {};
-    all("[data-list]").forEach(function(ul){ d.lists[ul.getAttribute("data-list")] = listItems(ul); });
+    all("[data-field]").forEach(function(n){ d[n.getAttribute("data-field")] = String(n.value || "").replace(/\s+$/,""); });
+    ["week","subject","educator","discipline","duration","topic","dh"].forEach(function(k){ d[k] = String(d[k]||"").replace(/\s+/g," ").trim(); });
     return d;
   }
-
-  function blankData(){
-    var d = { term: "TERM 4", subjectTitle: "SOCIAL SCIENCES", educator: educatorName, subject: "Social Sciences",
-      grade: "", discipline: "", week: "", duration: "", date: "", topic: "", reflection: "",
-      refDate: "", dh: DEFAULT_DH, dhDate: "", lists: {} };
-    LIST_KEYS.forEach(function(k){ d.lists[k] = (LEAD_INS[k] || []).slice(); });
-    return d;
-  }
-
   function setData(d){
     d = d || blankData();
-    all("[data-f]").forEach(function(n){
-      var k = n.getAttribute("data-f");
-      n.textContent = (d[k] == null) ? "" : String(d[k]);
+    var base = blankData();
+    all("[data-field]").forEach(function(n){
+      var k = n.getAttribute("data-field"), v = d[k];
+      if (v == null) v = base[k];
+      if (Array.isArray(v)) v = v.join("\n");
+      n.value = String(v == null ? "" : v);
     });
-    var lists = d.lists || {};
-    all("[data-list]").forEach(function(ul){
-      var k = ul.getAttribute("data-list");
-      fillList(ul, Array.isArray(lists[k]) ? lists[k] : (LEAD_INS[k] || []).slice());
-    });
-    titleTouched = !!(d.subjectTitle && d.subject && d.subjectTitle !== String(d.subject).toUpperCase());
   }
-
   function titleOf(d){
     var bits = [];
     if (d.subject) bits.push(d.subject);
@@ -291,251 +416,615 @@
     return t || "Untitled lesson plan";
   }
 
-  /* ---------- saved plans list ---------- */
-  function renderSelect(){
-    var html = document.createDocumentFragment();
-    var first = document.createElement("option");
-    first.value = ""; first.textContent = "— New lesson plan (unsaved) —";
-    html.appendChild(first);
-    records.forEach(function(r){
-      var o = document.createElement("option");
-      o.value = r.id;
-      o.textContent = (r.title || "Untitled lesson plan") + " · " + formatDate(r.updated_at);
-      html.appendChild(o);
+  /* ---------- quick-add chips ---------- */
+  function addLine(fieldKey, text){
+    var ta = document.querySelector('[data-field="' + fieldKey + '"]');
+    var cur = lines(ta.value);
+    if (cur.map(function(s){ return s.toLowerCase(); }).indexOf(text.toLowerCase()) >= 0) return;
+    cur.push(text);
+    ta.value = cur.join("\n");
+    markDirty();
+  }
+  function buildChips(){
+    [["methods",METHODS],["assessment",ASSESSMENTS]].forEach(function(pair){
+      var box = document.querySelector('[data-chips="' + pair[0] + '"]');
+      pair[1].forEach(function(t){
+        var b = document.createElement("button");
+        b.type = "button"; b.className = "chipbtn"; b.textContent = "+ " + t;
+        b.addEventListener("click", function(){ addLine(pair[0], t); });
+        box.appendChild(b);
+      });
     });
-    el.select.textContent = "";
-    el.select.appendChild(html);
-    el.select.value = currentId && records.some(function(r){ return r.id === currentId; }) ? currentId : "";
-    el.del.disabled = !el.select.value;
+    $("stdDiversity").addEventListener("click", function(){ DIVERSITY.forEach(function(t){ addLine("diversity", t); }); });
   }
 
+  /* ---------- the lesson plan on the letterhead ---------- */
+  function mk(tag, cls, text){ var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+  function labelled(label, value){ var f = document.createDocumentFragment(); f.appendChild(mk("b", null, label)); f.appendChild(document.createTextNode(value ? " " + value : "")); return f; }
+
+  function listBlock(items, cls, lead){
+    var all_ = (lead ? [lead] : []).concat(items);
+    var ul = mk("ul", cls);
+    if (!all_.length){ ul.appendChild(mk("li", "blank")); return ul; }
+    all_.forEach(function(t){ ul.appendChild(mk("li", null, t)); });
+    return ul;
+  }
+
+  function buildDoc(d, target){
+    var root = target || el.doc; root.textContent = "";
+    // letterhead
+    var lh = mk("div", "lh");
+    var img = document.createElement("img"); img.src = "./school-crest.png"; img.alt = "Carissa Primary School crest"; lh.appendChild(img);
+    lh.appendChild(mk("div", "name", "CARISSA PRIMARY SCHOOL"));
+    lh.appendChild(mk("div", "rule1"));
+    lh.appendChild(mk("div", "addr", "23 Hofmeyer Street, Witbank, 1035  •  P.O. Box 430, Witbank, 1035"));
+    lh.appendChild(mk("div", "addr", "Tel: (013) 656 1286  •  E-mail: info@carissaprimary.co.za  •  Web: www.carissaprimary.co.za"));
+    lh.appendChild(mk("div", "rule2"));
+    root.appendChild(lh);
+
+    var termEl = mk("div", "term", (d.term || "").toUpperCase() || (target ? "TERM" : "")); termEl.setAttribute("data-k", "term"); root.appendChild(termEl);
+    var lt = mk("div", "ltitle"); lt.appendChild(document.createTextNode(((d.subject || "").toUpperCase()) + (d.subject ? " " : ""))); lt.appendChild(mk("span", "em", "LESSON PLAN")); lt.setAttribute("data-k", "subject"); root.appendChild(lt);
+
+    // details
+    var t1 = mk("table"), tb = mk("tbody"); t1.appendChild(tb);
+    function row(cells){ var tr = mk("tr"); cells.forEach(function(c){ var td = mk("td", c.cls || null); if (c.span) td.colSpan = c.span; if (c.k) td.setAttribute("data-k", c.k); td.appendChild(c.content); tr.appendChild(td); }); tb.appendChild(tr); }
+    row([{ span:2, k:"educator", content: labelled("Educator:", d.educator) }]);
+    row([{ k:"subject", content: labelled("Subject:", d.subject) }, { cls:"half", k:"grade", content: labelled("Grade", d.grade) }]);
+    row([{ k:"discipline", content: labelled("Discipline:", d.discipline) }, { cls:"half", k:"week", content: labelled("Week", d.week) }]);
+    row([{ k:"duration", content: labelled("Duration:", d.duration) }, { cls:"half", k:"date", content: labelled("Date:", nice(d.date)) }]);
+    row([{ span:2, k:"topic", content: labelled("Topic:", d.topic) }]);
+    root.appendChild(t1);
+
+    // sections
+    var t2 = mk("table"), tb2 = mk("tbody"); t2.appendChild(tb2);
+    function section(parts, k){ var tr = mk("tr"), td = mk("td"); if (k) td.setAttribute("data-k", k); parts.forEach(function(p){ td.appendChild(p); }); tr.appendChild(td); tb2.appendChild(tr); }
+    function head(t, sub){ return mk("div", "h" + (sub ? " again" : ""), t); }
+    section([head("Content:"), listBlock(lines(d.content), "dash")], "content");
+    section([head("Concepts"), listBlock(lines(d.concepts), "dash")], "concepts");
+    section([head("Aims and objectives:"), listBlock(lines(d.aims), "arrow", "Learners:")], "aims");
+    section([head("Teaching methods"), listBlock(lines(d.methods), "dash")], "methods");
+    section([head("Teaching activities:"), listBlock(lines(d.teaching), "circle", "The teacher will;")], "teaching");
+    section([head("Learning activities"), listBlock(lines(d.learning), "diamond", "Learner will;"), head("Resources:", true), listBlock(lines(d.resources), "dash")], "learning resources");
+    section([head("Forms of assessment"), listBlock(lines(d.assessment), "dash")], "assessment");
+    section([head("Addressing diversity"), listBlock(lines(d.diversity), "square")], "diversity");
+    root.appendChild(t2);
+    root.appendChild(mk("div", "gap"));
+
+    // reflection + sign-off
+    var keep = mk("div", "keep");
+    var t3 = mk("table"), tb3 = mk("tbody"); t3.appendChild(tb3);
+    function r3(content, cls, k){ var tr = mk("tr", cls || null), td = mk("td"); if (k) td.setAttribute("data-k", k); td.appendChild(content); tr.appendChild(td); tb3.appendChild(tr); }
+    var refl = mk("div"); refl.appendChild(mk("b", null, "Educator’s reflection")); refl.appendChild(mk("div", "tall", d.reflection || ""));
+    r3(refl, null, "reflection");
+    r3(labelled("Educator:", d.educator), null, "educator");
+    r3(labelled("Date:", nice(d.refDate)), null, "refDate");
+    r3(labelled("Sign:", ""), "signrow");
+    r3(mk("div", "blank"));
+    r3(labelled("DH:", d.dh), null, "dh");
+    r3(labelled("Date:", nice(d.dhDate)), null, "dhDate");
+    r3(labelled("Sign:", ""), "signrow");
+    keep.appendChild(t3);
+    root.appendChild(keep);
+
+    root.appendChild(mk("div", "doc-foot", "Carissa Primary School • Principal: Ms V. Sibande"));
+  }
+
+  function showPreview(scroll){
+    buildDoc(getData());
+    wiz.box.hidden = true; el.previewCard.hidden = false;
+    if (scroll) el.previewCard.scrollIntoView({ behavior:"smooth", block:"start" });
+  }
+
+  function printPlan(){
+    var d = getData();
+    showPreview(false);
+    var old = document.title;
+    document.title = ("Lesson plan - " + titleOf(d)).replace(/[\\/:*?"<>|]+/g, "-");
+    function after(){ document.title = old; window.removeEventListener("afterprint", after); }
+    window.addEventListener("afterprint", after);
+    window.print();
+  }
+
+  /* ---------- Word (.docx) on the real school letterhead ---------- */
+  var JSZIP_URL = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+  var LETTERHEAD = "./lesson-plan-letterhead.docx";
+  var MARKER = '<w:p><w:r><w:t>[[LESSON_PLAN_BODY]]</w:t></w:r></w:p>';
+
+  function loadJSZip(){
+    if (window.JSZip) return Promise.resolve(window.JSZip);
+    return new Promise(function(resolve, reject){
+      var s = document.createElement("script"); s.src = JSZIP_URL;
+      s.onload = function(){ window.JSZip ? resolve(window.JSZip) : reject(new Error("Word helper did not start")); };
+      s.onerror = function(){ reject(new Error("Could not load the Word helper. Check your internet connection")); };
+      document.head.appendChild(s);
+    });
+  }
+
+  function esc(s){ return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function wr(text, o){
+    o = o || {};
+    return '<w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/>' + (o.b ? "<w:b/>" : "") +
+      '<w:sz w:val="' + (o.sz || 24) + '"/><w:szCs w:val="' + (o.sz || 24) + '"/><w:lang w:val="en-GB"/></w:rPr><w:t xml:space="preserve">' + esc(text) + "</w:t></w:r>";
+  }
+  function wp(runs, o){
+    o = o || {};
+    return "<w:p><w:pPr>" + (o.keep ? "<w:keepNext/>" : "") + (o.tabs || "") +
+      '<w:spacing w:before="' + (o.before || 0) + '" w:after="' + (o.after == null ? 40 : o.after) + '" w:line="259" w:lineRule="auto"/>' +
+      (o.ind || "") + (o.jc ? '<w:jc w:val="' + o.jc + '"/>' : "") + "</w:pPr>" + runs + "</w:p>";
+  }
+  function wlabel(label, value){ return wp(wr(label, { b:true }) + wr(value ? " " + value : "")); }
+  function whead(t, before){ return wp(wr(t, { b:true }), { before: before || 0 }); }
+  var BULLET = { dash:"-", arrow:"➤", circle:"o", diamond:"❖", square:"▪" };
+  function wlist(items, kind, lead){
+    var arr = (lead ? [lead] : []).concat(items);
+    if (!arr.length) return wp(wr(""), { after:60 });
+    return arr.map(function(t){
+      return wp(wr(BULLET[kind]) + "<w:r><w:tab/></w:r>" + wr(t), { after:20,
+        tabs:'<w:tabs><w:tab w:val="left" w:pos="440"/></w:tabs>', ind:'<w:ind w:left="440" w:hanging="300"/>' });
+    }).join("");
+  }
+  var TW = 9026;
+  function wcell(w, inner, span){ return '<w:tc><w:tcPr><w:tcW w:w="' + w + '" w:type="dxa"/>' + (span ? '<w:gridSpan w:val="' + span + '"/>' : "") + "</w:tcPr>" + inner + "</w:tc>"; }
+  function wrow(cells, keep, h){ return "<w:tr>" + (keep || h ? "<w:trPr>" + (keep ? "<w:cantSplit/>" : "") + (h ? '<w:trHeight w:val="' + h + '" w:hRule="atLeast"/>' : "") + "</w:trPr>" : "") + cells + "</w:tr>"; }
+  function wtable(grid, rows){
+    var b = function(n){ return '<w:' + n + ' w:val="single" w:sz="4" w:space="0" w:color="000000"/>'; };
+    return '<w:tbl><w:tblPr><w:tblW w:w="' + TW + '" w:type="dxa"/><w:tblBorders>' + ["top","left","bottom","right","insideH","insideV"].map(b).join("") +
+      '</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:top w:w="40" w:type="dxa"/><w:left w:w="100" w:type="dxa"/><w:bottom w:w="40" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>' +
+      grid.map(function(g){ return '<w:gridCol w:w="' + g + '"/>'; }).join("") + "</w:tblGrid>" + rows.join("") + "</w:tbl>";
+  }
+
+  function buildBodyXml(d){
+    var L = 5900, R = TW - L, x = "";
+    x += wp(wr((d.term || "").toUpperCase(), { b:true, sz:28 }), { jc:"center", after:40, before:120 });
+    x += wp((d.subject ? wr(d.subject.toUpperCase() + " ", { b:true, sz:28 }) : "") +
+      '<w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/><w:b/><w:color w:val="0E5C6E"/><w:spacing w:val="20"/><w:sz w:val="40"/><w:szCs w:val="40"/><w:lang w:val="en-GB"/></w:rPr><w:t>LESSON PLAN</w:t></w:r>', { jc:"center", after:160 });
+    x += wtable([L, R], [
+      wrow(wcell(TW, wlabel("Educator:", d.educator), 2)),
+      wrow(wcell(L, wlabel("Subject:", d.subject)) + wcell(R, wlabel("Grade", d.grade))),
+      wrow(wcell(L, wlabel("Discipline:", d.discipline)) + wcell(R, wlabel("Week", d.week))),
+      wrow(wcell(L, wlabel("Duration:", d.duration)) + wcell(R, wlabel("Date:", nice(d.date)))),
+      wrow(wcell(TW, wlabel("Topic:", d.topic), 2))
+    ]);
+    function sec(inner){ return wrow(wcell(TW, inner), false, 1100); }
+    x += wtable([TW], [
+      sec(whead("Content:") + wlist(lines(d.content), "dash")),
+      sec(whead("Concepts") + wlist(lines(d.concepts), "dash")),
+      sec(whead("Aims and objectives:") + wlist(lines(d.aims), "arrow", "Learners:")),
+      sec(whead("Teaching methods") + wlist(lines(d.methods), "dash")),
+      sec(whead("Teaching activities:") + wlist(lines(d.teaching), "circle", "The teacher will;")),
+      sec(whead("Learning activities") + wlist(lines(d.learning), "diamond", "Learner will;") + whead("Resources:", 200) + wlist(lines(d.resources), "dash")),
+      sec(whead("Forms of assessment") + wlist(lines(d.assessment), "dash")),
+      sec(whead("Addressing diversity") + wlist(lines(d.diversity), "square"))
+    ]);
+    x += wp(wr("", { sz:10 }), { after:160 });
+    var refl = wp(wr("Educator’s reflection", { b:true }));
+    String(d.reflection || "").split("\n").forEach(function(l){ refl += wp(wr(l), { after:20 }); });
+    refl += wp(wr(""), { after:600 });
+    function one(inner, h){ return wrow(wcell(TW, inner), true, h || 450); }
+    x += wtable([TW], [
+      one(refl, 1800),
+      one(wlabel("Educator:", d.educator)),
+      one(wlabel("Date:", nice(d.refDate))),
+      one(wlabel("Sign:", "") + wp(wr(""), { after:100 })),
+      one(wp(wr(""))),
+      one(wlabel("DH:", d.dh)),
+      one(wlabel("Date:", nice(d.dhDate))),
+      one(wlabel("Sign:", "") + wp(wr(""), { after:100 }))
+    ]);
+    return x;
+  }
+
+  function downloadWord(){
+    var d = getData();
+    setStatus("Preparing the Word file…");
+    el.word.disabled = true;
+    Promise.all([ loadJSZip(), fetch(LETTERHEAD).then(function(r){ if (!r.ok) throw new Error("Letterhead file not found"); return r.arrayBuffer(); }) ])
+      .then(function(res){
+        return res[0].loadAsync(res[1]).then(function(zip){
+          return zip.file("word/document.xml").async("string").then(function(xml){
+            if (xml.indexOf(MARKER) < 0) throw new Error("Letterhead file is not set up correctly");
+            zip.file("word/document.xml", xml.replace(MARKER, function(){ return buildBodyXml(d); }));
+            return zip.generateAsync({ type:"blob", mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+          });
+        });
+      })
+      .then(function(blob){
+        var name = ("Lesson plan - " + titleOf(d)).replace(/[\\/:*?"<>|]+/g, "-").slice(0, 120) + ".docx";
+        var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+        document.body.appendChild(a); a.click();
+        setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+        setStatus("Word file downloaded.", "ok");
+      })
+      .catch(function(err){ setStatus((err && err.message) || "Could not make the Word file. Use Print / Save as PDF instead.", "err"); })
+      .then(function(){ el.word.disabled = false; });
+  }
+
+  /* ---------- guided question mode ---------- */
+  var GROUPS = ["Lesson details","Content and concepts","Aims, methods and activities","Assessment and diversity","Reflection and sign-off"];
+  var TERMS = ["Term 1","Term 2","Term 3","Term 4"], GRADES = ["R","1","2","3","4","5","6","7"];
+  var QUESTIONS = [
+    {k:"term",g:0,e:"🗓️",q:"Which term is this lesson plan for?",t:"select",opts:TERMS},
+    {k:"grade",g:0,e:"🎒",q:"Which grade are you teaching?",t:"select",opts:GRADES,blank:"Choose a grade"},
+    {k:"subject",g:0,e:"📚",q:"What is the subject?",h:"This also goes into the heading, e.g. SOCIAL SCIENCES LESSON PLAN.",t:"text",ph:"Social Sciences"},
+    {k:"educator",g:0,e:"👩‍🏫",q:"Whose lesson plan is this?",h:"The educator’s name goes at the top.",t:"text"},
+    {k:"discipline",g:0,e:"🧭",q:"Which discipline is it?",h:"For example Geography or History.",t:"text",ph:"Geography"},
+    {k:"week",g:0,e:"📆",q:"Which week or weeks?",t:"text",ph:"1 & 2"},
+    {k:"duration",g:0,e:"⏱️",q:"How long will the lesson take?",t:"text",ph:"3 hours x2"},
+    {k:"date",g:0,e:"🗓️",q:"What date is the lesson?",t:"date"},
+    {k:"topic",g:0,e:"🎯",q:"What is the topic?",t:"text",ph:"Population: Why people live where they do."},
+    {k:"content",g:1,e:"📖",q:"What content will you cover?",h:"One point per line. Press Enter for the next point.",t:"list",ph:"People and provinces in South Africa"},
+    {k:"concepts",g:1,e:"💡",q:"Which concepts will learners meet?",h:"One point per line.",t:"list",ph:"Population distribution and population density."},
+    {k:"aims",g:2,e:"🌟",q:"What are your aims and objectives?",h:"The line “Learners:” is added for you.",t:"list",ph:"Are curious about the world they live in."},
+    {k:"methods",g:2,e:"🧰",q:"Which teaching methods will you use?",h:"Tap a quick add or type your own, one per line.",t:"list",chips:METHODS},
+    {k:"teaching",g:2,e:"🗣️",q:"What will the teacher do?",h:"The line “The teacher will;” is added for you.",t:"list",ph:"Explain new words and concepts"},
+    {k:"learning",g:2,e:"✏️",q:"What will the learners do?",h:"The line “Learner will;” is added for you.",t:"list",ph:"Listen to the teacher’s explanation of new words"},
+    {k:"resources",g:2,e:"📦",q:"Which resources do you need?",t:"list",ph:"Platinum Social Sciences textbook"},
+    {k:"assessment",g:3,e:"✅",q:"How will you assess the learners?",h:"Tap a quick add or type your own.",t:"list",chips:ASSESSMENTS},
+    {k:"diversity",g:3,e:"🤝",q:"How will you address diversity?",h:"Tap the button to add your usual wording, then change anything you like.",t:"list",usual:true},
+    {k:"reflection",g:4,e:"💭",q:"What is your reflection on the lesson?",h:"You can leave this empty and complete it after the lesson.",t:"area",ph:"How did the lesson go?"},
+    {k:"refDate",g:4,e:"🗓️",q:"What is the educator’s signing date?",h:"Leave it empty if you will write it by hand.",t:"date"},
+    {k:"dh",g:4,e:"🧑‍💼",q:"Who is the DH?",t:"text"},
+    {k:"dhDate",g:4,e:"🗓️",q:"What is the DH’s signing date?",h:"Leave it empty if the DH will write it by hand.",t:"date"}
+  ];
+  var CHEERS = ["Nice start!","Lovely, keep going!","You are flying!","Great answer!","Halfway there soon!","Looking good!","Almost there!","Super neat!"];
+  var qi = 0, wiz = { box:$("wizard"), stage:$("qstage"), bar:$("qbar"), count:$("qcount"), back:$("qBack"), skip:$("qSkip"), next:$("qNext"), cheer:$("qcheer") };
+
+  function hidden(k){ return document.querySelector('[data-field="' + k + '"]'); }
+  function reduceMotion(){ try{ return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){ return false; } }
+
+  function showWizard(i, dir){
+    qi = Math.max(0, Math.min(QUESTIONS.length - 1, i || 0));
+    el.previewCard.hidden = true; wiz.box.hidden = false;
+    var Q = QUESTIONS[qi], h = hidden(Q.k), inp;
+    var card = mk("div", "qcard " + (dir === "back" ? "in-left" : "in-right"));
+    card.appendChild(mk("div", "qemoji", Q.e));
+    card.appendChild(mk("h2", "qtitle", Q.q));
+    card.appendChild(mk("p", "qhelp", Q.h || ""));
+    if (Q.t === "select"){
+      inp = document.createElement("select");
+      if (Q.blank){ var o0 = mk("option", null, Q.blank); o0.value = ""; inp.appendChild(o0); }
+      Q.opts.forEach(function(v){ var o = mk("option", null, v); o.value = v; inp.appendChild(o); });
+    } else if (Q.t === "list" || Q.t === "area"){
+      inp = document.createElement("textarea"); inp.rows = Q.t === "area" ? 6 : 7;
+    } else {
+      inp = document.createElement("input"); inp.type = Q.t === "date" ? "date" : "text"; inp.autocomplete = "off";
+    }
+    inp.className = "inp qinp"; if (Q.ph) inp.placeholder = Q.ph;
+    inp.setAttribute("aria-label", Q.q);
+    inp.value = h ? h.value : "";
+    inp.addEventListener("input", function(){ h.value = inp.value; markDirty(); onAnswerChanged(Q); });
+    inp.addEventListener("change", function(){ h.value = inp.value; markDirty(); onAnswerChanged(Q); });
+    inp.addEventListener("keydown", function(e){
+      if (e.key === "Enter" && (Q.t === "text" || Q.t === "date" || Q.t === "select" || e.ctrlKey || e.metaKey)){ e.preventDefault(); goNext(); }
+    });
+    if (Q.chips || Q.usual){
+      var row = mk("div", "chips"); row.appendChild(mk("span", "lab", "Quick add:"));
+      if (Q.chips) Q.chips.forEach(function(t){
+        var b = mk("button", "chipbtn", "+ " + t); b.type = "button";
+        b.addEventListener("click", function(){ addLine(Q.k, t); inp.value = h.value; onAnswerChanged(Q); });
+        row.appendChild(b);
+      });
+      if (Q.usual){ var u = mk("button", "chipbtn", "Add my usual wording"); u.type = "button";
+        u.addEventListener("click", function(){ DIVERSITY.forEach(function(t){ addLine("diversity", t); }); inp.value = h.value; onAnswerChanged(Q); }); row.appendChild(u); }
+      card.appendChild(row);
+    }
+    card.appendChild(inp);
+    wiz.stage.textContent = ""; wiz.stage.appendChild(card);
+    QUESTIONS.forEach(function(q){ lastAnswered[q.k] = answered(q); });
+    renderGame(); refreshLive();
+    var n = QUESTIONS.length;
+    wiz.bar.style.width = Math.round(qi / n * 100) + "%";
+    wiz.count.textContent = "Question " + (qi + 1) + " of " + n + " · " + GROUPS[Q.g];
+    wiz.cheer.textContent = qi ? CHEERS[qi % CHEERS.length] : "Let’s build your lesson plan!";
+    wiz.back.disabled = qi === 0;
+    wiz.next.textContent = qi === n - 1 ? "Finish ✨" : "Next →";
+    all(".secnav button").forEach(function(b){ b.classList.toggle("on", Number(b.getAttribute("data-g")) === Q.g); });
+    if (Q.t !== "select" && !(window.matchMedia && window.matchMedia("(pointer:coarse)").matches)) setTimeout(function(){ try{ inp.focus(); }catch(e){} }, 60);
+  }
+  function goNext(){ if (qi >= QUESTIONS.length - 1) showReview(true); else showWizard(qi + 1, "next"); }
+  function goBack(){ if (qi > 0) showWizard(qi - 1, "back"); }
+  function jumpGroup(g){
+    for (var i = 0; i < QUESTIONS.length; i++){ if (QUESTIONS[i].g === g){ showWizard(i); break; } }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  function confetti(){
+    if (reduceMotion()) return;
+    var cols = ["#4f46e5","#0e5c6e","#f59e0b","#ec4899","#10b981","#2a8ba8"], box = mk("div", "confetti");
+    for (var i = 0; i < 46; i++){
+      var s = mk("i"); s.style.left = (Math.random() * 100) + "%"; s.style.background = cols[i % cols.length];
+      s.style.animationDelay = (Math.random() * .5) + "s"; s.style.animationDuration = (1.6 + Math.random() * 1.4) + "s";
+      s.style.transform = "rotate(" + Math.floor(Math.random() * 360) + "deg)"; box.appendChild(s);
+    }
+    document.body.appendChild(box); setTimeout(function(){ box.remove(); }, 3600);
+  }
+  function showReview(celebrate){
+    wiz.box.hidden = true; showPreview(false);
+    all(".secnav button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-g") === "review"); });
+    if (celebrate){ confetti(); var xp = totalXp(), lv = levelFor(xp); setStatus("\uD83C\uDF89 " + xp + " XP \u00b7 " + lv[1] + "! Check your plan, then save, print or download it.", "ok"); }
+    window.scrollTo({ top: Math.max(0, el.previewCard.offsetTop - 120), behavior: "smooth" });
+  }
+
+  /* ---------- live form + game layer ---------- */
+  var LEVELS = [[0,"Rookie Planner","🌱"],[70,"Lesson Starter","🚀"],[140,"Planning Pro","⭐"],[220,"Lesson Legend","🏆"]];
+  var MEDALS = ["📋","📚","🧠","✅","✍️"];
+  var seenGroupDone = {}, lastAnswered = {};
+  function qPoints(Q){ return Q.t === "list" || Q.t === "area" ? 15 : 10; }
+  function answered(Q){ var h = hidden(Q.k); return !!(h && String(h.value || "").trim()); }
+  function totalXp(){ var x = 0; QUESTIONS.forEach(function(Q){ if (answered(Q)) x += qPoints(Q); }); return x; }
+  function maxXp(){ var x = 0; QUESTIONS.forEach(function(Q){ x += qPoints(Q); }); return x; }
+  function levelFor(x){ var L = LEVELS[0]; LEVELS.forEach(function(l){ if (x >= l[0]) L = l; }); return L; }
+  function groupDone(g){ return QUESTIONS.every(function(Q){ return Q.g !== g || answered(Q); }); }
+  function pop(text){
+    var n = mk("div", "xppop", text); var host = $("xpwrap"); if (!host) return;
+    host.appendChild(n); setTimeout(function(){ n.remove(); }, 1300);
+  }
+  function renderGame(){
+    var x = totalXp(), L = levelFor(x);
+    $("xpnum").textContent = x + " XP";
+    $("xplevel").textContent = L[2] + " " + L[1];
+    var m = $("medals"); m.textContent = "";
+    GROUPS.forEach(function(g, i){
+      var done = groupDone(i), b = mk("span", "medal" + (done ? " got" : ""), MEDALS[i]); b.title = g + (done ? " – complete!" : "");
+      m.appendChild(b);
+      if (done && !seenGroupDone[i]){ seenGroupDone[i] = true; if (m.dataset.ready) { pop("🏅 " + g + " done!"); b.classList.add("won"); } }
+    });
+    m.dataset.ready = "1";
+  }
+  function refreshLive(){
+    var Q = QUESTIONS[qi], root = $("liveDoc"), wrap = root.parentNode, prevTop = wrap.scrollTop;
+    buildDoc(getData(), root);
+    var targets = root.querySelectorAll('[data-k~="' + Q.k + '"]');
+    for (var i = 0; i < targets.length; i++) targets[i].classList.add("hl");
+    if (targets[0]){
+      var top = targets[0].getBoundingClientRect().top - wrap.getBoundingClientRect().top + wrap.scrollTop;
+      wrap.scrollTop = Math.max(0, top - wrap.clientHeight / 3);
+    } else wrap.scrollTop = prevTop;
+  }
+  function onAnswerChanged(Q){
+    var now = answered(Q), was = lastAnswered[Q.k];
+    if (now && !was) pop("+" + qPoints(Q) + " XP ✨");
+    lastAnswered[Q.k] = now;
+    renderGame(); refreshLive();
+  }
+
+  /* ---------- upload an existing plan (.docx) ---------- */
+  var SECTIONS = [
+    [/^aims\s+and\s+objectives\b/i,"aims"],[/^teaching\s+methods?\b/i,"methods"],[/^teaching\s+activities\b/i,"teaching"],
+    [/^learning\s+activities\b/i,"learning"],[/^forms?\s+of\s+assessment\b/i,"assessment"],[/^addressing\s+diversity\b/i,"diversity"],
+    [/^concepts?\b/i,"concepts"],[/^content\b/i,"content"],[/^resources?\b/i,"resources"],[/^educator.?s\s+reflection\b/i,"reflection"]
+  ];
+  var LEADS = /^(learners?|the teacher will|learner will)\s*[:;]?\s*$/i;
+  function toIso(v){
+    v = String(v || "").trim(); var m;
+    if ((m = /^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/.exec(v))) return m[3] + "-" + ("0" + m[2]).slice(-2) + "-" + ("0" + m[1]).slice(-2);
+    if ((m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v))) return v;
+    return "";
+  }
+  function parsePlanLines(ls){
+    var out = {}, lists = {}, cur = null, signOff = false, dateCount = 0, found = 0;
+    function put(k, v){ if (v && !out[k]){ out[k] = v; found++; } }
+    function push(k, t){ (lists[k] = lists[k] || []).push(t); }
+    ls.forEach(function(raw){
+      var line = raw.replace(/ /g, " ").replace(/\s+/g, " ").trim(); if (!line) return;
+      var m, rest;
+      if ((m = /^term\s*([1-4])\b/i.exec(line)) && !signOff){ put("term", "Term " + m[1]); cur = null; return; }
+      if (/lesson plan\s*$/i.test(line) && line.length < 70){ var s = line.replace(/lesson plan\s*$/i, "").trim(); if (s) put("subject", s.replace(/\b\w+/g, function(w){ return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); })); cur = null; return; }
+      for (var i = 0; i < SECTIONS.length; i++){
+        if (SECTIONS[i][0].test(line)){
+          cur = SECTIONS[i][1]; if (cur === "reflection") signOff = true;
+          rest = line.replace(SECTIONS[i][0], "").replace(/^\s*[:\-]\s*/, "").trim();
+          if (rest) push(cur, rest); return;
+        }
+      }
+      if ((m = /^educator\s*:?\s*(.*)$/i.exec(line))){ if (m[1] || !out.educator){ put("educator", m[1]); } cur = signOff ? null : cur; if (!signOff) cur = null; return; }
+      if ((m = /^subject\s*:?\s*(.*)$/i.exec(line))){ put("subject", m[1]); cur = null; return; }
+      if ((m = /^grade\s*:?\s*(.*)$/i.exec(line))){ put("grade", m[1].replace(/^grade\s*/i, "").trim()); cur = null; return; }
+      if ((m = /^discipline\s*:?\s*(.*)$/i.exec(line))){ put("discipline", m[1]); cur = null; return; }
+      if ((m = /^week\s*:?\s*(.*)$/i.exec(line))){ put("week", m[1]); cur = null; return; }
+      if ((m = /^duration\s*:?\s*(.*)$/i.exec(line))){ put("duration", m[1]); cur = null; return; }
+      if ((m = /^topic\s*:?\s*(.*)$/i.exec(line))){ put("topic", m[1]); cur = null; return; }
+      if ((m = /^dh\s*:?\s*(.*)$/i.exec(line))){ put("dh", m[1]); dateCount = 1; cur = null; return; }
+      if ((m = /^date\s*:?\s*(.*)$/i.exec(line))){
+        var iso = toIso(m[1]);
+        if (!signOff) put("date", iso); else if (!out.dh && !out.refDate) put("refDate", iso); else if (out.dh || out.refDate) { if (out.dh) put("dhDate", iso); else put("refDate", iso); }
+        cur = null; return;
+      }
+      if (/^sign\s*:?\s*$/i.test(line)){ cur = null; return; }
+      if (!cur) return;
+      var item = cur === "reflection" ? line : line.replace(/^[-–—*•▪➤❖●]\s*|^o\s+/, "").trim();
+      if (!item || (cur !== "reflection" && LEADS.test(item))) return;
+      push(cur, item);
+    });
+    Object.keys(lists).forEach(function(k){ if (lists[k].length){ out[k] = lists[k].join("\n"); found++; } });
+    out.__found = found; return out;
+  }
+  function docxLines(buf){
+    return loadJSZip().then(function(JSZip){ return JSZip.loadAsync(buf); }).then(function(zip){
+      var f = zip.file("word/document.xml"); if (!f) throw new Error("That does not look like a Word document");
+      return f.async("string");
+    }).then(function(xml){
+      var doc = new DOMParser().parseFromString(xml, "application/xml"), ps = doc.getElementsByTagName("w:p"), res = [];
+      for (var i = 0; i < ps.length; i++){
+        var txt = "", nodes = ps[i].getElementsByTagName("*");
+        for (var j = 0; j < nodes.length; j++){
+          var n = nodes[j].nodeName;
+          if (n === "w:t") txt += nodes[j].textContent; else if (n === "w:tab") txt += " ";
+        }
+        res.push(txt);
+      }
+      return res;
+    });
+  }
+  function handleUpload(file){
+    if (!file) return;
+    if (!/\.docx$/i.test(file.name)){ setStatus("Please choose a Word file (.docx). For a PDF, open it in Word first and save it as .docx.", "err"); return; }
+    setStatus("Reading " + file.name + "…");
+    file.arrayBuffer().then(docxLines).then(function(ls){
+      var p = parsePlanLines(ls), found = p.__found; delete p.__found;
+      if (!found){ setStatus("I could not find any lesson plan headings in that file. Is it one of the school lesson plans?", "err"); return; }
+      var d = blankData(); Object.keys(p).forEach(function(k){ d[k] = p[k]; }); if (!d.educator) d.educator = educatorName;
+      currentId = ""; setData(d); markDirty(); renderSelect();
+      showReview(false);
+      setStatus("I found " + found + " answers in your file. Check them, tap “Edit my answers” to change anything, then Save.", "ok");
+    }).catch(function(err){ setStatus((err && err.message) || "Could not read that file.", "err"); });
+  }
+
+  /* ---------- saved plans ---------- */
+  function renderSelect(){
+    var frag = document.createDocumentFragment();
+    var first = mk("option", null, "— New lesson plan (unsaved) —"); first.value = ""; frag.appendChild(first);
+    records.forEach(function(r){ var o = mk("option", null, (r.title || "Untitled lesson plan") + " · " + formatDate(r.updated_at)); o.value = r.id; frag.appendChild(o); });
+    el.select.textContent = ""; el.select.appendChild(frag);
+    el.select.value = currentId && records.some(function(r){ return r.id === currentId; }) ? currentId : "";
+    el.del.disabled = !el.select.value;
+    renderLib();
+  }
+  function renderLib(){
+    var lib = $("lib"); lib.textContent = "";
+    if (!records.length){ lib.appendChild(mk("p","hint","No saved lesson plans yet. Fill in the form and tap Save.")); return; }
+    var groups = {}, order = [];
+    records.forEach(function(r){ var g = (r.fields && r.fields.grade) ? "Grade " + r.fields.grade : "No grade"; if (!groups[g]){ groups[g] = []; order.push(g); } groups[g].push(r); });
+    order.sort().forEach(function(g){
+      lib.appendChild(mk("h4", null, g));
+      var box = mk("div","items");
+      groups[g].forEach(function(r){
+        var b = mk("button", r.id === currentId ? "on" : "", r.title || "Untitled lesson plan"); b.type = "button";
+        b.addEventListener("click", function(){ if (r.id === currentId) return; if (dirty && !window.confirm("You have unsaved changes. Switch plan anyway?")) return; openRecord(r.id); setStatus(""); });
+        box.appendChild(b);
+      });
+      lib.appendChild(box);
+    });
+  }
   function openRecord(id){
-    var rec = null;
-    for (var i = 0; i < records.length; i++){ if (records[i].id === id){ rec = records[i]; break; } }
+    var rec = null; for (var i = 0; i < records.length; i++){ if (records[i].id === id){ rec = records[i]; break; } }
     if (!rec) return;
     currentId = rec.id;
     var f = rec.fields || {};
     if (!f.educator) f.educator = educatorName;
-    setData(f);
-    markClean();
-    renderSelect();
+    setData(f); markClean(); renderSelect(); showReview(false);
   }
-
   function startNew(fromData){
-    currentId = "";
-    setData(fromData || blankData());
-    markClean();
-    renderSelect();
+    currentId = ""; setData(fromData || blankData()); markClean(); renderSelect(); showWizard(0);
     setStatus(fromData ? "Copied. Change the week and topic, then tap Save." : "");
   }
 
-  /* ---------- dirty / autosave ---------- */
   function markDirty(){
-    dirty = true; editSeq++;
-    if (currentId) setStatus("Unsaved changes…"); else setStatus("Not saved yet — tap Save to keep this plan.");
+    dirty = true; editSeq++; stashDraft();
+    setStatus(currentId ? "Unsaved changes…" : "Not saved yet — tap Save to keep this plan.");
     clearTimeout(autosaveTimer);
     if (currentId) autosaveTimer = setTimeout(function(){ save(true); }, 3000);
   }
-  function markClean(){ dirty = false; clearTimeout(autosaveTimer); }
+  var DRAFT_KEY = "carissa-lesson-plan-draft";
+  function stashDraft(){ try{ localStorage.setItem(DRAFT_KEY, JSON.stringify({ id: currentId, data: getData() })); }catch(e){} }
+  function unstashDraft(){ try{ localStorage.removeItem(DRAFT_KEY); }catch(e){} }
+  function markClean(){ dirty = false; clearTimeout(autosaveTimer); unstashDraft(); }
+  window.addEventListener("beforeunload", function(e){ if (dirty){ e.preventDefault(); e.returnValue = ""; } });
 
-  window.addEventListener("beforeunload", function(e){
-    if (dirty){ e.preventDefault(); e.returnValue = ""; }
-  });
-
-  /* ---------- saving ---------- */
   function save(silent){
     if (saving) return;
-    var data = getData();
-    var id = currentId || newId();
-    var seq = editSeq;
-    saving = true; el.save.disabled = true;
-    setStatus("Saving…");
-    fetch(API + "/lesson-plan/draft", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: id, title: titleOf(data), grade: data.grade, topic: data.topic, data: data })
-    })
-    .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { ok: r.ok, j: j }; }); })
+    var data = getData(), id = currentId || newId(), seq = editSeq;
+    saving = true; el.save.disabled = true; setStatus("Saving…");
+    fetch(API + "/lesson-plan/draft", { method:"POST", credentials:"include", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ id:id, title:titleOf(data), grade:data.grade, topic:data.topic, data:data }) })
+    .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { ok:r.ok, j:j }; }); })
     .then(function(res){
       if (!res.ok) throw new Error((res.j && res.j.error) || "Could not save.");
       records = Array.isArray(res.j.records) ? res.j.records : records;
-      currentId = id;
-      if (seq === editSeq) markClean();
-      renderSelect();
-      setStatus(silent ? "Saved automatically." : "Saved.", "ok");
-      if (seq !== editSeq){ markDirty(); }
+      currentId = id; if (seq === editSeq) markClean();
+      renderSelect(); setStatus(silent ? "Saved automatically." : "Saved.", "ok");
+      if (seq !== editSeq) markDirty();
     })
-    .catch(function(err){
-      setStatus("Not saved: " + ((err && err.message) || "please try again") + ". Your text is still on this page.", "err");
-    })
+    .catch(function(err){ setStatus("Not saved: " + ((err && err.message) || "please try again") + ". Your text is still on this page.", "err"); })
     .then(function(){ saving = false; el.save.disabled = false; });
   }
 
   function remove(){
     if (!currentId) return;
     if (!window.confirm("Delete this lesson plan? This cannot be undone.")) return;
-    fetch(API + "/lesson-plan/draft", {
-      method: "DELETE", credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: currentId })
-    })
-    .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { ok: r.ok, j: j }; }); })
+    fetch(API + "/lesson-plan/draft", { method:"DELETE", credentials:"include", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ id: currentId }) })
+    .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { ok:r.ok, j:j }; }); })
     .then(function(res){
       if (!res.ok) throw new Error((res.j && res.j.error) || "Could not delete.");
-      records = Array.isArray(res.j.records) ? res.j.records : [];
-      currentId = "";
+      records = Array.isArray(res.j.records) ? res.j.records : []; currentId = "";
       if (records.length) openRecord(records[0].id); else startNew();
       setStatus("Deleted.", "ok");
     })
     .catch(function(err){ setStatus((err && err.message) || "Could not delete.", "err"); });
   }
 
-  /* ---------- printing ---------- */
-  function printPlan(){
-    var d = getData();
-    var oldTitle = document.title;
-    document.title = ("Lesson plan - " + titleOf(d)).replace(/[\\/:*?"<>|]+/g, "-");
-    all(".lst li").forEach(function(li){
-      if (!String(li.textContent || "").trim()) li.classList.add("blank-li");
-    });
-    function after(){
-      document.title = oldTitle;
-      all(".lst li.blank-li").forEach(function(li){ li.classList.remove("blank-li"); });
-      window.removeEventListener("afterprint", after);
-    }
-    window.addEventListener("afterprint", after);
-    window.print();
-  }
-
-  /* ---------- editing behaviour ---------- */
-  var app = el.app;
-
-  // keep single-line fields on one logical line
-  app.addEventListener("keydown", function(e){
-    var t = e.target;
-    if (e.key === "Enter" && t && t.classList && t.classList.contains("fld") && !t.getAttribute("data-multi")){
-      e.preventDefault();
-    }
-  });
-
-  // paste as plain text; one line per bullet inside lists
-  app.addEventListener("paste", function(e){
-    var t = e.target;
-    if (!t || !t.closest) return;
-    var editable = t.closest("[contenteditable]");
-    if (!editable) return;
-    e.preventDefault();
-    var text = (e.clipboardData || window.clipboardData).getData("text/plain") || "";
-    if (editable.tagName === "UL"){
-      var lines = text.replace(/\r/g, "").split("\n").map(function(s){
-        return s.replace(/^\s*(?:[-*•▪➤❖]|o\s)\s*/, "").trim();
-      }).filter(function(s){ return s; });
-      lines.forEach(function(line, i){
-        if (i > 0) document.execCommand("insertParagraph");
-        document.execCommand("insertText", false, line);
-      });
-    } else if (editable.getAttribute("data-multi")){
-      document.execCommand("insertText", false, text.replace(/\r/g, ""));
-    } else {
-      document.execCommand("insertText", false, text.replace(/\s+/g, " "));
-    }
-  });
-
-  function repairList(ul){
-    var bad = !ul.children.length;
-    Array.prototype.forEach.call(ul.children, function(c){ if (c.tagName !== "LI") bad = true; });
-    if (!bad) return;
-    var lines = String(ul.innerText || "").replace(/ /g, " ").split("\n").map(function(s){ return s.trim(); }).filter(function(s){ return s; });
-    fillList(ul, lines);
-    var last = ul.lastElementChild;
-    if (last){
-      var r = document.createRange(); r.selectNodeContents(last); r.collapse(false);
-      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
-    }
-  }
-
-  app.addEventListener("input", function(e){
-    var t = e.target;
-    if (!t || !t.closest) return;
-    var ul = t.closest("ul[data-list]");
-    if (ul) repairList(ul);
-    var f = t.closest("[data-f]");
-    if (f){
-      var k = f.getAttribute("data-f");
-      if (k === "educator"){
-        all('[data-f="educator"]').forEach(function(o){ if (o !== f) o.textContent = f.textContent; });
-      }
-      if (k === "subjectTitle") titleTouched = true;
-      if (k === "subject" && !titleTouched){
-        var tt = document.querySelector('[data-f="subjectTitle"]');
-        if (tt) tt.textContent = cleanLine(f.textContent).toUpperCase();
-      }
-    }
-    markDirty();
-  });
-
-  /* ---------- buttons ---------- */
+  /* ---------- wiring ---------- */
+  $("formArea").addEventListener("input", markDirty);
+  $("formArea").addEventListener("change", markDirty);
   el.save.addEventListener("click", function(){ save(false); });
+  wiz.next.addEventListener("click", goNext); wiz.skip.addEventListener("click", goNext); wiz.back.addEventListener("click", goBack);
+  $("editAnswers").addEventListener("click", function(){ showWizard(0); window.scrollTo({ top:0, behavior:"smooth" }); });
+  all(".secnav button").forEach(function(b){ b.addEventListener("click", function(){ var g = b.getAttribute("data-g"); if (g === "review") showReview(false); else jumpGroup(Number(g)); }); });
+  $("uplBtn").addEventListener("click", function(){ $("uplFile").click(); });
+  $("uplFile").addEventListener("change", function(e){ handleUpload(e.target.files && e.target.files[0]); e.target.value = ""; });
+  ["dragenter","dragover"].forEach(function(t){ $("upl").addEventListener(t, function(e){ e.preventDefault(); $("upl").classList.add("drag"); }); });
+  ["dragleave","drop"].forEach(function(t){ $("upl").addEventListener(t, function(e){ e.preventDefault(); $("upl").classList.remove("drag"); if (t === "drop" && e.dataTransfer && e.dataTransfer.files[0]) handleUpload(e.dataTransfer.files[0]); }); });
+  el.preview.addEventListener("click", function(){ showReview(false); });
   el.print.addEventListener("click", printPlan);
+  el.word.addEventListener("click", downloadWord);
   el.del.addEventListener("click", remove);
+  $("clearBtn").addEventListener("click", function(){
+    if (!window.confirm("Clear everything you have typed on this page? Saved plans are not deleted.")) return;
+    if (currentId) openRecord(currentId); else startNew();
+    unstashDraft(); setStatus("Draft cleared.");
+  });
   el.nw.addEventListener("click", function(){
     if (dirty && !window.confirm("You have unsaved changes. Start a new plan anyway?")) return;
     startNew();
   });
   el.copy.addEventListener("click", function(){
-    var d = getData();
-    d.week = ""; d.date = ""; d.reflection = ""; d.refDate = ""; d.dhDate = "";
     if (dirty && !window.confirm("You have unsaved changes on this plan. Copy it anyway?")) return;
-    startNew(d);
-    markDirty();
+    var d = getData(); d.week = ""; d.date = ""; d.reflection = ""; d.refDate = ""; d.dhDate = "";
+    startNew(d); markDirty();
   });
   el.select.addEventListener("change", function(){
     var id = el.select.value;
     if (dirty && !window.confirm("You have unsaved changes. Switch plan anyway?")){ renderSelect(); return; }
     if (!id){ startNew(); return; }
-    openRecord(id);
-    setStatus("");
+    openRecord(id); setStatus("");
   });
 
   /* ---------- start up ---------- */
-  function showGate(html){ el.gate.innerHTML = html; el.gate.hidden = false; el.app.hidden = true; el.toolbar.hidden = true; }
+  function showGate(html){ el.gate.innerHTML = html; el.gate.hidden = false; el.app.hidden = true; el.bar.hidden = true; }
 
   function loadRecords(){
     var wantNew = false;
     try{ wantNew = new URLSearchParams(location.search).get("new") === "1"; }catch(e){}
-    fetch(API + "/lesson-plan/draft", { credentials: "include" })
-      .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { ok: r.ok, j: j }; }); })
+    fetch(API + "/lesson-plan/draft", { credentials:"include" })
+      .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { ok:r.ok, j:j }; }); })
       .then(function(res){
         if (!res.ok) throw new Error((res.j && res.j.error) || "Could not load your saved plans.");
         records = Array.isArray(res.j.records) ? res.j.records : [];
         renderSelect();
         if (records.length && !wantNew) openRecord(records[0].id); else startNew();
+        try{
+          var raw = localStorage.getItem(DRAFT_KEY), dr = raw && JSON.parse(raw);
+          if (dr && dr.data && (!dr.id || dr.id === currentId)){ setData(dr.data); dirty = true; setStatus("Your unsaved draft was restored. Tap Save to keep it."); }
+        }catch(e){}
       })
       .catch(function(err){
-        records = [];
-        startNew();
-        setStatus("Could not load saved plans (" + ((err && err.message) || "error") + "). You can still write and print a plan.", "err");
+        records = []; startNew();
+        setStatus("Could not load saved plans (" + ((err && err.message) || "error") + "). You can still fill in, print and download a plan.", "err");
       });
   }
 
-  fetch(API + "/lesson-plan/access", { credentials: "include" })
+  buildChips();
+  fetch(API + "/lesson-plan/access", { credentials:"include" })
     .then(function(r){ return r.ok ? r.json() : null; })
     .then(function(j){
       if (!j){ showGate("Could not check your access. Please check your connection and reload this page."); return; }
       if (j.allowed !== true){
-        if (j.signedIn === false){
-          showGate('Please log in on the <a href="./">teacher dashboard</a> first, then open Lesson Planning again.');
-        } else {
-          showGate('Lesson Planning is private to Mrs E. Makandiwona.<br><a href="./">Back to the dashboard</a>');
-        }
+        if (j.signedIn === false) showGate('Please log in on the <a href="./">teacher dashboard</a> first, then open Lesson Planning again.');
+        else showGate('Lesson Planning is only available to the Departmental Heads and the Acting Principal.<br><a href="./">Back to the dashboard</a>');
         return;
       }
-      educatorName = j.educator || DEFAULT_EDUCATOR;
-      el.gate.hidden = true; el.app.hidden = false; el.toolbar.hidden = false;
-      setData(blankData());
-      renderSelect();
-      loadRecords();
+      educatorName = j.educator || DEFAULT_EDUCATOR; if (typeof j.dh === "string") DEFAULT_DH = j.dh;
+      el.gate.hidden = true; el.app.hidden = false; el.bar.hidden = false;
+      setData(blankData()); renderSelect(); loadRecords();
     })
     .catch(function(){ showGate("Could not check your access. Please check your connection and reload this page."); });
 })();
