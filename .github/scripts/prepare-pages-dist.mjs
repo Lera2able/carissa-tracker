@@ -27,13 +27,6 @@ const ALLOWED_EXTS = new Set([
   ".txt",
   ".json",
   ".xml",
-  ".pdf",
-  ".docx",
-  ".ttf",
-  ".otf",
-  ".woff",
-  ".woff2",
-  ".eot",
 ]);
 
 async function ensureCleanDir(dir) {
@@ -66,19 +59,27 @@ async function copyRecursive(srcDir, destDir, rel = "") {
 await ensureCleanDir(outDir);
 await copyRecursive(repoRoot, outDir);
 
+
 // Inject the SPIP dashboard button loader into the published index.html.
 // (The teacher dashboard is rendered by the bundled app.js; spip-button.js
 // adds the SPIP card to it at runtime. Editing index.html here keeps the
 // 1 MB bundle untouched.)
 const indexPath = path.join(outDir, "index.html");
 let indexHtml = await fs.readFile(indexPath, "utf8");
-const SPIP_TAG = '<script src="./spip-button.js?v=20261127openspip"></script>';
-if (!indexHtml.includes("spip-button.js")) {
+const SPIP_TAG = '<script src="./spip-button.js?v=1"></script>';
+const MOD_TAG = '<script src="./moderation-button.js?v=1"></script>';
+{
   const marker = indexHtml.match(/<script src="\.\/app\.js[^"]*"><\/script>/);
   if (!marker) throw new Error("app.js script tag not found in index.html");
-  indexHtml = indexHtml.replace(marker[0], marker[0] + "\n" + SPIP_TAG);
-  await fs.writeFile(indexPath, indexHtml);
-  console.log("Injected spip-button.js into index.html");
+  let inject = "";
+  if (!indexHtml.includes("spip-button.js")) inject += "\n" + SPIP_TAG;
+  if (!indexHtml.includes("moderation-button.js")) inject += "\n" + MOD_TAG;
+  if (inject) {
+    indexHtml = indexHtml.replace(marker[0], marker[0] + inject);
+    await fs.writeFile(indexPath, indexHtml);
+    console.log("Injected dashboard button loader(s) into index.html:" + inject);
+  }
 }
 
 console.log(`Prepared static publish directory: ${outDir}`);
+

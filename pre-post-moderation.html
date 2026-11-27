@@ -101,14 +101,20 @@
   }
   textarea.inp{resize:vertical;min-height:84px;line-height:1.5;}
   textarea.big{min-height:170px;font-size:15.5px;}
+  h3.grp{
+    margin:20px 0 8px;font-size:13px;letter-spacing:.04em;color:var(--brand-dark);
+    text-transform:uppercase;
+  }
+  h3.grp:first-of-type{margin-top:0;}
   table.sheet{width:100%;border-collapse:collapse;font-size:14px;}
   table.sheet th,table.sheet td{border:1px solid var(--line);padding:6px;}
   table.sheet th{background:#f8fafc;color:var(--ink-soft);font-size:12.5px;text-align:left;font-weight:700;}
-  table.sheet td input,table.sheet td select{
+  table.sheet td input,table.sheet td select,table.sheet td textarea{
     width:100%;padding:9px 10px;border:1.5px solid var(--input-line);border-radius:6px;
     font-size:14px;font-family:inherit;outline:none;background:#fff;
   }
-  table.sheet td input:focus,table.sheet td select:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.12);}
+  table.sheet td textarea{resize:vertical;min-height:44px;line-height:1.45;}
+  table.sheet td input:focus,table.sheet td select:focus,table.sheet td textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.12);}
   table.sheet td input[readonly]{background:#f1f5f9;color:var(--ink-soft);font-weight:700;}
   .table-scroll{overflow-x:auto;border-radius:10px;}
   .table-scroll table{min-width:680px;}
@@ -171,7 +177,7 @@
     </div>
     <div class="cell">
       <b>What it covers</b>
-      <span>Pre-moderation of the paper before it is written, post-moderation after marking, and the item analysis grid. The <b>State</b> and <b>Comments</b> boxes are large — write full sentences.</span>
+      <span>The pre-moderation tool (sections A–H), the post-moderation checklist (Part A) and the item analysis (Part B). Remarks and the <b>Comments</b> box are large — write full sentences.</span>
     </div>
   </div>
 
@@ -179,50 +185,33 @@
     <a href="#sec-details">1 · Details</a>
     <a href="#sec-pre">2 · Pre-moderation</a>
     <a href="#sec-post">3 · Post-moderation</a>
-    <a href="#sec-sign">4 · Sign-off</a>
-    <a href="#sec-item">5 · Item analysis</a>
+    <a href="#sec-item">4 · Item analysis</a>
+    <a href="#sec-sign">5 · Sign-off</a>
   </nav>
 
   <!-- 1 · DETAILS -->
   <section class="card" id="sec-details">
     <h2><span class="num">1</span> Details</h2>
-    <p class="sub">These details appear at the top of the document. The educator and DH names copy into the sign-off block — you can still change them there.</p>
+    <p class="sub">These details appear at the top of both the pre- and post-moderation pages. The DH name copies into the sign-off blocks — you can still change it there.</p>
     <div class="grid">
       <div><label class="lbl" for="educator">Educator</label><input class="inp" id="educator" data-field="educator" placeholder="Educator name"/></div>
       <div><label class="lbl" for="subject">Subject</label><input class="inp" id="subject" data-field="subject" placeholder="Example: Mathematics"/></div>
       <div><label class="lbl" for="grade">Grade</label><input class="inp" id="grade" data-field="grade" placeholder="Example: 5"/></div>
       <div><label class="lbl" for="dh">DH (moderator)</label><input class="inp" id="dh" data-field="dh" placeholder="Departmental head name"/></div>
-      <div><label class="lbl" for="term">Term</label>
-        <select class="inp" id="term" data-field="term">
-          <option value="">Select term</option>
-          <option>Term 1</option><option>Term 2</option><option>Term 3</option><option>Term 4</option>
-        </select>
-      </div>
       <div><label class="lbl" for="date">Date</label><input class="inp" id="date" data-field="date" data-date="1" type="date"/></div>
     </div>
   </section>
 
   <!-- 2 · PRE-MODERATION -->
   <section class="card" id="sec-pre">
-    <h2><span class="num">2</span> Section A — Pre-moderation</h2>
-    <p class="sub">Completed before the assessment is written. Answer Yes or No for each item and add remarks where needed.</p>
-    <div class="table-scroll">
-      <table class="sheet" id="preTable">
-        <thead>
-          <tr><th class="num-col">No</th><th>Criteria</th><th style="width:110px;">Yes / No</th><th style="width:38%;">Remarks</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-    <div style="margin-top:18px;">
-      <label class="lbl" for="pre_state">State <span class="hint">(overall findings and recommendations before the paper is approved — big answer space, write full sentences)</span></label>
-      <textarea class="inp big" id="pre_state" data-field="pre_state" rows="7" placeholder="Example: The paper is well balanced across the cognitive levels. Question 5 must be reworded because…"></textarea>
-    </div>
+    <h2><span class="num">2</span> Pre-moderation</h2>
+    <p class="sub">Completed before the assessment is written. Answer Yes or No for each criterion and add remarks where needed — the remarks boxes grow as you type.</p>
+    <div id="preGroups"></div>
   </section>
 
   <!-- 3 · POST-MODERATION -->
   <section class="card" id="sec-post">
-    <h2><span class="num">3</span> Section B — Post-moderation (Part A)</h2>
+    <h2><span class="num">3</span> Post-moderation — Part A</h2>
     <p class="sub">Completed after marking. Answer Yes or No for each item and add remarks where needed.</p>
     <div class="table-scroll">
       <table class="sheet" id="postTable">
@@ -232,29 +221,11 @@
         <tbody></tbody>
       </table>
     </div>
-    <div style="margin-top:18px;">
-      <label class="lbl" for="post_comments">Comments <span class="hint">(marking quality, irregularities, support needed — big answer space, write full sentences)</span></label>
-      <textarea class="inp big" id="post_comments" data-field="post_comments" rows="8" placeholder="Example: Marking was consistent with the memorandum. Two scripts had addition errors on Question 3 which were corrected…"></textarea>
-    </div>
   </section>
 
-  <!-- 4 · SIGN-OFF -->
-  <section class="card" id="sec-sign">
-    <h2><span class="num">4</span> Sign-off</h2>
-    <p class="sub">Type names as signatures. If a name is left empty it copies from the Details section automatically.</p>
-    <div class="grid">
-      <div><label class="lbl" for="sign_educator_name">Educator name</label><input class="inp" id="sign_educator_name" data-field="sign_educator_name" placeholder="Educator name"/></div>
-      <div><label class="lbl" for="sign_dh_name">DH / Moderator name</label><input class="inp" id="sign_dh_name" data-field="sign_dh_name" placeholder="DH name"/></div>
-      <div><label class="lbl" for="sign_educator_sig">Educator signature <span class="hint">(type name)</span></label><input class="inp" id="sign_educator_sig" data-field="sign_educator_sig" placeholder="Type full name"/></div>
-      <div><label class="lbl" for="sign_dh_sig">DH / Moderator signature <span class="hint">(type name)</span></label><input class="inp" id="sign_dh_sig" data-field="sign_dh_sig" placeholder="Type full name"/></div>
-      <div><label class="lbl" for="sign_educator_date">Educator date</label><input class="inp" id="sign_educator_date" data-field="sign_educator_date" data-date="1" type="date"/></div>
-      <div><label class="lbl" for="sign_dh_date">DH / Moderator date</label><input class="inp" id="sign_dh_date" data-field="sign_dh_date" data-date="1" type="date"/></div>
-    </div>
-  </section>
-
-  <!-- 5 · ITEM ANALYSIS -->
+  <!-- 4 · ITEM ANALYSIS -->
   <section class="card" id="sec-item">
-    <h2><span class="num">5</span> Section C — Item analysis (Part B)</h2>
+    <h2><span class="num">4</span> Post-moderation — Part B: Item analysis</h2>
     <p class="sub">Analyse 10% of the scripts (minimum 5). Enter the mark out of per question, then each learner’s mark per question. Totals, averages, percentages and the 7-point level calculate automatically.</p>
     <span class="auto-note">Leave unused learner rows empty — they stay blank on the document.</span>
     <div class="table-scroll">
@@ -262,6 +233,23 @@
         <thead></thead>
         <tbody></tbody>
       </table>
+    </div>
+    <div style="margin-top:18px;">
+      <label class="lbl" for="item_comments">Comments <span class="hint">(big answer space — write full sentences about the question-by-question performance)</span></label>
+      <textarea class="inp big" id="item_comments" data-field="item_comments" rows="8" placeholder="Example: Learners struggled with Question 6 (multi-step problem solving). The average of 45% shows this question needs to be re-taught…"></textarea>
+    </div>
+  </section>
+
+  <!-- 5 · SIGN-OFF -->
+  <section class="card" id="sec-sign">
+    <h2><span class="num">5</span> Sign-off</h2>
+    <p class="sub">Type names as signatures. If a name or date is left empty it copies from the Details section automatically.</p>
+    <div class="grid">
+      <div><label class="lbl" for="mod_name">Name of moderator <span class="hint">(pre-moderation page)</span></label><input class="inp" id="mod_name" data-field="mod_name" placeholder="Moderator name"/></div>
+      <div><label class="lbl" for="mod_date">Moderator date</label><input class="inp" id="mod_date" data-field="mod_date" data-date="1" type="date"/></div>
+      <div><label class="lbl" for="mod_sig">Moderator signature <span class="hint">(type name)</span></label><input class="inp" id="mod_sig" data-field="mod_sig" placeholder="Type full name"/></div>
+      <div><label class="lbl" for="dh_name">DH name <span class="hint">(post-moderation page)</span></label><input class="inp" id="dh_name" data-field="dh_name" placeholder="DH name"/></div>
+      <div><label class="lbl" for="dh_date">DH date</label><input class="inp" id="dh_date" data-field="dh_date" data-date="1" type="date"/></div>
     </div>
   </section>
 
@@ -280,89 +268,136 @@
 (function(){
   "use strict";
   var TEMPLATE_PARTS = [];
-  for (var pi = 1; pi <= 10; pi++){
-    TEMPLATE_PARTS.push("monitoring-tools/carissa_pre_post_moderation_pdf/part" + (pi < 10 ? "0" : "") + pi + ".txt");
+  for (var pi = 1; pi <= 24; pi++){
+    if (pi === 21){
+      // part21 is split into 8 smaller chunks (21a-21h) for reliable transport
+      "abcdefgh".split("").forEach(function(s){
+        TEMPLATE_PARTS.push("monitoring-tools/carissa_pre_post_moderation_pdf/part21" + s + ".txt");
+      });
+    } else {
+      TEMPLATE_PARTS.push("monitoring-tools/carissa_pre_post_moderation_pdf/part" + (pi < 10 ? "0" : "") + pi + ".txt");
+    }
   }
-  var DRAFT_KEY = "carissa-prepost-mod-draft-v1";
+  var DRAFT_KEY = "carissa-prepost-mod-draft-v2";
   var statusEl = document.getElementById("status");
   var draftChip = document.getElementById("draftChip");
   var downloadBtn = document.getElementById("downloadBtn");
 
-  /* ---------- build checklist rows ---------- */
-  var PRE_CRITERIA = [
-    "Is the total mark in accordance with the set requirements?",
-    "Do questions cover all levels of the Barrett\u2019s / Bloom\u2019s taxonomies?",
-    "Is mark allocation per question appropriate?",
-    "Is the number of questions justifiable?",
-    "Is the time allocated to the task appropriate?",
-    "Are the questions sequenced from simple to complex?",
-    "Do the questions cover the intended ATP / curriculum?",
-    "Is the amount of content covered sufficient and necessary?",
-    "Is there evidence of a memo / rubric?"
+  /* ---------- pre-moderation sections A–H ---------- */
+  var PRE_SECTIONS = [
+    ["A. Instructions", "a", [
+      "Does the paper have instructions?",
+      "Are the instructions clear and specific?"
+    ]],
+    ["B. Marks", "b", [
+      "Is the mark allocation per topic/section in accordance with proportional requirements?"
+    ]],
+    ["C. Time", "c", [
+      "Is the time allocation compatible with the marks allocation?"
+    ]],
+    ["D. Questions", "d", [
+      "Total percentage of lower order questions",
+      "Total percentage of middle order questions",
+      "Total percentage of higher order questions"
+    ]],
+    ["E. Content", "e", [
+      "Does the test/task/exam paper cover all the work as prescribed in the CAPS document?"
+    ]],
+    ["F. Language", "f", [
+      "Does the language used fit the level of the learner?",
+      "Is the language error free?"
+    ]],
+    ["G. Diagrams and illustrations", "g", [
+      "Are the diagrams / illustrations relevant, clear, correct and necessary?"
+    ]],
+    ["H. Memorandum / marking rubric", "h", [
+      "Do the marks in the memo tally with the marks on the paper?"
+    ]]
   ];
+  function remarksCell(fieldName, label){
+    return '<td><textarea data-field="' + fieldName + '" rows="1" aria-label="' + label + '" placeholder="Remarks"></textarea></td>';
+  }
+  function yesnoCell(fieldName, label){
+    return '<td><select data-field="' + fieldName + '" aria-label="' + label + '">' +
+      '<option value="">\u2014</option><option>Yes</option><option>No</option>' +
+      '</select></td>';
+  }
+  var preHost = document.getElementById("preGroups");
+  PRE_SECTIONS.forEach(function(sec){
+    var title = sec[0], key = sec[1], items = sec[2];
+    var h = document.createElement("h3");
+    h.className = "grp";
+    h.textContent = title;
+    preHost.appendChild(h);
+    var wrap = document.createElement("div");
+    wrap.className = "table-scroll";
+    var html = '<table class="sheet"><thead><tr><th>Criteria</th><th style="width:110px;">Yes / No</th><th style="width:38%;">Remarks</th></tr></thead><tbody>';
+    items.forEach(function(text, i){
+      var n = i + 1;
+      html += '<tr><td class="crit-cell">' + text + '</td>' +
+        yesnoCell("pre_" + key + n + "_yesno", "Yes or no, " + title + " item " + n) +
+        remarksCell("pre_" + key + n + "_remarks", "Remarks, " + title + " item " + n) +
+        '</tr>';
+    });
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+    preHost.appendChild(wrap);
+  });
+
+  /* ---------- post-moderation Part A ---------- */
   var POST_CRITERIA = [
     "Was the set paper written?",
     "Were all the scripts marked?",
     "Do the totals on scripts correlate with the mark sheet?",
     "Were all the questions marked?",
     "Do the marks adhere to the marks indicated on the memorandum?",
-    "Were the marks correctly added up?",
+    "Were the marks correctly added up to?",
     "Were all possible answers accommodated?"
   ];
-  function buildChecklist(tbody, criteria, prefix){
-    criteria.forEach(function(text, i){
-      var n = i + 1;
-      var tr = document.createElement("tr");
-      tr.innerHTML =
-        '<td class="num-col" style="font-weight:700;color:#475569;background:#f8fafc;">' + n + '</td>' +
-        '<td class="crit-cell">' + text + '</td>' +
-        '<td><select data-field="' + prefix + n + '_yesno" aria-label="Yes or no, item ' + n + '">' +
-          '<option value="">\u2014</option><option>Yes</option><option>No</option>' +
-        '</select></td>' +
-        '<td><input data-field="' + prefix + n + '_remarks" aria-label="Remarks, item ' + n + '" placeholder="Remarks"/></td>';
-      tbody.appendChild(tr);
-    });
-  }
-  buildChecklist(document.querySelector("#preTable tbody"), PRE_CRITERIA, "pre");
-  buildChecklist(document.querySelector("#postTable tbody"), POST_CRITERIA, "post");
+  var postTbody = document.querySelector("#postTable tbody");
+  POST_CRITERIA.forEach(function(text, i){
+    var n = i + 1;
+    var tr = document.createElement("tr");
+    tr.innerHTML =
+      '<td class="num-col" style="font-weight:700;color:#475569;background:#f8fafc;">' + n + '</td>' +
+      '<td class="crit-cell">' + text + '</td>' +
+      yesnoCell("post" + n + "_yesno", "Yes or no, item " + n) +
+      remarksCell("post" + n + "_remarks", "Remarks, item " + n);
+    postTbody.appendChild(tr);
+  });
 
-  /* ---------- build item analysis grid ---------- */
+  /* ---------- item analysis grid ---------- */
   var itemTable = document.getElementById("itemTable");
-  var head = '<tr><th class="num-col">No</th><th style="min-width:130px;">Name of learner</th>';
+  var head = '<tr><th style="min-width:140px;">Name of learners</th>';
   for (var q = 1; q <= 10; q++){ head += '<th style="width:64px;">Q' + q + '</th>'; }
-  head += '<th style="width:74px;">Marks</th></tr>';
+  head += '</tr>';
   itemTable.querySelector("thead").innerHTML = head;
 
   var tbody = itemTable.querySelector("tbody");
-  function row(cells, cls){
+  function row(cells){
     var tr = document.createElement("tr");
-    if (cls) tr.className = cls;
     tr.innerHTML = cells;
     tbody.appendChild(tr);
   }
-  var moCells = '<td class="num-col" style="background:#f8fafc;"></td><td style="font-weight:700;color:#475569;background:#f8fafc;">Mark out of</td>';
+  var moCells = '<td style="font-weight:700;color:#475569;background:#f8fafc;">Marks</td>';
   for (var q1 = 1; q1 <= 10; q1++){
     moCells += '<td><input data-field="mo_q' + q1 + '" inputmode="decimal" aria-label="Mark out of question ' + q1 + '" style="font-weight:700;"/></td>';
   }
-  moCells += '<td style="background:#f8fafc;"></td>';
   row(moCells);
 
-  for (var r = 1; r <= 10; r++){
-    var cells = '<td class="num-col" style="font-weight:700;color:#475569;background:#f8fafc;">' + r + '</td>' +
-      '<td><input data-field="learner' + r + '_name" aria-label="Learner ' + r + ' name"/></td>';
+  for (var r = 1; r <= 5; r++){
+    var cells = '<td><input data-field="learner' + r + '_name" aria-label="Learner ' + r + ' name" placeholder="' + r + '."/></td>';
     for (var q2 = 1; q2 <= 10; q2++){
       cells += '<td><input data-field="learner' + r + '_q' + q2 + '" inputmode="decimal" aria-label="Learner ' + r + ' question ' + q2 + '"/></td>';
     }
-    cells += '<td><input data-field="learner' + r + '_total" readonly tabindex="-1" aria-label="Learner ' + r + ' total marks"/></td>';
     row(cells);
   }
-  var CALC_ROWS = [["tot", "Total per question"], ["avg", "Average per question"], ["pct", "Percentage per question"], ["lvl", "Level (7-point scale)"]];
+  var CALC_ROWS = [["tot", "Total for the question"], ["avg", "Average marks per question"], ["pct", "Percentage per question"], ["lvl", "Verdict (7-point scale)"]];
   CALC_ROWS.forEach(function(pair){
-    var cells = '<td class="num-col" style="background:#f8fafc;"></td><td style="font-weight:700;color:#475569;background:#f8fafc;font-size:12.5px;">' + pair[1] + '</td>';
+    var cells = '<td style="font-weight:700;color:#475569;background:#f8fafc;font-size:12.5px;">' + pair[1] + '</td>';
     for (var q3 = 1; q3 <= 10; q3++){
       cells += '<td><input data-field="' + pair[0] + '_q' + q3 + '" readonly tabindex="-1" aria-label="' + pair[1] + ' question ' + q3 + '"/></td>';
     }
-    cells += '<td style="background:#f8fafc;"></td>';
     row(cells);
   });
 
@@ -422,10 +457,9 @@
     return "1";
   }
   function recalc(){
-    // per-question columns
     for (var q = 1; q <= 10; q++){
       var sum = 0, count = 0;
-      for (var r = 1; r <= 10; r++){
+      for (var r = 1; r <= 5; r++){
         var v = num(get("learner" + r + "_q" + q));
         if (v != null){ sum += v; count++; }
       }
@@ -448,15 +482,6 @@
         set("pct_q" + q, "");
         set("lvl_q" + q, "");
       }
-    }
-    // per-learner row totals
-    for (var r2 = 1; r2 <= 10; r2++){
-      var rsum = 0, rcount = 0;
-      for (var q4 = 1; q4 <= 10; q4++){
-        var rv = num(get("learner" + r2 + "_q" + q4));
-        if (rv != null){ rsum += rv; rcount++; }
-      }
-      set("learner" + r2 + "_total", rcount > 0 ? String(Math.round(rsum * 10) / 10) : "");
     }
   }
 
@@ -485,23 +510,29 @@
       if (el.getAttribute("data-date")) v = isoToDmy(v);
       values[k] = v;
     });
-    // copy educator / DH names into the sign-off block when left empty
-    if (!values.sign_educator_name) values.sign_educator_name = values.educator;
-    if (!values.sign_dh_name) values.sign_dh_name = values.dh;
-    if (!values.sign_educator_date) values.sign_educator_date = values.date;
-    if (!values.sign_dh_date) values.sign_dh_date = values.date;
+    // the post-moderation page repeats the details block — copy them across
+    values.p_educator = values.educator;
+    values.p_subject = values.subject;
+    values.p_grade = values.grade;
+    values.p_date = values.date;
+    // copy DH / date into the sign-off blocks when left empty
+    if (!values.mod_name) values.mod_name = values.dh;
+    if (!values.mod_date) values.mod_date = values.date;
+    if (!values.dh_name) values.dh_name = values.dh;
+    if (!values.dh_date) values.dh_date = values.date;
     return values;
   }
   function allFieldNames(){
-    var names = ["educator","subject","grade","dh","term","date","pre_state","post_comments",
-      "sign_educator_name","sign_educator_sig","sign_educator_date",
-      "sign_dh_name","sign_dh_sig","sign_dh_date"];
+    var names = ["educator","subject","grade","date",
+      "p_educator","p_subject","p_grade","p_date",
+      "mod_name","mod_date","mod_sig","dh_name","dh_date","item_comments"];
     var i, q, r;
-    for (i = 1; i <= 9; i++){ names.push("pre" + i + "_yesno", "pre" + i + "_remarks"); }
+    var preKeys = ["a1","a2","b1","c1","d1","d2","d3","e1","f1","f2","g1","h1"];
+    preKeys.forEach(function(k){ names.push("pre_" + k + "_yesno", "pre_" + k + "_remarks"); });
     for (i = 1; i <= 7; i++){ names.push("post" + i + "_yesno", "post" + i + "_remarks"); }
     for (q = 1; q <= 10; q++){ names.push("mo_q" + q, "tot_q" + q, "avg_q" + q, "pct_q" + q, "lvl_q" + q); }
-    for (r = 1; r <= 10; r++){
-      names.push("learner" + r + "_name", "learner" + r + "_total");
+    for (r = 1; r <= 5; r++){
+      names.push("learner" + r + "_name");
       for (q = 1; q <= 10; q++){ names.push("learner" + r + "_q" + q); }
     }
     return names;
