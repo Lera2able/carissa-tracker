@@ -45,6 +45,17 @@
   .chipbtn:hover{background:#e0e7ff;}
   .sigbox{border:1px dashed var(--input-line);border-radius:12px;padding:14px;background:#f8fafc;font-size:13px;color:var(--ink-faint);}
 
+  .infogrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin-bottom:18px;}
+  .infogrid .card{margin:0;padding:20px 22px;} .infogrid h3{margin:0 0 6px;font-size:15px;color:var(--brand-dark);}
+  .infogrid p,.infogrid li{font-size:13.5px;color:var(--ink-soft);margin:0;} .infogrid ul{margin:0;padding-left:18px;}
+  .secnav{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px;}
+  .secnav a{font-size:13px;font-weight:700;text-decoration:none;color:var(--brand-dark);background:#fff;border:1px solid var(--brand-border);border-radius:999px;padding:7px 14px;}
+  .secnav a:hover{background:var(--brand-soft);}
+  .lib{margin-top:16px;border-top:1px solid var(--line);padding-top:14px;}
+  .lib h4{margin:10px 0 6px;font-size:13px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.04em;}
+  .lib .items{display:flex;flex-wrap:wrap;gap:8px;}
+  .lib button{font-family:inherit;font-size:13px;text-align:left;border:1px solid var(--input-line);background:#fff;border-radius:10px;padding:8px 12px;cursor:pointer;color:var(--ink);max-width:100%;}
+  .lib button:hover{border-color:var(--brand);} .lib button.on{background:var(--brand-soft);border-color:var(--brand);font-weight:700;}
   /* buttons */
   .btn{border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:15px;border-radius:10px;padding:13px 22px;min-height:48px;transition:background .15s ease,transform .1s ease,box-shadow .15s ease;}
   .btn:active{transform:scale(.98);}
@@ -130,22 +141,33 @@
     <img src="./school-crest.png" alt="Carissa Primary School crest"/>
     <div class="titles">
       <h1>Lesson Planning</h1>
-      <p>Carissa Primary School · Fill in the form below, then print it or download it on the school letterhead.</p>
+      <p>Carissa Primary School · Teachers capture the lesson plan here, then print it or download it on the school letterhead. Draft saves automatically.</p>
     </div>
     <span class="chip" id="chip">Private to Mrs E. Makandiwona</span>
   </header>
 
-  <div class="card noprint" style="padding:16px 20px;" id="recordCard">
+  <div class="infogrid noprint">
+    <div class="card"><h3>How it works</h3><p>Fill in the five sections below. Tap Save to keep the plan in your lesson plan folder, then use Preview, Print or Download Word to get it on the school letterhead.</p></div>
+    <div class="card"><h3>What it covers</h3><ul><li>Lesson details and topic</li><li>Content, aims, methods and activities</li><li>Assessment, diversity, reflection and sign-off</li></ul></div>
+  </div>
+
+  <div class="card noprint" style="padding:18px 20px;" id="recordCard">
+    <h2 style="margin:0 0 10px;font-size:17px;color:var(--brand-dark);">Your lesson plan records</h2>
     <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
       <div style="flex:1;min-width:220px;">
         <label class="lbl" for="planSelect">Your lesson plans</label>
         <select class="inp" id="planSelect"></select>
       </div>
-      <button class="btn ghost small" id="newBtn" type="button">New plan</button>
+      <button class="btn ghost small" id="newBtn" type="button">+ Create new lesson plan</button>
       <button class="btn ghost small" id="copyBtn" type="button" title="Start a new plan from this one">Copy as new</button>
-      <button class="btn danger small" id="delBtn" type="button">Delete</button>
+      <button class="btn danger small" id="delBtn" type="button">Delete this record</button>
     </div>
+    <div class="lib" id="lib"></div>
   </div>
+
+  <nav class="secnav noprint" aria-label="Sections">
+    <a href="#sec-details">1 Details</a><a href="#sec-content">2 Content</a><a href="#sec-aims">3 Aims &amp; activities</a><a href="#sec-assess">4 Assessment</a><a href="#sec-reflect">5 Reflection</a><a href="#previewCard">6 Letterhead</a>
+  </nav>
 
   <div id="formArea" class="noprint">
     <section class="card" id="sec-details">
@@ -243,10 +265,11 @@
 
 <div class="bar noprint" id="bar" hidden>
   <div class="bar-inner">
-    <button class="btn primary" id="saveBtn" type="button">Save</button>
+    <button class="btn primary" id="saveBtn" type="button">Save to lesson plan folder</button>
     <button class="btn ghost" id="previewBtn" type="button">Preview on letterhead</button>
     <button class="btn ghost" id="printBtn" type="button">Print / Save as PDF</button>
-    <button class="btn ghost" id="wordBtn" type="button">Download Word</button>
+    <button class="btn ghost" id="wordBtn" type="button">Download Word (.docx)</button>
+    <button class="btn ghost" id="clearBtn" type="button">Clear draft</button>
     <span class="status" id="status" role="status" aria-live="polite"></span>
   </div>
 </div>
@@ -546,6 +569,23 @@
     el.select.textContent = ""; el.select.appendChild(frag);
     el.select.value = currentId && records.some(function(r){ return r.id === currentId; }) ? currentId : "";
     el.del.disabled = !el.select.value;
+    renderLib();
+  }
+  function renderLib(){
+    var lib = $("lib"); lib.textContent = "";
+    if (!records.length){ lib.appendChild(mk("p","hint","No saved lesson plans yet. Fill in the form and tap Save.")); return; }
+    var groups = {}, order = [];
+    records.forEach(function(r){ var g = (r.fields && r.fields.grade) ? "Grade " + r.fields.grade : "No grade"; if (!groups[g]){ groups[g] = []; order.push(g); } groups[g].push(r); });
+    order.sort().forEach(function(g){
+      lib.appendChild(mk("h4", null, g));
+      var box = mk("div","items");
+      groups[g].forEach(function(r){
+        var b = mk("button", r.id === currentId ? "on" : "", r.title || "Untitled lesson plan"); b.type = "button";
+        b.addEventListener("click", function(){ if (r.id === currentId) return; if (dirty && !window.confirm("You have unsaved changes. Switch plan anyway?")) return; openRecord(r.id); setStatus(""); });
+        box.appendChild(b);
+      });
+      lib.appendChild(box);
+    });
   }
   function openRecord(id){
     var rec = null; for (var i = 0; i < records.length; i++){ if (records[i].id === id){ rec = records[i]; break; } }
@@ -561,12 +601,15 @@
   }
 
   function markDirty(){
-    dirty = true; editSeq++;
+    dirty = true; editSeq++; stashDraft();
     setStatus(currentId ? "Unsaved changes…" : "Not saved yet — tap Save to keep this plan.");
     clearTimeout(autosaveTimer);
     if (currentId) autosaveTimer = setTimeout(function(){ save(true); }, 3000);
   }
-  function markClean(){ dirty = false; clearTimeout(autosaveTimer); }
+  var DRAFT_KEY = "carissa-lesson-plan-draft";
+  function stashDraft(){ try{ localStorage.setItem(DRAFT_KEY, JSON.stringify({ id: currentId, data: getData() })); }catch(e){} }
+  function unstashDraft(){ try{ localStorage.removeItem(DRAFT_KEY); }catch(e){} }
+  function markClean(){ dirty = false; clearTimeout(autosaveTimer); unstashDraft(); }
   window.addEventListener("beforeunload", function(e){ if (dirty){ e.preventDefault(); e.returnValue = ""; } });
 
   function save(silent){
@@ -609,6 +652,11 @@
   el.print.addEventListener("click", printPlan);
   el.word.addEventListener("click", downloadWord);
   el.del.addEventListener("click", remove);
+  $("clearBtn").addEventListener("click", function(){
+    if (!window.confirm("Clear everything you have typed on this page? Saved plans are not deleted.")) return;
+    if (currentId) openRecord(currentId); else startNew();
+    unstashDraft(); setStatus("Draft cleared.");
+  });
   el.nw.addEventListener("click", function(){
     if (dirty && !window.confirm("You have unsaved changes. Start a new plan anyway?")) return;
     startNew();
@@ -638,6 +686,10 @@
         records = Array.isArray(res.j.records) ? res.j.records : [];
         renderSelect();
         if (records.length && !wantNew) openRecord(records[0].id); else startNew();
+        try{
+          var raw = localStorage.getItem(DRAFT_KEY), dr = raw && JSON.parse(raw);
+          if (dr && dr.data && (!dr.id || dr.id === currentId)){ setData(dr.data); dirty = true; setStatus("Your unsaved draft was restored. Tap Save to keep it."); }
+        }catch(e){}
       })
       .catch(function(err){
         records = []; startNew();
