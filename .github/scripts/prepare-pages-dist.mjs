@@ -27,6 +27,13 @@ const ALLOWED_EXTS = new Set([
   ".txt",
   ".json",
   ".xml",
+  ".pdf",
+  ".docx",
+  ".ttf",
+  ".otf",
+  ".woff",
+  ".woff2",
+  ".eot",
 ]);
 
 async function ensureCleanDir(dir) {
@@ -66,8 +73,8 @@ await copyRecursive(repoRoot, outDir);
 // 1 MB bundle untouched.)
 const indexPath = path.join(outDir, "index.html");
 let indexHtml = await fs.readFile(indexPath, "utf8");
-const SPIP_TAG = '<script src="./spip-button.js?v=1"></script>';
-const MOD_TAG = '<script src="./moderation-button.js?v=1"></script>';
+const SPIP_TAG = '<script src="./spip-button.js?v=20261127openspip"></script>';
+const MOD_TAG = '<script src="./moderation-button.js?v=20261127a"></script>';
 {
   const marker = indexHtml.match(/<script src="\.\/app\.js[^"]*"><\/script>/);
   if (!marker) throw new Error("app.js script tag not found in index.html");

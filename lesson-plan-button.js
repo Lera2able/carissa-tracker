@@ -107,3 +107,13 @@
   }
   new MutationObserver(onMutate).observe(document.documentElement, { childList: true, subtree: true });
 })();
+
+/* Pre & Post Moderation has its own separate button (moderation-button.js);
+ * load it from here so index.html needs no changes. It draws a teal
+ * "Pre & Post Moderation" card next to SPIP on the teacher dashboard. */
+(function () {
+  var s = document.createElement("script");
+  s.src = "./moderation-button.js?v=20261127a";
+  s.defer = true;
+  document.head.appendChild(s);
+})();
