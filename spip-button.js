@@ -43,7 +43,7 @@
     }
     var records = state.records || [];
     if (!records.length) {
-      return '<div style="font-size:13px;color:#4338ca;">No SPIPs saved yet. Start one with \u201c+ New SPIP\u201d.</div>';
+      return '<div style="font-size:13px;color:#4338ca;">No SPIPs saved yet. Tap \u201cOpen SPIP\u201d to start one.</div>';
     }
     var groups = {};
     records.forEach(function (r) {
@@ -98,8 +98,8 @@
     head.appendChild(left);
 
     var link = document.createElement("a");
-    link.href = "spip.html?new=1#recordCard";
-    link.textContent = "+ New SPIP";
+    link.href = "spip.html#recordCard";
+    link.textContent = "Open SPIP";
     link.style.cssText = "display:inline-block;background:#4f46e5;color:#fff;font-weight:600;font-size:13px;padding:8px 16px;border-radius:8px;text-decoration:none;cursor:pointer;white-space:nowrap;";
     head.appendChild(link);
 

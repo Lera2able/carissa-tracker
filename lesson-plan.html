@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="robots" content="noindex,nofollow"/>
+<title>Lesson Planning — Carissa Primary School</title>
+<style>
+  :root{
+    --brand:#be185d;
+    --brand-dark:#9d174d;
+    --brand-soft:#fdf2f8;
+    --brand-border:#fbcfe8;
+    --ink:#111827;
+    --line:#1f2937;
+    --ok:#047857;
+    --err:#b91c1c;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:#f3f4f6;color:var(--ink);font-family:Arial,Helvetica,sans-serif;}
+
+  /* ---------- screen-only toolbar ---------- */
+  .toolbar{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid var(--brand-border);padding:10px 14px;}
+  .toolbar-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;max-width:900px;margin:0 auto;}
+  .toolbar a.back{color:var(--brand-dark);font-weight:700;font-size:14px;text-decoration:none;margin-right:6px;}
+  .toolbar select{flex:1 1 240px;min-width:0;padding:8px 10px;border:1px solid var(--brand-border);border-radius:8px;font-size:14px;background:#fff;}
+  .btn{border:0;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;color:#fff;background:var(--brand);}
+  .btn.alt{background:#475569;}
+  .btn.warn{background:#b91c1c;}
+  .btn:disabled{opacity:.55;cursor:default;}
+  .status{max-width:900px;margin:6px auto 0;font-size:13px;min-height:18px;color:#475569;}
+  .status.ok{color:var(--ok);}
+  .status.err{color:var(--err);}
+  .hint{max-width:900px;margin:12px auto 0;padding:0 14px;font-size:13px;color:#6b7280;}
+
+  /* ---------- access gate ---------- */
+  .gate{max-width:560px;margin:60px auto;background:#fff;border:1px solid var(--brand-border);border-radius:14px;padding:26px;text-align:center;line-height:1.6;}
+  .gate a{color:var(--brand);font-weight:700;}
+
+  /* ---------- the plan (paper) ---------- */
+  .paper{max-width:900px;margin:14px auto 40px;background:#fff;padding:34px 40px;box-shadow:0 2px 14px rgba(0,0,0,.12);font-size:15px;line-height:1.35;}
+  .school{text-align:center;font-weight:700;font-size:20px;letter-spacing:.2px;margin-top:6px;}
+  .term{text-align:center;font-weight:700;font-size:19px;margin-top:10px;}
+  .ltitle{text-align:center;font-weight:700;font-size:19px;margin:10px 0 6px;}
+
+  table.grid{width:100%;border-collapse:collapse;table-layout:fixed;}
+  table.grid td{border:1px solid var(--line);padding:3px 7px;vertical-align:top;word-wrap:break-word;overflow-wrap:anywhere;}
+  table.grid td.r{width:34%;}
+  .b{font-weight:700;}
+  .h{font-weight:700;margin:1px 0 2px;}
+  .h.sub{margin-top:14px;}
+
+  /* editable text */
+  .fld{display:inline-block;min-width:5em;max-width:100%;vertical-align:top;outline:none;border-radius:3px;background:#fffbeb;padding:0 3px;}
+  .fld.wide{display:block;min-width:0;}
+  .fld.center{display:inline-block;text-align:center;min-width:8em;}
+  .fld:empty::before{content:attr(data-ph);color:#9ca3af;font-weight:400;}
+  .fld:focus,.lst:focus{background:#fef3c7;box-shadow:0 0 0 2px #fbcfe8;}
+  .fld.multi{display:block;min-height:6.5em;white-space:pre-wrap;}
+
+  /* bulleted, editable lists */
+  .lst{list-style:none;margin:2px 0 4px 6px;padding:2px 3px;outline:none;border-radius:3px;background:#fffbeb;}
+  .lst li{position:relative;padding-left:24px;min-height:1.35em;}
+  .lst li::before{position:absolute;left:4px;top:0;}
+  .lst.dash li{padding-left:14px;}
+  .lst.dash li::before{content:"-";left:0;}
+  .lst.arrow li::before{content:"\27A4";font-size:11px;top:2px;}
+  .lst.circle li::before{content:"o";font-family:"Courier New",monospace;}
+  .lst.diamond li::before{content:"\2756";font-size:12px;top:1px;}
+  .lst.square li::before{content:"\25AA";font-size:15px;top:-1px;}
+
+  .reflect td{padding:5px 7px;}
+  .reflect .sig{height:20px;}
+  .reflect .gap{height:24px;}
+  .footer-gap{height:14px;}
+
+  @media (max-width:640px){
+    .paper{padding:18px 12px;font-size:14px;margin:8px 0 24px;}
+    table.grid td.r{width:38%;}
+  }
+
+  /* ---------- print: just the plan, like the paper copy ---------- */
+  @page{size:A4;margin:12mm;}
+  @media print{
+    body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .toolbar,.status,.hint,.gate,.noprint{display:none !important;}
+    .paper{max-width:none;margin:0;padding:0;box-shadow:none;font-size:12pt;}
+    .school{font-size:15pt;}
+    .term,.ltitle{font-size:14pt;}
+    .fld,.lst{background:none !important;box-shadow:none !important;padding-top:0;padding-bottom:0;}
+    .fld:empty::before{content:"";}
+    .fld.multi{min-height:70px;}
+    .lst li.blank-li{display:none;}
+    .reflect{break-inside:avoid;page-break-inside:avoid;}
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar noprint" id="toolbar" hidden>
+  <div class="toolbar-row">
+    <a class="back" href="./">&larr; Dashboard</a>
+    <select id="planSelect" aria-label="Choose a saved lesson plan"></select>
+    <button class="btn" id="saveBtn" type="button">Save</button>
+    <button class="btn alt" id="newBtn" type="button">New plan</button>
+    <button class="btn alt" id="copyBtn" type="button" title="Start a new plan from this one">Copy as new</button>
+    <button class="btn alt" id="printBtn" type="button">Print / Save as PDF</button>
+    <button class="btn warn" id="delBtn" type="button">Delete</button>
+  </div>
+  <div class="status" id="status" role="status" aria-live="polite"></div>
+</div>
+
+<div class="gate" id="gate">Checking your access&hellip;</div>
+
+<div id="app" hidden>
+  <div class="hint">Tap any highlighted area to type. In the lists, press Enter for a new bullet point. Your changes save automatically once you have saved the plan once.</div>
+
+  <div class="paper" id="paper">
+    <div class="school">CARISSA PRIMARY SCHOOL</div>
+    <div class="term"><span class="fld center" data-f="term" data-ph="TERM 4" contenteditable="true" role="textbox" aria-label="Term"></span></div>
+    <div class="ltitle"><span class="fld center" data-f="subjectTitle" data-ph="SOCIAL SCIENCES" contenteditable="true" role="textbox" aria-label="Subject heading"></span> LESSON PLAN</div>
+
+    <table class="grid">
+      <tr>
+        <td colspan="2"><span class="b">Educator:</span> <span class="fld" data-f="educator" data-ph="Teacher's name" contenteditable="true" role="textbox" aria-label="Educator name"></span></td>
+      </tr>
+      <tr>
+        <td><span class="b">Subject:</span> <span class="fld" data-f="subject" data-ph="Subject" contenteditable="true" role="textbox" aria-label="Subject"></span></td>
+        <td class="r"><span class="b">Grade</span> <span class="fld" data-f="grade" data-ph="6" contenteditable="true" role="textbox" aria-label="Grade"></span></td>
+      </tr>
+      <tr>
+        <td><span class="b">Discipline:</span> <span class="fld" data-f="discipline" data-ph="e.g. Geography" contenteditable="true" role="textbox" aria-label="Discipline"></span></td>
+        <td class="r"><span class="b">Week</span> <span class="fld" data-f="week" data-ph="1 &amp; 2" contenteditable="true" role="textbox" aria-label="Week"></span></td>
+      </tr>
+      <tr>
+        <td><span class="b">Duration:</span> <span class="fld" data-f="duration" data-ph="e.g. 3 hours x2" contenteditable="true" role="textbox" aria-label="Duration"></span></td>
+        <td class="r"><span class="b">Date:</span> <span class="fld" data-f="date" data-ph="Date" contenteditable="true" role="textbox" aria-label="Date"></span></td>
+      </tr>
+      <tr>
+        <td colspan="2"><span class="b">Topic:</span> <span class="fld" data-f="topic" data-ph="Topic" contenteditable="true" role="textbox" aria-label="Topic"></span></td>
+      </tr>
+    </table>
+
+    <table class="grid" id="sections">
+      <tr><td><div class="h">Content:</div>
+        <ul class="lst dash" data-list="content" contenteditable="true" aria-label="Content"></ul></td></tr>
+      <tr><td><div class="h">Concepts</div>
+        <ul class="lst dash" data-list="concepts" contenteditable="true" aria-label="Concepts"></ul></td></tr>
+      <tr><td><div class="h">Aims and objectives:</div>
+        <ul class="lst arrow" data-list="aims" contenteditable="true" aria-label="Aims and objectives"></ul></td></tr>
+      <tr><td><div class="h">Teaching methods</div>
+        <ul class="lst dash" data-list="methods" contenteditable="true" aria-label="Teaching methods"></ul></td></tr>
+      <tr><td><div class="h">Teaching activities:</div>
+        <ul class="lst circle" data-list="teaching" contenteditable="true" aria-label="Teaching activities"></ul></td></tr>
+      <tr><td><div class="h">Learning activities</div>
+        <ul class="lst diamond" data-list="learning" contenteditable="true" aria-label="Learning activities"></ul>
+        <div class="h sub">Resources:</div>
+        <ul class="lst dash" data-list="resources" contenteditable="true" aria-label="Resources"></ul></td></tr>
+      <tr><td><div class="h">Forms of assessment</div>
+        <ul class="lst dash" data-list="assessment" contenteditable="true" aria-label="Forms of assessment"></ul></td></tr>
+      <tr><td><div class="h">Addressing diversity</div>
+        <ul class="lst square" data-list="diversity" contenteditable="true" aria-label="Addressing diversity"></ul></td></tr>
+    </table>
+
+    <div class="footer-gap"></div>
+
+    <table class="grid reflect">
+      <tr><td><div class="b">Educator&rsquo;s reflection</div>
+        <div class="fld multi" data-f="reflection" data-multi="1" data-ph="Write your reflection here" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Educator's reflection"></div></td></tr>
+      <tr><td><span class="b">Educator:</span> <span class="fld" data-f="educator" data-ph="Teacher's name" contenteditable="true" role="textbox" aria-label="Educator name (signature block)"></span></td></tr>
+      <tr><td><span class="b">Date:</span> <span class="fld" data-f="refDate" data-ph="Date" contenteditable="true" role="textbox" aria-label="Educator signature date"></span></td></tr>
+      <tr><td class="sig"><span class="b">Sign:</span></td></tr>
+      <tr><td class="gap"></td></tr>
+      <tr><td><span class="b">DH:</span> <span class="fld" data-f="dh" data-ph="Department head" contenteditable="true" role="textbox" aria-label="Department head"></span></td></tr>
+      <tr><td><span class="b">Date:</span> <span class="fld" data-f="dhDate" data-ph="Date" contenteditable="true" role="textbox" aria-label="Department head date"></span></td></tr>
+      <tr><td class="sig"><span class="b">Sign:</span></td></tr>
+    </table>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var API = "/api";
+  var DEFAULT_EDUCATOR = "Mrs E. Makandiwona";
+  var DEFAULT_DH = "Mrs M.Moyo";
+
+  // Opening lines that are part of the printed layout (the rest is written by the teacher).
+  var LEAD_INS = { aims: ["Learners:"], teaching: ["The teacher will;"], learning: ["Learner will;"] };
+  var LIST_KEYS = ["content","concepts","aims","methods","teaching","learning","resources","assessment","diversity"];
+
+  var records = [];
+  var currentId = "";
+  var educatorName = DEFAULT_EDUCATOR;
+  var dirty = false, saving = false, editSeq = 0, titleTouched = false;
+  var autosaveTimer = null;
+
+  var el = {
+    gate: document.getElementById("gate"),
+    app: document.getElementById("app"),
+    toolbar: document.getElementById("toolbar"),
+    select: document.getElementById("planSelect"),
+    status: document.getElementById("status"),
+    save: document.getElementById("saveBtn"),
+    nw: document.getElementById("newBtn"),
+    copy: document.getElementById("copyBtn"),
+    print: document.getElementById("printBtn"),
+    del: document.getElementById("delBtn")
+  };
+
+  function all(sel){ return Array.prototype.slice.call(document.querySelectorAll(sel)); }
+  function setStatus(msg, kind){
+    el.status.textContent = msg || "";
+    el.status.className = "status" + (kind ? " " + kind : "");
+  }
+  function newId(){
+    try{ if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); }catch(e){}
+    return "lp-" + Date.now() + "-" + Math.floor(Math.random() * 1e6);
+  }
+  function formatDate(iso){
+    var d = new Date(iso); if (isNaN(d.getTime())) return "";
+    return d.toLocaleDateString(undefined, { day:"2-digit", month:"short", year:"numeric" });
+  }
+
+  /* ---------- reading and writing the form ---------- */
+  function cleanLine(s){ return String(s || "").replace(/ /g, " ").replace(/\s+/g, " ").trim(); }
+
+  function listItems(ul){
+    var out = [];
+    Array.prototype.forEach.call(ul.children, function(li){ out.push(String(li.textContent || "").replace(/ /g, " ").trim()); });
+    return out;
+  }
+
+  function fillList(ul, items){
+    ul.textContent = "";
+    var list = (items && items.length) ? items : [""];
+    list.forEach(function(t){ ul.appendChild(makeLi(t)); });
+  }
+
+  function makeLi(text){
+    var li = document.createElement("li");
+    if (text) li.textContent = text; else li.appendChild(document.createElement("br"));
+    return li;
+  }
+
+  function getData(){
+    var d = {};
+    all("[data-f]").forEach(function(n){
+      var k = n.getAttribute("data-f");
+      if (n.getAttribute("data-multi")){
+        d[k] = String(n.innerText || "").replace(/ /g, " ").replace(/\s+$/g, "");
+      } else {
+        d[k] = cleanLine(n.innerText || n.textContent);
+      }
+    });
+    d.lists = {};
+    all("[data-list]").forEach(function(ul){ d.lists[ul.getAttribute("data-list")] = listItems(ul); });
+    return d;
+  }
+
+  function blankData(){
+    var d = { term: "TERM 4", subjectTitle: "SOCIAL SCIENCES", educator: educatorName, subject: "Social Sciences",
+      grade: "", discipline: "", week: "", duration: "", date: "", topic: "", reflection: "",
+      refDate: "", dh: DEFAULT_DH, dhDate: "", lists: {} };
+    LIST_KEYS.forEach(function(k){ d.lists[k] = (LEAD_INS[k] || []).slice(); });
+    return d;
+  }
+
+  function setData(d){
+    d = d || blankData();
+    all("[data-f]").forEach(function(n){
+      var k = n.getAttribute("data-f");
+      n.textContent = (d[k] == null) ? "" : String(d[k]);
+    });
+    var lists = d.lists || {};
+    all("[data-list]").forEach(function(ul){
+      var k = ul.getAttribute("data-list");
+      fillList(ul, Array.isArray(lists[k]) ? lists[k] : (LEAD_INS[k] || []).slice());
+    });
+    titleTouched = !!(d.subjectTitle && d.subject && d.subjectTitle !== String(d.subject).toUpperCase());
+  }
+
+  function titleOf(d){
+    var bits = [];
+    if (d.subject) bits.push(d.subject);
+    if (d.grade) bits.push("Grade " + d.grade);
+    if (d.term) bits.push(d.term);
+    if (d.week) bits.push("Week " + d.week);
+    var t = bits.join(" · ");
+    if (d.topic) t += (t ? " — " : "") + d.topic;
+    return t || "Untitled lesson plan";
+  }
+
+  /* ---------- saved plans list ---------- */
+  function renderSelect(){
+    var html = document.createDocumentFragment();
+    var first = document.createElement("option");
+    first.value = ""; first.textContent = "— New lesson plan (unsaved) —";
+    html.appendChild(first);
+    records.forEach(function(r){
+      var o = document.createElement("option");
+      o.value = r.id;
+      o.textContent = (r.title || "Untitled lesson plan") + " · " + formatDate(r.updated_at);
+      html.appendChild(o);
+    });
+    el.select.textContent = "";
+    el.select.appendChild(html);
+    el.select.value = currentId && records.some(function(r){ return r.id === currentId; }) ? currentId : "";
+    el.del.disabled = !el.select.value;
+  }
+
+  function openRecord(id){
+    var rec = null;
+    for (var i = 0; i < records.length; i++){ if (records[i].id === id){ rec = records[i]; break; } }
+    if (!rec) return;
+    currentId = rec.id;
+    var f = rec.fields || {};
+    if (!f.educator) f.educator = educatorName;
+    setData(f);
+    markClean();
+    renderSelect();
+  }
+
+  function startNew(fromData){
+    currentId = "";
+    setData(fromData || blankData());
+    markClean();
+    renderSelect();
+    setStatus(fromData ? "Copied. Change the week and topic, then tap Save." : "");
+  }
+
+  /* ---------- dirty / autosave ---------- */
+  function markDirty(){
+    dirty = true; editSeq++;
+    if (currentId) setStatus("Unsaved changes…"); else setStatus("Not saved yet — tap Save to keep this plan.");
+    clearTimeout(autosaveTimer);
+    if (currentId) autosaveTimer = setTimeout(function(){ save(true); }, 3000);
+  }
+  function markClean(){ dirty = false; clearTimeout(autosaveTimer); }
+
+  window.addEventListener("beforeunload", function(e){
+    if (dirty){ e.preventDefault(); e.returnValue = ""; }
+  });
+
+  /* ---------- saving ---------- */
+  function save(silent){
+    if (saving) return;
+    var data = getData();
+    var id = currentId || newId();
+    var seq = editSeq;
+    saving = true; el.save.disabled = true;
+    setStatus("Saving…");
+    fetch(API + "/lesson-plan/draft", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: id, title: titleOf(data), grade: data.grade, topic: data.topic, data: data })
+    })
+    .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { ok: r.ok, j: j }; }); })
+    .then(function(res){
+      if (!res.ok) throw new Error((res.j && res.j.error) || "Could not save.");
+      records = Array.isArray(res.j.records) ? res.j.records : records;
+      currentId = id;
+      if (seq === editSeq) markClean();
+      renderSelect();
+      setStatus(silent ? "Saved automatically." : "Saved.", "ok");
+      if (seq !== editSeq){ markDirty(); }
+    })
+    .catch(function(err){
+      setStatus("Not saved: " + ((err && err.message) || "please try again") + ". Your text is still on this page.", "err");
+    })
+    .then(function(){ saving = false; el.save.disabled = false; });
+  }
+
+  function remove(){
+    if (!currentId) return;
+    if (!window.confirm("Delete this lesson plan? This cannot be undone.")) return;
+    fetch(API + "/lesson-plan/draft", {
+      method: "DELETE", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: currentId })
+    })
+    .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { ok: r.ok, j: j }; }); })
+    .then(function(res){
+      if (!res.ok) throw new Error((res.j && res.j.error) || "Could not delete.");
+      records = Array.isArray(res.j.records) ? res.j.records : [];
+      currentId = "";
+      if (records.length) openRecord(records[0].id); else startNew();
+      setStatus("Deleted.", "ok");
+    })
+    .catch(function(err){ setStatus((err && err.message) || "Could not delete.", "err"); });
+  }
+
+  /* ---------- printing ---------- */
+  function printPlan(){
+    var d = getData();
+    var oldTitle = document.title;
+    document.title = ("Lesson plan - " + titleOf(d)).replace(/[\\/:*?"<>|]+/g, "-");
+    all(".lst li").forEach(function(li){
+      if (!String(li.textContent || "").trim()) li.classList.add("blank-li");
+    });
+    function after(){
+      document.title = oldTitle;
+      all(".lst li.blank-li").forEach(function(li){ li.classList.remove("blank-li"); });
+      window.removeEventListener("afterprint", after);
+    }
+    window.addEventListener("afterprint", after);
+    window.print();
+  }
+
+  /* ---------- editing behaviour ---------- */
+  var app = el.app;
+
+  // keep single-line fields on one logical line
+  app.addEventListener("keydown", function(e){
+    var t = e.target;
+    if (e.key === "Enter" && t && t.classList && t.classList.contains("fld") && !t.getAttribute("data-multi")){
+      e.preventDefault();
+    }
+  });
+
+  // paste as plain text; one line per bullet inside lists
+  app.addEventListener("paste", function(e){
+    var t = e.target;
+    if (!t || !t.closest) return;
+    var editable = t.closest("[contenteditable]");
+    if (!editable) return;
+    e.preventDefault();
+    var text = (e.clipboardData || window.clipboardData).getData("text/plain") || "";
+    if (editable.tagName === "UL"){
+      var lines = text.replace(/\r/g, "").split("\n").map(function(s){
+        return s.replace(/^\s*(?:[-*•▪➤❖]|o\s)\s*/, "").trim();
+      }).filter(function(s){ return s; });
+      lines.forEach(function(line, i){
+        if (i > 0) document.execCommand("insertParagraph");
+        document.execCommand("insertText", false, line);
+      });
+    } else if (editable.getAttribute("data-multi")){
+      document.execCommand("insertText", false, text.replace(/\r/g, ""));
+    } else {
+      document.execCommand("insertText", false, text.replace(/\s+/g, " "));
+    }
+  });
+
+  function repairList(ul){
+    var bad = !ul.children.length;
+    Array.prototype.forEach.call(ul.children, function(c){ if (c.tagName !== "LI") bad = true; });
+    if (!bad) return;
+    var lines = String(ul.innerText || "").replace(/ /g, " ").split("\n").map(function(s){ return s.trim(); }).filter(function(s){ return s; });
+    fillList(ul, lines);
+    var last = ul.lastElementChild;
+    if (last){
+      var r = document.createRange(); r.selectNodeContents(last); r.collapse(false);
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+    }
+  }
+
+  app.addEventListener("input", function(e){
+    var t = e.target;
+    if (!t || !t.closest) return;
+    var ul = t.closest("ul[data-list]");
+    if (ul) repairList(ul);
+    var f = t.closest("[data-f]");
+    if (f){
+      var k = f.getAttribute("data-f");
+      if (k === "educator"){
+        all('[data-f="educator"]').forEach(function(o){ if (o !== f) o.textContent = f.textContent; });
+      }
+      if (k === "subjectTitle") titleTouched = true;
+      if (k === "subject" && !titleTouched){
+        var tt = document.querySelector('[data-f="subjectTitle"]');
+        if (tt) tt.textContent = cleanLine(f.textContent).toUpperCase();
+      }
+    }
+    markDirty();
+  });
+
+  /* ---------- buttons ---------- */
+  el.save.addEventListener("click", function(){ save(false); });
+  el.print.addEventListener("click", printPlan);
+  el.del.addEventListener("click", remove);
+  el.nw.addEventListener("click", function(){
+    if (dirty && !window.confirm("You have unsaved changes. Start a new plan anyway?")) return;
+    startNew();
+  });
+  el.copy.addEventListener("click", function(){
+    var d = getData();
+    d.week = ""; d.date = ""; d.reflection = ""; d.refDate = ""; d.dhDate = "";
+    if (dirty && !window.confirm("You have unsaved changes on this plan. Copy it anyway?")) return;
+    startNew(d);
+    markDirty();
+  });
+  el.select.addEventListener("change", function(){
+    var id = el.select.value;
+    if (dirty && !window.confirm("You have unsaved changes. Switch plan anyway?")){ renderSelect(); return; }
+    if (!id){ startNew(); return; }
+    openRecord(id);
+    setStatus("");
+  });
+
+  /* ---------- start up ---------- */
+  function showGate(html){ el.gate.innerHTML = html; el.gate.hidden = false; el.app.hidden = true; el.toolbar.hidden = true; }
+
+  function loadRecords(){
+    var wantNew = false;
+    try{ wantNew = new URLSearchParams(location.search).get("new") === "1"; }catch(e){}
+    fetch(API + "/lesson-plan/draft", { credentials: "include" })
+      .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { ok: r.ok, j: j }; }); })
+      .then(function(res){
+        if (!res.ok) throw new Error((res.j && res.j.error) || "Could not load your saved plans.");
+        records = Array.isArray(res.j.records) ? res.j.records : [];
+        renderSelect();
+        if (records.length && !wantNew) openRecord(records[0].id); else startNew();
+      })
+      .catch(function(err){
+        records = [];
+        startNew();
+        setStatus("Could not load saved plans (" + ((err && err.message) || "error") + "). You can still write and print a plan.", "err");
+      });
+  }
+
+  fetch(API + "/lesson-plan/access", { credentials: "include" })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){
+      if (!j){ showGate("Could not check your access. Please check your connection and reload this page."); return; }
+      if (j.allowed !== true){
+        if (j.signedIn === false){
+          showGate('Please log in on the <a href="./">teacher dashboard</a> first, then open Lesson Planning again.');
+        } else {
+          showGate('Lesson Planning is private to Mrs E. Makandiwona.<br><a href="./">Back to the dashboard</a>');
+        }
+        return;
+      }
+      educatorName = j.educator || DEFAULT_EDUCATOR;
+      el.gate.hidden = true; el.app.hidden = false; el.toolbar.hidden = false;
+      setData(blankData());
+      renderSelect();
+      loadRecords();
+    })
+    .catch(function(){ showGate("Could not check your access. Please check your connection and reload this page."); });
+})();
+</script>
+</body>
+</html>

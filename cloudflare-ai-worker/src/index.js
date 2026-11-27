@@ -1599,6 +1599,131 @@ async function requireTeacher(request, env, corsOrigin) {
   return { ok: true, session };
 }
 
+// ---------------------------------------------------------------------------
+// Lesson planning (Mrs E. Makandiwona only)
+// The Lesson Planning tool is private to one teacher. Access is decided on the
+// server from the signed teacher session (never from the browser), so nobody
+// else can read or write these plans even by calling the API directly.
+// Optional: set LESSON_PLAN_EMAILS (comma separated) to also allow exact emails.
+// ---------------------------------------------------------------------------
+const LESSON_PLAN_EDUCATOR_LABEL = "Mrs E. Makandiwona";
+
+function lessonPlanNorm(v) {
+  return String(v || "").toLowerCase().replace(/[^a-z]/g, "");
+}
+
+function lessonPlanAllowed(session, env) {
+  if (!session) return false;
+  const email = String(session.email || "").trim().toLowerCase();
+  const extra = String((env && env.LESSON_PLAN_EMAILS) || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  if (email && extra.includes(email)) return true;
+  return (
+    lessonPlanNorm(session.first_name).includes("ethinah") &&
+    lessonPlanNorm(session.surname).includes("makandiwona")
+  );
+}
+
+async function requireLessonPlanTeacher(request, env, corsOrigin) {
+  const auth = await requireTeacher(request, env, corsOrigin);
+  if (!auth.ok) return auth;
+  if (!lessonPlanAllowed(auth.session, env)) {
+    return { ok: false, res: jsonResponse({ error: "Lesson planning is not available for this account." }, 403, corsOrigin) };
+  }
+  return auth;
+}
+
+function lessonPlanRecordsFromRow(row) {
+  const list = row && row.data && Array.isArray(row.data.lesson_plans) ? row.data.lesson_plans : [];
+  return list.slice().sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
+}
+
+async function saveLessonPlanRecords(env, email, name, records) {
+  const saved = await supabasePost(
+    env,
+    "carissa_lesson_plans?on_conflict=teacher_email",
+    {
+      teacher_email: email,
+      teacher_name: name || null,
+      data: { lesson_plans: records },
+      updated_at: new Date().toISOString(),
+    },
+    "resolution=merge-duplicates,return=representation"
+  );
+  const savedRow = Array.isArray(saved) ? saved[0] : saved;
+  return lessonPlanRecordsFromRow(savedRow);
+}
+
+async function handleLessonPlanAccess(request, env, corsOrigin) {
+  const session = await getTeacherSession(request, env);
+  if (!session) return jsonResponse({ allowed: false, signedIn: false }, 200, corsOrigin);
+  const allowed = lessonPlanAllowed(session, env);
+  return jsonResponse(allowed ? { allowed: true, signedIn: true, educator: LESSON_PLAN_EDUCATOR_LABEL } : { allowed: false, signedIn: true }, 200, corsOrigin);
+}
+
+async function handleLessonPlanGet(request, env, corsOrigin) {
+  const auth = await requireLessonPlanTeacher(request, env, corsOrigin);
+  if (!auth.ok) return auth.res;
+  const email = String(auth.session.email || "").trim().toLowerCase();
+  if (!email) return jsonResponse({ records: [] }, 200, corsOrigin);
+  const rows = await supabaseGet(env, "carissa_lesson_plans", { select: "*", teacher_email: `eq.${email}`, limit: "1" });
+  const row = Array.isArray(rows) && rows.length ? rows[0] : null;
+  return jsonResponse({ records: lessonPlanRecordsFromRow(row) }, 200, corsOrigin);
+}
+
+async function handleLessonPlanSave(request, env, corsOrigin) {
+  const auth = await requireLessonPlanTeacher(request, env, corsOrigin);
+  if (!auth.ok) return auth.res;
+  const body = await readJsonBody(request);
+  const email = String(auth.session.email || "").trim().toLowerCase();
+  if (!email) return jsonResponse({ error: "Teacher email missing." }, 400, corsOrigin);
+  const fields = (body && typeof body.data === "object" && body.data && !Array.isArray(body.data)) ? body.data : null;
+  if (!fields) return jsonResponse({ error: "Lesson plan data missing." }, 400, corsOrigin);
+  if (JSON.stringify(fields).length > 200000) return jsonResponse({ error: "This lesson plan is too large to save." }, 413, corsOrigin);
+  const now = new Date().toISOString();
+  const recordId =
+    (body && typeof body.id === "string" && body.id.trim()) ||
+    (crypto && crypto.randomUUID ? crypto.randomUUID() : "lp-" + Date.now());
+  const incoming = {
+    id: recordId,
+    title: String(body.title || "").trim().slice(0, 200),
+    grade: String(body.grade || "").trim().slice(0, 40),
+    topic: String(body.topic || "").trim().slice(0, 300),
+    updated_at: now,
+    fields,
+  };
+  const name = [auth.session.first_name, auth.session.surname].map((p) => String(p || "").trim()).filter(Boolean).join(" ");
+  const rows = await supabaseGet(env, "carissa_lesson_plans", { select: "*", teacher_email: `eq.${email}`, limit: "1" });
+  const existing = Array.isArray(rows) && rows.length ? rows[0] : null;
+  const current = lessonPlanRecordsFromRow(existing);
+  const idx = current.findIndex((r) => r.id === recordId);
+  if (idx >= 0) {
+    incoming.created_at = current[idx].created_at || now;
+    current[idx] = incoming;
+  } else {
+    incoming.created_at = now;
+    current.unshift(incoming);
+  }
+  const records = await saveLessonPlanRecords(env, email, name, current);
+  return jsonResponse({ ok: true, record: incoming, records }, 200, corsOrigin);
+}
+
+async function handleLessonPlanDelete(request, env, corsOrigin) {
+  const auth = await requireLessonPlanTeacher(request, env, corsOrigin);
+  if (!auth.ok) return auth.res;
+  const body = await readJsonBody(request);
+  const email = String(auth.session.email || "").trim().toLowerCase();
+  const id = body && typeof body.id === "string" ? body.id.trim() : "";
+  if (!email || !id) return jsonResponse({ error: "Record id missing." }, 400, corsOrigin);
+  const rows = await supabaseGet(env, "carissa_lesson_plans", { select: "*", teacher_email: `eq.${email}`, limit: "1" });
+  const existing = Array.isArray(rows) && rows.length ? rows[0] : null;
+  const current = lessonPlanRecordsFromRow(existing).filter((r) => r.id !== id);
+  const records = await saveLessonPlanRecords(env, email, existing?.teacher_name || null, current);
+  return jsonResponse({ ok: true, records }, 200, corsOrigin);
+}
+
 function spipRecordsFromRow(row) {
   if (!row || !row.data) return [];
   if (Array.isArray(row.data.spip_records)) {
@@ -3455,6 +3580,24 @@ export default {
         return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
       } catch (error) {
         return jsonResponse({ error: error?.message || "SPIP draft request failed" }, 500, corsOrigin);
+      }
+    }
+    if (url.pathname === "/api/lesson-plan/access") {
+      if (request.method !== "GET") return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      try {
+        return await handleLessonPlanAccess(request, env, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Lesson plan access check failed" }, 500, corsOrigin);
+      }
+    }
+    if (url.pathname === "/api/lesson-plan/draft") {
+      try {
+        if (request.method === "GET") return await handleLessonPlanGet(request, env, corsOrigin);
+        if (request.method === "POST") return await handleLessonPlanSave(request, env, corsOrigin);
+        if (request.method === "DELETE") return await handleLessonPlanDelete(request, env, corsOrigin);
+        return jsonResponse({ error: "Method not allowed" }, 405, corsOrigin);
+      } catch (error) {
+        return jsonResponse({ error: error?.message || "Lesson plan request failed" }, 500, corsOrigin);
       }
     }
     if (url.pathname === "/api/spip/attachment") {
