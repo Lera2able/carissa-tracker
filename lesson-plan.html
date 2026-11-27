@@ -170,7 +170,7 @@
       <h1>Lesson Planning</h1>
       <p>Carissa Primary School · Teachers capture the lesson plan here, then print it or download it on the school letterhead. Draft saves automatically.</p>
     </div>
-    <span class="chip" id="chip">For Departmental Heads</span>
+    <span class="chip" id="chip">For DHs and the Acting Principal</span>
   </header>
 
   <div class="card noprint" style="padding:18px 20px;" id="recordCard">
@@ -944,7 +944,7 @@
       if (!j){ showGate("Could not check your access. Please check your connection and reload this page."); return; }
       if (j.allowed !== true){
         if (j.signedIn === false) showGate('Please log in on the <a href="./">teacher dashboard</a> first, then open Lesson Planning again.');
-        else showGate('Lesson Planning is only available to the Departmental Heads.<br><a href="./">Back to the dashboard</a>');
+        else showGate('Lesson Planning is only available to the Departmental Heads and the Acting Principal.<br><a href="./">Back to the dashboard</a>');
         return;
       }
       educatorName = j.educator || DEFAULT_EDUCATOR; if (typeof j.dh === "string") DEFAULT_DH = j.dh;
