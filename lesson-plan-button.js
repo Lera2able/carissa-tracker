@@ -1,4 +1,4 @@
-/* Lesson Planning card (Mrs E. Makandiwona only).
+/* Lesson Planning card (Mrs E. Makandiwona and the Departmental Heads).
  * Adds a "Lesson Planning" card to the teacher dashboard, next to the
  * Moderation and SPIP cards. The card is only drawn when the server says the
  * signed-in teacher is allowed to use lesson planning, so every other teacher

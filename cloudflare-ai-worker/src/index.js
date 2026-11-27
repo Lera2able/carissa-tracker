@@ -1600,8 +1600,8 @@ async function requireTeacher(request, env, corsOrigin) {
 }
 
 // ---------------------------------------------------------------------------
-// Lesson planning (Mrs E. Makandiwona only)
-// The Lesson Planning tool is private to one teacher. Access is decided on the
+// Lesson planning (Mrs E. Makandiwona and the Departmental Heads)
+// The Lesson Planning tool is limited to named staff. Access is decided on the
 // server from the signed teacher session (never from the browser), so nobody
 // else can read or write these plans even by calling the API directly.
 // Optional: set LESSON_PLAN_EMAILS (comma separated) to also allow exact emails.
@@ -1612,6 +1612,30 @@ function lessonPlanNorm(v) {
   return String(v || "").toLowerCase().replace(/[^a-z]/g, "");
 }
 
+// Teachers who can use Lesson Planning: Mrs E. Makandiwona and the Departmental Heads.
+// Matched on surname plus first initial (the staff list only gives initials).
+const LESSON_PLAN_PEOPLE = [
+  { first: "e", surname: "makandiwona", first_full: "ethinah" },
+  { first: "m", surname: "makgato" },
+  { first: "m", surname: "moyo" },
+  { first: "t", surname: "mkhonza" },
+  { first: "r", surname: "duma" },
+  { first: "s", surname: "zivona" },
+  { first: "f", surname: "ngomane" },
+];
+
+function lessonPlanPerson(session) {
+  if (!session) return null;
+  const first = lessonPlanNorm(session.first_name);
+  const sur = lessonPlanNorm(session.surname);
+  if (!first || !sur) return null;
+  return (
+    LESSON_PLAN_PEOPLE.find(
+      (p) => sur.includes(p.surname) && first.charAt(0) === p.first && (!p.first_full || first.includes(p.first_full))
+    ) || null
+  );
+}
+
 function lessonPlanAllowed(session, env) {
   if (!session) return false;
   const email = String(session.email || "").trim().toLowerCase();
@@ -1620,10 +1644,15 @@ function lessonPlanAllowed(session, env) {
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
   if (email && extra.includes(email)) return true;
-  return (
-    lessonPlanNorm(session.first_name).includes("ethinah") &&
-    lessonPlanNorm(session.surname).includes("makandiwona")
-  );
+  return !!lessonPlanPerson(session);
+}
+
+function lessonPlanEducatorLabel(session) {
+  const person = lessonPlanPerson(session);
+  if (person && person.surname === "makandiwona") return LESSON_PLAN_EDUCATOR_LABEL;
+  const first = String((session && session.first_name) || "").trim();
+  const sur = String((session && session.surname) || "").trim();
+  return [first ? first.charAt(0).toUpperCase() + "." : "", sur].filter(Boolean).join(" ");
 }
 
 async function requireLessonPlanTeacher(request, env, corsOrigin) {
@@ -1660,7 +1689,7 @@ async function handleLessonPlanAccess(request, env, corsOrigin) {
   const session = await getTeacherSession(request, env);
   if (!session) return jsonResponse({ allowed: false, signedIn: false }, 200, corsOrigin);
   const allowed = lessonPlanAllowed(session, env);
-  return jsonResponse(allowed ? { allowed: true, signedIn: true, educator: LESSON_PLAN_EDUCATOR_LABEL } : { allowed: false, signedIn: true }, 200, corsOrigin);
+  return jsonResponse(allowed ? { allowed: true, signedIn: true, educator: lessonPlanEducatorLabel(session), dh: lessonPlanPerson(session) && lessonPlanPerson(session).surname === "makandiwona" ? "Mrs M.Moyo" : "" } : { allowed: false, signedIn: true }, 200, corsOrigin);
 }
 
 async function handleLessonPlanGet(request, env, corsOrigin) {
