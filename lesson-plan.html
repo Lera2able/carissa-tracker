@@ -56,6 +56,33 @@
   .lib .items{display:flex;flex-wrap:wrap;gap:8px;}
   .lib button{font-family:inherit;font-size:13px;text-align:left;border:1px solid var(--input-line);background:#fff;border-radius:10px;padding:8px 12px;cursor:pointer;color:var(--ink);max-width:100%;}
   .lib button:hover{border-color:var(--brand);} .lib button.on{background:var(--brand-soft);border-color:var(--brand);font-weight:700;}
+  /* guided mode */
+  .wizcard{padding:22px 24px 20px;overflow:hidden;position:relative;}
+  .qtop{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--ink-faint);font-weight:600;margin-bottom:8px;}
+  .qtrack{height:10px;border-radius:99px;background:var(--brand-soft);overflow:hidden;margin-bottom:6px;}
+  #qbar{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#6366f1,#ec4899,#f59e0b);transition:width .5s cubic-bezier(.4,.8,.3,1);}
+  #qcheer{font-size:13px;font-weight:700;color:var(--brand-dark);min-height:20px;margin-bottom:10px;}
+  #qstage{min-height:300px;}
+  .qcard{animation:inR .45s cubic-bezier(.2,.8,.3,1) both;}
+  .qcard.in-left{animation-name:inL;}
+  @keyframes inR{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}
+  @keyframes inL{from{opacity:0;transform:translateX(-40px)}to{opacity:1;transform:none}}
+  .qemoji{font-size:54px;line-height:1;display:inline-block;animation:bob 2.4s ease-in-out infinite;transform-origin:50% 80%;}
+  @keyframes bob{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-8px) rotate(4deg)}}
+  .qtitle{margin:10px 0 4px;font-size:24px;color:var(--brand-dark);letter-spacing:-.01em;line-height:1.25;}
+  .qhelp{margin:0 0 16px;font-size:14px;color:var(--ink-faint);min-height:20px;}
+  .qinp{font-size:18px;padding:16px;} textarea.qinp{min-height:170px;}
+  .qnav{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;align-items:center;}
+  .qnav .spacer{flex:1;}
+  .secnav button{font-family:inherit;cursor:pointer;font-size:13px;font-weight:700;color:var(--brand-dark);background:#fff;border:1px solid var(--brand-border);border-radius:999px;padding:7px 14px;}
+  .secnav button:hover,.secnav button.on{background:var(--brand-soft);border-color:var(--brand);}
+  .confetti{position:fixed;inset:0;pointer-events:none;z-index:100;overflow:hidden;}
+  .confetti i{position:absolute;top:-14px;width:9px;height:14px;border-radius:2px;animation:fall 2s linear forwards;}
+  @keyframes fall{to{top:105vh;transform:rotate(720deg)}}
+  .upl{margin-top:14px;border:2px dashed var(--brand-border);border-radius:12px;padding:14px 16px;background:#fafbff;display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+  .upl.drag{background:var(--brand-soft);border-color:var(--brand);}
+  .upl span{font-size:13.5px;color:var(--ink-soft);flex:1;min-width:200px;}
+  @media (prefers-reduced-motion:reduce){.qcard,.qemoji,#qbar{animation:none !important;transition:none !important;}}
   /* buttons */
   .btn{border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:15px;border-radius:10px;padding:13px 22px;min-height:48px;transition:background .15s ease,transform .1s ease,box-shadow .15s ease;}
   .btn:active{transform:scale(.98);}
@@ -78,7 +105,7 @@
 
   /* ===== the lesson plan on the school letterhead (preview + print) ===== */
   .docwrap{background:#e5e7eb;border-radius:12px;padding:16px;overflow-x:auto;}
-  .doc{background:#fff;color:#000;width:794px;max-width:100%;margin:0 auto;padding:36px 44px 30px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.35;box-shadow:0 2px 12px rgba(0,0,0,.18);}
+  .doc{background:#fff;color:#000;width:794px;max-width:100%;margin:0 auto;padding:36px 44px 30px;font-family:Arial,Helvetica,sans-serif;font-size:14.5px;line-height:1.4;box-shadow:0 2px 12px rgba(0,0,0,.18);}
   .lh{text-align:center;}
   .lh img{height:56px;display:block;margin:0 auto 4px;}
   .lh .name{font-family:'Times New Roman',Times,serif;font-weight:700;font-size:19px;letter-spacing:3px;color:var(--teal);padding-left:3px;}
@@ -86,7 +113,7 @@
   .lh .addr{font-family:Calibri,Carlito,Arial,sans-serif;font-size:10px;color:#4a4a4a;line-height:1.5;}
   .lh .rule2{border-top:2px solid var(--blue);margin:5px 0 14px;}
   .doc .term,.doc .ltitle{text-align:center;font-weight:700;font-size:15px;margin:0 0 4px;}
-  .doc .ltitle{margin-bottom:8px;}
+  .doc .ltitle{margin-bottom:10px;font-size:16px;} .doc .ltitle .em{font-size:22px;color:var(--teal);letter-spacing:1px;}
   .doc table{width:100%;border-collapse:collapse;table-layout:fixed;}
   .doc td{border:1px solid #000;padding:3px 7px;vertical-align:top;overflow-wrap:anywhere;}
   .doc td.half{width:34%;}
@@ -103,7 +130,7 @@
   .doc ul.square li::before{content:"\25AA";font-size:14px;top:-1px;}
   .doc .blank{min-height:1.4em;}
   .doc .gap{height:12px;}
-  .doc .tall{min-height:80px;white-space:pre-wrap;}
+  .doc td{padding:5px 8px;} .doc .tall{min-height:110px;white-space:pre-wrap;}
   .doc .signrow td{height:24px;}
   .doc-foot{margin-top:18px;border-top:1px solid #d1d5db;padding-top:6px;text-align:center;font-size:9.5px;color:#6b7280;}
 
@@ -121,9 +148,9 @@
     .wrap{max-width:none;padding:0;}
     #previewCard{box-shadow:none;padding:0;margin:0;background:none;}
     .docwrap{background:none;padding:0;border-radius:0;overflow:visible;}
-    .doc{width:auto;max-width:none;padding:0;box-shadow:none;font-size:11pt;}
+    .doc{width:auto;max-width:none;padding:0;box-shadow:none;font-size:12pt;}
     .lh img{height:20mm;} .lh .name{font-size:16pt;} .lh .addr{font-size:8pt;}
-    .doc .term,.doc .ltitle{font-size:13pt;}
+    .doc .term,.doc .ltitle{font-size:13pt;} .doc .ltitle .em{font-size:17pt;}
     .doc tr{break-inside:avoid;page-break-inside:avoid;}
     .doc .keep{break-inside:avoid;page-break-inside:avoid;}
     .doc-foot{position:fixed;left:0;right:0;bottom:-13mm;margin:0;border-top:0;font-size:8.5pt;}
@@ -146,11 +173,6 @@
     <span class="chip" id="chip">Private to Mrs E. Makandiwona</span>
   </header>
 
-  <div class="infogrid noprint">
-    <div class="card"><h3>How it works</h3><p>Fill in the five sections below. Tap Save to keep the plan in your lesson plan folder, then use Preview, Print or Download Word to get it on the school letterhead.</p></div>
-    <div class="card"><h3>What it covers</h3><ul><li>Lesson details and topic</li><li>Content, aims, methods and activities</li><li>Assessment, diversity, reflection and sign-off</li></ul></div>
-  </div>
-
   <div class="card noprint" style="padding:18px 20px;" id="recordCard">
     <h2 style="margin:0 0 10px;font-size:17px;color:var(--brand-dark);">Your lesson plan records</h2>
     <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
@@ -162,14 +184,38 @@
       <button class="btn ghost small" id="copyBtn" type="button" title="Start a new plan from this one">Copy as new</button>
       <button class="btn danger small" id="delBtn" type="button">Delete this record</button>
     </div>
+    <div class="upl" id="upl">
+      <span><b>Already have a lesson plan?</b> Upload the Word file (.docx) and I will read it, fill in the answers and let you edit them.</span>
+      <button class="btn ghost small" id="uplBtn" type="button">Upload lesson plan</button>
+      <input type="file" id="uplFile" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden/>
+    </div>
     <div class="lib" id="lib"></div>
   </div>
 
   <nav class="secnav noprint" aria-label="Sections">
-    <a href="#sec-details">1 Details</a><a href="#sec-content">2 Content</a><a href="#sec-aims">3 Aims &amp; activities</a><a href="#sec-assess">4 Assessment</a><a href="#sec-reflect">5 Reflection</a><a href="#previewCard">6 Letterhead</a>
+    <button type="button" data-g="0">1 Details</button><button type="button" data-g="1">2 Content</button><button type="button" data-g="2">3 Aims &amp; activities</button><button type="button" data-g="3">4 Assessment</button><button type="button" data-g="4">5 Reflection</button><button type="button" data-g="review">6 Letterhead</button>
   </nav>
 
-  <div id="formArea" class="noprint">
+  <section class="card wizcard noprint" id="wizard" hidden>
+    <div class="qtop"><span id="qcount"></span><span>Draft saves automatically</span></div>
+    <div class="qtrack"><div id="qbar"></div></div>
+    <div id="qcheer" aria-live="polite"></div>
+    <div id="qstage"></div>
+    <div class="qnav">
+      <button class="btn ghost" id="qBack" type="button">← Back</button>
+      <span class="spacer"></span>
+      <button class="btn ghost" id="qSkip" type="button">Skip</button>
+      <button class="btn primary" id="qNext" type="button">Next →</button>
+    </div>
+  </section>
+
+
+  <div class="infogrid noprint">
+    <div class="card"><h3>How it works</h3><p>I ask you one question at a time and you type your answer in the box. When you finish, your answers are set out neatly on the school letterhead. Tap Save to keep the plan in your lesson plan folder.</p></div>
+    <div class="card"><h3>What it covers</h3><ul><li>Details, content and concepts</li><li>Aims, methods and activities</li><li>Assessment, diversity, reflection and sign-off</li><li>Upload an old plan (.docx) and I fill the answers in for you</li></ul></div>
+  </div>
+
+  <div id="formArea" class="noprint" hidden>
     <section class="card" id="sec-details">
       <h2><span class="num">1</span> Lesson details</h2>
       <p class="sub">These fill in the top of your lesson plan.</p>
@@ -256,7 +302,8 @@
 
   <section class="card" id="previewCard" hidden>
     <h2 class="noprint"><span class="num">6</span> Your lesson plan on the school letterhead</h2>
-    <p class="sub noprint">This is exactly what will print. Use “Print / Save as PDF” or “Download Word” below.</p>
+    <p class="sub noprint">This is exactly what will print. Use the buttons at the bottom to save it, print it or download it in Word.</p>
+    <p class="noprint" style="margin:0 0 14px;"><button class="btn ghost small" id="editAnswers" type="button">← Edit my answers</button></p>
     <div class="docwrap"><div class="doc" id="doc"></div></div>
   </section>
 
@@ -386,7 +433,7 @@
     root.appendChild(lh);
 
     root.appendChild(mk("div", "term", (d.term || "").toUpperCase()));
-    root.appendChild(mk("div", "ltitle", ((d.subject || "Lesson").toUpperCase()) + " LESSON PLAN"));
+    var lt = mk("div", "ltitle"); lt.appendChild(document.createTextNode(((d.subject || "").toUpperCase()) + (d.subject ? " " : ""))); lt.appendChild(mk("span", "em", "LESSON PLAN")); root.appendChild(lt);
 
     // details
     var t1 = mk("table"), tb = mk("tbody"); t1.appendChild(tb);
@@ -434,7 +481,7 @@
 
   function showPreview(scroll){
     buildDoc(getData());
-    el.previewCard.hidden = false;
+    wiz.box.hidden = true; el.previewCard.hidden = false;
     if (scroll) el.previewCard.scrollIntoView({ behavior:"smooth", block:"start" });
   }
 
@@ -467,12 +514,12 @@
   function wr(text, o){
     o = o || {};
     return '<w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/>' + (o.b ? "<w:b/>" : "") +
-      '<w:sz w:val="' + (o.sz || 22) + '"/><w:szCs w:val="' + (o.sz || 22) + '"/><w:lang w:val="en-GB"/></w:rPr><w:t xml:space="preserve">' + esc(text) + "</w:t></w:r>";
+      '<w:sz w:val="' + (o.sz || 24) + '"/><w:szCs w:val="' + (o.sz || 24) + '"/><w:lang w:val="en-GB"/></w:rPr><w:t xml:space="preserve">' + esc(text) + "</w:t></w:r>";
   }
   function wp(runs, o){
     o = o || {};
     return "<w:p><w:pPr>" + (o.keep ? "<w:keepNext/>" : "") + (o.tabs || "") +
-      '<w:spacing w:before="' + (o.before || 0) + '" w:after="' + (o.after == null ? 40 : o.after) + '" w:line="240" w:lineRule="auto"/>' +
+      '<w:spacing w:before="' + (o.before || 0) + '" w:after="' + (o.after == null ? 40 : o.after) + '" w:line="259" w:lineRule="auto"/>' +
       (o.ind || "") + (o.jc ? '<w:jc w:val="' + o.jc + '"/>' : "") + "</w:pPr>" + runs + "</w:p>";
   }
   function wlabel(label, value){ return wp(wr(label, { b:true }) + wr(value ? " " + value : "")); }
@@ -488,7 +535,7 @@
   }
   var TW = 9026;
   function wcell(w, inner, span){ return '<w:tc><w:tcPr><w:tcW w:w="' + w + '" w:type="dxa"/>' + (span ? '<w:gridSpan w:val="' + span + '"/>' : "") + "</w:tcPr>" + inner + "</w:tc>"; }
-  function wrow(cells, keep){ return "<w:tr>" + (keep ? "<w:trPr><w:cantSplit/></w:trPr>" : "") + cells + "</w:tr>"; }
+  function wrow(cells, keep, h){ return "<w:tr>" + (keep || h ? "<w:trPr>" + (keep ? "<w:cantSplit/>" : "") + (h ? '<w:trHeight w:val="' + h + '" w:hRule="atLeast"/>' : "") + "</w:trPr>" : "") + cells + "</w:tr>"; }
   function wtable(grid, rows){
     var b = function(n){ return '<w:' + n + ' w:val="single" w:sz="4" w:space="0" w:color="000000"/>'; };
     return '<w:tbl><w:tblPr><w:tblW w:w="' + TW + '" w:type="dxa"/><w:tblBorders>' + ["top","left","bottom","right","insideH","insideV"].map(b).join("") +
@@ -499,7 +546,8 @@
   function buildBodyXml(d){
     var L = 5900, R = TW - L, x = "";
     x += wp(wr((d.term || "").toUpperCase(), { b:true, sz:28 }), { jc:"center", after:40, before:120 });
-    x += wp(wr(((d.subject || "Lesson").toUpperCase()) + " LESSON PLAN", { b:true, sz:28 }), { jc:"center", after:140 });
+    x += wp((d.subject ? wr(d.subject.toUpperCase() + " ", { b:true, sz:28 }) : "") +
+      '<w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/><w:b/><w:color w:val="0E5C6E"/><w:spacing w:val="20"/><w:sz w:val="40"/><w:szCs w:val="40"/><w:lang w:val="en-GB"/></w:rPr><w:t>LESSON PLAN</w:t></w:r>', { jc:"center", after:160 });
     x += wtable([L, R], [
       wrow(wcell(TW, wlabel("Educator:", d.educator), 2)),
       wrow(wcell(L, wlabel("Subject:", d.subject)) + wcell(R, wlabel("Grade", d.grade))),
@@ -507,7 +555,7 @@
       wrow(wcell(L, wlabel("Duration:", d.duration)) + wcell(R, wlabel("Date:", nice(d.date)))),
       wrow(wcell(TW, wlabel("Topic:", d.topic), 2))
     ]);
-    function sec(inner){ return wrow(wcell(TW, inner)); }
+    function sec(inner){ return wrow(wcell(TW, inner), false, 1100); }
     x += wtable([TW], [
       sec(whead("Content:") + wlist(lines(d.content), "dash")),
       sec(whead("Concepts") + wlist(lines(d.concepts), "dash")),
@@ -522,9 +570,9 @@
     var refl = wp(wr("Educator’s reflection", { b:true }));
     String(d.reflection || "").split("\n").forEach(function(l){ refl += wp(wr(l), { after:20 }); });
     refl += wp(wr(""), { after:600 });
-    function one(inner){ return wrow(wcell(TW, inner), true); }
+    function one(inner, h){ return wrow(wcell(TW, inner), true, h || 450); }
     x += wtable([TW], [
-      one(refl),
+      one(refl, 1800),
       one(wlabel("Educator:", d.educator)),
       one(wlabel("Date:", nice(d.refDate))),
       one(wlabel("Sign:", "") + wp(wr(""), { after:100 })),
@@ -561,6 +609,191 @@
       .then(function(){ el.word.disabled = false; });
   }
 
+  /* ---------- guided question mode ---------- */
+  var GROUPS = ["Lesson details","Content and concepts","Aims, methods and activities","Assessment and diversity","Reflection and sign-off"];
+  var TERMS = ["Term 1","Term 2","Term 3","Term 4"], GRADES = ["R","1","2","3","4","5","6","7"];
+  var QUESTIONS = [
+    {k:"term",g:0,e:"🗓️",q:"Which term is this lesson plan for?",t:"select",opts:TERMS},
+    {k:"grade",g:0,e:"🎒",q:"Which grade are you teaching?",t:"select",opts:GRADES,blank:"Choose a grade"},
+    {k:"subject",g:0,e:"📚",q:"What is the subject?",h:"This also goes into the heading, e.g. SOCIAL SCIENCES LESSON PLAN.",t:"text",ph:"Social Sciences"},
+    {k:"educator",g:0,e:"👩‍🏫",q:"Whose lesson plan is this?",h:"The educator’s name goes at the top.",t:"text"},
+    {k:"discipline",g:0,e:"🧭",q:"Which discipline is it?",h:"For example Geography or History.",t:"text",ph:"Geography"},
+    {k:"week",g:0,e:"📆",q:"Which week or weeks?",t:"text",ph:"1 & 2"},
+    {k:"duration",g:0,e:"⏱️",q:"How long will the lesson take?",t:"text",ph:"3 hours x2"},
+    {k:"date",g:0,e:"🗓️",q:"What date is the lesson?",t:"date"},
+    {k:"topic",g:0,e:"🎯",q:"What is the topic?",t:"text",ph:"Population: Why people live where they do."},
+    {k:"content",g:1,e:"📖",q:"What content will you cover?",h:"One point per line. Press Enter for the next point.",t:"list",ph:"People and provinces in South Africa"},
+    {k:"concepts",g:1,e:"💡",q:"Which concepts will learners meet?",h:"One point per line.",t:"list",ph:"Population distribution and population density."},
+    {k:"aims",g:2,e:"🌟",q:"What are your aims and objectives?",h:"The line “Learners:” is added for you.",t:"list",ph:"Are curious about the world they live in."},
+    {k:"methods",g:2,e:"🧰",q:"Which teaching methods will you use?",h:"Tap a quick add or type your own, one per line.",t:"list",chips:METHODS},
+    {k:"teaching",g:2,e:"🗣️",q:"What will the teacher do?",h:"The line “The teacher will;” is added for you.",t:"list",ph:"Explain new words and concepts"},
+    {k:"learning",g:2,e:"✏️",q:"What will the learners do?",h:"The line “Learner will;” is added for you.",t:"list",ph:"Listen to the teacher’s explanation of new words"},
+    {k:"resources",g:2,e:"📦",q:"Which resources do you need?",t:"list",ph:"Platinum Social Sciences textbook"},
+    {k:"assessment",g:3,e:"✅",q:"How will you assess the learners?",h:"Tap a quick add or type your own.",t:"list",chips:ASSESSMENTS},
+    {k:"diversity",g:3,e:"🤝",q:"How will you address diversity?",h:"Tap the button to add your usual wording, then change anything you like.",t:"list",usual:true},
+    {k:"reflection",g:4,e:"💭",q:"What is your reflection on the lesson?",h:"You can leave this empty and complete it after the lesson.",t:"area",ph:"How did the lesson go?"},
+    {k:"refDate",g:4,e:"🗓️",q:"What is the educator’s signing date?",h:"Leave it empty if you will write it by hand.",t:"date"},
+    {k:"dh",g:4,e:"🧑‍💼",q:"Who is the DH?",t:"text"},
+    {k:"dhDate",g:4,e:"🗓️",q:"What is the DH’s signing date?",h:"Leave it empty if the DH will write it by hand.",t:"date"}
+  ];
+  var CHEERS = ["Nice start!","Lovely, keep going!","You are flying!","Great answer!","Halfway there soon!","Looking good!","Almost there!","Super neat!"];
+  var qi = 0, wiz = { box:$("wizard"), stage:$("qstage"), bar:$("qbar"), count:$("qcount"), back:$("qBack"), skip:$("qSkip"), next:$("qNext"), cheer:$("qcheer") };
+
+  function hidden(k){ return document.querySelector('[data-field="' + k + '"]'); }
+  function reduceMotion(){ try{ return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){ return false; } }
+
+  function showWizard(i, dir){
+    qi = Math.max(0, Math.min(QUESTIONS.length - 1, i || 0));
+    el.previewCard.hidden = true; wiz.box.hidden = false;
+    var Q = QUESTIONS[qi], h = hidden(Q.k), inp;
+    var card = mk("div", "qcard " + (dir === "back" ? "in-left" : "in-right"));
+    card.appendChild(mk("div", "qemoji", Q.e));
+    card.appendChild(mk("h2", "qtitle", Q.q));
+    card.appendChild(mk("p", "qhelp", Q.h || ""));
+    if (Q.t === "select"){
+      inp = document.createElement("select");
+      if (Q.blank){ var o0 = mk("option", null, Q.blank); o0.value = ""; inp.appendChild(o0); }
+      Q.opts.forEach(function(v){ var o = mk("option", null, v); o.value = v; inp.appendChild(o); });
+    } else if (Q.t === "list" || Q.t === "area"){
+      inp = document.createElement("textarea"); inp.rows = Q.t === "area" ? 6 : 7;
+    } else {
+      inp = document.createElement("input"); inp.type = Q.t === "date" ? "date" : "text"; inp.autocomplete = "off";
+    }
+    inp.className = "inp qinp"; if (Q.ph) inp.placeholder = Q.ph;
+    inp.setAttribute("aria-label", Q.q);
+    inp.value = h ? h.value : "";
+    inp.addEventListener("input", function(){ h.value = inp.value; markDirty(); });
+    inp.addEventListener("change", function(){ h.value = inp.value; markDirty(); });
+    inp.addEventListener("keydown", function(e){
+      if (e.key === "Enter" && (Q.t === "text" || Q.t === "date" || Q.t === "select" || e.ctrlKey || e.metaKey)){ e.preventDefault(); goNext(); }
+    });
+    if (Q.chips || Q.usual){
+      var row = mk("div", "chips"); row.appendChild(mk("span", "lab", "Quick add:"));
+      if (Q.chips) Q.chips.forEach(function(t){
+        var b = mk("button", "chipbtn", "+ " + t); b.type = "button";
+        b.addEventListener("click", function(){ addLine(Q.k, t); inp.value = h.value; });
+        row.appendChild(b);
+      });
+      if (Q.usual){ var u = mk("button", "chipbtn", "Add my usual wording"); u.type = "button";
+        u.addEventListener("click", function(){ DIVERSITY.forEach(function(t){ addLine("diversity", t); }); inp.value = h.value; }); row.appendChild(u); }
+      card.appendChild(row);
+    }
+    card.appendChild(inp);
+    wiz.stage.textContent = ""; wiz.stage.appendChild(card);
+    var n = QUESTIONS.length;
+    wiz.bar.style.width = Math.round(qi / n * 100) + "%";
+    wiz.count.textContent = "Question " + (qi + 1) + " of " + n + " · " + GROUPS[Q.g];
+    wiz.cheer.textContent = qi ? CHEERS[qi % CHEERS.length] : "Let’s build your lesson plan!";
+    wiz.back.disabled = qi === 0;
+    wiz.next.textContent = qi === n - 1 ? "Finish ✨" : "Next →";
+    all(".secnav button").forEach(function(b){ b.classList.toggle("on", Number(b.getAttribute("data-g")) === Q.g); });
+    if (Q.t !== "select" && !(window.matchMedia && window.matchMedia("(pointer:coarse)").matches)) setTimeout(function(){ try{ inp.focus(); }catch(e){} }, 60);
+  }
+  function goNext(){ if (qi >= QUESTIONS.length - 1) showReview(true); else showWizard(qi + 1, "next"); }
+  function goBack(){ if (qi > 0) showWizard(qi - 1, "back"); }
+  function jumpGroup(g){
+    for (var i = 0; i < QUESTIONS.length; i++){ if (QUESTIONS[i].g === g){ showWizard(i); break; } }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  function confetti(){
+    if (reduceMotion()) return;
+    var cols = ["#4f46e5","#0e5c6e","#f59e0b","#ec4899","#10b981","#2a8ba8"], box = mk("div", "confetti");
+    for (var i = 0; i < 46; i++){
+      var s = mk("i"); s.style.left = (Math.random() * 100) + "%"; s.style.background = cols[i % cols.length];
+      s.style.animationDelay = (Math.random() * .5) + "s"; s.style.animationDuration = (1.6 + Math.random() * 1.4) + "s";
+      s.style.transform = "rotate(" + Math.floor(Math.random() * 360) + "deg)"; box.appendChild(s);
+    }
+    document.body.appendChild(box); setTimeout(function(){ box.remove(); }, 3600);
+  }
+  function showReview(celebrate){
+    wiz.box.hidden = true; showPreview(false);
+    all(".secnav button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-g") === "review"); });
+    if (celebrate){ confetti(); setStatus("All done! Check your plan, then save, print or download it.", "ok"); }
+    window.scrollTo({ top: Math.max(0, el.previewCard.offsetTop - 120), behavior: "smooth" });
+  }
+
+  /* ---------- upload an existing plan (.docx) ---------- */
+  var SECTIONS = [
+    [/^aims\s+and\s+objectives\b/i,"aims"],[/^teaching\s+methods?\b/i,"methods"],[/^teaching\s+activities\b/i,"teaching"],
+    [/^learning\s+activities\b/i,"learning"],[/^forms?\s+of\s+assessment\b/i,"assessment"],[/^addressing\s+diversity\b/i,"diversity"],
+    [/^concepts?\b/i,"concepts"],[/^content\b/i,"content"],[/^resources?\b/i,"resources"],[/^educator.?s\s+reflection\b/i,"reflection"]
+  ];
+  var LEADS = /^(learners?|the teacher will|learner will)\s*[:;]?\s*$/i;
+  function toIso(v){
+    v = String(v || "").trim(); var m;
+    if ((m = /^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/.exec(v))) return m[3] + "-" + ("0" + m[2]).slice(-2) + "-" + ("0" + m[1]).slice(-2);
+    if ((m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v))) return v;
+    return "";
+  }
+  function parsePlanLines(ls){
+    var out = {}, lists = {}, cur = null, signOff = false, dateCount = 0, found = 0;
+    function put(k, v){ if (v && !out[k]){ out[k] = v; found++; } }
+    function push(k, t){ (lists[k] = lists[k] || []).push(t); }
+    ls.forEach(function(raw){
+      var line = raw.replace(/ /g, " ").replace(/\s+/g, " ").trim(); if (!line) return;
+      var m, rest;
+      if ((m = /^term\s*([1-4])\b/i.exec(line)) && !signOff){ put("term", "Term " + m[1]); cur = null; return; }
+      if (/lesson plan\s*$/i.test(line) && line.length < 70){ var s = line.replace(/lesson plan\s*$/i, "").trim(); if (s) put("subject", s.replace(/\b\w+/g, function(w){ return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); })); cur = null; return; }
+      for (var i = 0; i < SECTIONS.length; i++){
+        if (SECTIONS[i][0].test(line)){
+          cur = SECTIONS[i][1]; if (cur === "reflection") signOff = true;
+          rest = line.replace(SECTIONS[i][0], "").replace(/^\s*[:\-]\s*/, "").trim();
+          if (rest) push(cur, rest); return;
+        }
+      }
+      if ((m = /^educator\s*:?\s*(.*)$/i.exec(line))){ if (m[1] || !out.educator){ put("educator", m[1]); } cur = signOff ? null : cur; if (!signOff) cur = null; return; }
+      if ((m = /^subject\s*:?\s*(.*)$/i.exec(line))){ put("subject", m[1]); cur = null; return; }
+      if ((m = /^grade\s*:?\s*(.*)$/i.exec(line))){ put("grade", m[1].replace(/^grade\s*/i, "").trim()); cur = null; return; }
+      if ((m = /^discipline\s*:?\s*(.*)$/i.exec(line))){ put("discipline", m[1]); cur = null; return; }
+      if ((m = /^week\s*:?\s*(.*)$/i.exec(line))){ put("week", m[1]); cur = null; return; }
+      if ((m = /^duration\s*:?\s*(.*)$/i.exec(line))){ put("duration", m[1]); cur = null; return; }
+      if ((m = /^topic\s*:?\s*(.*)$/i.exec(line))){ put("topic", m[1]); cur = null; return; }
+      if ((m = /^dh\s*:?\s*(.*)$/i.exec(line))){ put("dh", m[1]); dateCount = 1; cur = null; return; }
+      if ((m = /^date\s*:?\s*(.*)$/i.exec(line))){
+        var iso = toIso(m[1]);
+        if (!signOff) put("date", iso); else if (!out.dh && !out.refDate) put("refDate", iso); else if (out.dh || out.refDate) { if (out.dh) put("dhDate", iso); else put("refDate", iso); }
+        cur = null; return;
+      }
+      if (/^sign\s*:?\s*$/i.test(line)){ cur = null; return; }
+      if (!cur) return;
+      var item = cur === "reflection" ? line : line.replace(/^[-–—*•▪➤❖●]\s*|^o\s+/, "").trim();
+      if (!item || (cur !== "reflection" && LEADS.test(item))) return;
+      push(cur, item);
+    });
+    Object.keys(lists).forEach(function(k){ if (lists[k].length){ out[k] = lists[k].join("\n"); found++; } });
+    out.__found = found; return out;
+  }
+  function docxLines(buf){
+    return loadJSZip().then(function(JSZip){ return JSZip.loadAsync(buf); }).then(function(zip){
+      var f = zip.file("word/document.xml"); if (!f) throw new Error("That does not look like a Word document");
+      return f.async("string");
+    }).then(function(xml){
+      var doc = new DOMParser().parseFromString(xml, "application/xml"), ps = doc.getElementsByTagName("w:p"), res = [];
+      for (var i = 0; i < ps.length; i++){
+        var txt = "", nodes = ps[i].getElementsByTagName("*");
+        for (var j = 0; j < nodes.length; j++){
+          var n = nodes[j].nodeName;
+          if (n === "w:t") txt += nodes[j].textContent; else if (n === "w:tab") txt += " ";
+        }
+        res.push(txt);
+      }
+      return res;
+    });
+  }
+  function handleUpload(file){
+    if (!file) return;
+    if (!/\.docx$/i.test(file.name)){ setStatus("Please choose a Word file (.docx). For a PDF, open it in Word first and save it as .docx.", "err"); return; }
+    setStatus("Reading " + file.name + "…");
+    file.arrayBuffer().then(docxLines).then(function(ls){
+      var p = parsePlanLines(ls), found = p.__found; delete p.__found;
+      if (!found){ setStatus("I could not find any lesson plan headings in that file. Is it one of the school lesson plans?", "err"); return; }
+      var d = blankData(); Object.keys(p).forEach(function(k){ d[k] = p[k]; }); if (!d.educator) d.educator = educatorName;
+      currentId = ""; setData(d); markDirty(); renderSelect();
+      showReview(false);
+      setStatus("I found " + found + " answers in your file. Check them, tap “Edit my answers” to change anything, then Save.", "ok");
+    }).catch(function(err){ setStatus((err && err.message) || "Could not read that file.", "err"); });
+  }
+
   /* ---------- saved plans ---------- */
   function renderSelect(){
     var frag = document.createDocumentFragment();
@@ -593,10 +826,10 @@
     currentId = rec.id;
     var f = rec.fields || {};
     if (!f.educator) f.educator = educatorName;
-    setData(f); markClean(); renderSelect(); el.previewCard.hidden = true;
+    setData(f); markClean(); renderSelect(); showReview(false);
   }
   function startNew(fromData){
-    currentId = ""; setData(fromData || blankData()); markClean(); renderSelect(); el.previewCard.hidden = true;
+    currentId = ""; setData(fromData || blankData()); markClean(); renderSelect(); showWizard(0);
     setStatus(fromData ? "Copied. Change the week and topic, then tap Save." : "");
   }
 
@@ -648,7 +881,14 @@
   $("formArea").addEventListener("input", markDirty);
   $("formArea").addEventListener("change", markDirty);
   el.save.addEventListener("click", function(){ save(false); });
-  el.preview.addEventListener("click", function(){ showPreview(true); });
+  wiz.next.addEventListener("click", goNext); wiz.skip.addEventListener("click", goNext); wiz.back.addEventListener("click", goBack);
+  $("editAnswers").addEventListener("click", function(){ showWizard(0); window.scrollTo({ top:0, behavior:"smooth" }); });
+  all(".secnav button").forEach(function(b){ b.addEventListener("click", function(){ var g = b.getAttribute("data-g"); if (g === "review") showReview(false); else jumpGroup(Number(g)); }); });
+  $("uplBtn").addEventListener("click", function(){ $("uplFile").click(); });
+  $("uplFile").addEventListener("change", function(e){ handleUpload(e.target.files && e.target.files[0]); e.target.value = ""; });
+  ["dragenter","dragover"].forEach(function(t){ $("upl").addEventListener(t, function(e){ e.preventDefault(); $("upl").classList.add("drag"); }); });
+  ["dragleave","drop"].forEach(function(t){ $("upl").addEventListener(t, function(e){ e.preventDefault(); $("upl").classList.remove("drag"); if (t === "drop" && e.dataTransfer && e.dataTransfer.files[0]) handleUpload(e.dataTransfer.files[0]); }); });
+  el.preview.addEventListener("click", function(){ showReview(false); });
   el.print.addEventListener("click", printPlan);
   el.word.addEventListener("click", downloadWord);
   el.del.addEventListener("click", remove);
