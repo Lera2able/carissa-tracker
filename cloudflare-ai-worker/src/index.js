@@ -1612,7 +1612,7 @@ function lessonPlanNorm(v) {
   return String(v || "").toLowerCase().replace(/[^a-z]/g, "");
 }
 
-// Staff who can use Lesson Planning: Mrs E. Makandiwona, the Departmental Heads and the Acting Principal.
+// Staff who can use Lesson Planning: Mrs E. Makandiwona, the Departmental Heads, the Acting Principal and the ICT Coordinator.
 // Matched on surname plus first initial (the staff list only gives initials).
 const LESSON_PLAN_PEOPLE = [
   { first: "e", surname: "makandiwona", first_full: "ethinah" },
@@ -1622,6 +1622,7 @@ const LESSON_PLAN_PEOPLE = [
   { first: "r", surname: "duma" },
   { first: "s", surname: "zivona" },
   { first: "f", surname: "ngomane" },
+  { first: "l", surname: "mogajane" }, // ICT Coordinator
   { first: "r", surname: "mashinini" }, // Acting Principal
   { first: "r", surname: "mashishini" }, // spelling variant
 ];

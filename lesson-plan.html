@@ -83,6 +83,29 @@
   .upl.drag{background:var(--brand-soft);border-color:var(--brand);}
   .upl span{font-size:13.5px;color:var(--ink-soft);flex:1;min-width:200px;}
   @media (prefers-reduced-motion:reduce){.qcard,.qemoji,#qbar{animation:none !important;transition:none !important;}}
+  .play{display:grid;grid-template-columns:minmax(0,430px) minmax(0,1fr);gap:18px;align-items:start;}
+  .play .wizcard,.play .livecard{margin-bottom:18px;}
+  .play .wizcard{position:sticky;top:12px;}
+  .livecard{padding:16px 16px 14px;} .livecard h3{margin:0 0 10px;font-size:15px;color:var(--brand-dark);}
+  .docwrap.live{max-height:78vh;overflow-y:auto;overflow-x:hidden;padding:10px;position:relative;}
+  .doc.live{width:100%;padding:16px 18px;font-size:11.5px;line-height:1.35;box-shadow:none;}
+  .doc.live .lh img{height:38px;} .doc.live .lh .name{font-size:13px;letter-spacing:2px;} .doc.live .lh .addr{font-size:8px;}
+  .doc.live .term{font-size:12px;} .doc.live .ltitle{font-size:12.5px;} .doc.live .ltitle .em{font-size:16px;}
+  .doc [data-k].hl{outline:3px solid #f59e0b;outline-offset:-2px;background:#fffbeb;animation:glow 1.3s ease-in-out infinite;}
+  .doc .term.hl,.doc .ltitle.hl{outline-offset:2px;border-radius:6px;}
+  @keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,.55)}50%{box-shadow:0 0 0 7px rgba(245,158,11,0)}}
+  .gamebar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;position:relative;}
+  .xpbadge{background:linear-gradient(90deg,#4f46e5,#7c3aed);color:#fff;border-radius:999px;padding:6px 14px;font-size:13px;display:inline-flex;gap:8px;align-items:center;}
+  .xpbadge i{font-style:normal;opacity:.92;font-weight:600;}
+  .medals{display:flex;gap:6px;}
+  .medal{width:32px;height:32px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:16px;background:#f1f5f9;border:2px dashed #cbd5e1;filter:grayscale(1);opacity:.55;transition:all .4s;}
+  .medal.got{filter:none;opacity:1;border:2px solid #f59e0b;background:#fffbeb;}
+  .medal.won{animation:wonpop .9s cubic-bezier(.2,1.6,.4,1);}
+  @keyframes wonpop{0%{transform:scale(.3) rotate(-90deg)}60%{transform:scale(1.4) rotate(10deg)}100%{transform:scale(1)}}
+  .xppop{position:absolute;right:0;top:34px;background:#10b981;color:#fff;font-weight:800;font-size:13px;border-radius:999px;padding:6px 14px;box-shadow:0 8px 20px rgba(16,185,129,.35);animation:floatup 1.3s ease-out forwards;pointer-events:none;z-index:5;white-space:nowrap;}
+  @keyframes floatup{0%{opacity:0;transform:translateY(10px) scale(.8)}20%{opacity:1;transform:translateY(0) scale(1.05)}100%{opacity:0;transform:translateY(-34px)}}
+  @media (max-width:940px){.play{grid-template-columns:minmax(0,1fr);}.play .wizcard{position:static;}.docwrap.live{max-height:60vh;}}
+  @media (prefers-reduced-motion:reduce){.doc [data-k].hl,.medal.won,.xppop{animation:none !important;}}
   /* buttons */
   .btn{border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:15px;border-radius:10px;padding:13px 22px;min-height:48px;transition:background .15s ease,transform .1s ease,box-shadow .15s ease;}
   .btn:active{transform:scale(.98);}
@@ -196,7 +219,9 @@
     <button type="button" data-g="0">1 Details</button><button type="button" data-g="1">2 Content</button><button type="button" data-g="2">3 Aims &amp; activities</button><button type="button" data-g="3">4 Assessment</button><button type="button" data-g="4">5 Reflection</button><button type="button" data-g="review">6 Letterhead</button>
   </nav>
 
-  <section class="card wizcard noprint" id="wizard" hidden>
+  <div class="play noprint" id="wizard" hidden>
+  <section class="card wizcard" id="wizardCard">
+    <div class="gamebar" id="xpwrap"><span class="xpbadge"><b id="xpnum">0 XP</b> <i id="xplevel"></i></span><span class="medals" id="medals" aria-label="Badges"></span></div>
     <div class="qtop"><span id="qcount"></span><span>Draft saves automatically</span></div>
     <div class="qtrack"><div id="qbar"></div></div>
     <div id="qcheer" aria-live="polite"></div>
@@ -208,6 +233,11 @@
       <button class="btn primary" id="qNext" type="button">Next →</button>
     </div>
   </section>
+    <section class="card livecard" aria-label="Your form is filling in">
+      <h3>✍️ Your form is filling in as you answer</h3>
+      <div class="docwrap live"><div class="doc live" id="liveDoc"></div></div>
+    </section>
+  </div>
 
 
   <div class="infogrid noprint">
@@ -420,8 +450,8 @@
     return ul;
   }
 
-  function buildDoc(d){
-    var root = el.doc; root.textContent = "";
+  function buildDoc(d, target){
+    var root = target || el.doc; root.textContent = "";
     // letterhead
     var lh = mk("div", "lh");
     var img = document.createElement("img"); img.src = "./school-crest.png"; img.alt = "Carissa Primary School crest"; lh.appendChild(img);
@@ -432,46 +462,46 @@
     lh.appendChild(mk("div", "rule2"));
     root.appendChild(lh);
 
-    root.appendChild(mk("div", "term", (d.term || "").toUpperCase()));
-    var lt = mk("div", "ltitle"); lt.appendChild(document.createTextNode(((d.subject || "").toUpperCase()) + (d.subject ? " " : ""))); lt.appendChild(mk("span", "em", "LESSON PLAN")); root.appendChild(lt);
+    var termEl = mk("div", "term", (d.term || "").toUpperCase() || (target ? "TERM" : "")); termEl.setAttribute("data-k", "term"); root.appendChild(termEl);
+    var lt = mk("div", "ltitle"); lt.appendChild(document.createTextNode(((d.subject || "").toUpperCase()) + (d.subject ? " " : ""))); lt.appendChild(mk("span", "em", "LESSON PLAN")); lt.setAttribute("data-k", "subject"); root.appendChild(lt);
 
     // details
     var t1 = mk("table"), tb = mk("tbody"); t1.appendChild(tb);
-    function row(cells){ var tr = mk("tr"); cells.forEach(function(c){ var td = mk("td", c.cls || null); if (c.span) td.colSpan = c.span; td.appendChild(c.content); tr.appendChild(td); }); tb.appendChild(tr); }
-    row([{ span:2, content: labelled("Educator:", d.educator) }]);
-    row([{ content: labelled("Subject:", d.subject) }, { cls:"half", content: labelled("Grade", d.grade) }]);
-    row([{ content: labelled("Discipline:", d.discipline) }, { cls:"half", content: labelled("Week", d.week) }]);
-    row([{ content: labelled("Duration:", d.duration) }, { cls:"half", content: labelled("Date:", nice(d.date)) }]);
-    row([{ span:2, content: labelled("Topic:", d.topic) }]);
+    function row(cells){ var tr = mk("tr"); cells.forEach(function(c){ var td = mk("td", c.cls || null); if (c.span) td.colSpan = c.span; if (c.k) td.setAttribute("data-k", c.k); td.appendChild(c.content); tr.appendChild(td); }); tb.appendChild(tr); }
+    row([{ span:2, k:"educator", content: labelled("Educator:", d.educator) }]);
+    row([{ k:"subject", content: labelled("Subject:", d.subject) }, { cls:"half", k:"grade", content: labelled("Grade", d.grade) }]);
+    row([{ k:"discipline", content: labelled("Discipline:", d.discipline) }, { cls:"half", k:"week", content: labelled("Week", d.week) }]);
+    row([{ k:"duration", content: labelled("Duration:", d.duration) }, { cls:"half", k:"date", content: labelled("Date:", nice(d.date)) }]);
+    row([{ span:2, k:"topic", content: labelled("Topic:", d.topic) }]);
     root.appendChild(t1);
 
     // sections
     var t2 = mk("table"), tb2 = mk("tbody"); t2.appendChild(tb2);
-    function section(parts){ var tr = mk("tr"), td = mk("td"); parts.forEach(function(p){ td.appendChild(p); }); tr.appendChild(td); tb2.appendChild(tr); }
+    function section(parts, k){ var tr = mk("tr"), td = mk("td"); if (k) td.setAttribute("data-k", k); parts.forEach(function(p){ td.appendChild(p); }); tr.appendChild(td); tb2.appendChild(tr); }
     function head(t, sub){ return mk("div", "h" + (sub ? " again" : ""), t); }
-    section([head("Content:"), listBlock(lines(d.content), "dash")]);
-    section([head("Concepts"), listBlock(lines(d.concepts), "dash")]);
-    section([head("Aims and objectives:"), listBlock(lines(d.aims), "arrow", "Learners:")]);
-    section([head("Teaching methods"), listBlock(lines(d.methods), "dash")]);
-    section([head("Teaching activities:"), listBlock(lines(d.teaching), "circle", "The teacher will;")]);
-    section([head("Learning activities"), listBlock(lines(d.learning), "diamond", "Learner will;"), head("Resources:", true), listBlock(lines(d.resources), "dash")]);
-    section([head("Forms of assessment"), listBlock(lines(d.assessment), "dash")]);
-    section([head("Addressing diversity"), listBlock(lines(d.diversity), "square")]);
+    section([head("Content:"), listBlock(lines(d.content), "dash")], "content");
+    section([head("Concepts"), listBlock(lines(d.concepts), "dash")], "concepts");
+    section([head("Aims and objectives:"), listBlock(lines(d.aims), "arrow", "Learners:")], "aims");
+    section([head("Teaching methods"), listBlock(lines(d.methods), "dash")], "methods");
+    section([head("Teaching activities:"), listBlock(lines(d.teaching), "circle", "The teacher will;")], "teaching");
+    section([head("Learning activities"), listBlock(lines(d.learning), "diamond", "Learner will;"), head("Resources:", true), listBlock(lines(d.resources), "dash")], "learning resources");
+    section([head("Forms of assessment"), listBlock(lines(d.assessment), "dash")], "assessment");
+    section([head("Addressing diversity"), listBlock(lines(d.diversity), "square")], "diversity");
     root.appendChild(t2);
     root.appendChild(mk("div", "gap"));
 
     // reflection + sign-off
     var keep = mk("div", "keep");
     var t3 = mk("table"), tb3 = mk("tbody"); t3.appendChild(tb3);
-    function r3(content, cls){ var tr = mk("tr", cls || null), td = mk("td"); td.appendChild(content); tr.appendChild(td); tb3.appendChild(tr); }
+    function r3(content, cls, k){ var tr = mk("tr", cls || null), td = mk("td"); if (k) td.setAttribute("data-k", k); td.appendChild(content); tr.appendChild(td); tb3.appendChild(tr); }
     var refl = mk("div"); refl.appendChild(mk("b", null, "Educator’s reflection")); refl.appendChild(mk("div", "tall", d.reflection || ""));
-    r3(refl);
-    r3(labelled("Educator:", d.educator));
-    r3(labelled("Date:", nice(d.refDate)));
+    r3(refl, null, "reflection");
+    r3(labelled("Educator:", d.educator), null, "educator");
+    r3(labelled("Date:", nice(d.refDate)), null, "refDate");
     r3(labelled("Sign:", ""), "signrow");
     r3(mk("div", "blank"));
-    r3(labelled("DH:", d.dh));
-    r3(labelled("Date:", nice(d.dhDate)));
+    r3(labelled("DH:", d.dh), null, "dh");
+    r3(labelled("Date:", nice(d.dhDate)), null, "dhDate");
     r3(labelled("Sign:", ""), "signrow");
     keep.appendChild(t3);
     root.appendChild(keep);
@@ -662,8 +692,8 @@
     inp.className = "inp qinp"; if (Q.ph) inp.placeholder = Q.ph;
     inp.setAttribute("aria-label", Q.q);
     inp.value = h ? h.value : "";
-    inp.addEventListener("input", function(){ h.value = inp.value; markDirty(); });
-    inp.addEventListener("change", function(){ h.value = inp.value; markDirty(); });
+    inp.addEventListener("input", function(){ h.value = inp.value; markDirty(); onAnswerChanged(Q); });
+    inp.addEventListener("change", function(){ h.value = inp.value; markDirty(); onAnswerChanged(Q); });
     inp.addEventListener("keydown", function(e){
       if (e.key === "Enter" && (Q.t === "text" || Q.t === "date" || Q.t === "select" || e.ctrlKey || e.metaKey)){ e.preventDefault(); goNext(); }
     });
@@ -671,15 +701,17 @@
       var row = mk("div", "chips"); row.appendChild(mk("span", "lab", "Quick add:"));
       if (Q.chips) Q.chips.forEach(function(t){
         var b = mk("button", "chipbtn", "+ " + t); b.type = "button";
-        b.addEventListener("click", function(){ addLine(Q.k, t); inp.value = h.value; });
+        b.addEventListener("click", function(){ addLine(Q.k, t); inp.value = h.value; onAnswerChanged(Q); });
         row.appendChild(b);
       });
       if (Q.usual){ var u = mk("button", "chipbtn", "Add my usual wording"); u.type = "button";
-        u.addEventListener("click", function(){ DIVERSITY.forEach(function(t){ addLine("diversity", t); }); inp.value = h.value; }); row.appendChild(u); }
+        u.addEventListener("click", function(){ DIVERSITY.forEach(function(t){ addLine("diversity", t); }); inp.value = h.value; onAnswerChanged(Q); }); row.appendChild(u); }
       card.appendChild(row);
     }
     card.appendChild(inp);
     wiz.stage.textContent = ""; wiz.stage.appendChild(card);
+    QUESTIONS.forEach(function(q){ lastAnswered[q.k] = answered(q); });
+    renderGame(); refreshLive();
     var n = QUESTIONS.length;
     wiz.bar.style.width = Math.round(qi / n * 100) + "%";
     wiz.count.textContent = "Question " + (qi + 1) + " of " + n + " · " + GROUPS[Q.g];
@@ -708,8 +740,51 @@
   function showReview(celebrate){
     wiz.box.hidden = true; showPreview(false);
     all(".secnav button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-g") === "review"); });
-    if (celebrate){ confetti(); setStatus("All done! Check your plan, then save, print or download it.", "ok"); }
+    if (celebrate){ confetti(); var xp = totalXp(), lv = levelFor(xp); setStatus("\uD83C\uDF89 " + xp + " XP \u00b7 " + lv[1] + "! Check your plan, then save, print or download it.", "ok"); }
     window.scrollTo({ top: Math.max(0, el.previewCard.offsetTop - 120), behavior: "smooth" });
+  }
+
+  /* ---------- live form + game layer ---------- */
+  var LEVELS = [[0,"Rookie Planner","🌱"],[70,"Lesson Starter","🚀"],[140,"Planning Pro","⭐"],[220,"Lesson Legend","🏆"]];
+  var MEDALS = ["📋","📚","🧠","✅","✍️"];
+  var seenGroupDone = {}, lastAnswered = {};
+  function qPoints(Q){ return Q.t === "list" || Q.t === "area" ? 15 : 10; }
+  function answered(Q){ var h = hidden(Q.k); return !!(h && String(h.value || "").trim()); }
+  function totalXp(){ var x = 0; QUESTIONS.forEach(function(Q){ if (answered(Q)) x += qPoints(Q); }); return x; }
+  function maxXp(){ var x = 0; QUESTIONS.forEach(function(Q){ x += qPoints(Q); }); return x; }
+  function levelFor(x){ var L = LEVELS[0]; LEVELS.forEach(function(l){ if (x >= l[0]) L = l; }); return L; }
+  function groupDone(g){ return QUESTIONS.every(function(Q){ return Q.g !== g || answered(Q); }); }
+  function pop(text){
+    var n = mk("div", "xppop", text); var host = $("xpwrap"); if (!host) return;
+    host.appendChild(n); setTimeout(function(){ n.remove(); }, 1300);
+  }
+  function renderGame(){
+    var x = totalXp(), L = levelFor(x);
+    $("xpnum").textContent = x + " XP";
+    $("xplevel").textContent = L[2] + " " + L[1];
+    var m = $("medals"); m.textContent = "";
+    GROUPS.forEach(function(g, i){
+      var done = groupDone(i), b = mk("span", "medal" + (done ? " got" : ""), MEDALS[i]); b.title = g + (done ? " – complete!" : "");
+      m.appendChild(b);
+      if (done && !seenGroupDone[i]){ seenGroupDone[i] = true; if (m.dataset.ready) { pop("🏅 " + g + " done!"); b.classList.add("won"); } }
+    });
+    m.dataset.ready = "1";
+  }
+  function refreshLive(){
+    var Q = QUESTIONS[qi], root = $("liveDoc"), wrap = root.parentNode, prevTop = wrap.scrollTop;
+    buildDoc(getData(), root);
+    var targets = root.querySelectorAll('[data-k~="' + Q.k + '"]');
+    for (var i = 0; i < targets.length; i++) targets[i].classList.add("hl");
+    if (targets[0]){
+      var top = targets[0].getBoundingClientRect().top - wrap.getBoundingClientRect().top + wrap.scrollTop;
+      wrap.scrollTop = Math.max(0, top - wrap.clientHeight / 3);
+    } else wrap.scrollTop = prevTop;
+  }
+  function onAnswerChanged(Q){
+    var now = answered(Q), was = lastAnswered[Q.k];
+    if (now && !was) pop("+" + qPoints(Q) + " XP ✨");
+    lastAnswered[Q.k] = now;
+    renderGame(); refreshLive();
   }
 
   /* ---------- upload an existing plan (.docx) ---------- */
